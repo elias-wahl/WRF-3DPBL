@@ -1167,6 +1167,7 @@ BENCH_START(pbl_driver_tim)
       CALL pbl_driver(                                                              &
      &         AKHS=grid%akhs          ,AKMS=grid%akms                              &
      &        ,BL_PBL_PHYSICS=config_flags%bl_pbl_physics                           &
+     &        ,PBL3D_OPT=config_flags%pbl3d_opt                                     &
      &        ,WINDFARM_OPT=config_flags%windfarm_opt,power=grid%power              &
      ! THE FOLLOWING LINES OF CODE ARE LICENSED UNDER doc/licenses/fraunhofer_license.txt
      &        ,thrust=grid%thrust                                                   & 

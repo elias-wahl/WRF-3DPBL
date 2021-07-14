@@ -22,7 +22,7 @@ CONTAINS
                  ,thz0,qz0,uz0,vz0,qsfc,f                          &
                  ,lowlyr,u10,v10,uoce,voce,t2                      &
                  ,psim,psih,fm,fhh,gz1oz0, wspd,br,chklowq         &
-                 ,bl_pbl_physics, ra_lw_physics, dx, dy            &
+                 ,bl_pbl_physics, pbl3d_opt, ra_lw_physics, dx, dy &
                  ,dx2d ,area2d                                     &
                  ,stepbl,warm_rain                                 &
                  ,kpbl,mixht,ct,lh,snow,xice                       &
@@ -416,7 +416,7 @@ CONTAINS
 !
 
 
-   INTEGER,    INTENT(IN   )    ::     bl_pbl_physics, ra_lw_physics,sf_sfclay_physics,sf_urban_physics,windfarm_opt
+   INTEGER,    INTENT(IN   )    ::     bl_pbl_physics, pbl3d_opt, ra_lw_physics,sf_sfclay_physics,sf_urban_physics,windfarm_opt
    INTEGER,    INTENT(IN   )    ::     ysu_topdown_pblmix
    INTEGER,    OPTIONAL,  INTENT(IN   )    ::     shinhong_tke_diag
    INTEGER,    OPTIONAL,  INTENT(IN   )    ::     scalar_pblmix, tracer_pblmix
@@ -905,7 +905,7 @@ CONTAINS
   flag_qnifa = .FALSE. ; IF ( PRESENT( F_QNIFA ) ) flag_qnifa = F_QNIFA
   flag_qnbca = .FALSE. ; IF ( PRESENT( F_QNBCA ) ) flag_qnbca = F_QNBCA
 
-  if (bl_pbl_physics .eq. 0) return
+  if (bl_pbl_physics .eq. 0 .or. abs(pbl3d_opt) .gt. 0) return
 
 ! RAINBL in mm (Accumulation between PBL calls)
 !
