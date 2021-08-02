@@ -1253,11 +1253,7 @@
       real (kind = SOLVER_PREC), allocatable, dimension(:,:) :: a(:, :), af(:, :)
 
       external dgesv
-      external dsgesv
       external dgesvx
-      real, external :: dlange
-      external dgecon
-      external dgetrf
 
       allocate (a(N_VARS, N_VARS), af(N_VARS, N_VARS), b(N_VARS), x(N_VARS))
 
@@ -1268,20 +1264,21 @@
       call Fill_in_a_matrix (a, q, q_sq, l, du_dx, du_dy, du_dz, dv_dx, dv_dy, dv_dz, dw_dx, dw_dy, dw_dz, &
           dthetav_dx, dthetav_dy, dthetav_dz)
 
-        ! Invert matrix
-      call dgesvx ('N', 'N', N_VARS, 1, a, N_VARS, af, N_VARS, ipiv, equed, rsf, csf, b, N_VARS, x, N_VARS, rcond, ferr, berr, work, iwork, info)
-      mat_cond = 1. / rcond
+        ! Compute solution to system of linear equations
+!      call dgesvx ('N', 'N', N_VARS, 1, a, N_VARS, af, N_VARS, ipiv, equed, rsf, csf, b, N_VARS, x, N_VARS, rcond, ferr, berr, work, iwork, info)
+      call dgesv (N_VARS, 1, a, N_VARS, ipiv, b, N_VARS, info)
+!      mat_cond = 1. / rcond
 
-      tf_u2 = x(1)
-      tf_v2 = x(2)
-      tf_w2 = x(3)
-      tf_uv = x(4)
-      tf_uw = x(5)
-      tf_vw = x(6)
-      tf_utv = x(7)
-      tf_vtv = x(8)
-      tf_wtv = x(9)
-      tf_t2v = x(10)
+      tf_u2 = b(1)
+      tf_v2 = b(2)
+      tf_w2 = b(3)
+      tf_uv = b(4)
+      tf_uw = b(5)
+      tf_vw = b(6)
+      tf_utv = b(7)
+      tf_vtv = b(8)
+      tf_wtv = b(9)
+      tf_t2v = b(10)
 
       deallocate (a, af, b, x)
 
@@ -1319,12 +1316,7 @@
       real (kind = SOLVER_PREC), allocatable, dimension(:,:) :: a(:, :), af(:, :)
 
       external dgesv
-      external dsgesv
       external dgesvx
-      external dgesvxx
-      real, external :: dlange
-      external dgecon
-      external dgetrf
 
       allocate (a(N_VARS, N_VARS), af(N_VARS, N_VARS), b(N_VARS), x(N_VARS))
 
@@ -1335,13 +1327,14 @@
       call Fill_in_a_matrix_moist (a, q, l, du_dx, du_dy, du_dz, dv_dx, dv_dy, dv_dz, dw_dx, dw_dy, dw_dz, &
           dthetav_dx, dthetav_dy, dthetav_dz)
 
-        ! Invert matrix
-      call dgesvx ('N', 'N', N_VARS, 1, a, N_VARS, af, N_VARS, ipiv, equed, rsf, csf, b, N_VARS, x, N_VARS, rcond, ferr, berr, work, iwork, info)
-      mat_cond = 1. / rcond
+        ! Compute solution to system of linear equations
+!      call dgesvx ('N', 'N', N_VARS, 1, a, N_VARS, af, N_VARS, ipiv, equed, rsf, csf, b, N_VARS, x, N_VARS, rcond, ferr, berr, work, iwork, info)
+      call dgesv (N_VARS, 1, a, N_VARS, ipiv, b, N_VARS, info)
+!      mat_cond = 1. / rcond
 
-      tf_uqv = x(1)
-      tf_vqv = x(2)
-      tf_wqv = x(3)
+      tf_uqv = b(1)
+      tf_vqv = b(2)
+      tf_wqv = b(3)
 
       deallocate (a, af, b, x)
 
