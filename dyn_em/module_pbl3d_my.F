@@ -389,7 +389,7 @@
     end subroutine Calc_l_master_algebra
 
 
-    subroutine Calc_l_boulac_master_algebra (q_sq, z, dz, th, dlu, dld, dls, dlk, l_master, l_boulac, &
+    subroutine Calc_l_boulac_master_algebra (q_sq, dz, th, dlu, dld, dls, dlk, l_master, l_boulac, &
               ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -407,7 +407,7 @@
       implicit none
 
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in) :: q_sq
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in) :: z, dz
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (in) :: dz
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in) :: th
       real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dlu, dld, dls, dlk
       real, dimension (ims:ime, kms:kme, jms:jme), intent (out) :: l_master, l_boulac
@@ -418,6 +418,7 @@
         ! Local vars
       integer :: i, j, k, kk, i_start, i_end, j_start, j_end, ktf
       real :: beta, bbb, zup, zdo, zdo_sup, zzz, zup_inf, dzt, te, tl
+      real, dimension (its:ite, kts:kte, jts:jte) :: z
 
         ! Define dimensions
       i_start = its
@@ -426,12 +427,22 @@
       j_end = Min (jte, jde - 1)
       ktf = Min (kte, kde - 1)
 
-         ! Calculates l0 (Eq. 72 MY74)
+        ! Calculate height agl
       do j = j_start, j_end
         do i = i_start, i_end
+          z(i, kts, j) = 0.0
           do k = kts + 1, kte
+            z(i, k, j) = z(i, k - 1, j) + dz(i, k - 1, j)
+          end do
+        end do
+      end do
+
+        ! Calculate up and down length scales according to BouLac
+      do j = j_start, j_end
+        do i = i_start, i_end
+          do k = kts, kte
             zup = 0.
-            dlu(i, k, j) = z(i, kte, j) + dz(i, kte, j) - z(i, k, j) - dz(i, k, j)/2.
+            dlu(i, k, j) = z(i, kte, j) - z(i, k, j) - dz(i, k, j)/2.
             zzz = 0.
             zup_inf = 0.
             beta = G_OVER_TREF      !Buoyancy coefficient
@@ -485,7 +496,8 @@
             end do
           end do
 
-          do k = kts + 1, ktf
+            ! Compute turbulent and dissipation length scales
+          do k = kts, ktf
             dlu(i, k, j) = max( dlu(i, k, j), 0.0 )
             dld(i, k, j) = max( min( dld(i, k, j), z(i, k, j) ), 0.0 )
             dls(i, k, j) = max( sqrt( dlu(i, k, j) * dld(i, k, j) ), 0.1 )
@@ -493,8 +505,6 @@
             l_master(i, k, j) = dlk(i, k, j)  ! turbulent length scale
             l_boulac(i, k, j) = dls(i, k, j)  ! dissipation length scale
           end do
-          l_master(i, kts, j) = 0.0
-          l_boulac(i, kts, j) = 0.0
           l_master(i, kte, j) = l_master(i, ktf, j)
           l_boulac(i, kte, j) = l_boulac(i, ktf, j)
         end do
@@ -585,7 +595,7 @@
         call Calc_l_master_algebra (config_flags%pbl3d_l_opt, q_sq, dz, rdzw, rmol, turb_flux_wtheta_v, dthetav_dz, l_master, &
             l_boulac, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
       else
-        call Calc_l_boulac_master_algebra (q_sq, z_at_w, dz, t, dlu, dld, dls, dlk, l_master, l_boulac, &
+        call Calc_l_boulac_master_algebra (q_sq, dz, t, dlu, dld, dls, dlk, l_master, l_boulac, &
             ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
       end if
 
@@ -841,7 +851,7 @@
         call Calc_l_master_algebra (config_flags%pbl3d_l_opt, q_sq, dz, rdzw, rmol, turb_flux_wtheta_v, dthetav_dz, l_master, &
             l_boulac, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
       else
-        call Calc_l_boulac_master_algebra (q_sq, z_at_w, dz, t, dlu, dld, dls, dlk, l_master, l_boulac, &
+        call Calc_l_boulac_master_algebra (q_sq, dz, t, dlu, dld, dls, dlk, l_master, l_boulac, &
             ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
       end if
 
