@@ -619,7 +619,7 @@
               turb_flux_uqnifa, turb_flux_vqnifa, turb_flux_wqnifa, &
               turb_flux_utheta, turb_flux_vtheta, turb_flux_wtheta, turb_flux_u2_mass, turb_flux_v2_mass, &
               turb_flux_w2_mass, turb_flux_uv_mass, turb_flux_uw_mass, turb_flux_vw_mass, turb_flux_wtheta_v_mass, &
-              msfux, msfuy, msfvx, msfvy, msftx, msfty, dx, dy, rdx, rdy, dn, dnw, rdz, dt, id, rdzw, fnm, fnp, cf1, cf2, cf3, &
+              msfux, msfuy, msfvx, msfvy, msftx, msfty, xland, pblh, dx, dy, rdx, rdy, dn, dnw, rdz, dt, id, rdzw, fnm, fnp, cf1, cf2, cf3, &
               zx, zy, mut, c1h, c2h, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -651,7 +651,8 @@
       real, dimension (ims:ime, kms:kme, jms:jme), intent (inout) :: thetav
       real, dimension (ims:ime, kms:kme, jms:jme), intent (inout) :: l_master, l_master_at_mass, l_boulac
       real, dimension (ims:ime, jms:jme),          intent (in)    :: msfux, msfuy, msfvx, msfvy, msftx, msfty
-      real, dimension (ims:ime, jms:jme),          intent (in)    :: tsk, t2, q2, psfc, ust, hfx, qfx, rmol
+      real, dimension (ims:ime, jms:jme),          intent (in)    :: tsk, t2, q2, psfc, ust, hfx, qfx, rmol, xland
+      real, dimension (ims:ime, jms:jme),          intent (out)   :: pblh
       real, dimension (ims:ime, jms:jme),          intent (in)    :: mut
       real, dimension (kms:kme),                   intent (in)    :: c1h, c2h
       real, dimension (ims:ime, kms:kme, jms:jme), intent (inout) :: turb_flux_u2, turb_flux_v2, turb_flux_w2,  &
@@ -732,7 +733,7 @@
           turb_flux_uqs, turb_flux_vqs, turb_flux_wqs, turb_flux_uqg, turb_flux_vqg, turb_flux_wqg, turb_flux_uqnc, turb_flux_vqnc, &
           turb_flux_wqnc, turb_flux_uqnr, turb_flux_vqnr, turb_flux_wqnr, turb_flux_uqni, turb_flux_vqni, turb_flux_wqni, &
           turb_flux_uqnwfa, turb_flux_vqnwfa, turb_flux_wqnwfa, turb_flux_uqnifa, turb_flux_vqnifa, turb_flux_wqnifa, &
-          msfux, msfuy, msfvx, msfvy, msftx, msfty, &
+          msfux, msfuy, msfvx, msfvy, msftx, msfty, xland, pblh, &
           dx, dy, rdx, rdy, dn, dnw, rdz, dt, id, rdzw, fnm, fnp, cf1, cf2, cf3, zx, zy, mut, c1h, c2h, ids, ide, jds, jde, kds, kde, &
           ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 

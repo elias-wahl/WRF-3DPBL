@@ -80,7 +80,7 @@
               turb_flux_uqs, turb_flux_vqs, turb_flux_wqs, turb_flux_uqg, turb_flux_vqg, turb_flux_wqg, turb_flux_uqnc, turb_flux_vqnc, &
               turb_flux_wqnc, turb_flux_uqnr, turb_flux_vqnr, turb_flux_wqnr, turb_flux_uqni, turb_flux_vqni, turb_flux_wqni, &
               turb_flux_uqnwfa, turb_flux_vqnwfa, turb_flux_wqnwfa, turb_flux_uqnifa, turb_flux_vqnifa, turb_flux_wqnifa, &
-              msfux, msfuy, msfvx, msfvy, msftx, msfty, &
+              msfux, msfuy, msfvx, msfvy, msftx, msfty, xland, pblh, &
               dx, dy, rdx, rdy, dn, dnw, rdz, dt, id, rdzw, fnm, fnp, cf1, cf2, cf3, zx, zy, mut, c1h, c2h, ids, ide, jds, jde, kds, kde, &
               ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
@@ -107,7 +107,8 @@
           dqi_dz, dqs_dz, dqg_dz, dqnc_dz, dqnr_dz, dqni_dz, dqnwfa_dz, dqnifa_dz
       real, dimension (ims:ime, kms:kme, jms:jme), intent (inout) :: l_master, l_master_at_mass, l_boulac
       real, dimension (ims:ime, jms:jme),          intent (in)    :: msfux, msfuy, msfvx, msfvy, msftx, msfty
-      real, dimension (ims:ime, jms:jme),          intent (in)    :: tsk, t2, thetav, q2, psfc, ust, hfx, qfx, rmol
+      real, dimension (ims:ime, jms:jme),          intent (in)    :: tsk, t2, thetav, q2, psfc, ust, hfx, qfx, rmol, xland
+      real, dimension (ims:ime, jms:jme),          intent (inout) :: pblh
       real, dimension (ims:ime, jms:jme),          intent (in)    :: mut
       real, dimension (kms:kme),                   intent (in)    :: c1h, c2h
       real, dimension (ims:ime, kms:kme, jms:jme), intent (inout) :: turb_flux_u2, turb_flux_v2, turb_flux_w2,  &
@@ -155,6 +156,10 @@
             dz, rdzw, z_at_w, fnm, fnp, cf1, cf2, cf3, dn, dnw, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme,  &
             its, ite, jts, jte, kts, kte)
       end if
+
+        ! Diagnose PBL height
+      call Diagnose_pbl_height (thetav, q_sq, z_at_w, dz, xland, pblh, ids, ide, jds, jde, kds, kde, &
+          ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
       if (DEBUG) print *, 'Done Calc_turb_fluxes_my...'
 
@@ -2915,6 +2920,132 @@
       end do
 
     end subroutine Taper_q_sq
+
+
+    subroutine Diagnose_pbl_height (thetav, q_sq, z_at_w, dz, xland, zi, ids, ide, jds, jde, kds, kde, &
+              ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !                                                                      !
+      !                  NOTES ON THE PBLH FORMULATION                       !
+      !                  ADOPTED FROM MYNN PBL SCHEME                        !
+      !                                                                      !
+      ! The 1.5-theta-increase method defines PBL heights as the level at    !
+      ! which the potential temperature first exceeds the minimum potential  !
+      ! temperature within the boundary layer by 1.5 K. When applied to      !
+      ! observed temperatures, this method has been shown to produce PBL-    !
+      ! height estimates that are unbiased relative to profiler-based        !
+      ! estimates (Nielsen-Gammon et al. 2008). However, their study did not !
+      ! include LLJs. Banta and Pichugina (2008) show that a TKE-based       !
+      ! threshold is a good estimate of the PBL height in LLJs. Therefore,   !
+      ! a hybrid definition is implemented that uses both methods, weighting !
+      ! the TKE-method more during stable conditions (PBLH < 400 m).         !
+      ! A variable tke threshold (TKEeps) is used since no hard-wired        !
+      ! value could be found to work best in all conditions.                 !
+      !                                                                      !
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+      implicit none
+
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: thetav, q_sq, z_at_w, dz
+      real, dimension (ims:ime, jms:jme),          intent (in)    :: xland
+      real, dimension (ims:ime, jms:jme),          intent (out)   :: zi
+      integer,                                     intent (in)    :: ids, jds, ide, jde, kds, kde, &
+                                                                     ims, ime, jms, jme, kms, kme, &
+                                                                     its, ite, jts, jte, kts, kte
+
+        ! local vars
+      integer :: i, j, k, i_start, i_end, j_start, j_end
+      integer :: kthv, ktke
+      real    :: minthv, delt_thv, tke_eps, maxqke, qtke, qtkem1, pblh_tke, sbl_lim, sbl_damp, wt
+
+        ! Define dimensions
+      i_start = its
+      i_end = Min (ite, ide - 1)
+      j_start = jts
+      j_end = Min (jte, jde - 1)
+
+        ! Find minimum thetav in the lowest 200 m AGL
+      do j = j_start, j_end
+        do i = i_start, i_end
+          k = kts + 1
+          kthv = 1
+          minthv = 9.E9
+
+          do while (z_at_w(i, k, j) .le. 200.)
+            if (minthv > thetav(i, k, j)) then
+              minthv = thetav(i, k, j)
+              kthv = k
+            end if
+            k = k + 1
+          end do
+
+            ! Find thetav-based PBLH (best for daytime)
+          k = kthv + 1
+          if ((xland(i, j) - 1.5) .ge. 0) then
+              ! Water
+            delt_thv = 1.0
+          else
+              ! Land
+            delt_thv = 1.25
+          ENDIF
+
+          zi(i, j) = 0.
+          k = kthv + 1
+          do k = kts + 1, kte - 1
+            if (thetav(i, k, j) .ge. (minthv + delt_thv)) then
+              zi(i, j) = z_at_w(i, k, j) - dz(i, k - 1, j) * &
+                     Min ((thetav(i, k, j) - (minthv + delt_thv)) / Max (thetav(i, k, j) - thetav(i, k - 1, j), 1E-6), 1.0)
+            end if
+            if (k .eq. kte - 1) zi(i, j) = z_at_w(i, kts + 1, j)
+            if (zi(i, j) .ne. 0.0) exit
+          end do
+
+            ! For stable boundary layers, use TKE method to complement the
+            ! thetav-based definition (when the thetav-based PBLH is below ~0.5 km).
+            ! The tanh weighting function will make the TKE-based definition negligible
+            ! when the thetav-based definition is above ~1 km.
+          ktke = 1
+          maxqke = Max (q_sq(i, kts, j), Q_SQ_MIN)
+            ! Use 5% of tke max (Kosovic and Curry, 2000; JAS)
+          tke_eps = maxqke / 40.
+          tke_eps = Max (tke_eps, 0.02)
+          pblh_tke = 0.
+
+          k = ktke + 1
+          do k = kts + 1, kte - 1
+            qtke = Max (q_sq(i, k, j) / 2., Q_SQ_MIN)
+            qtkem1 = Max (q_sq(i, k - 1, j) / 2., Q_SQ_MIN)
+            if (qtke .le. tke_eps) then
+              pblh_tke = z_at_w(i, k, j) - dz(i, k - 1, j) * &
+                           Min ((tke_eps - qtke) / Max (qtkem1 - qtke, 1E-6), 1.0)
+                ! In case of near zero TKE, set PBLH = lowest level
+              pblh_tke = Max (pblh_tke, z_at_w(i, kts + 1, j))
+            end if
+            if (k .eq. kte - 1) pblh_tke = z_at_w(i, kts + 1, j)
+            if (pblh_tke .ne. 0.) exit
+          end do
+
+            ! With TKE advection turned on, the TKE-based PBLH can be very large
+            ! in grid points with convective precipitation (> 8 km!),
+            ! so an artificial limit is imposed to not let pblh_tke exceed the
+            ! theta_v-based PBL height +/- 350 m.
+            ! This has no impact on 98-99% of the domain, but is the simplest patch
+            ! that adequately addresses these extremely large PBLHs.
+          pblh_tke = Min (pblh_tke, zi(i, j) + 350.)
+          pblh_tke = Max (pblh_tke, Max (zi(i, j) - 350., 10.))
+
+          wt = 0.5 * Tanh ((zi(i, j) - sbl_lim) / sbl_damp) + .5
+          if (maxqke <= 0.05) then
+            ! Cold pool situation - default to thetav-based def
+          else
+            ! Blend the two PBLH types here
+            zi(i, j) = pblh_tke * (1. - wt) + zi(i, j) * wt
+          end if
+        end do
+      end do
+
+    end subroutine Diagnose_pbl_height
 
 
     subroutine Set_model_constants (pbl3d_constants)

@@ -1165,6 +1165,7 @@ BENCH_END(hor_diff_tim)
              qnwfa = scalar(:,:,:,P_QNWFA), qnifa = scalar(:,:,:,P_QNIFA), &
              thetav = grid%thetav, tsk = grid%tsk, t2=grid%t2, q2 = grid%q2, psfc = grid%psfc, &
              rho = grid%rho_tmp, ust = grid%ust, hfx = grid%hfx, qfx = grid%qfx, rmol = grid%rmol, &
+             xland = grid%xland, pblh = grid%pblh, &
              itimestep = grid%itimestep, ss = ss, n_tracer = num_tracer, &
              q_sq = grid%q_sq, q_sq_prog = grid%q_sq_tmp, q_sq_tend = q_sq_tend_tmp, &
              q_sq_vdiff_tend = grid%q_sq_vdiff, q_sq_hdiff_tend = grid%q_sq_hdiff, q_sq_shear_tend = grid%q_sq_shear, &
