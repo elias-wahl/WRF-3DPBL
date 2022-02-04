@@ -1232,6 +1232,7 @@ rconfig  integer   pbl3d_l_opt          namelist,dynamics    max_domains      1 
 rconfig  integer   pbl3d_nsteps         namelist,dynamics    max_domains      1      -     "pbl3d_nsteps"         "PBL3D number of substeps" ""
 rconfig  integer   pbl3d_prog           namelist,dynamics    max_domains      0      -     "pbl3d_prog"           "PBL3D prognostic TKE" ""
 rconfig  integer   pbl3d_scalar_mix     namelist,dynamics    max_domains      0      -     "pbl3d_scalar_mix"     "PBL3D scalar turbulent mixing" ""
+rconfig  integer   pbl3d_solver_opt     namelist,dynamics    max_domains      1      -     "pbl3d_solver_opt"     "PBL3D numerical matrix solver option" ""
 rconfig  integer   flux_limiter_w       namelist,dynamics    max_domains      0      -     "flux_limiter_w"       "Flux limiter on vertical advection of w" ""
 
 #FogDES variables

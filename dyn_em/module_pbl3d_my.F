@@ -889,7 +889,7 @@
                 qsq = q_sq(i, k, j)
               end if
 
-              call Diagnose_fluxes (qsq, l_master(i, k, j), du_dx(i, k, j), du_dy(i, k, j),                                          &
+              call Diagnose_fluxes (config_flags%pbl3d_solver_opt, qsq, l_master(i, k, j), du_dx(i, k, j), du_dy(i, k, j),           &
                   du_dz(i, k, j), dv_dx(i, k, j), dv_dy(i, k, j), dv_dz(i, k, j), dw_dx(i, k, j), dw_dy(i, k, j), dw_dz(i, k, j),    &
                   dthetav_dx(i, k, j), dthetav_dy(i, k, j), dthetav_dz(i, k, j), dqv_dx(i, k, j), dqv_dy(i, k, j), dqv_dz(i, k, j),  &
                   turb_flux_u2(i, k, j), turb_flux_v2(i, k, j), turb_flux_w2(i, k, j), turb_flux_uv(i, k, j), turb_flux_uw(i, k, j), &
@@ -1141,23 +1141,24 @@
     end subroutine Set_fluxes_to_min
 
 
-    subroutine Diagnose_fluxes (q_sq_at_walls_1dpbl, l_master, du_dx, du_dy, du_dz, dv_dx, dv_dy, dv_dz, dw_dx, dw_dy, dw_dz,      &
+    subroutine Diagnose_fluxes (pbl3d_solver_opt, q_sq_at_walls_1dpbl, l_master, du_dx, du_dy, du_dz, dv_dx, dv_dy, dv_dz, dw_dx, dw_dy, dw_dz,      &
         dthetav_dx, dthetav_dy, dthetav_dz, dqv_dx, dqv_dy, dqv_dz, turb_flux_u2, turb_flux_v2, turb_flux_w2, turb_flux_uv,        &
         turb_flux_uw, turb_flux_vw, turb_flux_utheta_v, turb_flux_vtheta_v, turb_flux_wtheta_v, turb_flux_theta2_v, turb_flux_uqv, &
         turb_flux_vqv, turb_flux_wqv, tf_utv, tf_vtv, tf_wtv, tf_uqv, tf_vqv, tf_wqv, mat_cond_heat, mat_cond_moist                )
 
       implicit none
 
+      integer, intent (in) :: pbl3d_solver_opt
       real, intent (in)    :: du_dx, dv_dy, dw_dz, du_dy, dv_dx,      &
                               dw_dx, du_dz, dw_dy, dv_dz,             &
                               dthetav_dx, dthetav_dy, dthetav_dz,     &
                               dqv_dx, dqv_dy, dqv_dz
       real, intent (in)    :: q_sq_at_walls_1dpbl, l_master
-      real, intent (out)   :: turb_flux_u2, turb_flux_v2, turb_flux_w2, &
-                              turb_flux_uv, turb_flux_uw, turb_flux_vw, &
-                              turb_flux_utheta_v, turb_flux_vtheta_v,   &
-                              turb_flux_wtheta_v, turb_flux_theta2_v,   &
-                              turb_flux_uqv, turb_flux_vqv, turb_flux_wqv
+      real, intent (inout)   :: turb_flux_u2, turb_flux_v2, turb_flux_w2, &
+                                turb_flux_uv, turb_flux_uw, turb_flux_vw, &
+                                turb_flux_utheta_v, turb_flux_vtheta_v,   &
+                                turb_flux_wtheta_v, turb_flux_theta2_v,   &
+                                turb_flux_uqv, turb_flux_vqv, turb_flux_wqv
       real, intent (out)   :: mat_cond_heat, mat_cond_moist
       real (kind = SOLVER_PREC), intent (out) :: tf_utv, tf_vtv, tf_wtv, tf_uqv, tf_vqv, tf_wqv
 
@@ -1190,8 +1191,10 @@
       dqv_dz_tmp = Working_to_solver_prec(dqv_dz)
 
         ! Solve system of equations for momentum fluxes
-      call Solve_turb_system (q, q_sq, l, du_dx_tmp, du_dy_tmp, du_dz_tmp, dv_dx_tmp, dv_dy_tmp, dv_dz_tmp, dw_dx_tmp, dw_dy_tmp, dw_dz_tmp, &
-          dthetav_dx_tmp, dthetav_dy_tmp, dthetav_dz_tmp, tf_u2, tf_v2, tf_w2, tf_uv, tf_uw, tf_vw, tf_utv, tf_vtv, tf_wtv, tf_t2v, mat_cond_heat)
+      call Solve_turb_system (pbl3d_solver_opt, q, q_sq, l, du_dx_tmp, du_dy_tmp, du_dz_tmp, dv_dx_tmp, dv_dy_tmp, dv_dz_tmp, dw_dx_tmp, dw_dy_tmp, dw_dz_tmp, &
+          dthetav_dx_tmp, dthetav_dy_tmp, dthetav_dz_tmp, turb_flux_u2, turb_flux_v2, turb_flux_w2, turb_flux_uv, turb_flux_uw, turb_flux_vw, &
+          turb_flux_utheta_v, turb_flux_vtheta_v, turb_flux_wtheta_v, turb_flux_theta2_v, &
+          tf_u2, tf_v2, tf_w2, tf_uv, tf_uw, tf_vw, tf_utv, tf_vtv, tf_wtv, tf_t2v, mat_cond_heat)
 
         ! Solve system of equations for moisture fluxes
       call Solve_turb_system_moist (q, l, du_dx_tmp, du_dy_tmp, du_dz_tmp, dv_dx_tmp, dv_dy_tmp, dv_dz_tmp, dw_dx_tmp, dw_dy_tmp, dw_dz_tmp, dthetav_dx_tmp, &
@@ -1240,15 +1243,22 @@
     end function Solver_to_working_prec
 
 
-    subroutine Solve_turb_system (q, q_sq, l, du_dx, du_dy, du_dz, dv_dx, dv_dy, dv_dz, dw_dx, dw_dy, dw_dz, &
-              dthetav_dx, dthetav_dy, dthetav_dz, tf_u2, tf_v2, tf_w2, tf_uv, tf_uw, tf_vw, tf_utv, tf_vtv, tf_wtv, tf_t2v, mat_cond)
+    subroutine Solve_turb_system (pbl3d_solver_opt, q, q_sq, l, du_dx, du_dy, du_dz, dv_dx, dv_dy, dv_dz, dw_dx, dw_dy, dw_dz, &
+              dthetav_dx, dthetav_dy, dthetav_dz, turb_flux_u2, turb_flux_v2, turb_flux_w2, turb_flux_uv, turb_flux_uw, turb_flux_vw, &
+              turb_flux_utheta_v, turb_flux_vtheta_v, turb_flux_wtheta_v, turb_flux_theta2_v, &
+              tf_u2, tf_v2, tf_w2, tf_uv, tf_uw, tf_vw, tf_utv, tf_vtv, tf_wtv, tf_t2v, mat_cond)
 
       implicit none
 
+      integer,                   intent (in)    :: pbl3d_solver_opt
       real (kind = SOLVER_PREC), intent (in)    :: q, q_sq, l
       real (kind = SOLVER_PREC), intent (in)    :: du_dx, dv_dy, dw_dz, du_dy, dv_dx,      &
                                                    dw_dx, du_dz, dw_dy, dv_dz,             &
                                                    dthetav_dx, dthetav_dy, dthetav_dz
+      real,                      intent (in)    :: turb_flux_u2, turb_flux_v2, turb_flux_w2, &
+                                                   turb_flux_uv, turb_flux_uw, turb_flux_vw, &
+                                                   turb_flux_utheta_v, turb_flux_vtheta_v,   &
+                                                   turb_flux_wtheta_v, turb_flux_theta2_v
       real,                      intent (out)   :: mat_cond
       real (kind = SOLVER_PREC), intent (out)   :: tf_u2, tf_v2, tf_w2, tf_uv, tf_uw, tf_vw, tf_utv, tf_vtv, tf_wtv, tf_t2v
 
@@ -1266,11 +1276,44 @@
       real (kind = SOLVER_PREC), dimension(N_VARS) :: iwork, rsf, csf
       real (kind = SOLVER_PREC), allocatable, dimension(:) :: b(:), x(:)
       real (kind = SOLVER_PREC), allocatable, dimension(:,:) :: a(:, :), af(:, :)
+#ifdef INTELMKL
+      integer, parameter   :: N_PAR = 128
+      integer              :: RCI_request, itercount
+      real (kind = SOLVER_PREC) :: dvar
+      real (kind = SOLVER_PREC), allocatable, dimension(:) :: b_fg(:), residual(:), dpar(:), tmp(:)
+      integer                  , allocatable, dimension(:) :: ipar(:)
+      integer, parameter                                   :: ia(11) = (/1,8,15,22,27,33,39,45,51,58,62/)
+      integer, parameter                                   :: ja(61) = (/1,2,3,4,5,6,9,&
+                                                                         1,2,3,4,5,6,9,&
+                                                                         1,2,3,4,5,6,9,&
+                                                                         1,2,4,5,6,&
+                                                                         1,3,4,5,6,7,&
+                                                                         2,3,4,5,6,8,&
+                                                                         1,4,5,7,8,9,&
+                                                                         2,4,6,7,8,9,&
+                                                                         3,5,6,7,8,9,10,&
+                                                                         7,8,9,10/)
+
+      real (kind = SOLVER_PREC) :: tf_u2_tmp, tf_v2_tmp, tf_w2_tmp, tf_uv_tmp, tf_uw_tmp, tf_vw_tmp, &
+                                   tf_utv_tmp, tf_vtv_tmp, tf_wtv_tmp, tf_t2v_tmp
+#endif
 
       external dgesv
       external dgesvx
+#ifdef INTELMKL
+      external dfgmres_init
+      external dfgmres_check
+      external dfgmres
+      external dfgmres_get
+      external mkl_dcsrgemv
+      real, external :: dnrm2
+#endif
 
       allocate (a(N_VARS, N_VARS), af(N_VARS, N_VARS), b(N_VARS), x(N_VARS))
+#ifdef INTELMKL
+      allocate (b_fg(N_VARS), residual(N_VARS), ipar(N_PAR), dpar(N_PAR))
+      allocate (tmp((2*N_VARS + 1)*N_VARS + N_VARS*(N_VARS + 9)/2 + 1))
+#endif
 
         ! Fills in the B matrix
       call Fill_in_b_vector (b, q, q_sq, l, du_dx, du_dy, du_dz, dv_dx, dv_dy, dv_dz, dw_dx, dw_dy, dw_dz)
@@ -1280,9 +1323,57 @@
           dthetav_dx, dthetav_dy, dthetav_dz)
 
         ! Compute solution to system of linear equations
-!      call dgesvx ('N', 'N', N_VARS, 1, a, N_VARS, af, N_VARS, ipiv, equed, rsf, csf, b, N_VARS, x, N_VARS, rcond, ferr, berr, work, iwork, info)
-      call dgesv (N_VARS, 1, a, N_VARS, ipiv, b, N_VARS, info)
-!      mat_cond = 1. / rcond
+      if (pbl3d_solver_opt == 1) then  ! Solve using direct method (LU Decomposition)
+!        call dgesvx ('N', 'N', N_VARS, 1, a, N_VARS, af, N_VARS, ipiv, equed, rsf, csf, b, N_VARS, x, N_VARS, rcond, ferr, berr, work, iwork, info)
+        call dgesv (N_VARS, 1, a, N_VARS, ipiv, b, N_VARS, info)
+!        mat_cond = 1. / rcond
+      else  ! Solve using iterative method
+#ifdef INTELMKL
+          ! Convert vars from single prec to double prec
+        tf_u2_tmp = Working_to_solver_prec(turb_flux_u2)
+        tf_v2_tmp = Working_to_solver_prec(turb_flux_v2)
+        tf_w2_tmp = Working_to_solver_prec(turb_flux_w2)
+        tf_uv_tmp = Working_to_solver_prec(turb_flux_uv)
+        tf_uw_tmp = Working_to_solver_prec(turb_flux_uw)
+        tf_vw_tmp = Working_to_solver_prec(turb_flux_vw)
+        tf_utv_tmp = Working_to_solver_prec(turb_flux_utheta_v)
+        tf_vtv_tmp = Working_to_solver_prec(turb_flux_vtheta_v)
+        tf_wtv_tmp = Working_to_solver_prec(turb_flux_wtheta_v)
+        tf_t2v_tmp = Working_to_solver_prec(turb_flux_theta2_v)
+
+        call Fill_in_b_first_guess (b_fg, tf_u2_tmp, tf_v2_tmp, tf_w2_tmp, tf_uv_tmp, tf_uw_tmp, tf_vw_tmp, tf_utv_tmp, tf_vtv_tmp, tf_wtv_tmp, tf_t2v_tmp)
+        call dfgmres_init(N_VARS, b_fg, b, RCI_request, ipar, dpar, tmp)
+        call dfgmres_check(N_VARS, b_fg, b, RCI_request, ipar, dpar, tmp)
+        call dfgmres(N_VARS, b_fg, b, RCI_request, ipar, dpar, tmp)
+
+        do while (RCI_request .ne. 0)
+          if (RCI_request == 1) then
+            call mkl_dcsrgemv('N', N_VARS, a, ia, ja, tmp(ipar(22)), tmp(ipar(23)))
+          else if (RCI_request == 2) then
+            ipar(13) = 1
+            call dfgmres_get(N_VARS, b_fg, x, RCI_request, ipar, dpar, tmp, itercount)
+            call mkl_dcsrgemv('N', N_VARS, a, ia, ja, x, residual)
+            dvar = -1.0e0
+            ii = 1
+            dvar = dnrm2(N_VARS, residual, ii)
+            if (dvar < 1.0e-6) then
+              RCI_request = 0
+              exit
+            end if
+          else if (RCI_request == 4) then
+            if (dpar(7) < 1.0e-12) exit
+          else
+            print *, 'Not too sure what to do!'
+          end if
+          call dfgmres(N_VARS, b_fg, b, RCI_request, ipar, dpar, tmp)
+        end do
+
+        ipar(13) = 0
+        call dfgmres_get(N_VARS, x, b, RCI_request, ipar, dpar, tmp, itercount)
+#else
+        CALL wrf_error_fatal('module_pbl3d_my: pbl3d_solver_opt = ', pbl3d_solver_opt, ' requires Intel compiler and MKL package')
+#endif
+      end if
 
       tf_u2 = b(1)
       tf_v2 = b(2)
