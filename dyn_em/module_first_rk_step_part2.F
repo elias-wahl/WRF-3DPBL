@@ -1157,7 +1157,7 @@ BENCH_END(hor_diff_tim)
            !$OMP PRIVATE ( ij )
            DO ij = 1 , grid%num_tiles
              CALL wrf_debug (200 , ' call Calc_turb_fluxes_driver')
-             CALL Calc_turb_fluxes_driver (config_flags = config_flags, &
+             CALL Calc_turb_fluxes_driver (grid = grid, config_flags = config_flags, &
              dz = dz8w, z_at_mass = grid%z, z_at_w = grid%z_at_w, u = grid%u_tmp, v = grid%v_tmp, w = grid%w_tmp, &
              th = th_phy, th2 = grid%th_tmp, qv = grid%qv_tmp, qc = moist(:,:,:,P_QC), &
              qr = moist(:,:,:,P_QR), qi = moist(:,:,:,P_QI), qs = moist(:,:,:,P_QS), qg = moist(:,:,:,P_QG), &
@@ -1206,6 +1206,7 @@ BENCH_END(hor_diff_tim)
              turb_flux_wtheta_v_mass = grid%turb_flux_wtheta_v_mass, &
              ids = ids, ide = ide, jds = jds, jde = jde, kds = kds, kde = kde, & ! ok
              ims = ims, ime = ime, jms = jms, jme = jme, kms = kms, kme = kme, & ! ok
+             ips = ips, ipe = ipe, jps = jps, jpe = jpe, kps = kps, kpe = kpe, & ! ok
              its = grid%i_start(ij), ite = grid%i_end(ij), & ! ok
              jts = grid%j_start(ij), jte = grid%j_end(ij), & ! ok
              kts = k_start, kte = k_end                    & ! ok

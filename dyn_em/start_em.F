@@ -1432,6 +1432,7 @@ endif
 # include "PERIOD_BDY_EM_INIT.inc"
 # include "PERIOD_BDY_EM_MOIST.inc"
 # include "PERIOD_BDY_EM_TKE.inc"
+# include "PERIOD_BDY_EM_PBL3D.inc"
 # include "PERIOD_BDY_EM_SCALAR.inc"
 # include "PERIOD_BDY_EM_CHEM.inc"
 if(config_flags%sf_surface_physics.eq.NOAHMPSCHEME.and.config_flags%opt_run.eq.5)then
@@ -2000,6 +2001,7 @@ endif
 # include "PERIOD_BDY_EM_INIT.inc"
 # include "PERIOD_BDY_EM_MOIST.inc"
 # include "PERIOD_BDY_EM_TKE.inc"
+# include "PERIOD_BDY_EM_PBL3D.inc"
 # include "PERIOD_BDY_EM_SCALAR.inc"
 # include "PERIOD_BDY_EM_CHEM.inc"
 #endif

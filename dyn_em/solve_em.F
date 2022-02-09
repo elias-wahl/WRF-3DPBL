@@ -3339,6 +3339,7 @@ BENCH_END(calc_p_rho_tim)
 #  include "PERIOD_BDY_EM_TRACER2.inc"
 #  include "PERIOD_BDY_EM_SCALAR2.inc"
 #  include "PERIOD_BDY_EM_TKE.inc"
+#  include "PERIOD_BDY_EM_PBL3D.inc"
 #endif
 
 BENCH_START(bc_end_tim)
