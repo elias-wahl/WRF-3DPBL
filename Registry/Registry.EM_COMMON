@@ -1180,7 +1180,7 @@ state   real   turb_flux_vtheta      ikj     misc        1         Z       r    
 state   real   turb_flux_wtheta      ikj     misc        1         Z       r       "turb_flux_wtheta"  "w theta covariance"  "K m s-1"
 state   real   turb_flux_utheta_v    ikj     misc        1         Z       -       "turb_flux_utheta_v"  "u theta_virtual covariance" "K m s-1"
 state   real   turb_flux_vtheta_v    ikj     misc        1         Z       -       "turb_flux_vtheta_v"  "v theta_virtual covariance" "K m s-1"
-state   real   turb_flux_wtheta_v    ikj     misc        1         Z       -       "turb_flux_wtheta_v"  "w theta_virtual covariance" "K m s-1"
+state   real   turb_flux_wtheta_v    ikj     misc        1         Z       r       "turb_flux_wtheta_v"  "w theta_virtual covariance" "K m s-1"
 state   real   turb_flux_theta2_v    ikj     misc        1         Z       -       "turb_flux_theta2_v"  "theta_virtual variance" "K2"
 state   real   turb_flux_uqv         ikj     misc        1         Z       r       "turb_flux_uqv"  "u qv covariance"  "kg kg-1 m s-1"
 state   real   turb_flux_vqv         ikj     misc        1         Z       r       "turb_flux_vqv"  "v qv covariance"  "kg kg-1 m s-1"
@@ -1215,12 +1215,12 @@ state   real   turb_flux_wqnwfa      ikj     misc        1         Z       -    
 state   real   turb_flux_uqnifa      ikj     misc        1         Z       -       "turb_flux_uqnifa" "u qnifa covariance" "# kg-1 m s-1"
 state   real   turb_flux_vqnifa      ikj     misc        1         Z       -       "turb_flux_vqnifa" "v qnifa covariance" "# kg-1 m s-1"
 state   real   turb_flux_wqnifa      ikj     misc        1         Z       -       "turb_flux_wqnifa" "w qnifa covariance" "# kg-1 m s-1"
-state   real   turb_flux_u2_mass     ikj     misc        1         -       -       "turb_flux_u2_mass"      "u variance"  "m2 s-2"
-state   real   turb_flux_v2_mass     ikj     misc        1         -       -       "turb_flux_v2_mass"      "v variance"  "m2 s-2"
-state   real   turb_flux_w2_mass     ikj     misc        1         -       -       "turb_flux_w2_mass"      "w variance"  "m2 s-2"
+state   real   turb_flux_u2_mass     ikj     misc        1         -       r       "turb_flux_u2_mass"      "u variance"  "m2 s-2"
+state   real   turb_flux_v2_mass     ikj     misc        1         -       r       "turb_flux_v2_mass"      "v variance"  "m2 s-2"
+state   real   turb_flux_w2_mass     ikj     misc        1         -       r       "turb_flux_w2_mass"      "w variance"  "m2 s-2"
 state   real   turb_flux_uw_mass     ikj     misc        1         -       r       "turb_flux_uw_mass"      "u w covariance"  "m2 s-2"
 state   real   turb_flux_vw_mass     ikj     misc        1         -       r       "turb_flux_vw_mass"      "v w covariance"  "m2 s-2"
-state   real   turb_flux_uv_mass     ikj     misc        1         -       -       "turb_flux_uv_mass"      "u v covariance"  "m2 s-2"
+state   real   turb_flux_uv_mass     ikj     misc        1         -       r       "turb_flux_uv_mass"      "u v covariance"  "m2 s-2"
 state   real   turb_flux_wtheta_v_mass ikj     misc        1         -       r       "turb_flux_wtheta_v_mass"  "w theta_virtual covariance"  "K m s-1"
 state   real   l_master              ikj     misc        1         Z       rh      "l_master"            "Master length scale at faces"    "m"
 state   real   l_master_at_mass      ikj     misc        1         -       r       "l_master_mass"       "Master length scale at mass points"    "m"
@@ -3595,6 +3595,7 @@ halo      HALO_EM_PHYS_STATE_PBL3D dyn_em 8:u_2,v_2,t_2,thetav,moist,rho,q_sq_pr
 halo      HALO_EM_PHYS_DIFFUSION_PBL3D dyn_em  8:turb_flux_u2,turb_flux_v2,turb_flux_w2,turb_flux_uv,turb_flux_utheta,turb_flux_vtheta,turb_flux_wtheta,turb_flux_uqv,turb_flux_vqv,turb_flux_wqv;24:turb_flux_uw,turb_flux_vw
 halo      HALO_EM_SCALAR_DIFFUSION_PBL3D dyn_em  8:turb_flux_uqc,turb_flux_vqc,turb_flux_wqc,turb_flux_uqr,turb_flux_vqr,turb_flux_wqr,turb_flux_uqi,turb_flux_vqi,turb_flux_wqi,turb_flux_uqs,turb_flux_vqs,turb_flux_wqs,turb_flux_uqg,turb_flux_vqg,turb_flux_wqg,turb_flux_uqnc,turb_flux_vqnc,turb_flux_wqnc,turb_flux_uqnr,turb_flux_vqnr,turb_flux_wqnr,turb_flux_uqni,turb_flux_vqni,turb_flux_wqni,turb_flux_uqnwfa,turb_flux_vqnwfa,turb_flux_wqnwfa,turb_flux_uqnifa,turb_flux_vqnifa,turb_flux_wqnifa
 halo      HALO_EM_PHYS_SUBSTEP_PBL3D dyn_em  8:u_tmp,v_tmp,th_tmp,qv_tmp,rho_tmp,q_sq_tmp,q_sq,l_master;24:w_tmp
+halo      HALO_EM_PHYS_HDIFF_PBL3D dyn_em  8:q_sq,l_master
 halo      HALO_EM_SBM dyn_em 8:p_phy,pi_phy,dz8w,th_phy,rho,qv_old,th_old,u_phy,v_phy,moist
 halo      HALO_EM_TKE_ADVECT_3 dyn_em 24:tke_2
 halo      HALO_EM_TKE_ADVECT_5 dyn_em 48:tke_2
@@ -3716,6 +3717,7 @@ period    PERIOD_BDY_EM_A1  dyn_em 3:rdzw,rdz,z,zx,zy,ustm,ust
 period    PERIOD_BDY_EM_PHY_BC dyn_em 2:rublten,rvblten,rucuten,rvcuten,rushten,rvshten,xkmh,xkmv,xkhh,xkhv,div,defor11,defor22,defor12,defor13,defor23,defor33,tke_2,rho,gamu,gamv,xkmv_meso
 period    PERIOD_BDY_EM_STATE_PBL3D dyn_em 2:u_2,v_2,w_2,t_2,thetav,moist,rho,q_sq_prog_2
 period    PERIOD_BDY_EM_SUBSTEP_PBL3D dyn_em 2:u_tmp,v_tmp,w_tmp,th_tmp,qv_tmp,rho_tmp,q_sq_tmp,q_sq,l_master
+period    PERIOD_BDY_EM_HDIFF_PBL3D dyn_em 2:q_sq,l_master
 period    PERIOD_BDY_EM_PHY_BC_PBL3D dyn_em 2:turb_flux_u2,turb_flux_v2,turb_flux_w2,turb_flux_uw,turb_flux_vw,turb_flux_uv,turb_flux_utheta,turb_flux_vtheta,turb_flux_wtheta,turb_flux_uqv,turb_flux_vqv,turb_flux_wqv
 period    PERIOD_BDY_EM_SCALAR_BC_PBL3D dyn_em 2:turb_flux_uqc,turb_flux_vqc,turb_flux_wqc,turb_flux_uqr,turb_flux_vqr,turb_flux_wqr,turb_flux_uqi,turb_flux_vqi,turb_flux_wqi,turb_flux_uqs,turb_flux_vqs,turb_flux_wqs,turb_flux_uqg,turb_flux_vqg,turb_flux_wqg,turb_flux_uqnc,turb_flux_vqnc,turb_flux_wqnc,turb_flux_uqnr,turb_flux_vqnr,turb_flux_wqnr,turb_flux_uqni,turb_flux_vqni,turb_flux_wqni,turb_flux_uqnwfa,turb_flux_vqnwfa,turb_flux_wqnwfa,turb_flux_uqnifa,turb_flux_vqnifa,turb_flux_wqnifa
 period    PERIOD_BDY_EM_FDDA_BC dyn_em 2:rundgdten,rvndgdten

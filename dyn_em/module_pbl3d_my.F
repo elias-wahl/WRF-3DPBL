@@ -2957,7 +2957,9 @@
         ! local vars
       integer :: i, j, k, i_start, i_end, j_start, j_end
       integer :: kthv, ktke
-      real    :: minthv, delt_thv, tke_eps, maxqke, qtke, qtkem1, pblh_tke, sbl_lim, sbl_damp, wt
+      real    :: minthv, delt_thv, tke_eps, maxqke, qtke, qtkem1, pblh_tke, wt
+      real, parameter :: sbl_lim  = 200.0 ! Upper limit of stable BL height (m)
+      real, parameter :: sbl_damp = 400.0 ! Transition length for blending (m)
 
         ! Define dimensions
       i_start = its
