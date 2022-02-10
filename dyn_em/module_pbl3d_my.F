@@ -1412,7 +1412,7 @@
       real (kind = SOLVER_PREC), intent(in) :: tf_u2, tf_v2, tf_w2, tf_uv, tf_uw, tf_vw, tf_utv, tf_vtv, tf_wtv
       real (kind = SOLVER_PREC), dimension(:), intent(inout) :: b(:)
 
-
+      b = 0.0
       b(1) = Real (- (qv_x * tf_u2 + qv_y * tf_uv + qv_z * tf_uw), kind = SOLVER_PREC)
       b(2) = Real (- (qv_y * tf_v2 + qv_x * tf_uv + qv_z * tf_vw), kind = SOLVER_PREC)
       b(3) = Real (- (qv_z * tf_w2 + qv_x * tf_uw + qv_y * tf_vw), kind = SOLVER_PREC)
@@ -1538,6 +1538,9 @@
       real (kind = SOLVER_PREC), intent (in) :: u_x, u_y, u_z, v_x, v_y, v_z, w_x, &
           w_y, w_z, tv_x, tv_y, tv_z
 
+      a = 0.0
+
+        ! ur equation
       a(1, 1) = Real (q / (3.0 * a_2 * l) + u_x, kind = SOLVER_PREC)
       a(1, 2) = Real (u_y, kind = SOLVER_PREC)
       a(1, 3) = Real (u_z, kind = SOLVER_PREC)
@@ -1555,7 +1558,7 @@
       a(3, 3) = Real (q / (3.0 * a_2 * l) + w_z, kind = SOLVER_PREC)
       a(3, 4) = Real (-G_OVER_TREF, kind = SOLVER_PREC)
 
-        ! wr equation
+        ! rthetav equation
       a(4, 1) = Real (tv_x, kind = SOLVER_PREC)
       a(4, 2) = Real (tv_y, kind = SOLVER_PREC)
       a(4, 3) = Real (tv_z, kind = SOLVER_PREC)
