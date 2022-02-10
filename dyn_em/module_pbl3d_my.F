@@ -1280,20 +1280,31 @@
           dthetav_dx, dthetav_dy, dthetav_dz)
 
         ! Compute solution to system of linear equations
-!      call dgesvx ('N', 'N', N_VARS, 1, a, N_VARS, af, N_VARS, ipiv, equed, rsf, csf, b, N_VARS, x, N_VARS, rcond, ferr, berr, work, iwork, info)
-      call dgesv (N_VARS, 1, a, N_VARS, ipiv, b, N_VARS, info)
+      call dgesvx ('N', 'N', N_VARS, 1, a, N_VARS, af, N_VARS, ipiv, equed, rsf, csf, b, N_VARS, x, N_VARS, rcond, ferr, berr, work, iwork, info)
+!      call dgesv (N_VARS, 1, a, N_VARS, ipiv, b, N_VARS, info)
 !      mat_cond = 1. / rcond
 
-      tf_u2 = b(1)
-      tf_v2 = b(2)
-      tf_w2 = b(3)
-      tf_uv = b(4)
-      tf_uw = b(5)
-      tf_vw = b(6)
-      tf_utv = b(7)
-      tf_vtv = b(8)
-      tf_wtv = b(9)
-      tf_t2v = b(10)
+!      tf_u2 = b(1)
+!      tf_v2 = b(2)
+!      tf_w2 = b(3)
+!      tf_uv = b(4)
+!      tf_uw = b(5)
+!      tf_vw = b(6)
+!      tf_utv = b(7)
+!      tf_vtv = b(8)
+!      tf_wtv = b(9)
+!      tf_t2v = b(10)
+
+      tf_u2 = x(1)
+      tf_v2 = x(2)
+      tf_w2 = x(3)
+      tf_uv = x(4)
+      tf_uw = x(5)
+      tf_vw = x(6)
+      tf_utv = x(7)
+      tf_vtv = x(8)
+      tf_wtv = x(9)
+      tf_t2v = x(10)
 
       deallocate (a, af, b, x)
 
@@ -1343,13 +1354,17 @@
           dthetav_dx, dthetav_dy, dthetav_dz)
 
         ! Compute solution to system of linear equations
-!      call dgesvx ('N', 'N', N_VARS, 1, a, N_VARS, af, N_VARS, ipiv, equed, rsf, csf, b, N_VARS, x, N_VARS, rcond, ferr, berr, work, iwork, info)
-      call dgesv (N_VARS, 1, a, N_VARS, ipiv, b, N_VARS, info)
+      call dgesvx ('N', 'N', N_VARS, 1, a, N_VARS, af, N_VARS, ipiv, equed, rsf, csf, b, N_VARS, x, N_VARS, rcond, ferr, berr, work, iwork, info)
+!      call dgesv (N_VARS, 1, a, N_VARS, ipiv, b, N_VARS, info)
 !      mat_cond = 1. / rcond
 
-      tf_uqv = b(1)
-      tf_vqv = b(2)
-      tf_wqv = b(3)
+!      tf_uqv = b(1)
+!      tf_vqv = b(2)
+!      tf_wqv = b(3)
+
+      tf_uqv = x(1)
+      tf_vqv = x(2)
+      tf_wqv = x(3)
 
       deallocate (a, af, b, x)
 
