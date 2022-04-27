@@ -4516,7 +4516,7 @@
       do j = j_start, j_end
         do i = i_start, i_end + 1
             ! Surface
-          u_at_full(i, 1, j) =  0.0
+          u_at_full(i, 1, j) =  cf1 * u(i, 1, j) + cf2 * u(i, 2, j) + cf3 * u(i, 3, j)
             ! Top face
           u_at_full(i, kte, j) =  cft1 * u(i, ktes1, j) + cft2 * u(i, ktes2, j)
         end do
@@ -4603,7 +4603,7 @@
       do j = j_start, j_end + 1
         do i = i_start, i_end
             ! Surface
-          v_at_full(i, 1, j) =  0.0
+          v_at_full(i, 1, j) =  cf1 * v(i, 1, j) + cf2 * v(i, 2, j) + cf3 * v(i, 3, j)
             ! Top face
           v_at_full(i, kte, j) =  cft1 * v(i, ktes1, j) + cft2 * v(i, ktes2, j)
         end do
