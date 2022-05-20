@@ -6312,11 +6312,11 @@
       do j = j_start, j_end
         do k = kts, ktf
           do i = i_start, i_end
-            if (l_opt < 3) then
-              l_dissip(i, k, j) = l_master(i, k, j)
-            else
+            if (l_opt == 3) then
                 ! Boulac length scale is at faces
               l_dissip(i, k, j) = (l_boulac(i, k, j) + l_boulac(i, k + 1, j)) / 2.
+            else
+              l_dissip(i, k, j) = l_master(i, k, j)
             end if
           end do
         end do
