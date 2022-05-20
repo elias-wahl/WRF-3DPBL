@@ -279,12 +279,12 @@
       real, dimension (kts:kte) :: z_at_walls_1d
       integer :: i, j, k, i_start, i_end, j_start, j_end, ktf
       real, parameter :: SMALL_VAL = 0.00001
-      real, parameter :: alpha_1 = 0.23
+!      real, parameter :: alpha_1 = 0.23
         ! Original MYNN vals
-      real, parameter :: alpha_2 = 1.0
-      real, parameter :: alpha_3 = 5.0
-      real, parameter :: alpha_4 = 100.0
-      real, parameter :: cns = 2.7
+!      real, parameter :: alpha_2 = 1.0
+!      real, parameter :: alpha_3 = 5.0
+!      real, parameter :: alpha_4 = 100.0
+!      real, parameter :: cns = 2.7
         ! Operational MYNN vals
 !      real, parameter :: alpha_2 = 0.65
 !      real, parameter :: alpha_3 = 3.0
@@ -295,6 +295,12 @@
 !      real, parameter :: alpha_3 = 2.0
 !      real, parameter :: alpha_4 = 10.0
 !      real, parameter :: cns = 3.5
+        ! 3DTKE MYNN vals
+      real, parameter :: alpha_1 = 0.8
+      real, parameter :: alpha_2 = 1.0
+      real, parameter :: alpha_3 = 1.0
+      real, parameter :: alpha_4 = 100.0
+      real, parameter :: cns = 2.7
       real :: l0, l0_num, l0_den, qdz
       real :: q, q_dz, dz_wall
       real :: l_s, l_b, l_f, zet, kz, N, q_c
@@ -392,6 +398,99 @@
         end subroutine Debug_l_master_algebra
 
     end subroutine Calc_l_master_algebra
+
+
+    subroutine Calc_l_messinger_master_algebra (q_sq, dz, rdzw, rmol, wthv, dthetav_dz, l_master, &
+              l_boulac, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        !                                                             !
+        ! Purpose: Calculates the master length scale following MY74  !
+        !          Also included MYNN length scale formulation        !
+        !                                                             !
+        ! Author: Pedro A. Jimenez & Timothy W. Juliano               !
+        !                                                             !
+        ! Comments: Use an algebraic equation to calculate L          !
+        !                                                             !
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+      implicit none
+
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (in) :: q_sq
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (in) :: dz, rdzw
+      real, dimension (ims:ime, jms:jme),          intent (in) :: rmol
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (in) :: wthv
+      real, dimension (its:ite, kts:kte, jts:jte), intent (in) :: dthetav_dz
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (out) :: l_master, l_boulac
+      integer,                                     intent (in)  :: ids, ide, jds, jde, kds, kde, &
+                                                                   ims, ime, jms, jme, kms, kme, &
+                                                                   its, ite, jts, jte, kts, kte
+
+        ! Local vars
+      real, dimension (kts:kte) :: z_at_walls_1d
+      integer :: i, j, k, i_start, i_end, j_start, j_end, ktf
+      real, parameter :: SMALL_VAL = 0.00001
+      real, parameter :: alpha_1 = 0.23
+      real :: l0, l0_num, l0_den, qdz
+      real :: q, q_dz, dz_wall
+      real :: l_b, l_d, l_del, N, zi
+      real, parameter :: c_r = 0.25
+      real, parameter :: c_g = 10.
+      real, parameter :: c_s = 0.23
+
+      logical, parameter :: DEBUG = .false.
+
+        ! Define dimensions
+      i_start = its
+      i_end = Min (ite, ide - 1)
+      j_start = jts
+      j_end = Min (jte, jde - 1)
+      ktf = Min (kte, kde - 1)
+
+         ! Calculates l0 (Eq. 72 MY74)
+      do j = j_start, j_end
+        do i = i_start, i_end
+          l0_num = SMALL_VAL
+          l0_den = SMALL_VAL
+          z_at_walls_1d(kts) = 0.0
+          do k = kts + 1, ktf
+            z_at_walls_1d(k) = z_at_walls_1d(k - 1) + 1.0 / rdzw(i, k - 1, j)
+            dz_wall = 0.5 * (dz(i, k, j) + dz(i, k - 1, j))
+            q = Sqrt (q_sq(i, k, j))
+            q_dz = q * dz_wall
+            l0_num = l0_num + q_dz * z_at_walls_1d(k)
+            l0_den = l0_den + q_dz
+          end do
+          z_at_walls_1d(ktf + 1) = z_at_walls_1d(ktf) + 1.0 / rdzw(i, ktf, j)
+
+          l0 = alpha * l0_num / l0_den
+
+          zi = c_g * l0
+
+          do k = kts + 1, ktf
+            N = Sqrt (G_OVER_TREF * dthetav_dz(i, k, j))
+            l_d = c_r * Sqrt (q_sq(i, k, j)) / N
+
+            l_b = l0 * KARMAN * z_at_walls_1d(k) / (KARMAN * z_at_walls_1d(k) + l0)
+
+            if (z_at_walls_1d(k) <= zi) then
+              l_master(i, k, j) = Min (l_b, l_d)
+            else
+              l_del = c_s * (1.0 / rdzw(i, k, j))
+              l_master(i, k, j) = Min (l_del, l_d, KARMAN * z_at_walls_1d(k))
+            end if
+            l_boulac(i, k, j) = l_master(i, k, j)  ! here we are just filling in dissipation boulac length scale
+          end do
+
+          l_master(i, kts, j) = 0.0
+          l_boulac(i, kts, j) = 0.0
+          l_master(i, kte, j) = l_master(i, ktf, j)
+          l_boulac(i, kte, j) = l_boulac(i, ktf, j)
+
+        end do
+      end do
+
+    end subroutine Calc_l_messinger_master_algebra
 
 
     subroutine Calc_l_boulac_master_algebra (q_sq, dz, th, dlu, dld, dls, dlk, l_master, l_boulac, &
@@ -599,9 +698,12 @@
       if (config_flags%pbl3d_l_opt < 3) then
         call Calc_l_master_algebra (config_flags%pbl3d_l_opt, q_sq, dz, rdzw, rmol, turb_flux_wtheta_v, dthetav_dz, l_master, &
             l_boulac, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-      else
+      else if (config_flags%pbl3d_l_opt == 3) then
         call Calc_l_boulac_master_algebra (q_sq, dz, t, dlu, dld, dls, dlk, l_master, l_boulac, &
             ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+      else
+        call Calc_l_messinger_master_algebra (q_sq, dz, rdzw, rmol, turb_flux_wtheta_v, dthetav_dz, l_master, &
+            l_boulac, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
       end if
 
         ! Diagnose momentum, heat, moisture fluxes for pbl approx
@@ -809,7 +911,6 @@
 
         ! Local vars
       integer :: i, j, k, i_start, i_end, j_start, j_end, ktf, iter
-      real :: qsq
       real, dimension (its:ite, kts:kte, jts:jte) :: sm, sh, sm_l2, sh_l2, rif, q_sq_hl88, q_ratio
       real, dimension (its:ite, kts:kte, jts:jte) :: dlu, dld, dls, dlk
       real, dimension (its:ite, kts:kte, jts:jte) :: mat_cond_heat, mat_cond_moist
@@ -855,9 +956,12 @@
       if (config_flags%pbl3d_l_opt < 3) then
         call Calc_l_master_algebra (config_flags%pbl3d_l_opt, q_sq, dz, rdzw, rmol, turb_flux_wtheta_v, dthetav_dz, l_master, &
             l_boulac, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-      else
+      else if (config_flags%pbl3d_l_opt == 3) then
         call Calc_l_boulac_master_algebra (q_sq, dz, t, dlu, dld, dls, dlk, l_master, l_boulac, &
             ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+      else
+        call Calc_l_messinger_master_algebra (q_sq, dz, rdzw, rmol, turb_flux_wtheta_v, dthetav_dz, l_master, &
+            l_boulac, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
       end if
 
       mat_cond_heat(its:ite,kts:kte,jts:jte) = -9999.
@@ -878,18 +982,7 @@
 
             else
 
-                ! Save temporary scalars
-              if ( config_flags%pbl3d_prog .gt. 0 ) then  ! Level 2.5 model
-                if ( q_ratio(i, k, j) <= 1.0 ) then  ! HL88 mod
-                  qsq = q_sq_hl88(i, k, j)
-                else
-                  qsq = q_sq(i, k, j)
-                end if
-              else  ! Level 2 model
-                qsq = q_sq(i, k, j)
-              end if
-
-              call Diagnose_fluxes (qsq, l_master(i, k, j), du_dx(i, k, j), du_dy(i, k, j),                                          &
+              call Diagnose_fluxes (q_sq(i, k, j), l_master(i, k, j), du_dx(i, k, j), du_dy(i, k, j),                                &
                   du_dz(i, k, j), dv_dx(i, k, j), dv_dy(i, k, j), dv_dz(i, k, j), dw_dx(i, k, j), dw_dy(i, k, j), dw_dz(i, k, j),    &
                   dthetav_dx(i, k, j), dthetav_dy(i, k, j), dthetav_dz(i, k, j), dqv_dx(i, k, j), dqv_dy(i, k, j), dqv_dz(i, k, j),  &
                   turb_flux_u2(i, k, j), turb_flux_v2(i, k, j), turb_flux_w2(i, k, j), turb_flux_uv(i, k, j), turb_flux_uw(i, k, j), &
@@ -900,30 +993,6 @@
                 ! Calc heat fluxes
               call Calc_heat_flux (t, qv, fnm, fnp, i, j, k, tf_utv, tf_vtv, tf_wtv,  tf_uqv, tf_vqv, tf_wqv, &
                   turb_flux_utheta(i, k, j), turb_flux_vtheta(i, k, j), turb_flux_wtheta(i, k, j), ims, ime, jms, jme, kms, kme)
-
-                ! Apply HL88 mod for level 2.5 model
-              if ( config_flags%pbl3d_prog .gt. 0 ) then
-                if ( q_ratio(i, k, j) <= 1.0 ) then
-                  turb_flux_u2(i, k, j) = turb_flux_u2(i, k, j) * q_ratio(i, k, j) ** 2.0
-                  turb_flux_v2(i, k, j) = turb_flux_v2(i, k, j) * q_ratio(i, k, j) ** 2.0
-                  turb_flux_w2(i, k, j) = turb_flux_w2(i, k, j) * q_ratio(i, k, j) ** 2.0
-                  turb_flux_uv(i, k, j) = turb_flux_uv(i, k, j) * q_ratio(i, k, j) ** 2.0
-                  turb_flux_uw(i, k, j) = turb_flux_uw(i, k, j) * q_ratio(i, k, j) ** 2.0
-                  turb_flux_vw(i, k, j) = turb_flux_vw(i, k, j) * q_ratio(i, k, j) ** 2.0
-
-                  turb_flux_utheta_v(i, k, j) = turb_flux_utheta_v(i, k, j) * q_ratio(i, k, j) ** 2.0
-                  turb_flux_vtheta_v(i, k, j) = turb_flux_vtheta_v(i, k, j) * q_ratio(i, k, j) ** 2.0
-                  turb_flux_wtheta_v(i, k, j) = turb_flux_wtheta_v(i, k, j) * q_ratio(i, k, j) ** 2.0
-                  turb_flux_utheta(i, k, j) = turb_flux_utheta(i, k, j) * q_ratio(i, k, j) ** 2.0
-                  turb_flux_vtheta(i, k, j) = turb_flux_vtheta(i, k, j) * q_ratio(i, k, j) ** 2.0
-                  turb_flux_wtheta(i, k, j) = turb_flux_wtheta(i, k, j) * q_ratio(i, k, j) ** 2.0
-                  turb_flux_theta2_v(i, k, j) = turb_flux_theta2_v(i, k, j) * q_ratio(i, k, j) ** 2.0
-
-                  turb_flux_uqv(i, k, j) = turb_flux_uqv(i, k, j) * q_ratio(i, k, j) ** 2.0
-                  turb_flux_vqv(i, k, j) = turb_flux_vqv(i, k, j) * q_ratio(i, k, j) ** 2.0
-                  turb_flux_wqv(i, k, j) = turb_flux_wqv(i, k, j) * q_ratio(i, k, j) ** 2.0
-                end if
-              end if
 
             end if if_no_turb
 
@@ -1661,21 +1730,9 @@
             if_low_q_sq: if (q_sq(i, k, j) > Q_SQ_MIN) then
 
                 ! Save temporary scalars
-              if ( PRESENT(q_ratio) ) then  ! Level 2.5 model
-                if ( q_ratio(i, k, j) <= 1.0 ) then  ! HL88 mod
-                  qsq = q_sq_hl88(i, k, j)
-                  sm = sm_l2(i, k, j)
-                  sh = sh_l2(i, k, j)
-                else
-                  qsq = q_sq(i, k, j)
-                  sm = sm_tilde(i, k, j)
-                  sh = sh_tilde(i, k, j)
-                end if
-              else  ! Level 2 model
-                qsq = q_sq(i, k, j)
-                sm = sm_tilde(i, k, j)
-                sh = sh_tilde(i, k, j)
-              end if
+              qsq = q_sq(i, k, j)
+              sm = sm_tilde(i, k, j)
+              sh = sh_tilde(i, k, j)
               l = l_master(i, k, j)
               ri = rif(i, k, j)
               dudz = du_dz(i, k, j)
@@ -1870,93 +1927,6 @@
                 wqnifa(i, k, j) = TURB_FLUX_MIN
                 uqnifa(i, k, j) = TURB_FLUX_MIN
                 vqnifa(i, k, j) = TURB_FLUX_MIN
-              end if
-
-                ! Apply HL88 mod for level 2.5 model
-              if ( PRESENT(q_ratio) ) then
-                if ( q_ratio(i, k, j) <= 1.0 ) then
-                  u2(i, k, j) = u2(i, k, j) * q_ratio(i, k, j) ** 2.0
-                  v2(i, k, j) = v2(i, k, j) * q_ratio(i, k, j) ** 2.0
-                  w2(i, k, j) = w2(i, k, j) * q_ratio(i, k, j) ** 2.0
-                  uv(i, k, j) = uv(i, k, j) * q_ratio(i, k, j) ** 2.0
-                  uw(i, k, j) = uw(i, k, j) * q_ratio(i, k, j) ** 2.0
-                  vw(i, k, j) = vw(i, k, j) * q_ratio(i, k, j) ** 2.0
-
-                  uthv(i, k, j) = uthv(i, k, j) * q_ratio(i, k, j) ** 2.0
-                  vthv(i, k, j) = vthv(i, k, j) * q_ratio(i, k, j) ** 2.0
-                  wthv(i, k, j) = wthv(i, k, j) * q_ratio(i, k, j) ** 2.0
-                  uth(i, k, j) = uth(i, k, j) * q_ratio(i, k, j) ** 2.0
-                  vth(i, k, j) = vth(i, k, j) * q_ratio(i, k, j) ** 2.0
-                  wth(i, k, j) = wth(i, k, j) * q_ratio(i, k, j) ** 2.0
-                  th2v(i, k, j) = th2v(i, k, j) * q_ratio(i, k, j) ** 2.0
-
-                  uqv(i, k, j) = uqv(i, k, j) * q_ratio(i, k, j) ** 2.0
-                  vqv(i, k, j) = vqv(i, k, j) * q_ratio(i, k, j) ** 2.0
-                  wqv(i, k, j) = wqv(i, k, j) * q_ratio(i, k, j) ** 2.0
-
-                  if ( do_scalar_mix .eq. 1 .and. ss .eq. nsteps) then
-                      ! Cloud mass
-                    if ( p_qc .ge. param_first_scalar ) then
-                      uqc(i, k, j) = uqc(i, k, j) * q_ratio(i, k, j) ** 2.0
-                      vqc(i, k, j) = vqc(i, k, j) * q_ratio(i, k, j) ** 2.0
-                      wqc(i, k, j) = wqc(i, k, j) * q_ratio(i, k, j) ** 2.0
-                    end if
-                      ! Rain mass
-                    if ( p_qr .ge. param_first_scalar ) then
-                      uqr(i, k, j) = uqr(i, k, j) * q_ratio(i, k, j) ** 2.0
-                      vqr(i, k, j) = vqr(i, k, j) * q_ratio(i, k, j) ** 2.0
-                      wqr(i, k, j) = wqr(i, k, j) * q_ratio(i, k, j) ** 2.0
-                    end if
-                      ! Ice mass
-                    if ( p_qi .ge. param_first_scalar ) then
-                      uqi(i, k, j) = uqi(i, k, j) * q_ratio(i, k, j) ** 2.0
-                      vqi(i, k, j) = vqi(i, k, j) * q_ratio(i, k, j) ** 2.0
-                      wqi(i, k, j) = wqi(i, k, j) * q_ratio(i, k, j) ** 2.0
-                    end if
-                      ! Snow mass
-                    if ( p_qs .ge. param_first_scalar ) then
-                      uqs(i, k, j) = uqs(i, k, j) * q_ratio(i, k, j) ** 2.0
-                      vqs(i, k, j) = vqs(i, k, j) * q_ratio(i, k, j) ** 2.0
-                      wqs(i, k, j) = wqs(i, k, j) * q_ratio(i, k, j) ** 2.0
-                    end if
-                      ! Graupel mass
-                    if ( p_qg .ge. param_first_scalar ) then
-                      uqg(i, k, j) = uqg(i, k, j) * q_ratio(i, k, j) ** 2.0
-                      vqg(i, k, j) = vqg(i, k, j) * q_ratio(i, k, j) ** 2.0
-                      wqg(i, k, j) = wqg(i, k, j) * q_ratio(i, k, j) ** 2.0
-                    end if
-                      ! Cloud number
-                    if ( p_qnc .ge. param_first_scalar ) then
-                      uqnc(i, k, j) = uqnc(i, k, j) * q_ratio(i, k, j) ** 2.0
-                      vqnc(i, k, j) = vqnc(i, k, j) * q_ratio(i, k, j) ** 2.0
-                      wqnc(i, k, j) = wqnc(i, k, j) * q_ratio(i, k, j) ** 2.0
-                    end if
-                      ! Rain number
-                    if ( p_qnr .ge. param_first_scalar ) then
-                      uqnr(i, k, j) = uqnr(i, k, j) * q_ratio(i, k, j) ** 2.0
-                      vqnr(i, k, j) = vqnr(i, k, j) * q_ratio(i, k, j) ** 2.0
-                      wqnr(i, k, j) = wqnr(i, k, j) * q_ratio(i, k, j) ** 2.0
-                    end if
-                      ! Ice number
-                    if ( p_qni .ge. param_first_scalar ) then
-                      uqni(i, k, j) = uqni(i, k, j) * q_ratio(i, k, j) ** 2.0
-                      vqni(i, k, j) = vqni(i, k, j) * q_ratio(i, k, j) ** 2.0
-                      wqni(i, k, j) = wqni(i, k, j) * q_ratio(i, k, j) ** 2.0
-                    end if
-                      ! Water friendly aerosol number
-                    if ( p_qnwfa .ge. param_first_scalar ) then
-                      uqnwfa(i, k, j) = uqnwfa(i, k, j) * q_ratio(i, k, j) ** 2.0
-                      vqnwfa(i, k, j) = vqnwfa(i, k, j) * q_ratio(i, k, j) ** 2.0
-                      wqnwfa(i, k, j) = wqnwfa(i, k, j) * q_ratio(i, k, j) ** 2.0
-                    end if
-                      ! Ice friendly aerosol number
-                    if ( p_qnifa .ge. param_first_scalar ) then
-                      uqnifa(i, k, j) = uqnifa(i, k, j) * q_ratio(i, k, j) ** 2.0
-                      vqnifa(i, k, j) = vqnifa(i, k, j) * q_ratio(i, k, j) ** 2.0
-                      wqnifa(i, k, j) = wqnifa(i, k, j) * q_ratio(i, k, j) ** 2.0
-                    end if
-                  end if
-                end if
               end if
 
             else
