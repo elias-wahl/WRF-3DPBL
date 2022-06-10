@@ -1251,6 +1251,8 @@ rconfig  integer   pbl3d_prog           namelist,dynamics    max_domains      0 
 rconfig  integer   pbl3d_scalar_mix     namelist,dynamics    max_domains      0      -     "pbl3d_scalar_mix"     "PBL3D scalar turbulent mixing" ""
 rconfig  integer   flux_limiter_w       namelist,dynamics    max_domains      0      -     "flux_limiter_w"       "Flux limiter on vertical advection of w" ""
 
+rconfig  integer   pbl3d_used           derived                    1          0      -     "pbl3d_used"           "turn on if any variation of PBL3D is used"
+
 #FogDES variables
 state   real   fgdp             ij     misc        1         -      -        "fgdp"                "Accumulated fog deposition"    "mm"
 state   real   dfgdp            ij     misc        1         -      -        "dfgdp"               "Fog deposition during timestep"    "mm"
@@ -3345,14 +3347,7 @@ package   mynn_3Doutput2 bl_mynn_output==2           -             state:edmf_a,
 
 package   sms_3dtke      km_opt==5                   -             state:gamu,gamv,nlflux,dlk,l_diss,elmin,xkmv_meso
 
-# PBL3D
-#package   pbl3dm1        pbl3d_opt==-1               -             moist:qv;state:thetav,u_tmp,v_tmp,th_tmp,qv_tmp,rho_tmp,q_sq_tmp,w_tmp,q_sq,l_master,turb_flux_u2,turb_flux_v2,turb_flux_w2,turb_flux_uv,turb_flux_uw,turb_flux_vw,turb_flux_utheta,turb_flux_vtheta,turb_flux_wtheta,turb_flux_utheta_v,turb_flux_vtheta_v,turb_flux_wtheta_v,turb_flux_theta2_v,turb_flux_uqv,turb_flux_vqv,turb_flux_wqv
-#package   pbl3dp1        pbl3d_opt==1                -             moist:qv;state:thetav,u_tmp,v_tmp,th_tmp,qv_tmp,rho_tmp,q_sq_tmp,w_tmp,q_sq,l_master,turb_flux_u2,turb_flux_v2,turb_flux_w2,turb_flux_uv,turb_flux_uw,turb_flux_vw,turb_flux_utheta,turb_flux_vtheta,turb_flux_wtheta,turb_flux_utheta_v,turb_flux_vtheta_v,turb_flux_wtheta_v,turb_flux_theta2_v,turb_flux_uqv,turb_flux_vqv,turb_flux_wqv
-#package   pbl3dp2        pbl3d_opt==2                -             moist:qv;state:thetav,u_tmp,v_tmp,th_tmp,qv_tmp,rho_tmp,q_sq_tmp,w_tmp,q_sq,l_master,turb_flux_u2,turb_flux_v2,turb_flux_w2,turb_flux_uv,turb_flux_uw,turb_flux_vw,turb_flux_utheta,turb_flux_vtheta,turb_flux_wtheta,turb_flux_utheta_v,turb_flux_vtheta_v,turb_flux_wtheta_v,turb_flux_theta2_v,turb_flux_uqv,turb_flux_vqv,turb_flux_wqv
-
-#package   pbl3dprog      pbl3d_prog==1               -             state:q_sq_prog,q_sq_prog_tend,q_sq_shear,q_sq_buoyancy,q_sq_dissip,q_sq_vdiff,q_sq_hdiff,l_master_at_mass,turb_flux_u2_mass,turb_flux_v2_mass,turb_flux_w2_mass,turb_flux_uw_mass,turb_flux_vw_mass,turb_flux_uv_mass,turb_flux_wtheta_v_mass
-
-#package   pbl3dscamix    pbl3d_scalar_mix==1         -             moist:qc,qr,qi,qs,qg;scalar:qni,qnr,qnc,qnwfa,qnifa;state:turb_flux_uqc,turb_flux_vqc,turb_flux_wqc,turb_flux_uqr,turb_flux_vqr,turb_flux_wqr,turb_flux_uqi,turb_flux_vqi,turb_flux_wqi,turb_flux_uqs,turb_flux_vqs,turb_flux_wqs,turb_flux_uqg,turb_flux_vqg,turb_flux_wqg,turb_flux_uqnc,turb_flux_vqnc,turb_flux_wqnc,turb_flux_uqnr,turb_flux_vqnr,turb_flux_wqnr,turb_flux_uqni,turb_flux_vqni,turb_flux_wqni,turb_flux_uqnwfa,turb_flux_vqnwfa,turb_flux_wqnwfa,turb_flux_uqnifa,turb_flux_vqnifa,turb_flux_wqnifa
+package   any_pbl3d_used pbl3d_used==1               -             state:thetav,q_sq,q_sq_shear,q_sq_buoyancy,q_sq_dissip,q_sq_vdiff,q_sq_hdiff,u_tmp,v_tmp,w_tmp,th_tmp,qv_tmp,rho_tmp,q_sq_tmp,l_master,l_master_at_mass,l_boulac,turb_flux_u2,turb_flux_v2,turb_flux_w2,turb_flux_uv,turb_flux_uw,turb_flux_vw,turb_flux_utheta,turb_flux_vtheta,turb_flux_wtheta,turb_flux_wtheta_v,turb_flux_uqv,turb_flux_vqv,turb_flux_wqv,turb_flux_u2_mass,turb_flux_v2_mass,turb_flux_w2_mass,turb_flux_uv_mass,turb_flux_uw_mass,turb_flux_vw_mass,turb_flux_wtheta_v_mass
 
 # dfi
 package   mynnpblscheme_dfi bl_pbl_physics_dfi==5   -             dfi_scalar:dfi_qke_adv
