@@ -15,6 +15,6 @@ Please download the following files:
  - `wrfbdy_d01`
     Lateral boundary condition file from HRRR-WFIP2 model configuration.
 
-from the DOE DAP at: https://a2e.energy.gov/data/wfip2.model/refcst.coldstart.icbc.02
+from the DOE DAP at: https://a2e.energy.gov/data/wfip2.model/refcst.coldstart.icbc.02 \
 The `wrfinput_d0*` and `wrfbdy_d01` files should have a start date of `2017-01-14_12:00:00`.
 
