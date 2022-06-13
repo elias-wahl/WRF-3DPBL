@@ -1,0 +1,20 @@
+# MMC 3D PBL WFIP2 Cold Pool Case
+
+Documented by: Tim Juliano (tjuliano@ucar.edu)
+
+Documented on: 6/13/22
+
+File in this directory:
+ - `namelist.input`
+    Namelist for two domain, high-resolution mesoscale simulation.
+
+Forcing files are too large to host on GitHub.
+Please download the following files:
+ - `wrfinput_d0*`
+    Initial condition files from HRRR-WFIP2 model configuration.
+ - `wrfbdy_d01`
+    Lateral boundary condition file from HRRR-WFIP2 model configuration.
+
+from the DOE DAP at: https://a2e.energy.gov/data/wfip2.model/refcst.coldstart.icbc.02
+The `wrfinput_d0*` and `wrfbdy_d01` files should have a start date of `2017-01-14_12:00:00`.
+
