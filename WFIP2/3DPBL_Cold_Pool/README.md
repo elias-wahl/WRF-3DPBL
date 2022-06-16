@@ -18,3 +18,7 @@ Please download the following files:
 from the DOE DAP at: https://a2e.energy.gov/data/wfip2.model/refcst.coldstart.icbc.02 \
 The `wrfinput_d0*` and `wrfbdy_d01` files should have a start date of `2017-01-14_12:00:00`.
 
+Note: As of 6/13/22, the DOE DAP is having issues with large file downloads.
+For the purposes of testing this workflow, you can download the forcing files at:
+https://drive.google.com/drive/folders/15rDka6cNUcc405d4YYmLRiaqTKHCslJY?usp=sharing
+
