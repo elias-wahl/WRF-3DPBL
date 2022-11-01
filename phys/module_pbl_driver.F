@@ -1989,6 +1989,7 @@ CONTAINS
 
       CASE (fitchscheme)
 
+               IF (bl_pbl_physics .EQ. 5) THEN
                   IF (PRESENT(id) .AND.                                  &
                      PRESENT(z_at_w) ) THEN
 !
@@ -1999,6 +2000,7 @@ CONTAINS
                      &,DX=dx,DZ=dz8w,DT=dt                               &
                      &,QKE=qke                                           &
                      &,DU=rublten,DV=rvblten                             &
+                     &,BL_PBL_PHYSICS=bl_pbl_physics                     &
                      &,WINDFARM_OPT=windfarm_opt,POWER=power             &
                      &,IDS=ids,IDE=ide,JDS=jds,JDE=jde,KDS=kds,KDE=kde   &
                      &,IMS=ims,IME=ime,JMS=jms,JME=jme,KMS=kms,KME=kme   &
@@ -2023,6 +2025,7 @@ CONTAINS
                      CALL wrf_debug(0,message)
                      CALL wrf_error_fatal('Lack arguments to call turbine_drag')
                   ENDIF
+               ENDIF
 
    END SELECT windfarm_select
 #endif

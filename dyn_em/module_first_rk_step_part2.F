@@ -69,6 +69,8 @@ CONTAINS
     USE module_pbl3d, ONLY : Init_temp_arrays_for_substep, Update_wrf_tends_temp_state_and_zero_tends, Allocate_temp_tends, Deallocate_temp_tends, &
                              Calc_turb_fluxes_driver, Vertical_turb_mix, Horizontal_turb_mix
 
+    USE module_wind_fitch, ONLY : dragforce
+
 
     IMPLICIT NONE
 
@@ -1424,6 +1426,29 @@ BENCH_END(hor_diff_tim)
 
 
          END DO ! Sub-stepping for 3DPBL
+
+         !$OMP PARALLEL DO   &
+         !$OMP PRIVATE ( ij )
+         DO ij = 1 , grid%num_tiles
+            IF ( config_flags%windfarm_opt .EQ. 1) THEN
+               CALL dragforce(                                  &
+               & ID=grid%id                                        &
+               &,Z_AT_W=grid%z_at_w,u=grid%u_2,v=grid%v_2      &
+               &,DX=grid%dx,DZ=dz8w,DT=grid%dt                     &
+               &,QKE=q_sq_prog_tend                                     &
+               &,DU=ru_tendf,DV=rv_tendf                           &
+               &,WINDFARM_OPT=config_flags%windfarm_opt,POWER=grid%power &
+               &,C1=grid%c1h, C2=grid%c2h, MUT=grid%mut            &
+               &,CONFIG_FLAGS=config_flags                         &
+               &,IDS=ids,IDE=ide,JDS=jds,JDE=jde,KDS=kds,KDE=kde   &
+               &,IMS=ims,IME=ime,JMS=jms,JME=jme,KMS=kms,KME=kme   &
+               &,ITS=grid%i_start(ij),ITE=grid%i_end(ij)           &
+               &,JTS=grid%j_start(ij),JTE=grid%j_end(ij)           &
+               &,KTS=k_start,KTE=k_end   &
+               &)
+            END IF
+         END DO
+         !$OMP END PARALLEL DO
 
          !$OMP PARALLEL DO   &
          !$OMP PRIVATE ( ij )

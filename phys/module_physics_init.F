@@ -1411,7 +1411,7 @@ CHARACTER(LEN=8) :: name
 !
 ! .... paj ... initialize wind farm ...
 !
-  IF ( config_flags%windfarm_opt .EQ. 1 ) THEN
+  IF ( config_flags%windfarm_opt .EQ. 1 .and. config_flags%bl_pbl_physics .EQ. 5 ) THEN
     CALL init_module_wind_fitch(id,config_flags,xlong,xlat,windfarm_initialized,ims,ime,jms,jme,its,ite,jts,jte,ids,ide,jds,jde)
   ENDIF
 
