@@ -27,6 +27,7 @@ MODULE module_wind_fitch
 !             - Only uses one set of turbine coefficients using the wind speed at hub height
 !             - Two standing coefficients.
 !             - Calculates the power produced by the wind turbines.
+! WRFV4.4:   Modified by Alex Rybchuk to work with the 3DPBL parameterization
 !
 ! References:
 !
@@ -39,6 +40,9 @@ MODULE module_wind_fitch
 ! Jimenez, P.A., J. Navarro, A.M. Palomares and J. Dudhia:  Mesoscale modeling of offshore wind turbines
 !    wakes at the wind farm resolving scale: a composite-based analysis with the WRF model over Horns Rev. 
 !    Wind Energy, (In Press.).
+! Rybchuk, A., T. W. Juliano, J. K. Lundquist, D. Rosencrans, N. Bodini, and M. Optis, 2022:
+!    The sensitivity of the fitch wind farm parameterization to a three-dimensional planetary
+!    boundary layer scheme,Wind Energ. Sci., 7, 2085–2098, https://doi.org/10.5194/wes-7-2085-2022.
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
@@ -72,10 +76,13 @@ CONTAINS
        &,z_at_w,u,v                 &
        &,dx,dz,dt,qke                            &
        &,du,dv                                   &
+       &,bl_pbl_physics                          &
        &,windfarm_opt,power                      &
        ! THE FOLLOWING LINES OF CODE ARE LICENSED UNDER doc/licenses/fraunhofer_license.txt
        &,thrust                                  &
        ! END LICENSE
+       &,c1,c2,mut                               &
+       &,config_flags                            &
        &,ids,ide,jds,jde,kds,kde                 &
        &,ims,ime,jms,jme,kms,kme                 &
        &,its,ite,jts,jte,kts,kte                 &
@@ -94,6 +101,10 @@ CONTAINS
   ! THE FOLLOWING LINES OF CODE ARE LICENSED UNDER doc/licenses/fraunhofer_license.txt
   REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: thrust
   ! END LICENSE
+  REAL, DIMENSION(kms:kme), INTENT(IN), OPTIONAL :: c1,c2
+  REAL, DIMENSION(ims:ime,jms:jme), INTENT(IN), OPTIONAL :: mut
+  INTEGER, INTENT(IN), OPTIONAL :: bl_pbl_physics
+  TYPE (grid_config_rec_type), INTENT(IN), OPTIONAL :: config_flags
 !
 ! Local
 !
@@ -117,7 +128,11 @@ CONTAINS
   INTEGER, DIMENSION(:), ALLOCATABLE :: idx ! temporary array of indices
   INTEGER :: nturb ! number of turbines in grid cell
   ! END LICENSE
-  
+
+! 3DPBL integration
+  REAL, DIMENSION(ims:ime,kms:kme,jms:jme)  :: du_temp, dv_temp, dtke_temp1, dtke_temp2
+  REAL  speed_temp, z1_temp, z2_temp, tarea_temp1, tarea_temp2
+
   itf=MIN0(ite,ide-1)
   jtf=MIN0(jte,jde-1)
   ktf=MIN0(kte,kde-1)
@@ -318,24 +333,69 @@ CONTAINS
               ec=power1/power2
               endif
 !
-              ! output TKE
-              qke(i,k,j) = qke(i,k,j)+speed**3.*tarea*tkecof*dt/dz(i,k,j)*ec
-              ! THE FOLLOWING LINES OF CODE ARE LICENSED UNDER doc/licenses/fraunhofer_license.txt
-              IF (induction_correction == 0) THEN
-              ! END LICENSE
-                ! output u tendency
-                du(i,k,j) = du(i,k,j)-.5*u(i,k,j)*thrcof*speed*tarea/dz(i,k,j)*ec
-                ! output v tendency
-                dv(i,k,j) = dv(i,k,j)-.5*v(i,k,j)*thrcof*speed*tarea/dz(i,k,j)*ec
+              IF ( config_flags%pbl3d_opt .NE. 0 ) THEN  ! 3DPBL
+                 ! Output u tendency
+                 du_temp = 0
+                 du_temp(i,k,j) = -.5*u(i,k,j)*thrcof*speed*tarea/dz(i,k,j)*ec
 
-              ! THE FOLLOWING LINES OF CODE ARE LICENSED UNDER doc/licenses/fraunhofer_license.txt
-              ELSEIF (induction_correction == 1) THEN
-                ! output u tendency
-                du(i,k,j) = du(i,k,j)-.5*(u(i,k,j)/((1-a_ind)**nturb))*thrcof*speed*tarea/dz(i,k,j)*ec
-                ! output v tendency
-                dv(i,k,j) = dv(i,k,j)-.5*(v(i,k,j)/((1-a_ind)**nturb))*thrcof*speed*tarea/dz(i,k,j)*ec
+                 ! Scale for column mass, as per calculate_phy_tend
+                 du_temp(i,k,j) = (c1(k)*mut(i,j)+c2(k))*du_temp(i,k,j)
+                 du(i,k,j) = du(i,k,j) + du_temp(i,k,j)
+
+                 ! Output v tendency
+                 dv_temp = 0
+                 dv_temp(i,k,j) = -.5*v(i,k,j)*thrcof*speed*tarea/dz(i,k,j)*ec
+
+                 ! Scale for column mass, as per calculate_phy_tend
+                 dv_temp(i,k,j) = (c1(k)*mut(i,j)+c2(k))*dv_temp(i,k,j)
+                 dv(i,k,j) = dv(i,k,j) + dv_temp(i,k,j)
+
+                 ! Output TKE
+                 dtke_temp1 = 0
+                 dtke_temp2 = 0
+
+                 ! Calculate area between w-levels
+                 z1_temp=0.5*(z_at_w(i,k-1,j)+z_at_w(i,k,j))-blade_l_point-z_at_w(i,1,j)  ! distance between k_w lev and lower blade tip
+                 z2_temp=0.5*(z_at_w(i,k,j)+z_at_w(i,k+1,j))-blade_l_point-z_at_w(i,1,j)  ! distance between k_w +1lev and lower blade tip
+                 IF(z1_temp .LT. 0.) z1_temp=0.0 ! k_w level lower than lower blade tip
+                 IF(z2_temp .LT. 0.) z2_temp=0.0
+                 IF(z1_temp .GT. diameter(kt)) z1_temp=diameter(kt)
+                 IF(z2_temp .GT. diameter(kt)) z2_temp=diameter(kt)
+                 IF (z1_temp .EQ. z2_temp) THEN
+                    tarea_temp1 = 0
+                 ELSE
+                    CALL turbine_area(z1_temp,z2_temp,diameter(kt),wfdensity,tarea_temp1)
+                 ENDIF
+
+                 ! Interpolate speed downward to w-levels
+                 speed_temp = 0.5*(speed + sqrt(u(i,k-1,j)**2.+v(i,k-1,j)**2.))
+
+                 ! Calculate base TKE modification
+                 dtke_temp1(i,k,j) = speed_temp**3.*tarea_temp1*tkecof/dz(i,k,j)*ec
+
+                 ! Scale for column mass, as per calculate_phy_tend
+                 dtke_temp1(i,k,j) = (c1(k)*mut(i,j)+c2(k))*dtke_temp1(i,k,j)
+                 qke(i,k,j) = qke(i,k,j) + dtke_temp1(i,k,j)
+              ELSE
+                ! output TKE
+                qke(i,k,j) = qke(i,k,j)+speed**3.*tarea*tkecof*dt/dz(i,k,j)*ec
+                ! THE FOLLOWING LINES OF CODE ARE LICENSED UNDER doc/licenses/fraunhofer_license.txt
+                IF (induction_correction == 0) THEN
+                ! END LICENSE
+                  ! output u tendency
+                  du(i,k,j) = du(i,k,j)-.5*u(i,k,j)*thrcof*speed*tarea/dz(i,k,j)*ec
+                  ! output v tendency
+                  dv(i,k,j) = dv(i,k,j)-.5*v(i,k,j)*thrcof*speed*tarea/dz(i,k,j)*ec
+
+                ! THE FOLLOWING LINES OF CODE ARE LICENSED UNDER doc/licenses/fraunhofer_license.txt
+                ELSEIF (induction_correction == 1) THEN
+                  ! output u tendency
+                  du(i,k,j) = du(i,k,j)-.5*(u(i,k,j)/((1-a_ind)**nturb))*thrcof*speed*tarea/dz(i,k,j)*ec
+                  ! output v tendency
+                  dv(i,k,j) = dv(i,k,j)-.5*(v(i,k,j)/((1-a_ind)**nturb))*thrcof*speed*tarea/dz(i,k,j)*ec
+                ENDIF
+                ! END LICENSE
               ENDIF
-              ! END LICENSE
             ENDDO
           ENDIF
         ENDIF

@@ -2090,6 +2090,7 @@ CONTAINS
 
       CASE (fitchscheme)
 
+               IF (bl_pbl_physics .EQ. 5) THEN
                   IF (PRESENT(id) .AND.                                  &
                      PRESENT(z_at_w) ) THEN
 !
@@ -2100,6 +2101,7 @@ CONTAINS
                      &,DX=dx,DZ=dz8w,DT=dt                               &
                      &,QKE=qke                                           &
                      &,DU=rublten,DV=rvblten                             &
+                     &,BL_PBL_PHYSICS=bl_pbl_physics                     &
                      &,WINDFARM_OPT=windfarm_opt,POWER=power             &
                      ! THE FOLLOWING LINES OF CODE ARE LICENSED UNDER doc/licenses/fraunhofer_license.txt
                      &,THRUST=thrust                                     &
@@ -2127,6 +2129,7 @@ CONTAINS
                      CALL wrf_debug(0,message)
                      CALL wrf_error_fatal('Lack arguments to call turbine_drag')
                   ENDIF
+               ENDIF
 
       ! Yulong add new wind farm schemes with wind turbine loss effect
       CASE (mavscheme)
