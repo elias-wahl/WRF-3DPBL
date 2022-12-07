@@ -2102,6 +2102,7 @@ CONTAINS
                      &,QKE=qke                                           &
                      &,DU=rublten,DV=rvblten                             &
                      &,BL_PBL_PHYSICS=bl_pbl_physics                     &
+                     &,PBL3D_OPT=pbl3d_opt                               &
                      &,WINDFARM_OPT=windfarm_opt,POWER=power             &
                      ! THE FOLLOWING LINES OF CODE ARE LICENSED UNDER doc/licenses/fraunhofer_license.txt
                      &,THRUST=thrust                                     &
