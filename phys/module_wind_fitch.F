@@ -73,10 +73,9 @@ CONTAINS
        &,z_at_w,u,v                 &
        &,dx,dz,dt,qke                            &
        &,du,dv                                   &
-       &,bl_pbl_physics                          &
+       &,bl_pbl_physics,pbl3d_opt                &
        &,windfarm_opt,power                      &
        &,c1,c2,mut                               &
-       &,config_flags                            &
        &,ids,ide,jds,jde,kds,kde                 &
        &,ims,ime,jms,jme,kms,kme                 &
        &,its,ite,jts,jte,kts,kte                 &
@@ -94,8 +93,7 @@ CONTAINS
   REAL, DIMENSION(ims:ime,jms:jme), INTENT(INOUT) :: power
   REAL, DIMENSION(kms:kme), INTENT(IN), OPTIONAL :: c1,c2
   REAL, DIMENSION(ims:ime,jms:jme), INTENT(IN), OPTIONAL :: mut
-  INTEGER, INTENT(IN), OPTIONAL :: bl_pbl_physics
-  TYPE (grid_config_rec_type), INTENT(IN), OPTIONAL :: config_flags
+  INTEGER, INTENT(IN) :: bl_pbl_physics, pbl3d_opt
 !
 ! Local
 !
@@ -238,7 +236,7 @@ CONTAINS
               ec=power1/power2
               endif
 !
-              IF ( config_flags%bl_pbl_physics .EQ. 5 ) THEN  ! MYNN
+              IF ( bl_pbl_physics .EQ. 5 .AND. pbl3d_opt .EQ. 0 ) THEN  ! MYNN
                  ! output u tendency
                  du(i,k,j) = du(i,k,j)-.5*u(i,k,j)*thrcof*speed*tarea/dz(i,k,j)*ec
 
@@ -248,7 +246,7 @@ CONTAINS
                  ! output TKE
                  qke(i,k,j) = qke(i,k,j)+speed**3.*tarea*tkecof*dt/dz(i,k,j)*ec
 
-              ELSE IF ( config_flags%pbl3d_opt .NE. 0 ) THEN  ! 3DPBL
+              ELSE IF ( bl_pbl_physics .EQ. 0 .AND. pbl3d_opt .NE. 0 ) THEN  ! 3DPBL
                  ! Output u tendency
                  du_temp = 0
                  du_temp(i,k,j) = -.5*u(i,k,j)*thrcof*speed*tarea/dz(i,k,j)*ec

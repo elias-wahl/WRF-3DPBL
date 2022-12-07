@@ -370,7 +370,7 @@
           l_master(i, kte, j) = l_master(i, ktf, j)
           l_boulac(i, kte, j) = l_boulac(i, ktf, j)
 
-          if (DEBUG) call Debug_l_my_algebra
+          if (DEBUG) call Debug_l_master_algebra
 
         end do
       end do
