@@ -978,7 +978,9 @@ subroutine ext_pnc_open_for_read_begin( FileName, Comm, IOComm, SysDepInfo, Data
     call wrf_debug ( WARN , TRIM(msg))
     return
   endif
-  stat = NFMPI_OPEN(Comm, FileName, NF_NOWRITE, MPI_INFO_NULL, DH%NCID)
+!  stat = NFMPI_OPEN(Comm, FileName, NF_NOWRITE, MPI_INFO_NULL, DH%NCID)
+! TWJ
+  stat = NFMPI_OPEN(Comm, FileName, NF_WRITE, MPI_INFO_NULL, DH%NCID)
   call netcdf_err(stat,Status)
   if(Status /= WRF_NO_ERR) then
     write(msg,*) 'NetCDF error in ',__FILE__,', line', __LINE__
@@ -1257,7 +1259,9 @@ SUBROUTINE ext_pnc_open_for_write_begin(FileName,Comm,IOComm,SysDepInfo,DataHand
 !     if(newFileName(i:i) == '-') newFileName(i:i) = '_'
      if(newFileName(i:i) == ':') newFileName(i:i) = '_'
   enddo
-  stat = NFMPI_CREATE(Comm, newFileName, IOR(NF_CLOBBER, NF_64BIT_OFFSET), info, DH%NCID)
+!  stat = NFMPI_CREATE(Comm, newFileName, IOR(NF_CLOBBER, NF_64BIT_OFFSET), info, DH%NCID)
+! TWJ
+  stat = NFMPI_CREATE(Comm, newFileName, IOR(NF_CLOBBER, NF_64BIT_DATA), info, DH%NCID)
 ! stat = NFMPI_CREATE(Comm, newFileName, NF_64BIT_OFFSET, info, DH%NCID)
   call mpi_info_free( info, ierr)
 #else
@@ -1267,7 +1271,8 @@ SUBROUTINE ext_pnc_open_for_write_begin(FileName,Comm,IOComm,SysDepInfo,DataHand
   call mpi_info_create( info, ierr )
 !  call mpi_info_set(info,'cd_buffer_size','4194304',ierr)
   call mpi_info_set(info,'cd_buffer_size','8388608',ierr)
-  stat = NFMPI_CREATE(Comm, FileName, IOR(NF_CLOBBER, NF_64BIT_OFFSET), info, DH%NCID)
+!  stat = NFMPI_CREATE(Comm, FileName, IOR(NF_CLOBBER, NF_64BIT_OFFSET), info, DH%NCID)
+  stat = NFMPI_CREATE(Comm, FileName, IOR(NF_CLOBBER, NF_64BIT_DATA), info, DH%NCID)
   call mpi_info_free( info, ierr)
 !
 !!!!!!!!!!!!!!! 

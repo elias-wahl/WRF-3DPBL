@@ -310,6 +310,12 @@ state    real   ht_coarse       ij     misc        1   -     r                - 
 # TKE
 state    real   tke            ikj     dyn_em      2         -       r        "tke"          "TURBULENCE KINETIC ENERGY"     "m2 s-2"
 i1       real   tke_tend       ikj     dyn_em      1         -      
+state    real   tf_uth         ikj     dyn_em      1         X       -       "tf_uth"        "LES turbulent flux uth"        "m K s-1"
+state    real   tf_vth         ikj     dyn_em      1         Y       -       "tf_vth"        "LES turbulent flux vth"        "m K s-1"
+state    real   tf_wth         ikj     dyn_em      1         Z       -       "tf_wth"        "LES turbulent flux wth"        "m K s-1"
+state    real   tf_uqv         ikj     dyn_em      1         X       -       "tf_uqv"        "LES turbulent flux uqv"        "m g kg-1 s-1"
+state    real   tf_vqv         ikj     dyn_em      1         Y       -       "tf_vqv"        "LES turbulent flux vqv"        "m g kg-1 s-1"
+state    real   tf_wqv         ikj     dyn_em      1         Z       -       "tf_wqv"        "LES turbulent flux wqv"        "m g kg-1 s-1"
 
 # variables in 3DTKE scheme (km_opt=5)
 state    real  nlflux          ikj     dyn_em        1         Z      -      "NLFLUX"          "PRESCRIBED NONLOCAL HEAT FLUX IN 3DTKE SCHEME"         "K m s-1"
@@ -800,6 +806,34 @@ state    real   ts_gph_profile ?!k       misc      -         -      -        "TS
 state    real   ts_th_profile  ?!k       misc      -         -      -        "TS_TH_PROFILE"  "Total potential temperature, vertical profile" "K"
 state    real   ts_qv_profile  ?!k       misc      -         -      -        "TS_QV_PROFILE"  "Water vapor mixing ratio, vertical profile" "kg/kg"
 state    real   ts_p_profile   ?!k       misc      -         -      -        "TS_P_PROFILE"   "Pressure, vertical profile" "Pa"
+state    real   ts_rho_profile  ?!k      misc      -         -      -        "TS_RHO_PROFILE" "Density, vertical profile"
+state    real   ts_qc_profile  ?!k       misc      -         -      -        "TS_QC_PROFILE"  "Cloud water mixing ratio, vertical profile"
+state    real   ts_qr_profile  ?!k       misc      -         -      -        "TS_QR_PROFILE"  "Rain water mixing ratio, vertical profile"
+state    real   ts_qi_profile  ?!k       misc      -         -      -        "TS_QI_PROFILE"  "Ice water mixing ratio, vertical profile"
+state    real   ts_qs_profile  ?!k       misc      -         -      -        "TS_QS_PROFILE"  "Snow mixing ratio, vertical profile"
+state    real   ts_qg_profile  ?!k       misc      -         -      -        "TS_QG_PROFILE"  "Graupel mixing ratio, vertical profile"
+state    real   ts_qnc_profile   ?!k     misc      -         -      -        "TS_QNC_PROFILE"   "Cloud number, vertical profile"
+state    real   ts_qnr_profile   ?!k     misc      -         -      -        "TS_QNR_PROFILE"   "Rain number, vertical profile"
+state    real   ts_qni_profile   ?!k     misc      -         -      -        "TS_QNI_PROFILE"   "Ice number, vertical profile"
+state    real   ts_qnwfa_profile   ?!k     misc    -         -      -        "TS_QNWFA_PROFILE"   "Water friendly aerosol number, vertical profile"
+state    real   ts_qnifa_profile   ?!k     misc    -         -      -        "TS_QNIFA_PROFILE"   "Ice friendly aerosol number, vertical profile"
+state    real   ts_re_cloud_profile  ?!k   misc    -         -      -        "TS_RE_CLOUD_PROFILE"   "Cloud radius, vertical profile"
+state    real   ts_re_ice_profile    ?!k   misc    -         -      -        "TS_RE_ICE_PROFILE"   "Ice radius, vertical profile"
+state    real   ts_re_snow_profile   ?!k   misc    -         -      -        "TS_RE_SNOW_PROFILE"   "Snow radius, vertical profile"
+state    real   ts_refl_profile  ?!k     misc      -         -      -        "TS_REFL_PROFILE"  "Reflectivity 10cm, vertical profile"
+state    real   ts_qke_profile  ?!k      misc      -         -      -        "TS_QKE_PROFILE"  "QKE/2 from MYNN or TKE from LES vertical profile"
+state    real   ts_m11_profile ?!k       misc      -         -      -        "TS_M11_PROFILE" "M11, vertical profile" "m2 s-2"
+state    real   ts_m12_profile ?!k       misc      -         -      -        "TS_M12_PROFILE" "M12, vertical profile" "m2 s-2"
+state    real   ts_m13_profile ?!k       misc      -         -      -        "TS_M13_PROFILE" "M13, vertical profile" "m2 s-2"
+state    real   ts_m22_profile ?!k       misc      -         -      -        "TS_M22_PROFILE" "M22, vertical profile" "m2 s-2"
+state    real   ts_m33_profile ?!k       misc      -         -      -        "TS_M33_PROFILE" "M33, vertical profile" "m2 s-2"
+state    real   ts_m23_profile ?!k       misc      -         -      -        "TS_M23_PROFILE" "M23, vertical profile" "m2 s-2"
+state    real   ts_uth_profile ?!k       misc      -         -      -        "TS_UTH_PROFILE" "UTH, vertical profile" "m K s-1"
+state    real   ts_vth_profile ?!k       misc      -         -      -        "TS_VTH_PROFILE" "VTH, vertical profile" "m K s-1"
+state    real   ts_wth_profile ?!k       misc      -         -      -        "TS_WTH_PROFILE" "WTH, vertical profile" "m K s-1"
+state    real   ts_uqv_profile ?!k       misc      -         -      -        "TS_UQV_PROFILE" "UQV, vertical profile" "m g kg-1 s-1"
+state    real   ts_vqv_profile ?!k       misc      -         -      -        "TS_VQV_PROFILE" "VQV, vertical profile" "m g kg-1 s-1"
+state    real   ts_wqv_profile ?!k       misc      -         -      -        "TS_WQV_PROFILE" "WQV, vertical profile" "m g kg-1 s-1"
 
 
 # urban model variables
@@ -3198,7 +3232,7 @@ package   drip           sf_surf_irr_alloc==2        -             state:irrigat
 package   sprinkler      sf_surf_irr_alloc==3        -             state:irrigation,irr_rand_field
 
 
-package   lesscheme      bl_pbl_physics==0           -             -
+package   lesscheme      bl_pbl_physics==0           -             scalar:qke_adv;state:qke,tke_pbl,sh3d,tsq,qsq,cov,el_pbl
 package   ysuscheme      bl_pbl_physics==1           -             -
 package   myjpblscheme   bl_pbl_physics==2           -             state:tke_pbl,el_pbl
 package   gfsscheme      bl_pbl_physics==3           -             -
@@ -3347,7 +3381,7 @@ package   icedepth_one   seaice_thickness_opt==1     -             state:icedept
 #Time series options for text output
 package   notseries             process_time_series==0                 -             -
 package   tseries               process_time_series==1                 -             state:ts_hour,ts_u,ts_v,ts_q,ts_t,ts_psfc,ts_glw,ts_gsw,ts_hfx,ts_lh,ts_tsk,ts_tslb,ts_clw,ts_rainc,ts_rainnc,ts_u_profile,ts_v_profile,ts_gph_profile,ts_th_profile,ts_p_profile,ts_w_profile
-package   tseries_add_solar     process_time_series==2                 -             state:ts_hour,ts_u,ts_v,ts_q,ts_t,ts_psfc,ts_glw,ts_gsw,ts_hfx,ts_lh,ts_tsk,ts_tslb,ts_clw,ts_rainc,ts_rainnc,ts_u_profile,ts_v_profile,ts_gph_profile,ts_th_profile,ts_cldfrac2d,ts_wvp,ts_lwp,ts_iwp,ts_swp,ts_lwp_tot,ts_iwp_tot,ts_swp_tot,ts_re_qc,ts_re_qi,ts_re_qs,ts_re_qc_tot,ts_re_qi_tot,ts_re_qs_tot,ts_tau_qc,ts_tau_qi,ts_tau_qs,ts_tau_qc_tot,ts_tau_qi_tot,ts_tau_qs_tot,ts_cbaseht,ts_ctopht,ts_cbaseht_tot,ts_ctopht_tot,ts_clrnidx,ts_p_profile,ts_w_profile,ts_swdown,ts_swddni,ts_swddif,ts_swdownc,ts_swddnic,ts_swdown2,ts_swddni2,ts_swddif2,ts_swdownc2,ts_swddnic2,ts_ghi_accum
+package   tseries_add_solar     process_time_series==2                 -             state:ts_hour,ts_u,ts_v,ts_q,ts_t,ts_psfc,ts_glw,ts_gsw,ts_hfx,ts_lh,ts_tsk,ts_tslb,ts_clw,ts_rainc,ts_rainnc,ts_u_profile,ts_v_profile,ts_gph_profile,ts_th_profile,ts_cldfrac2d,ts_wvp,ts_lwp,ts_iwp,ts_swp,ts_lwp_tot,ts_iwp_tot,ts_swp_tot,ts_re_qc,ts_re_qi,ts_re_qs,ts_re_qc_tot,ts_re_qi_tot,ts_re_qs_tot,ts_tau_qc,ts_tau_qi,ts_tau_qs,ts_tau_qc_tot,ts_tau_qi_tot,ts_tau_qs_tot,ts_cbaseht,ts_ctopht,ts_cbaseht_tot,ts_ctopht_tot,ts_clrnidx,ts_p_profile,ts_w_profile,ts_swdown,ts_swddni,ts_swddif,ts_swdownc,ts_swddnic,ts_swdown2,ts_swddni2,ts_swddif2,ts_swdownc2,ts_swddnic2,ts_ghi_accum,ts_lwdnb
 
 # WRF-HAILCAST
 state    real   HAILCAST_DHAIL1   ij     misc        1         -      r          "HAILCAST_DHAIL1"     "WRF-HAILCAST Hail Diameter, 1st rank order"     "mm"

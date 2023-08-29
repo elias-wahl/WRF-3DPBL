@@ -1093,6 +1093,7 @@ BENCH_START(vert_diff_tim)
                                       nba_mij, num_nba_mij,          & !JDM
                                       grid%div, moist, chem, scalar,tracer,         &
                                       grid%xkmv, grid%xkhv, grid%xkmh, config_flags%km_opt,       & ! xkmh added Oct2013
+                                      grid%tf_wth, grid%tf_wqv,              &
                                       grid%fnm, grid%fnp, grid%dn, grid%dnw, grid%rdz, grid%rdzw, &
                                       grid%hfx, grid%qfx, grid%ustm, grid%rho,   &
                                       ids, ide, jds, jde, kds, kde,              &
@@ -1131,6 +1132,7 @@ BENCH_START(hor_diff_tim)
                                       moist, chem, scalar,tracer,               &
                                       grid%msfux,grid%msfuy, grid%msfvx,grid%msfvy, grid%msftx,  &
                                       grid%msfty, grid%xkmh, grid%xkmv, grid%xkhh, config_flags%km_opt,     &
+                                      grid%tf_uth, grid%tf_vth, grid%tf_uqv, grid%tf_vqv,            &
                                       grid%rdx, grid%rdy, grid%rdz, grid%rdzw,                   &
                                       grid%fnm, grid%fnp, grid%cf1, grid%cf2, grid%cf3,          &
                                       grid%zx, grid%zy, grid%dn, grid%dnw, grid%rho,             &

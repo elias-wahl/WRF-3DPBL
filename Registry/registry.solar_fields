@@ -73,6 +73,7 @@ state    real   ts_swddni2      ?!       misc       -         -     -      "TS_S
 state    real   ts_swddif2      ?!       misc       -         -     -      "TS_SWDDIF2"      "SHORTWAVE SURFACE DOWNWARD DIFFUSE IRRADIANCE FROM FARMS"
 state    real   ts_swdownc2     ?!       misc       -         -     -      "TS_SWDOWNC2"     "DOWNWARD CLEAR-SKY SHORTWAVE FLUX AT GROUND SURFACE FROM FARMS"
 state    real   ts_swddnic2     ?!       misc       -         -     -      "TS_SWDDNIC2"     "CLEAR-SKY SHORTWAVE SURFACE DOWNWARD DIRECT NORMAL IRRADIANCE FROM FARMS"
+state    real   ts_lwdnb        ?!       misc       -         -     -      "TS_LWDNB"        "INSTANTANEOUS DOWNWELLING LONGWAVE FLUX AT BOTTOM"
 
 #  Package declarations
 

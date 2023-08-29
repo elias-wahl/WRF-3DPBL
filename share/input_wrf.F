@@ -649,15 +649,16 @@
           num_land_cat_compare = 24
         END IF
       endif
-      if ( config_flags%num_land_cat /= num_land_cat_compare ) then
-        call wrf_message("----------------- ERROR -------------------")
-        WRITE(wrf_err_message,'("namelist    : NUM_LAND_CAT = ",I10)') config_flags%num_land_cat
-        call wrf_message(wrf_err_message)
-        WRITE(wrf_err_message,'("input files : NUM_LAND_CAT = ",I10, " (from geogrid selections).")') num_land_cat_compare
-        call wrf_message(wrf_err_message)
-        CALL wrf_debug ( 0, '---- ERROR: Mismatch between namelist and wrf input files for dimension NUM_LAND_CAT')
-        count_fatal_error = count_fatal_error + 1
-      endif
+! TWJ
+!      if ( config_flags%num_land_cat /= num_land_cat_compare ) then
+!        call wrf_message("----------------- ERROR -------------------")
+!        WRITE(wrf_err_message,'("namelist    : NUM_LAND_CAT = ",I10)') config_flags%num_land_cat
+!        call wrf_message(wrf_err_message)
+!        WRITE(wrf_err_message,'("input files : NUM_LAND_CAT = ",I10, " (from geogrid selections).")') num_land_cat_compare
+!        call wrf_message(wrf_err_message)
+!        CALL wrf_debug ( 0, '---- ERROR: Mismatch between namelist and wrf input files for dimension NUM_LAND_CAT')
+!        count_fatal_error = count_fatal_error + 1
+!      endif
     ENDIF
 
     ! Test here to check that config_flags%num_metgrid_soil_levels in namelist

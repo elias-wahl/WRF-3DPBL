@@ -266,7 +266,7 @@ SUBROUTINE wrf_open_for_write_begin( FileName , grid, SysDepInfo, &
         IF ( multi_files(io_form) .OR. wrf_dm_on_monitor() ) THEN
           IF ( multi_files(io_form) ) THEN
             CALL wrf_get_myproc ( myproc )
-            CALL append_to_filename ( LocFilename , FileName , myproc, 4 )
+            CALL append_to_filename ( LocFilename , FileName , myproc, 5 )
           ELSE
             LocFilename = FileName
           ENDIF
@@ -348,7 +348,7 @@ SUBROUTINE wrf_open_for_write_begin( FileName , grid, SysDepInfo, &
         IF ( multi_files(io_form) .OR. wrf_dm_on_monitor() ) THEN
           IF ( multi_files(io_form) ) THEN
             CALL wrf_get_myproc ( myproc )
-            CALL append_to_filename ( LocFilename , FileName , myproc, 4 )
+            CALL append_to_filename ( LocFilename , FileName , myproc, 5 )
           ELSE
             LocFilename = FileName
           ENDIF
@@ -370,7 +370,7 @@ SUBROUTINE wrf_open_for_write_begin( FileName , grid, SysDepInfo, &
         IF ( multi_files(io_form) .OR. wrf_dm_on_monitor() ) THEN
           IF ( multi_files(io_form) ) THEN
             CALL wrf_get_myproc ( myproc )
-            CALL append_to_filename ( LocFilename , FileName , myproc, 4 )
+            CALL append_to_filename ( LocFilename , FileName , myproc, 5 )
           ELSE
             LocFilename = FileName
           ENDIF
@@ -387,7 +387,7 @@ SUBROUTINE wrf_open_for_write_begin( FileName , grid, SysDepInfo, &
         IF ( multi_files(io_form) .OR. wrf_dm_on_monitor() ) THEN
           IF ( multi_files(io_form) ) THEN
             CALL wrf_get_myproc ( myproc )
-            CALL append_to_filename ( LocFilename , FileName , myproc, 4 )
+            CALL append_to_filename ( LocFilename , FileName , myproc, 5 )
           ELSE
             LocFilename = FileName
           ENDIF
@@ -409,7 +409,7 @@ SUBROUTINE wrf_open_for_write_begin( FileName , grid, SysDepInfo, &
         IF ( multi_files(io_form) .OR. wrf_dm_on_monitor() ) THEN
           IF ( multi_files(io_form) ) THEN
             CALL wrf_get_myproc ( myproc )
-            CALL append_to_filename ( LocFilename , FileName , myproc, 4 )
+            CALL append_to_filename ( LocFilename , FileName , myproc, 5 )
           ELSE
             LocFilename = FileName
           ENDIF
@@ -599,7 +599,7 @@ SUBROUTINE wrf_open_for_read_begin( FileName , grid, SysDepInfo, &
         IF ( multi_files(io_form) .OR.  wrf_dm_on_monitor() ) THEN
           IF ( multi_files(io_form) ) THEN
               CALL wrf_get_myproc ( myproc )
-              CALL append_to_filename ( LocFilename , FileName , myproc, 4 )
+              CALL append_to_filename ( LocFilename , FileName , myproc, 5 )
           ELSE
               LocFilename = FileName
           ENDIF
@@ -652,7 +652,7 @@ SUBROUTINE wrf_open_for_read_begin( FileName , grid, SysDepInfo, &
         IF ( multi_files(io_form) .OR.  wrf_dm_on_monitor() ) THEN
           IF ( multi_files(io_form) ) THEN
               CALL wrf_get_myproc ( myproc )
-              CALL append_to_filename ( LocFilename , FileName , myproc, 4 )
+              CALL append_to_filename ( LocFilename , FileName , myproc, 5 )
           ELSE
               LocFilename = FileName
           ENDIF
@@ -669,7 +669,7 @@ SUBROUTINE wrf_open_for_read_begin( FileName , grid, SysDepInfo, &
         IF ( multi_files(io_form) .OR.  wrf_dm_on_monitor() ) THEN
           IF ( multi_files(io_form) ) THEN
               CALL wrf_get_myproc ( myproc )
-              CALL append_to_filename ( LocFilename , FileName , myproc, 4 )
+              CALL append_to_filename ( LocFilename , FileName , myproc, 5 )
           ELSE
               LocFilename = FileName
           ENDIF
@@ -828,7 +828,7 @@ SUBROUTINE wrf_open_for_read ( FileName , grid, SysDepInfo, &
       IF ( multi_files(io_form) .OR.  wrf_dm_on_monitor() ) THEN
         IF ( multi_files(io_form) ) THEN
             CALL wrf_get_myproc ( myproc )
-            CALL append_to_filename ( LocFilename , FileName , myproc, 4 )
+            CALL append_to_filename ( LocFilename , FileName , myproc, 5 )
         ELSE
             LocFilename = FileName
         ENDIF
@@ -870,7 +870,7 @@ SUBROUTINE wrf_open_for_read ( FileName , grid, SysDepInfo, &
       IF ( multi_files(io_form) .OR.  wrf_dm_on_monitor() ) THEN
         IF ( multi_files(io_form) ) THEN
             CALL wrf_get_myproc ( myproc )
-            CALL append_to_filename ( LocFilename , FileName , myproc, 4 )
+            CALL append_to_filename ( LocFilename , FileName , myproc, 5 )
         ELSE
             LocFilename = FileName
         ENDIF
@@ -893,7 +893,7 @@ SUBROUTINE wrf_open_for_read ( FileName , grid, SysDepInfo, &
       IF ( multi_files(io_form) .OR.  wrf_dm_on_monitor() ) THEN
         IF ( multi_files(io_form) ) THEN
             CALL wrf_get_myproc ( myproc )
-            CALL append_to_filename ( LocFilename , FileName , myproc, 4 )
+            CALL append_to_filename ( LocFilename , FileName , myproc, 5 )
         ELSE
             LocFilename = FileName
         ENDIF
@@ -911,7 +911,7 @@ SUBROUTINE wrf_open_for_read ( FileName , grid, SysDepInfo, &
       IF ( multi_files(io_form) .OR.  wrf_dm_on_monitor() ) THEN
         IF ( multi_files(io_form) ) THEN
             CALL wrf_get_myproc ( myproc )
-            CALL append_to_filename ( LocFilename , FileName , myproc, 4 )
+            CALL append_to_filename ( LocFilename , FileName , myproc, 5 )
         ELSE
             LocFilename = FileName
         ENDIF
@@ -929,7 +929,7 @@ SUBROUTINE wrf_open_for_read ( FileName , grid, SysDepInfo, &
       IF ( multi_files(io_form) .OR.  wrf_dm_on_monitor() ) THEN
         IF ( multi_files(io_form) ) THEN
             CALL wrf_get_myproc ( myproc )
-            CALL append_to_filename ( LocFilename , FileName , myproc, 4 )
+            CALL append_to_filename ( LocFilename , FileName , myproc, 5 )
         ELSE
             LocFilename = FileName
         ENDIF

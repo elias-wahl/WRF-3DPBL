@@ -2875,6 +2875,7 @@ SUBROUTINE horizontal_diffusion_2 ( rt_tendf, ru_tendf, rv_tendf, rw_tendf,    &
                                     moist, chem, scalar,tracer,                &
                                     msfux, msfuy, msfvx, msfvy,                &
                                     msftx, msfty, xkmh, xkmv, xkhh, km_opt,    &
+                                    tf_uth, tf_vth, tf_uqv, tf_vqv,            &
                                     rdx, rdy, rdz, rdzw, fnm, fnp,             &
                                     cf1, cf2, cf3, zx, zy, dn, dnw, rho,       &
                                     ids, ide, jds, jde, kds, kde,              &
@@ -2956,6 +2957,9 @@ SUBROUTINE horizontal_diffusion_2 ( rt_tendf, ru_tendf, rv_tendf, rw_tendf,    &
                                                                     rdzw, &
                                                                      rho
 
+   REAL , DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(INOUT) :: tf_uth, &
+                                                   tf_vth, tf_uqv, tf_vqv
+
 
    REAL ,                                        INTENT(IN   ) ::    rdx, &
                                                                      rdy
@@ -3013,6 +3017,12 @@ SUBROUTINE horizontal_diffusion_2 ( rt_tendf, ru_tendf, rv_tendf, rw_tendf,    &
                                    fnm, fnp, cf1, cf2, cf3,                &
                                    zx, zy, rdz, rdzw, dnw, dn, rho,        &
                                    .false.,                                &
+                                   .true.,                                 &
+                                   .false.,                                &
+                                   tf_uth,                                 &
+                                   tf_vth,                                 &
+                                   tf_uqv,                                 &
+                                   tf_vqv,                                 &
                                    ids, ide, jds, jde, kds, kde,           &
                                    ims, ime, jms, jme, kms, kme,           &
                                    its, ite, jts, jte, kts, kte           )
@@ -3027,6 +3037,12 @@ SUBROUTINE horizontal_diffusion_2 ( rt_tendf, ru_tendf, rv_tendf, rw_tendf,    &
                                    fnm, fnp, cf1, cf2, cf3,                &
                                    zx, zy, rdz, rdzw, dnw, dn, rho,        &
                                    .true.,                                 &
+                                   .false.,                                &
+                                   .false.,                                &
+                                   tf_uth,                                 &
+                                   tf_vth,                                 &
+                                   tf_uqv,                                 &
+                                   tf_vqv,                                 &
                                    ids, ide, jds, jde, kds, kde,           &
                                    ims, ime, jms, jme, kms, kme,           &
                                    its, ite, jts, jte, kts, kte           )
@@ -3035,6 +3051,7 @@ SUBROUTINE horizontal_diffusion_2 ( rt_tendf, ru_tendf, rv_tendf, rw_tendf,    &
 
       moist_loop: do im = PARAM_FIRST_SCALAR, n_moist
 
+      IF (im == P_QV) THEN
           CALL horizontal_diffusion_s( moist_tendf(ims,kms,jms,im),       &
                                        config_flags,                      &
                                        moist(ims,kms,jms,im),             &
@@ -3043,9 +3060,34 @@ SUBROUTINE horizontal_diffusion_2 ( rt_tendf, ru_tendf, rv_tendf, rw_tendf,    &
                                        fnm, fnp, cf1, cf2, cf3,           &
                                        zx, zy, rdz, rdzw, dnw, dn, rho,   &
                                        .false.,                           &
+                                       .false.,                           &
+                                       .true.,                            &
+                                       tf_uth,                            &
+                                       tf_vth,                            &
+                                       tf_uqv,                            &
+                                       tf_vqv,                            &
                                        ids, ide, jds, jde, kds, kde,      &
                                        ims, ime, jms, jme, kms, kme,      &
                                        its, ite, jts, jte, kts, kte      )
+      ELSE
+          CALL horizontal_diffusion_s( moist_tendf(ims,kms,jms,im),       &
+                                       config_flags,                      &
+                                       moist(ims,kms,jms,im),             &
+                                       msftx, msfty, msfux, msfuy,        &
+                                       msfvx, msfvy, xkhh, rdx, rdy,      &
+                                       fnm, fnp, cf1, cf2, cf3,           &
+                                       zx, zy, rdz, rdzw, dnw, dn, rho,   &
+                                       .false.,                           &
+                                       .false.,                           &
+                                       .false.,                           &
+                                       tf_uth,                            &
+                                       tf_vth,                            &
+                                       tf_uqv,                            &
+                                       tf_vqv,                            &
+                                       ids, ide, jds, jde, kds, kde,      &
+                                       ims, ime, jms, jme, kms, kme,      &
+                                       its, ite, jts, jte, kts, kte      )
+      END IF
 
       ENDDO moist_loop
 
@@ -3063,6 +3105,12 @@ SUBROUTINE horizontal_diffusion_2 ( rt_tendf, ru_tendf, rv_tendf, rw_tendf,    &
                                      fnm, fnp, cf1, cf2, cf3,        &
                                      zx, zy, rdz, rdzw, dnw, dn, rho,&
                                      .false.,                        &
+                                     .false.,                        &
+                                     .false.,                        &
+                                     tf_uth,                         &
+                                     tf_vth,                         &
+                                     tf_uqv,                         &
+                                     tf_vqv,                         &
                                      ids, ide, jds, jde, kds, kde,   &
                                      ims, ime, jms, jme, kms, kme,   &
                                      its, ite, jts, jte, kts, kte    )
@@ -3083,6 +3131,12 @@ SUBROUTINE horizontal_diffusion_2 ( rt_tendf, ru_tendf, rv_tendf, rw_tendf,    &
                                      fnm, fnp, cf1, cf2, cf3,          &
                                      zx, zy, rdz, rdzw, dnw, dn, rho,  &
                                      .false.,                          &
+                                     .false.,                          &
+                                     .false.,                          &
+                                     tf_uth,                           &
+                                     tf_vth,                           &
+                                     tf_uqv,                           &
+                                     tf_vqv,                           &
                                      ids, ide, jds, jde, kds, kde,     &
                                      ims, ime, jms, jme, kms, kme,     &
                                      its, ite, jts, jte, kts, kte     )
@@ -3102,6 +3156,12 @@ SUBROUTINE horizontal_diffusion_2 ( rt_tendf, ru_tendf, rv_tendf, rw_tendf,    &
                                      fnm, fnp, cf1, cf2, cf3,          &
                                      zx, zy, rdz, rdzw, dnw, dn, rho,  &
                                      .false.,                          &
+                                     .false.,                          &
+                                     .false.,                          &
+                                     tf_uth,                           &
+                                     tf_vth,                           &
+                                     tf_uqv,                           &
+                                     tf_vqv,                           &
                                      ids, ide, jds, jde, kds, kde,     &
                                      ims, ime, jms, jme, kms, kme,     &
                                      its, ite, jts, jte, kts, kte     )
@@ -3715,6 +3775,12 @@ SUBROUTINE horizontal_diffusion_s (tendency, config_flags,                &
                                    fnm, fnp, cf1, cf2, cf3,               &
                                    zx, zy, rdz, rdzw, dnw, dn, rho,       &
                                    doing_tke,                             &
+                                   doing_theta,                           &
+                                   doing_moist,                           &
+                                   tf_uth,                                &
+                                   tf_vth,                                &
+                                   tf_uqv,                                &
+                                   tf_vqv,                                &
                                    ids, ide, jds, jde, kds, kde,          &
                                    ims, ime, jms, jme, kms, kme,          &
                                    its, ite, jts, jte, kts, kte           )
@@ -3730,7 +3796,7 @@ SUBROUTINE horizontal_diffusion_s (tendency, config_flags,                &
                                             ims, ime, jms, jme, kms, kme, &
                                             its, ite, jts, jte, kts, kte
 
-   LOGICAL,         INTENT(IN   ) ::        doing_tke
+   LOGICAL,         INTENT(IN   ) ::        doing_tke, doing_theta, doing_moist
 
    REAL , INTENT(IN   )           ::        cf1, cf2, cf3
 
@@ -3754,6 +3820,9 @@ SUBROUTINE horizontal_diffusion_s (tendency, config_flags,                &
                                                                     rdzw, &
                                                                      rho
 
+   REAL , DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(INOUT) :: tf_uth, &
+                                                   tf_vth, tf_uqv, tf_vqv
+
    REAL , DIMENSION( ims:ime, kms:kme, jms:jme), INTENT(IN   ) ::    var, &
                                                                       zx, &
                                                                       zy
@@ -3774,6 +3843,8 @@ SUBROUTINE horizontal_diffusion_s (tendency, config_flags,                &
                                                                  xkxavg, &
                                                                 zx_at_m, &
                                                                 zy_at_m
+! TWJ
+   REAL , DIMENSION( its-1:ite+1, kts:kte, jts-1:jte+1)    ::  xkxavg_twj
 
    REAL , DIMENSION( its:ite, kts:kte, jts:jte)            ::  tmptendf
 
@@ -3845,6 +3916,17 @@ SUBROUTINE horizontal_diffusion_s (tendency, config_flags,                &
    ENDDO
    ENDDO
 
+! TWJ
+   IF (doing_theta .or. doing_moist) THEN
+      DO j = j_start, j_end
+      DO k = kts, ktf
+      DO i = i_start, i_end + 1
+         xkxavg_twj(i,k,j)=0.5*(xkhh(i-1,k,j)+xkhh(i,k,j))
+      ENDDO
+      ENDDO
+      ENDDO
+   END IF
+
    DO j = j_start, j_end
    DO k = kts+1, ktf
    DO i = i_start, i_end + 1
@@ -3884,6 +3966,27 @@ SUBROUTINE horizontal_diffusion_s (tendency, config_flags,                &
    ENDDO
    ENDDO
 
+! TWJ
+   IF (doing_theta .or. doing_moist) THEN
+      DO j = j_start, j_end
+      DO k = kts, ktf
+      DO i = i_start, i_end + 1
+         tmpzx = 0.5*( zx(i,k,j)+ zx(i,k+1,j))
+         rdzu = 2./(1./rdzw(i,k,j) + 1./rdzw(i-1,k,j))
+         IF (doing_theta) THEN
+            tf_uth(i,k,j)=-msfux(i,j)*xkxavg_twj(i,k,j)*(                      &
+                           rdx*(var(i,k,j)-var(i-1,k,j)) - tmpzx*         &
+                               (H1avg(i,k+1,j)-H1avg(i,k,j))*rdzu )
+         ELSE
+            tf_uqv(i,k,j)=-1.e3*msfux(i,j)*xkxavg_twj(i,k,j)*(                      &
+                           rdx*(var(i,k,j)-var(i-1,k,j)) - tmpzx*         &
+                               (H1avg(i,k+1,j)-H1avg(i,k,j))*rdzu )
+         END IF
+      ENDDO
+      ENDDO
+      ENDDO
+   END IF
+
 ! H2 = partial var over partial y
 
    DO j = j_start, j_end + 1
@@ -3893,6 +3996,17 @@ SUBROUTINE horizontal_diffusion_s (tendency, config_flags,                &
    ENDDO
    ENDDO
    ENDDO
+
+! TWJ
+   IF (doing_theta .or. doing_moist) THEN
+      DO j = j_start, j_end + 1
+      DO k = kts, ktf
+      DO i = i_start, i_end
+         xkxavg_twj(i,k,j)=0.5*(xkhh(i,k,j-1)+xkhh(i,k,j))
+      ENDDO
+      ENDDO
+      ENDDO
+   END IF
 
    DO j = j_start, j_end + 1
    DO k = kts+1,   ktf
@@ -3932,6 +4046,27 @@ SUBROUTINE horizontal_diffusion_s (tendency, config_flags,                &
    ENDDO
    ENDDO
    ENDDO
+
+! TWJ
+   IF (doing_theta .or. doing_moist) THEN
+      DO j = j_start, j_end + 1
+      DO k = kts, ktf
+      DO i = i_start, i_end
+         tmpzy = 0.5*( zy(i,k,j)+ zy(i,k+1,j))
+         rdzv = 2./(1./rdzw(i,k,j) + 1./rdzw(i,k,j-1))
+         IF (doing_theta) THEN
+            tf_vth(i,k,j)=-msfvy(i,j)*xkxavg_twj(i,k,j)*(                      &
+                           rdy*(var(i,k,j)-var(i,k,j-1)) - tmpzy*         &
+                               (H2avg(i,k+1,j)-H2avg(i,k,j))*rdzv )
+         ELSE
+            tf_vqv(i,k,j)=-1.e3*msfvy(i,j)*xkxavg_twj(i,k,j)*(                      &
+                           rdy*(var(i,k,j)-var(i,k,j-1)) - tmpzy*         &
+                               (H2avg(i,k+1,j)-H2avg(i,k,j))*rdzv )
+         END IF
+      ENDDO
+      ENDDO
+      ENDDO
+   END IF
 
    DO j = j_start, j_end
    DO k = kts+1, ktf
@@ -4014,6 +4149,7 @@ SUBROUTINE vertical_diffusion_2   ( ru_tendf, rv_tendf, rw_tendf, rt_tendf,   &
                                     div,                                      &
                                     moist,chem,scalar,tracer,                 &
                                     xkmv,xkhv,xkmh,km_opt,                    & ! xkmh added
+                                    tf_wth, tf_wqv,                           &
                                     fnm, fnp, dn, dnw, rdz, rdzw,             &
                                     hfx, qfx, ust, rho,                       &
                                     ids, ide, jds, jde, kds, kde,             &
@@ -4089,6 +4225,9 @@ SUBROUTINE vertical_diffusion_2   ( ru_tendf, rv_tendf, rw_tendf, rt_tendf,   &
 
    REAL , DIMENSION(ims:ime, kms:kme, jms:jme, n_nba_mij), INTENT(INOUT) &
    :: nba_mij
+
+   REAL , DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(INOUT) :: tf_wth, &
+                                                                   tf_wqv
 
    REAL , DIMENSION( ims:ime, kms:kme, jms:jme), INTENT(IN   )   :: rho
    REAL , DIMENSION( ims:ime, jms:jme), INTENT(INOUT)            :: hfx,  &
@@ -4273,6 +4412,10 @@ SUBROUTINE vertical_diffusion_2   ( ru_tendf, rv_tendf, rw_tendf, rt_tendf,   &
    CALL vertical_diffusion_s( rt_tendf, config_flags, var_mix, xkhv, &
                               dn, dnw, rdz, rdzw, fnm, fnp, rho,     &
                               .false.,                               &
+                              .true.,                                &
+                              .false.,                               &
+                              tf_wth,                                &
+                              tf_wqv,                                &
                               ids, ide, jds, jde, kds, kde,          &
                               ims, ime, jms, jme, kms, kme,          &
                               its, ite, jts, jte, kts, kte          )
@@ -4291,6 +4434,7 @@ SUBROUTINE vertical_diffusion_2   ( ru_tendf, rv_tendf, rw_tendf, rt_tendf,   &
     DO i = i_start, i_end
        cpm = cp * (1. + 0.8 * moist(i,kts,j,P_QV))
        hfx(i,j)=heat_flux*cpm*rho(i,kts,j)         ! provided for output only
+       tf_wth(i,kts,j) = hfx(i,j)/(cpm*rho(i,kts,j))
        if(config_flags%use_theta_m == 1)THEN
          rt_tendf(i,kts,j)=rt_tendf(i,kts,j)  &
              -g*heat_flux*(1.+rvovrd*moist(i,kts,j,P_QV))*rho(i,kts,j)/dnw(kts) &
@@ -4308,6 +4452,7 @@ SUBROUTINE vertical_diffusion_2   ( ru_tendf, rv_tendf, rw_tendf, rt_tendf,   &
 
        cpm = cp * (1. + 0.8 * moist(i,kts,j,P_QV))
        heat_flux = hfx(i,j)/cpm
+       tf_wth(i,kts,j) = hfx(i,j)/(cpm*rho(i,kts,j))
        if(config_flags%use_theta_m == 1)THEN
          rt_tendf(i,kts,j)=rt_tendf(i,kts,j)  &
              -g*heat_flux*(1.+rvovrd*moist(i,kts,j,P_QV))/dnw(kts) &
@@ -4335,6 +4480,10 @@ SUBROUTINE vertical_diffusion_2   ( ru_tendf, rv_tendf, rw_tendf, rt_tendf,   &
                               xkhv,                                 &
                               dn, dnw, rdz, rdzw, fnm, fnp, rho,    &
                               .true.,                               &
+                              .false.,                              &
+                              .false.,                              &
+                              tf_wth,                               &
+                              tf_wqv,                               &
                               ids, ide, jds, jde, kds, kde,         &
                               ims, ime, jms, jme, kms, kme,         &
                               its, ite, jts, jte, kts, kte         )
@@ -4367,14 +4516,33 @@ SUBROUTINE vertical_diffusion_2   ( ru_tendf, rv_tendf, rw_tendf, rt_tendf,   &
        END IF
 
 
+       IF (im == P_QV) THEN
           CALL vertical_diffusion_s( moist_tendf(ims,kms,jms,im),         &
                                      config_flags, var_mix,               &
                                      xkhv,                                &
                                      dn, dnw, rdz, rdzw, fnm, fnp, rho,   &
                                      .false.,                             &
+                                     .false.,                             &
+                                     .true.,                              &
+                                     tf_wth,                              &
+                                     tf_wqv,                              &
                                      ids, ide, jds, jde, kds, kde,        &
                                      ims, ime, jms, jme, kms, kme,        &
                                      its, ite, jts, jte, kts, kte        )
+       ELSE
+          CALL vertical_diffusion_s( moist_tendf(ims,kms,jms,im),         &
+                                     config_flags, var_mix,               &
+                                     xkhv,                                &
+                                     dn, dnw, rdz, rdzw, fnm, fnp, rho,   &
+                                     .false.,                             &
+                                     .false.,                             &
+                                     .false.,                             &
+                                     tf_wth,                              &
+                                     tf_wqv,                              &
+                                     ids, ide, jds, jde, kds, kde,        &
+                                     ims, ime, jms, jme, kms, kme,        &
+                                     its, ite, jts, jte, kts, kte        )
+       END IF
 
 !*****************************************
 !*****************************************
@@ -4415,6 +4583,10 @@ SUBROUTINE vertical_diffusion_2   ( ru_tendf, rv_tendf, rw_tendf, rt_tendf,   &
                                      xkhv,                               &
                                      dn, dnw, rdz, rdzw, fnm, fnp, rho,  &
                                      .false.,                            &
+                                     .false.,                            &
+                                     .false.,                            &
+                                     tf_wth,                             &
+                                     tf_wqv,                             &
                                      ids, ide, jds, jde, kds, kde,       &
                                      ims, ime, jms, jme, kms, kme,       &
                                      its, ite, jts, jte, kts, kte         )
@@ -4431,6 +4603,10 @@ SUBROUTINE vertical_diffusion_2   ( ru_tendf, rv_tendf, rw_tendf, rt_tendf,   &
                                      xkhv,                                 &
                                      dn, dnw, rdz, rdzw, fnm, fnp, rho,    &
                                      .false.,                              &
+                                     .false.,                              &
+                                     .false.,                              &
+                                     tf_wth,                               &
+                                     tf_wqv,                               &
                                      ids, ide, jds, jde, kds, kde,         &
                                      ims, ime, jms, jme, kms, kme,         &
                                      its, ite, jts, jte, kts, kte         )
@@ -4448,6 +4624,10 @@ SUBROUTINE vertical_diffusion_2   ( ru_tendf, rv_tendf, rw_tendf, rt_tendf,   &
                                      xkhv,                                 &
                                      dn, dnw, rdz, rdzw, fnm, fnp, rho,    &
                                      .false.,                              &
+                                     .false.,                              &
+                                     .false.,                              &
+                                     tf_wth,                               &
+                                     tf_wqv,                               &
                                      ids, ide, jds, jde, kds, kde,         &
                                      ims, ime, jms, jme, kms, kme,         &
                                      its, ite, jts, jte, kts, kte         )
@@ -4789,6 +4969,10 @@ END SUBROUTINE vertical_diffusion_w_2
 SUBROUTINE vertical_diffusion_s( tendency, config_flags, var, xkhv,       &
                                  dn, dnw, rdz, rdzw, fnm, fnp, rho,       &
                                  doing_tke,                               &
+                                 doing_theta,                             &
+                                 doing_moist,                             &
+                                 tf_wth,                                  &
+                                 tf_wqv,                                  &
                                  ids, ide, jds, jde, kds, kde,            &
                                  ims, ime, jms, jme, kms, kme,            &
                                  its, ite, jts, jte, kts, kte            )
@@ -4804,7 +4988,7 @@ SUBROUTINE vertical_diffusion_s( tendency, config_flags, var, xkhv,       &
                                             ims, ime, jms, jme, kms, kme, &
                                             its, ite, jts, jte, kts, kte
 
-   LOGICAL,         INTENT(IN   ) ::        doing_tke
+   LOGICAL,         INTENT(IN   ) ::        doing_tke, doing_theta, doing_moist
 
    REAL , DIMENSION( kms:kme ) ,                 INTENT(IN   ) ::    fnm
    REAL , DIMENSION( kms:kme ) ,                 INTENT(IN   ) ::    fnp
@@ -4820,6 +5004,9 @@ SUBROUTINE vertical_diffusion_s( tendency, config_flags, var, xkhv,       &
                                                                      rdz, &
                                                                     rdzw, &
                                                                      rho
+
+   REAL , DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(INOUT) :: tf_wth, &
+                                                                   tf_wqv
 ! LOCAL VARS
 
    INTEGER :: i, j, k, ktf
@@ -4871,6 +5058,12 @@ SUBROUTINE vertical_diffusion_s( tendency, config_flags, var, xkhv,       &
    DO k = kts+1,ktf
    DO i = i_start, i_end
       xkxavg(i,k,j)=fnm(k)*xkhv(i,k,j)+fnp(k)*xkhv(i,k-1,j)
+      IF (doing_theta) THEN
+         tf_wth(i,k,j) = -xkxavg(i,k,j)*(var(i,k,j)-var(i,k-1,j))*rdz(i,k,j)
+      END IF
+      IF (doing_moist) THEN
+         tf_wqv(i,k,j) = -1.e3*xkxavg(i,k,j)*(var(i,k,j)-var(i,k-1,j))*rdz(i,k,j)
+      END IF
       xkxavg(i,k,j)=xkxavg(i,k,j)*(fnm(k)*rho(i,k,j)+fnp(k)*rho(i,k-1,j))
       H3(i,k,j)=-xkxavg(i,k,j)*(var(i,k,j)-var(i,k-1,j))*rdz(i,k,j)
    ENDDO

@@ -52,7 +52,7 @@ void RSL_LITE_ERROR_DUP1 ( int *me , int *size )
     }
     else 
     {
-      sprintf(filename,"rsl.out.%08d",*me) ;
+      sprintf(filename,"rsl.out.%05d",*me) ;
     }
 # else
     if (*me == 0)
@@ -62,7 +62,7 @@ void RSL_LITE_ERROR_DUP1 ( int *me , int *size )
         sprintf(filename,"rsl.out.%04d",*me) ;
       }
       else {
-        sprintf(filename,"rsl.out.%08d",*me) ;
+        sprintf(filename,"rsl.out.%05d",*me) ;
       }
     }
     else
@@ -95,7 +95,7 @@ void RSL_LITE_ERROR_DUP1 ( int *me , int *size )
     }
     else 
     { 
-      sprintf(filename,"rsl.error.%08d",*me) ;
+      sprintf(filename,"rsl.error.%05d",*me) ;
     }
 # else
     if (*me == 0)
@@ -105,7 +105,7 @@ void RSL_LITE_ERROR_DUP1 ( int *me , int *size )
         sprintf(filename,"rsl.error.%04d",*me) ;
       }
       else {
-        sprintf(filename,"rsl.error.%08d",*me) ;
+        sprintf(filename,"rsl.error.%05d",*me) ;
       }
     }
     else
@@ -168,7 +168,7 @@ void RSL_LITE_ERROR_DUP1 ( int *me , int *size )
     }
     else 
     {
-      sprintf(dirname, "TASKOUTPUT/%08d", *me);
+      sprintf(dirname, "TASKOUTPUT/%05d", *me);
     }
     rc=mkdir(dirname, 0777);
     if (  rc !=0 && errno!=EEXIST ) {
@@ -185,7 +185,7 @@ void RSL_LITE_ERROR_DUP1 ( int *me , int *size )
     }
     else 
     {
-      sprintf(filename, "%s/%08d/rsl.out.%08d","TASKOUTPUT",*me,*me) ;
+      sprintf(filename, "%s/%05d/rsl.out.%05d","TASKOUTPUT",*me,*me) ;
     }
         
    if ((newfd = open( filename, O_CREAT | O_WRONLY | O_TRUNC, 0666 )) < 0 )
@@ -209,7 +209,7 @@ void RSL_LITE_ERROR_DUP1 ( int *me , int *size )
    }
    else 
    {
-     sprintf(filename, "%s/%08d/rsl.error.%08d","TASKOUTPUT",*me,*me) ;
+     sprintf(filename, "%s/%05d/rsl.error.%05d","TASKOUTPUT",*me,*me) ;
    }
    if ((newfd = open( filename, O_CREAT | O_WRONLY | O_TRUNC, 0666 )) < 0 )
    {
