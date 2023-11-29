@@ -1246,7 +1246,7 @@ BENCH_END(hor_diff_tim)
              q_sq = grid%q_sq, q_sq_prog = grid%q_sq_tmp, q_sq_tend = q_sq_tend_tmp, &
              q_sq_vdiff_tend = grid%q_sq_vdiff, q_sq_hdiff_tend = grid%q_sq_hdiff, q_sq_shear_tend = grid%q_sq_shear, &
              q_sq_buoyancy_tend = grid%q_sq_buoyancy, q_sq_dissip_tend = grid%q_sq_dissip, &
-             khx = grid%tf_khx, khy = grid%tf_khy, khz = grid%tf_khz, &
+             khx = grid%tf_khx, khy = grid%tf_khy, khz = grid%tf_khz, Psig_bl = grid%Psig_bl, &
              l_master = grid%l_master, l_master_at_mass = grid%l_master_at_mass, l_boulac = grid%l_boulac, & ! ok
              msfux = grid%msfux, msfuy = grid%msfuy, msfvx = grid%msfvx, &
              msfvy = grid%msfvy, msftx = grid%msftx, msfty = grid%msfty, &

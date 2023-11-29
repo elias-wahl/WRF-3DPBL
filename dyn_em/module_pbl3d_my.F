@@ -73,7 +73,7 @@
     subroutine Calc_turb_fluxes_my (config_flags, dz, z_at_mass, z_at_w, u, v, w, th, th2, qv, thetav, tsk, t2, q2, psfc, rho, ust, hfx, qfx, rmol, &
               du_dx, du_dy, du_dz, dv_dx, dv_dy, dv_dz, dw_dx, dw_dy, dw_dz, dqv_dx, dqv_dy, dqv_dz, dthetav_dx, dthetav_dy, dthetav_dz, &
               dqc_dz, dqr_dz, dqi_dz, dqs_dz, dqg_dz, dqnc_dz, dqnr_dz, dqni_dz, dqnwfa_dz, dqnifa_dz, itimestep, ss, n_tracer, q_sq, q_sq_prog, &
-              l_master, l_master_at_mass, l_boulac, turb_flux_u2, turb_flux_v2, turb_flux_w2, turb_flux_uv, &
+              Psig_bl, l_master, l_master_at_mass, l_boulac, turb_flux_u2, turb_flux_v2, turb_flux_w2, turb_flux_uv, &
               turb_flux_uw, turb_flux_vw, turb_flux_utheta_v, turb_flux_vtheta_v, turb_flux_wtheta_v, turb_flux_theta2_v, turb_flux_uqv, &
               turb_flux_vqv, turb_flux_wqv, turb_flux_utheta, turb_flux_vtheta, turb_flux_wtheta, turb_flux_uqc, turb_flux_vqc, &
               turb_flux_wqc, turb_flux_uqr, turb_flux_vqr, turb_flux_wqr, turb_flux_uqi, turb_flux_vqi, turb_flux_wqi, &
@@ -108,7 +108,7 @@
       real, dimension (ims:ime, kms:kme, jms:jme), intent (inout) :: l_master, l_master_at_mass, l_boulac
       real, dimension (ims:ime, jms:jme),          intent (in)    :: msfux, msfuy, msfvx, msfvy, msftx, msfty
       real, dimension (ims:ime, jms:jme),          intent (in)    :: tsk, t2, thetav, q2, psfc, ust, hfx, qfx, rmol, xland
-      real, dimension (ims:ime, jms:jme),          intent (inout) :: pblh
+      real, dimension (ims:ime, jms:jme),          intent (inout) :: pblh, Psig_bl
       real, dimension (ims:ime, jms:jme),          intent (in)    :: mut
       real, dimension (kms:kme),                   intent (in)    :: c1h, c2h
       real, dimension (ims:ime, kms:kme, jms:jme), intent (inout) :: turb_flux_u2, turb_flux_v2, turb_flux_w2,  &
@@ -130,8 +130,16 @@
       logical, parameter :: DEBUG = .false.
       integer :: i, j, k, i_start, i_end, j_start, j_end, ktf
 
+        ! Diagnose PBL height
+      call Diagnose_pbl_height (thetav, q_sq, z_at_w, dz, xland, pblh, ids, ide, jds, jde, kds, kde, &
+          ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+
+        ! Calculate scale-aware tapering function
+      call Calc_scale_aware (config_flags%pbl3d_scale_aware, dx, pblh, Psig_bl, ids, ide, jds, jde, kds, kde, &
+          ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+
       if (config_flags%pbl3d_opt < 2) then  ! PBL approx analytical solution only
-        call Calc_fluxes_pbl_approx (config_flags, ss, l_master, l_boulac, du_dz, dv_dz, dthetav_dz, dqv_dz, &
+        call Calc_fluxes_pbl_approx (config_flags, ss, Psig_bl, l_master, l_boulac, du_dz, dv_dz, dthetav_dz, dqv_dz, &
             dqc_dz, dqr_dz, dqi_dz, dqs_dz, dqg_dz, dqnc_dz, dqnr_dz, dqni_dz, dqnwfa_dz, dqnifa_dz, &
             th2, qv, dn, dnw, fnm, fnp, dx, dy, dz, z_at_w, zx, zy, msftx, msfty, rdz, rdzw, cf1, cf2, cf3, dt, id, &
             ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts,    &
@@ -146,7 +154,7 @@
             turb_flux_uqnwfa, turb_flux_vqnwfa, turb_flux_wqnwfa, turb_flux_uqnifa, turb_flux_vqnifa, turb_flux_wqnifa, &
             u, v, w, thetav, rho, ust, hfx, qfx, rmol)
       else if (config_flags%pbl3d_opt == 2) then  ! Full 3D numerical solution
-        call Calc_fluxes (config_flags, id, config_flags%specified, q_sq, q_sq_prog, l_master, l_boulac, &
+        call Calc_fluxes (config_flags, id, config_flags%specified, q_sq, q_sq_prog, Psig_bl, l_master, l_boulac, &
             du_dx, du_dy, du_dz, dv_dx, dv_dy,   &
             dv_dz, dw_dx, dw_dy, dw_dz, dthetav_dx, dthetav_dy, dthetav_dz, dqv_dx, dqv_dy,  &
             dqv_dz, turb_flux_u2, turb_flux_v2, turb_flux_w2, turb_flux_uv, turb_flux_uw,    &
@@ -156,10 +164,6 @@
             dz, rdzw, z_at_w, fnm, fnp, cf1, cf2, cf3, dn, dnw, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme,  &
             its, ite, jts, jte, kts, kte)
       end if
-
-        ! Diagnose PBL height
-      call Diagnose_pbl_height (thetav, q_sq, z_at_w, dz, xland, pblh, ids, ide, jds, jde, kds, kde, &
-          ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
       if (DEBUG) print *, 'Done Calc_turb_fluxes_my...'
 
@@ -617,7 +621,7 @@
     end subroutine Calc_l_boulac_master_algebra
 
 
-    subroutine Calc_fluxes_pbl_approx (config_flags, ss, l_master, l_boulac, du_dz, dv_dz, dthetav_dz, dqv_dz, &
+    subroutine Calc_fluxes_pbl_approx (config_flags, ss, Psig_bl, l_master, l_boulac, du_dz, dv_dz, dthetav_dz, dqv_dz, &
               dqc_dz, dqr_dz, dqi_dz, dqs_dz, dqg_dz, dqnc_dz, dqnr_dz, dqni_dz, dqnwfa_dz, dqnifa_dz, &
               t, qv, dn, dnw, fnm, fnp, dx, dy, dz, z_at_w, zx, zy, msftx, msfty, rdz, rdzw, cf1, cf2, cf3, dt, id, &
               ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts,    &
@@ -650,6 +654,7 @@
       integer,                                     intent (in)    :: ss
 
       real, dimension (kms:kme),                   intent (in)    :: dn, dnw, fnm, fnp
+      real, dimension (ims:ime, jms:jme),          intent (in)    :: Psig_bl
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: dz, zx, zy, rdz, rdzw, z_at_w
       real,                                        intent (in)    :: cf1, cf2, cf3, dt, dx, dy
       real, dimension (its:ite, kts:kte, jts:jte), intent (in)    :: du_dz, dv_dz, dthetav_dz, dqv_dz, &
@@ -705,6 +710,9 @@
         call Calc_l_messinger_master_algebra (q_sq, dz, rdzw, rmol, turb_flux_wtheta_v, dthetav_dz, l_master, &
             l_boulac, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
       end if
+
+        ! Apply scale-aware tapering
+      call Make_scale_aware (Psig_bl, l_master, l_boulac, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
         ! Diagnose momentum, heat, moisture fluxes for pbl approx
       if ( config_flags%pbl3d_prog .eq. 0 ) then  ! For level 2 model, no need for realizability
@@ -861,7 +869,7 @@
     end subroutine Prep_for_fluxes_l2p5_pbl_approx
 
 
-    subroutine Calc_fluxes (config_flags, id, specified, q_sq, q_sq_prog, l_master, l_boulac, du_dx, du_dy, du_dz, dv_dx, dv_dy,  &
+    subroutine Calc_fluxes (config_flags, id, specified, q_sq, q_sq_prog, Psig_bl, l_master, l_boulac, du_dx, du_dy, du_dz, dv_dx, dv_dy,  &
         dv_dz, dw_dx, dw_dy, dw_dz, dthetav_dx, dthetav_dy, dthetav_dz, dqv_dx, dqv_dy, &
         dqv_dz, turb_flux_u2, turb_flux_v2, turb_flux_w2, turb_flux_uv, turb_flux_uw,   &
         turb_flux_vw, turb_flux_utheta_v, turb_flux_vtheta_v, turb_flux_wtheta_v,       &
@@ -907,6 +915,7 @@
       real, dimension (ims:ime, jms:jme),          intent (in)    :: ust, hfx, qfx, rmol
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: dz, rdzw, z_at_w
       real, dimension (kms:kme),                   intent (in)    :: fnm, fnp, dn, dnw
+      real, dimension (ims:ime, jms:jme),          intent (in)    :: Psig_bl
       real,                                        intent (in)    :: cf1, cf2, cf3
 
         ! Local vars
@@ -963,6 +972,9 @@
         call Calc_l_messinger_master_algebra (q_sq, dz, rdzw, rmol, turb_flux_wtheta_v, dthetav_dz, l_master, &
             l_boulac, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
       end if
+
+        ! Apply scale-aware tapering
+      call Make_scale_aware (Psig_bl, l_master, l_boulac, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
       mat_cond_heat(its:ite,kts:kte,jts:jte) = -9999.
       mat_cond_moist(its:ite,kts:kte,jts:jte) = -9999.
@@ -2916,7 +2928,7 @@
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !                                                                      !
       !                  NOTES ON THE PBLH FORMULATION                       !
-      !                  ADOPTED FROM MYNN PBL SCHEME                        !
+      !                  ADAPTED FROM MYNN PBL SCHEME                        !
       !                                                                      !
       ! The 1.5-theta-increase method defines PBL heights as the level at    !
       ! which the potential temperature first exceeds the minimum potential  !
@@ -3036,6 +3048,97 @@
       end do
 
     end subroutine Diagnose_pbl_height
+
+
+    subroutine Calc_scale_aware (pbl3d_scale_aware, dx, pblh, Psig_bl, ids, ide, jds, jde, kds, kde, &
+              ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !                                                                          !
+      !              NOTES ON THE SCALE-AWARE FORMULATION                        !
+      !                  ADAPTED FROM MYNN PBL SCHEME                            !
+      !                                                                          !
+      ! JOE: add scale-aware factor (Psig) here, taken from Honnert et al.       !
+      ! (2011, JAS) and/or from Hyeyum Hailey Shin and Song-You Hong (2013, JAS) !
+      !                                                                          !
+      ! Psig_bl tapers local mixing by adjusting magnitude of length scales      !
+      !                                                                          !
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+      implicit none
+
+      integer,                                     intent (in)    :: pbl3d_scale_aware
+      real, dimension (ims:ime, jms:jme),          intent (in)    :: pblh
+      real, dimension (ims:ime, jms:jme),          intent (out)   :: Psig_bl
+      real,                                        intent (in)    :: dx
+      integer,                                     intent (in)    :: ids, jds, ide, jde, kds, kde, &
+                                                                     ims, ime, jms, jme, kms, kme, &
+                                                                     its, ite, jts, jte, kts, kte
+
+        ! local vars
+      integer :: i, j, k, i_start, i_end, j_start, j_end
+      real :: dxdh
+
+        ! Define dimensions
+      i_start = its
+      i_end = Min (ite, ide - 1)
+      j_start = jts
+      j_end = Min (jte, jde - 1)
+
+        ! Compute Psig_bl
+      Psig_bl(i_start:i_end,j_start:j_end) = 1.0
+
+      if (pbl3d_scale_aware .gt. 0) then  ! scale-aware
+        do j = j_start, j_end
+          do i = i_start, i_end
+            dxdh = MAX(2.5*dx,10.)/MIN(pblh(i,j),3000.)
+
+            ! Honnert et al. 2011
+            ! New form to preseve parameterized mixing - only down 5% at dx = 750 m
+            Psig_bl(i,j) = ((dxdh**2) + 0.106*(dxdh**0.667))/((dxdh**2) + 0.066*(dxdh**0.667) + 0.071)
+
+            if(Psig_bl(i,j) > 1.0) Psig_bl(i,j) = 1.0
+            if(Psig_bl(i,j) < 0.0) Psig_bl(i,j) = 0.0
+          end do
+        end do
+      end if
+
+    end subroutine Calc_scale_aware
+
+
+    subroutine Make_scale_aware (Psig_bl, l_master, l_boulac, ids, ide, jds, jde, kds, kde, &
+              ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+
+      implicit none
+
+      real, dimension (ims:ime, jms:jme),          intent (in)    :: Psig_bl
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (inout) :: l_master, l_boulac
+      integer,                                     intent (in)    :: ids, jds, ide, jde, kds, kde, &
+                                                                     ims, ime, jms, jme, kms, kme, &
+                                                                     its, ite, jts, jte, kts, kte
+
+        ! local vars
+      integer :: i, j, k, ktf, i_start, i_end, j_start, j_end
+
+        ! Define dimensions
+      i_start = its
+      i_end = Min (ite, ide - 1)
+      j_start = jts
+      j_end = Min (jte, jde - 1)
+
+      ktf = Min (kte, kde - 1)
+
+        ! Compute Psig_bl
+      do j = j_start, j_end
+        do k = kts, ktf
+          do i = i_start, i_end
+            l_master(i,k,j) = l_master(i,k,j) * Psig_bl(i,j)
+            l_boulac(i,k,j) = l_boulac(i,k,j) * Psig_bl(i,j)
+          end do
+        end do
+      end do
+
+    end subroutine Make_scale_aware
 
 
     subroutine Set_model_constants (pbl3d_constants)

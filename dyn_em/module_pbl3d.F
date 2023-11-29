@@ -613,7 +613,7 @@
               thetav, tsk, t2, q2, psfc, rho, ust, hfx, qfx, rmol, &
               itimestep, ss, n_tracer, q_sq, q_sq_prog, q_sq_tend, &
               q_sq_vdiff_tend, q_sq_hdiff_tend, q_sq_shear_tend, q_sq_buoyancy_tend, q_sq_dissip_tend, &
-              khx, khy, khz, l_master, l_master_at_mass, l_boulac, turb_flux_u2, turb_flux_v2, turb_flux_w2,   &
+              khx, khy, khz, Psig_bl, l_master, l_master_at_mass, l_boulac, turb_flux_u2, turb_flux_v2, turb_flux_w2,   &
               turb_flux_uv, turb_flux_uw, turb_flux_vw, turb_flux_utheta_v, turb_flux_vtheta_v, turb_flux_wtheta_v, &
               turb_flux_theta2_v, turb_flux_uqv, turb_flux_vqv, turb_flux_wqv, turb_flux_uqc, turb_flux_vqc, turb_flux_wqc, &
               turb_flux_uqr, turb_flux_vqr, turb_flux_wqr, turb_flux_uqi, turb_flux_vqi, turb_flux_wqi, &
@@ -658,7 +658,7 @@
       real, dimension (ims:ime, kms:kme, jms:jme), intent (inout) :: l_master, l_master_at_mass, l_boulac
       real, dimension (ims:ime, jms:jme),          intent (in)    :: msfux, msfuy, msfvx, msfvy, msftx, msfty
       real, dimension (ims:ime, jms:jme),          intent (in)    :: tsk, t2, q2, psfc, ust, hfx, qfx, rmol, xland
-      real, dimension (ims:ime, jms:jme),          intent (out)   :: pblh
+      real, dimension (ims:ime, jms:jme),          intent (out)   :: pblh, Psig_bl
       real, dimension (ims:ime, jms:jme),          intent (in)    :: mut
       real, dimension (kms:kme),                   intent (in)    :: c1h, c2h
       real, dimension (ims:ime, kms:kme, jms:jme), intent (inout) :: turb_flux_u2, turb_flux_v2, turb_flux_w2,  &
@@ -733,7 +733,7 @@
       call Calc_turb_fluxes_my (config_flags, dz, z_at_mass, z_at_w, u, v, w, th, th2, qv, thetav, tsk, t2, q2, psfc, rho, ust, hfx, qfx, rmol, &
           du_dx, du_dy, du_dz, dv_dx, dv_dy, dv_dz, dw_dx, dw_dy, dw_dz, dqv_dx, dqv_dy, dqv_dz, dthetav_dx, dthetav_dy, dthetav_dz, &
           dqc_dz, dqr_dz, dqi_dz, dqs_dz, dqg_dz, dqnc_dz, dqnr_dz, dqni_dz, dqnwfa_dz, dqnifa_dz, itimestep, ss, n_tracer, q_sq, q_sq_prog, &
-          l_master, l_master_at_mass, l_boulac, turb_flux_u2, turb_flux_v2, turb_flux_w2, turb_flux_uv, &
+          Psig_bl, l_master, l_master_at_mass, l_boulac, turb_flux_u2, turb_flux_v2, turb_flux_w2, turb_flux_uv, &
           turb_flux_uw, turb_flux_vw, turb_flux_utheta_v, turb_flux_vtheta_v, turb_flux_wtheta_v, turb_flux_theta2_v, turb_flux_uqv, &
           turb_flux_vqv, turb_flux_wqv, turb_flux_utheta, turb_flux_vtheta, turb_flux_wtheta, turb_flux_uqc, turb_flux_vqc, &
           turb_flux_wqc, turb_flux_uqr, turb_flux_vqr, turb_flux_wqr, turb_flux_uqi, turb_flux_vqi, turb_flux_wqi, &

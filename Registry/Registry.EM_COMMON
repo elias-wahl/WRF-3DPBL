@@ -1241,6 +1241,7 @@ state   real   phi_fl                ikj     misc        1         -       -    
 state   real   tf_khx                ikj     misc        1         Z       -       "tf_khx"         "Eddy diffusivity of heat x direction"    "m2 s-1"
 state   real   tf_khy                ikj     misc        1         Z       -       "tf_khy"         "Eddy diffusivity of heat y direction"    "m2 s-1"
 state   real   tf_khz                ikj     misc        1         Z       -       "tf_khz"         "Eddy diffusivity of heat z direction"    "m2 s-1"
+state   real   Psig_bl               ij      misc        1         -       rh      "Psig_bl"        "Scale-aware tapering function"           ""
 
 rconfig  character pbl3d_constants      namelist,dynamics          1       "MY82"    -     "pbl3d_constants"      "Set of model constants"  ""
 rconfig  integer   pbl3d_opt            namelist,dynamics    max_domains      0      -     "pbl3d_opt"            "PBL3D mixing option" ""
@@ -1249,6 +1250,7 @@ rconfig  integer   pbl3d_l_opt          namelist,dynamics    max_domains      1 
 rconfig  integer   pbl3d_nsteps         namelist,dynamics    max_domains      1      -     "pbl3d_nsteps"         "PBL3D number of substeps" ""
 rconfig  integer   pbl3d_prog           namelist,dynamics    max_domains      0      -     "pbl3d_prog"           "PBL3D prognostic TKE" ""
 rconfig  integer   pbl3d_scalar_mix     namelist,dynamics    max_domains      0      -     "pbl3d_scalar_mix"     "PBL3D scalar turbulent mixing" ""
+rconfig  integer   pbl3d_scale_aware    namelist,dynamics    max_domains      1      -     "pbl3d_scale_aware"    "PBL3D scale-aware tapering" ""
 rconfig  integer   flux_limiter_w       namelist,dynamics    max_domains      0      -     "flux_limiter_w"       "Flux limiter on vertical advection of w" ""
 
 rconfig  integer   pbl3d_used           derived                    1          0      -     "pbl3d_used"           "turn on if any variation of PBL3D is used"
