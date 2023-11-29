@@ -135,7 +135,7 @@
           ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
         ! Calculate scale-aware tapering function
-      call Calc_scale_aware (config_flags%pbl3d_scale_aware, dx, pblh, Psig_bl, ids, ide, jds, jde, kds, kde, &
+      call Calc_scale_aware (config_flags%pbl3d_scale_aware, dx, dy, msftx, msfty, pblh, Psig_bl, ids, ide, jds, jde, kds, kde, &
           ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
       if (config_flags%pbl3d_opt < 2) then  ! PBL approx analytical solution only
@@ -3050,7 +3050,7 @@
     end subroutine Diagnose_pbl_height
 
 
-    subroutine Calc_scale_aware (pbl3d_scale_aware, dx, pblh, Psig_bl, ids, ide, jds, jde, kds, kde, &
+    subroutine Calc_scale_aware (pbl3d_scale_aware, dx, dy, msftx, msfty, pblh, Psig_bl, ids, ide, jds, jde, kds, kde, &
               ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -3068,16 +3068,16 @@
       implicit none
 
       integer,                                     intent (in)    :: pbl3d_scale_aware
-      real, dimension (ims:ime, jms:jme),          intent (in)    :: pblh
+      real, dimension (ims:ime, jms:jme),          intent (in)    :: pblh, msftx, msfty
       real, dimension (ims:ime, jms:jme),          intent (out)   :: Psig_bl
-      real,                                        intent (in)    :: dx
+      real,                                        intent (in)    :: dx, dy
       integer,                                     intent (in)    :: ids, jds, ide, jde, kds, kde, &
                                                                      ims, ime, jms, jme, kms, kme, &
                                                                      its, ite, jts, jte, kts, kte
 
         ! local vars
       integer :: i, j, k, i_start, i_end, j_start, j_end
-      real :: dxdh
+      real :: dxdy, dxdh
 
         ! Define dimensions
       i_start = its
@@ -3091,7 +3091,8 @@
       if (pbl3d_scale_aware .gt. 0) then  ! scale-aware
         do j = j_start, j_end
           do i = i_start, i_end
-            dxdh = MAX(2.5*dx,10.)/MIN(pblh(i,j),3000.)
+            dxdy = ( dx/msftx(i,j) * dy/msfty(i,j) )**0.5
+            dxdh = MAX(2.5*dxdy,10.)/MIN(pblh(i,j),3000.)
 
             ! Honnert et al. 2011
             ! New form to preseve parameterized mixing - only down 5% at dx = 750 m
