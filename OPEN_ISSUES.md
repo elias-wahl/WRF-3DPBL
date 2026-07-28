@@ -1,5 +1,55 @@
 # Open issues / questions — 3D PBL rebase (WRF v4.4 -> v4.8.0)
 
+## Status update (2026-07-28): WRFlux integration, phase 2
+
+Branch `3dpbl_wrflux_v4.8.0` (built on top of `3dpbl_on_v4.8.0`) merges
+matzegoebel/WRFlux's full patch (squashed from its v4.6.0 fork point,
+437 commits, 47 files, +16k/-236 lines) on top of the rebased pbl3d code.
+The merge itself needed only 6 real conflicts despite the scale (see commit
+`5cd6bf989`), plus one real bug the merge exposed at compile time (a
+`doing_q_sq` argument silently dropped from one of two sibling
+`advect_scalar` calls, fixed in `8c3195c98`).
+
+**Vertical SGS flux integration (done, empirically validated):** WRFlux's
+two generic mechanisms for populating `ftz_sgs`/`fqz_sgs`/`fuz_sgs`/`fvz_sgs`
+(`fluxes_from_bl_tend` for standard PBL schemes, `vertical_diffusion_implicit`
+for km_opt=5) are both gated off whenever `pbl3d_opt>0`. Added
+`Populate_wrflux_sgs_from_pbl3d` in `module_pbl3d.F` (commits `f51607318`,
+`5462557ea`) which populates those arrays plus `fwz_sgs` directly from
+pbl3d's own native kinematic flux diagnostics (`turb_flux_wtheta[_v]`,
+`turb_flux_wqv`, `turb_flux_uw`, `turb_flux_vw`, `turb_flux_w2`), converted
+to WRFlux's density-weighted convention and correctly staggered (rho
+interpolated mass-point -> w-level via fnm/fnp, momentum terms staggered
+onto u/v points via two-point averaging) — mirroring the exact conventions
+`module_diffusion_em.F`/`vertical_diffusion_implicit` use elsewhere in this
+codebase. Validated with a controlled test (fixed hfx=50 W/m^2 injected at
+the pbl3d call site, mesoscale dx=4000m case): `FTZ_SGS_MEAN` max (0.0449)
+matches the hand-derived theoretical surface value (hfx/(rho*cp)*rho ≈
+0.050) closely, with the domain+height-averaged mean correctly much
+smaller as the flux decays toward the PBL top. Momentum/moisture/w-variance
+terms all show sensible non-zero magnitudes and physically expected signs.
+
+**Not yet done: horizontal SGS flux integration** (`ftx_sgs`, `fty_sgs`,
+`fqx_sgs`, `fqy_sgs`, `fux_sgs`, `fvx_sgs`, `fvy_sgs`, `fwx_sgs`, `fwy_sgs`).
+Same gap exists (`module_first_rk_step_part2.F` already has
+`IF (config_flags%pbl3d_opt < 1)` gating the whole `horizontal_diffusion_2`
+call that would otherwise populate these). Matters for a full TKE budget in
+complex terrain (e.g. i-Box stations near Innsbruck) where horizontal
+transport isn't negligible. Complication found: pbl3d's Registry already
+declares `turb_flux_u2_mass`/`v2_mass`/`uv_mass`/`uw_mass`/`vw_mass`/
+`wtheta_v_mass` (mass-point variants that would avoid needing vertical
+de-staggering) but **these are never actually assigned anywhere in
+`module_pbl3d.F` or `module_pbl3d_my.F`** — confirmed dead Registry entries.
+Will need manual vertical de-staggering (w-level -> mass-level, simple
+0.5*(k)+0.5*(k+1) average) from the Z-staggered raw diagnostics instead.
+
+**Not yet done: rigorous WRFlux-native budget closure.** The validation
+above is a physical-magnitude sanity check, not WRFlux's own bit-for-bit
+closure test (which needs their Python toolkit under `wrflux/wrflux/`,
+comparing resolved+SGS+tendency terms to near machine precision). Worth
+running once the horizontal terms are in, if a rigorous closure number is
+needed (e.g. before publishing results based on this integration).
+
 ## 1. sfclay HFX discrepancy between v4.4 and v4.8.0 (unresolved)
 
 **Symptom:** In an idealized mesoscale test case (dx=4000m, `pbl3d_opt=2`,
