@@ -1,5 +1,128 @@
 # Open issues / questions — 3D PBL rebase (WRF v4.4 -> v4.8.0)
 
+## MAIN PROBLEM: full-3D (pbl3d_opt=2) closure has no realizability safeguard
+(investigated 2026-07-28, not yet fixed)
+
+**Which implementation is which:** confirmed directly in code
+(`dyn_em/module_pbl3d_my.F:141`, inside `Calc_turb_fluxes_my`):
+```fortran
+if (config_flags%pbl3d_opt < 2) then  ! PBL approx analytical solution only
+  call Calc_fluxes_pbl_approx (...)
+else if (config_flags%pbl3d_opt == 2) then  ! Full 3D numerical solution
+  call Calc_fluxes (...)
+```
+So `pbl3d_opt=-1` or `1` -> the homogeneity-approximation ("approx 3D") path,
+analytically solvable, no matrix inversion. `pbl3d_opt=2` -> the "full 3D"
+path: builds the complete anisotropic second-moment system (9-component
+deformation tensor + 3D buoyancy gradient) and solves it numerically via
+LAPACK (`dgesvx`) in `Solve_turb_system` (10x10, momentum+heat) and
+`Solve_turb_system_moist` (4x4, moisture), called from `Diagnose_fluxes`.
+This matches the two Kosović-Juliano formulations from the user's
+description exactly.
+
+**Root cause of the instability, found:**
+
+1. **The full closure's own TKE-prep path is disabled by its original
+   author**, with an explicit comment admitting why
+   (`module_pbl3d_my.F:940`, inside `Calc_fluxes`):
+   ```fortran
+   ! Full 3D level 2 model is unstable right now
+   !      if ( config_flags%pbl3d_prog .eq. 0 ) then   ! level 2 model
+   !        call Prep_for_fluxes_l2 (...)
+   !      else if ( config_flags%pbl3d_prog .gt. 0 ) then   ! level 2.5 model
+   !        call Prep_for_fluxes_l2p5 (...)
+   !      end if
+   ! Calling level 2 model PBL approx for now
+   if ( config_flags%pbl3d_prog .eq. 0 ) then
+     call Prep_for_fluxes_l2_pbl_approx (...)
+   else if ( config_flags%pbl3d_prog .gt. 0 ) then
+     call Prep_for_fluxes_l2p5_pbl_approx (...)
+   end if
+   ```
+   So even in "full 3D" mode, the TKE (`q_sq`) and master length scale
+   (`l_master`) that feed the full anisotropic solve are computed by the
+   simpler, homogeneous-approximation closure instead of a self-consistent
+   full-3D TKE budget — an internal inconsistency the original author was
+   already aware of and worked around rather than fixed.
+
+2. **No realizability/condition check on the linear solve's output.**
+   `Solve_turb_system`/`Solve_turb_system_moist` (both in
+   `module_pbl3d_my.F`) call `dgesvx`, which returns both an error/status
+   code (`info`) and a reciprocal condition number estimate (`rcond`) —
+   exactly the diagnostics needed to detect an ill-conditioned or failed
+   solve. Neither is used:
+   ```fortran
+   call dgesvx ('N', 'N', N_VARS, 1, a, N_VARS, af, N_VARS, ipiv, equed, &
+       rsf, csf, b, N_VARS, x, N_VARS, rcond, ferr, berr, work, iwork, info)
+   !      mat_cond = 1. / rcond          <-- commented out, in BOTH subroutines
+   ```
+   `info` is declared but never read after the call, in either subroutine.
+   `mat_cond_heat`/`mat_cond_moist` (the caller's diagnostic arrays) are
+   initialized to a `-9999.` sentinel in `Calc_fluxes` and never touched
+   again — confirmed by grep, this diagnostic is 100% dead code.
+
+3. **No realizability clipping on the solved fluxes.** After the solve,
+   `Diagnose_fluxes` copies `tf_u2`/`tf_v2`/`tf_w2`/etc. straight into
+   `turb_flux_u2`/`turb_flux_v2`/`turb_flux_w2`/etc. with zero floor/bound
+   check — no non-negativity floor on the variances (which are physically
+   required to be >=0), no Cauchy-Schwarz-type bound on the correlations
+   (e.g. `tf_uw^2 <= tf_u2*tf_w2`). By contrast, the **approx** path
+   explicitly implements the Helfand & Labraga (1988, JAS) realizability
+   criterion for exactly this purpose — see the comment "so that we can
+   apply HL88 realizability criterion" in
+   `Prep_for_fluxes_l2p5_pbl_approx`, and the `q_sq_hl88`/`use_hl88`
+   machinery that backs it. This is very likely *why* the approx path is
+   comparatively stable and the full path is not: one has an enforced
+   realizability guarantee, the other has none at all.
+
+4. **Plausible destabilization mechanism, matching the user's own
+   description** (unstable especially over complex terrain, not fully
+   stable even over flat terrain): the diagonal of the 10x10 matrix
+   combines a stabilizing "return-to-isotropy" relaxation term
+   (`q/(2*a_1*l)`, always positive) with the local mean-flow strain rate
+   added directly on top (e.g. `a(1,1) = q/(2*a_1*l) + 2*u_x` for the u2
+   equation, `Fill_in_a_matrix`, `module_pbl3d_my.F:1529`). Sufficiently
+   strong local convergence/divergence or shear (more likely, and more
+   extreme, over complex terrain, but also possible in vigorous convective
+   updrafts/downdrafts over flat terrain) can degrade or destroy the
+   matrix's diagonal dominance, pushing the solve toward ill-conditioning
+   or outright unphysical (e.g. negative-variance) output — with nothing
+   in the code to detect or catch it before that output is used directly
+   as SGS forcing on the resolved flow, which can then further amplify the
+   local strain on the next timestep. This is consistent with the extreme
+   vertical-velocity blowup (`w-cfl` ~14, SIGSEGV) observed empirically
+   during Phase 1 regression testing under a strong prescribed surface
+   flux, on both the pre- and post-rebase code (i.e. a longstanding bug,
+   not something introduced by the v4.8.0 rebase).
+
+**Recommended fix, in order of effort/risk:**
+
+1. *Immediate, low-risk safety net:* re-enable `mat_cond = 1./rcond` and add
+   an explicit `info` check after both `dgesvx` calls. Whenever
+   `info /= 0` or `rcond` falls below a safe threshold (a common rule of
+   thumb is `~1e-6`; LAPACK's own docs discuss the precision loss implied
+   by small `rcond`), fall back to the already-implemented, analytically
+   realizable `_pbl_approx` solution for that column/level instead of
+   trusting the raw linear-solve output.
+2. *Realizability clipping:* independent of #1, floor `tf_u2`/`tf_v2`/
+   `tf_w2` at a small positive value (matching the existing `Q_SQ_MIN`
+   floor already used elsewhere for `q_sq`), and check/clip the
+   off-diagonal correlations against a Cauchy-Schwarz-consistent bound.
+   Catches cases where the matrix was well-conditioned but the solution
+   itself still isn't physical.
+3. *Root-cause / longer-term fix:* investigate and properly re-derive the
+   disabled `Prep_for_fluxes_l2`/`Prep_for_fluxes_l2p5` (the fully
+   self-consistent full-3D TKE prep), rather than continuing to feed the
+   full anisotropic solve a TKE/length-scale computed by the simpler
+   homogeneous closure. Bigger, more open-ended effort — needs
+   understanding why the original author found *that* code unstable
+   (plausibly the same missing-realizability issue, one level up in the
+   TKE equation itself).
+
+Not yet implemented — this is a diagnosis, pending a decision on which fix
+to pursue first.
+
+
 ## Status update (2026-07-28): WRFlux integration, phase 2
 
 Branch `3dpbl_wrflux_v4.8.0` (built on top of `3dpbl_on_v4.8.0`) merges
@@ -29,19 +152,45 @@ matches the hand-derived theoretical surface value (hfx/(rho*cp)*rho ≈
 smaller as the flux decays toward the PBL top. Momentum/moisture/w-variance
 terms all show sensible non-zero magnitudes and physically expected signs.
 
-**Not yet done: horizontal SGS flux integration** (`ftx_sgs`, `fty_sgs`,
-`fqx_sgs`, `fqy_sgs`, `fux_sgs`, `fvx_sgs`, `fvy_sgs`, `fwx_sgs`, `fwy_sgs`).
-Same gap exists (`module_first_rk_step_part2.F` already has
-`IF (config_flags%pbl3d_opt < 1)` gating the whole `horizontal_diffusion_2`
-call that would otherwise populate these). Matters for a full TKE budget in
-complex terrain (e.g. i-Box stations near Innsbruck) where horizontal
-transport isn't negligible. Complication found: pbl3d's Registry already
-declares `turb_flux_u2_mass`/`v2_mass`/`uv_mass`/`uw_mass`/`vw_mass`/
-`wtheta_v_mass` (mass-point variants that would avoid needing vertical
-de-staggering) but **these are never actually assigned anywhere in
-`module_pbl3d.F` or `module_pbl3d_my.F`** — confirmed dead Registry entries.
-Will need manual vertical de-staggering (w-level -> mass-level, simple
-0.5*(k)+0.5*(k+1) average) from the Z-staggered raw diagnostics instead.
+**Horizontal SGS flux integration (done, 2026-07-28):** `ftx_sgs`, `fty_sgs`,
+`fqx_sgs`, `fqy_sgs`, `fux_sgs`, `fvx_sgs`, `fvy_sgs`, `fwx_sgs`, `fwy_sgs` are
+now all populated too (commit `cd1cb48e2`), extending
+`Populate_wrflux_sgs_from_pbl3d`. As found: pbl3d's Registry-declared
+`turb_flux_u2_mass`/`v2_mass`/`uv_mass`/`uw_mass`/`vw_mass`/`wtheta_v_mass`
+mass-point variants are dead entries (never assigned anywhere in
+`module_pbl3d.F`/`module_pbl3d_my.F`), so vertical de-staggering
+(w-level -> mass-level, two-point average) was done manually from the raw
+Z-staggered diagnostics instead. `fwx_sgs`/`fwy_sgs` reuse `fuz_sgs`/`fvz_sgs`
+directly rather than recomputing, since they're the same physical stress
+component (u'w'/v'w') viewed from the w-momentum equation's horizontal-flux
+side instead of the u/v-momentum equation's vertical side. Validated:
+`FWX_SGS_MEAN`/`FWY_SGS_MEAN` came out bit-identical to `FUZ_SGS_MEAN`/
+`FVZ_SGS_MEAN` as designed, and the horizontal heat/moisture flux means came
+out near-zero as expected for the horizontally homogeneous periodic test
+case, with sensible non-zero variability.
+
+One caught-but-not-yet-fixed bug during implementation: an early version
+computed the vertically de-staggered mass-level fields (e.g. `utheta_mass`)
+as tile-local intermediate arrays, then read a `j-1`/`i-1` neighbor from
+them for `fty_sgs`/`fqy_sgs`/`fvx_sgs` — but under OMP tiling, a neighboring
+tile's portion of that same tile-local array was never computed in the
+current call, so this would have read uninitialized memory. Fixed by
+inlining those specific computations directly from the grid-level
+(halo-safe) `turb_flux_*` arrays instead of via the tile-local intermediate.
+`u2_mass`/`v2_mass` were kept as tile-local arrays since `fux_sgs`/`fvy_sgs`
+only read them at the same `(i,j)`, with no neighbor offset — safe.
+
+Known remaining narrow gap: `turb_flux_utheta_v`/`turb_flux_vtheta_v` (the
+virtual-theta variants, used only when `output_dry_theta_fluxes=.false.`,
+a non-default WRFlux setting) are read with an `i-1`/`j-1` neighbor offset
+for `ftx_sgs`/`fty_sgs` but were never halo-exchanged anywhere in pbl3d's
+own code (only ever used at the same point elsewhere), unlike the plain
+`turb_flux_utheta`/`turb_flux_vtheta` (which the existing
+`HALO_EM_PHYS_DIFFUSION_PBL3D` halo macro does cover). The default case
+(`output_dry_theta_fluxes=.true.`, dry theta, what this session's testing
+used) is unaffected and halo-safe. If the non-default virtual-theta output
+is ever needed, either add a halo exchange for those two fields or add a
+new Registry halo macro entry.
 
 **Not yet done: rigorous WRFlux-native budget closure.** The validation
 above is a physical-magnitude sanity check, not WRFlux's own bit-for-bit
