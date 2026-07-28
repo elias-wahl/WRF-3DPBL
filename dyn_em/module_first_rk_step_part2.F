@@ -1452,6 +1452,7 @@ BENCH_END(hor_diff_tim)
                &,BL_PBL_PHYSICS=config_flags%bl_pbl_physics                     &
                &,PBL3D_OPT=config_flags%pbl3d_opt                               &
                &,WINDFARM_OPT=config_flags%windfarm_opt,POWER=grid%power &
+               &,THRUST=grid%thrust                                &
                &,C1=grid%c1h, C2=grid%c2h, MUT=grid%mut            &
                &,IDS=ids,IDE=ide,JDS=jds,JDE=jde,KDS=kds,KDE=kde   &
                &,IMS=ims,IME=ime,JMS=jms,JME=jme,KMS=kms,KME=kme   &
