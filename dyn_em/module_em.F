@@ -745,6 +745,7 @@ SUBROUTINE rk_tendency ( config_flags, rk_step,                           &
                              msfux, msfuy, msfvx, msfvy,   &
                              msftx, msfty, fnm, fnp,       &
                              rdx, rdy, rdnw,               &
+                             .false.,                     &
                              ids, ide, jds, jde, kds, kde, &
                              ims, ime, jms, jme, kms, kme, &
                              its, ite, jts, jte, kts, kte )
