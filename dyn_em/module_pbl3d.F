@@ -6605,7 +6605,7 @@
     end subroutine Set_init_turb_state_driver
 
 
-    subroutine Populate_wrflux_sgs_from_pbl3d (config_flags, rho, &
+    subroutine Populate_wrflux_sgs_from_pbl3d (config_flags, rho, fnm, fnp, &
         turb_flux_wtheta, turb_flux_wtheta_v, turb_flux_wqv, turb_flux_uw, turb_flux_vw, turb_flux_w2, &
         ftz_sgs, fqz_sgs, fuz_sgs, fvz_sgs, fwz_sgs, &
         ids, ide, jds, jde, kds, kde, &
@@ -6619,8 +6619,12 @@
       ! active, since pbl3d bypasses the standard PBL/km_opt=5 tendency and diffusion paths entirely.
       ! Converts pbl3d's kinematic fluxes (K m/s, m2/s2, ...) to WRFlux's dynamic (density-weighted)
       ! flux convention (rho * kinematic flux), matching the units WRFlux declares for these arrays.
-      ! Momentum fluxes are staggered onto the u/v grid via simple two-point averaging, mirroring how
-      ! vertical_diffusion_implicit stages xkxavg (mass-point eddy diffusivity) onto u/v points.
+      ! rho (rho_tmp) is mass-point/unstaggered, but the turb_flux_* arrays and ftz_sgs/fqz_sgs/fwz_sgs
+      ! are Z-staggered (w-levels), so rho is first interpolated to w-levels via fnm/fnp exactly as
+      ! module_diffusion_em.F does for xkxavg; at the surface (k=kts) the mass-level value is used
+      ! directly, matching how module_diffusion_em.F sets the surface flux from rho(i,kts,j). Momentum
+      ! fluxes are additionally staggered onto the u/v grid via the same two-point horizontal averaging
+      ! vertical_diffusion_implicit uses for xkxavg/muavg_u.
 
       use module_configure, only : grid_config_rec_type
 
@@ -6632,23 +6636,40 @@
                               ims, ime, jms, jme, kms, kme, &
                               its, ite, jts, jte, kts, kte
 
+      real, dimension (kms:kme), intent (in) :: fnm, fnp
+
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in) :: rho, &
           turb_flux_wtheta, turb_flux_wtheta_v, turb_flux_wqv, turb_flux_uw, turb_flux_vw, turb_flux_w2
 
       real, dimension (ims:ime, kms:kme, jms:jme), intent (inout) :: ftz_sgs, fqz_sgs, fuz_sgs, fvz_sgs, fwz_sgs
 
       integer :: i, j, k, ktf
+      real, dimension (ims:ime, kms:kme, jms:jme) :: rho_w
 
       ktf = min(kte, kde-1)
+
+      ! Interpolate mass-point rho onto w-levels; surface (k=kts) keeps the mass-level value
+      do j = jts, min(jte, jde-1)
+      do i = its, min(ite, ide-1)
+        rho_w(i,kts,j) = rho(i,kts,j)
+      end do
+      end do
+      do j = jts, min(jte, jde-1)
+      do k = kts+1, ktf
+      do i = its, min(ite, ide-1)
+        rho_w(i,k,j) = fnm(k)*rho(i,k,j) + fnp(k)*rho(i,k-1,j)
+      end do
+      end do
+      end do
 
       if (config_flags%output_tsgs_fluxes) then
         do j = jts, min(jte, jde-1)
         do k = kts, ktf
         do i = its, min(ite, ide-1)
           if (config_flags%output_dry_theta_fluxes) then
-            ftz_sgs(i,k,j) = rho(i,k,j) * turb_flux_wtheta(i,k,j)
+            ftz_sgs(i,k,j) = rho_w(i,k,j) * turb_flux_wtheta(i,k,j)
           else
-            ftz_sgs(i,k,j) = rho(i,k,j) * turb_flux_wtheta_v(i,k,j)
+            ftz_sgs(i,k,j) = rho_w(i,k,j) * turb_flux_wtheta_v(i,k,j)
           end if
         end do
         end do
@@ -6659,7 +6680,7 @@
         do j = jts, min(jte, jde-1)
         do k = kts, ktf
         do i = its, min(ite, ide-1)
-          fqz_sgs(i,k,j) = rho(i,k,j) * turb_flux_wqv(i,k,j)
+          fqz_sgs(i,k,j) = rho_w(i,k,j) * turb_flux_wqv(i,k,j)
         end do
         end do
         end do
@@ -6669,7 +6690,7 @@
         do j = jts, min(jte, jde-1)
         do k = kts, ktf
         do i = its, ite
-          fuz_sgs(i,k,j) = 0.5*(rho(i,k,j)+rho(i-1,k,j)) * 0.5*(turb_flux_uw(i,k,j)+turb_flux_uw(i-1,k,j))
+          fuz_sgs(i,k,j) = 0.5*(rho_w(i,k,j)+rho_w(i-1,k,j)) * 0.5*(turb_flux_uw(i,k,j)+turb_flux_uw(i-1,k,j))
         end do
         end do
         end do
@@ -6679,7 +6700,7 @@
         do j = jts, jte
         do k = kts, ktf
         do i = its, min(ite, ide-1)
-          fvz_sgs(i,k,j) = 0.5*(rho(i,k,j)+rho(i,k,j-1)) * 0.5*(turb_flux_vw(i,k,j)+turb_flux_vw(i,k,j-1))
+          fvz_sgs(i,k,j) = 0.5*(rho_w(i,k,j)+rho_w(i,k,j-1)) * 0.5*(turb_flux_vw(i,k,j)+turb_flux_vw(i,k,j-1))
         end do
         end do
         end do
@@ -6689,7 +6710,7 @@
         do j = jts, min(jte, jde-1)
         do k = kts, ktf
         do i = its, min(ite, ide-1)
-          fwz_sgs(i,k,j) = rho(i,k,j) * turb_flux_w2(i,k,j)
+          fwz_sgs(i,k,j) = rho_w(i,k,j) * turb_flux_w2(i,k,j)
         end do
         end do
         end do

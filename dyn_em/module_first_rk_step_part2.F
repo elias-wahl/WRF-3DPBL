@@ -1463,7 +1463,7 @@ BENCH_END(hor_diff_tim)
            !$OMP PARALLEL DO   &
            !$OMP PRIVATE ( ij )
            DO ij = 1 , grid%num_tiles
-             CALL Populate_wrflux_sgs_from_pbl3d ( config_flags, grid%rho_tmp,          &
+             CALL Populate_wrflux_sgs_from_pbl3d ( config_flags, grid%rho_tmp, grid%fnm, grid%fnp, &
                   grid%turb_flux_wtheta, grid%turb_flux_wtheta_v, grid%turb_flux_wqv,   &
                   grid%turb_flux_uw, grid%turb_flux_vw, grid%turb_flux_w2,              &
                   grid%ftz_sgs, grid%fqz_sgs, grid%fuz_sgs, grid%fvz_sgs, grid%fwz_sgs, &
