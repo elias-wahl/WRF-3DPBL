@@ -68,7 +68,7 @@ CONTAINS
     USE module_sfs_driver !JDM
     USE module_stoch, ONLY : update_stoch_ten, perturb_physics_tend, RAND_PERT_UPDATE, contiguize_2d
     USE module_pbl3d, ONLY : Init_temp_arrays_for_substep, Update_wrf_tends_temp_state_and_zero_tends, Allocate_temp_tends, Deallocate_temp_tends, &
-                             Calc_turb_fluxes_driver, Vertical_turb_mix, Horizontal_turb_mix
+                             Calc_turb_fluxes_driver, Vertical_turb_mix, Horizontal_turb_mix, Populate_wrflux_sgs_from_pbl3d
 
     USE module_wind_fitch, ONLY : dragforce
 
@@ -1455,6 +1455,26 @@ BENCH_END(hor_diff_tim)
 
 
          END DO ! Sub-stepping for 3DPBL
+
+         IF ( config_flags%output_sgs_fluxes .AND. config_flags%pbl3d_opt .NE. 0 ) THEN
+#ifdef DM_PARALLEL
+#          include "HALO_EM_PHYS_DIFFUSION_PBL3D.inc"
+#endif
+           !$OMP PARALLEL DO   &
+           !$OMP PRIVATE ( ij )
+           DO ij = 1 , grid%num_tiles
+             CALL Populate_wrflux_sgs_from_pbl3d ( config_flags, grid%rho_tmp,          &
+                  grid%turb_flux_wtheta, grid%turb_flux_wtheta_v, grid%turb_flux_wqv,   &
+                  grid%turb_flux_uw, grid%turb_flux_vw, grid%turb_flux_w2,              &
+                  grid%ftz_sgs, grid%fqz_sgs, grid%fuz_sgs, grid%fvz_sgs, grid%fwz_sgs, &
+                  ids, ide, jds, jde, kds, kde,                                          &
+                  ims, ime, jms, jme, kms, kme,                                          &
+                  grid%i_start(ij), grid%i_end(ij),                                      &
+                  grid%j_start(ij), grid%j_end(ij),                                      &
+                  k_start, k_end)
+           END DO
+           !$OMP END PARALLEL DO
+         END IF
 
          !$OMP PARALLEL DO   &
          !$OMP PRIVATE ( ij )

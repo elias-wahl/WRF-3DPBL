@@ -54,7 +54,7 @@
 
     public :: Init_pbl3d, &
               Init_temp_arrays_for_substep, Update_wrf_tends_temp_state_and_zero_tends, Allocate_temp_tends, Deallocate_temp_tends, &
-              Fill_l_mass_with_l_face, Calc_turb_fluxes_driver, Vertical_turb_mix, Horizontal_turb_mix
+              Fill_l_mass_with_l_face, Calc_turb_fluxes_driver, Vertical_turb_mix, Horizontal_turb_mix, Populate_wrflux_sgs_from_pbl3d
 
     real, parameter :: G_OVER_TREF = G / T0
     logical, parameter :: USE_HIGH_ORDER = .true.
@@ -6603,5 +6603,98 @@
       if (DEBUG) print *, 'Done Set_init_turb_state_driver...'
 
     end subroutine Set_init_turb_state_driver
+
+
+    subroutine Populate_wrflux_sgs_from_pbl3d (config_flags, rho, &
+        turb_flux_wtheta, turb_flux_wtheta_v, turb_flux_wqv, turb_flux_uw, turb_flux_vw, turb_flux_w2, &
+        ftz_sgs, fqz_sgs, fuz_sgs, fvz_sgs, fwz_sgs, &
+        ids, ide, jds, jde, kds, kde, &
+        ims, ime, jms, jme, kms, kme, &
+        its, ite, jts, jte, kts, kte)
+
+      ! Populates WRFlux's vertical SGS flux state arrays (ftz_sgs, fqz_sgs, fuz_sgs, fvz_sgs, fwz_sgs)
+      ! directly from the 3D PBL scheme's own native kinematic turbulent flux diagnostics. WRFlux's
+      ! generic mechanisms for this (fluxes_from_bl_tend in module_pbl_driver.F, and
+      ! vertical_diffusion_implicit in module_diffusion_em.F) are both gated off whenever pbl3d_opt is
+      ! active, since pbl3d bypasses the standard PBL/km_opt=5 tendency and diffusion paths entirely.
+      ! Converts pbl3d's kinematic fluxes (K m/s, m2/s2, ...) to WRFlux's dynamic (density-weighted)
+      ! flux convention (rho * kinematic flux), matching the units WRFlux declares for these arrays.
+      ! Momentum fluxes are staggered onto the u/v grid via simple two-point averaging, mirroring how
+      ! vertical_diffusion_implicit stages xkxavg (mass-point eddy diffusivity) onto u/v points.
+
+      use module_configure, only : grid_config_rec_type
+
+      implicit none
+
+      type (grid_config_rec_type), intent (in) :: config_flags
+
+      integer, intent (in) :: ids, ide, jds, jde, kds, kde, &
+                              ims, ime, jms, jme, kms, kme, &
+                              its, ite, jts, jte, kts, kte
+
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (in) :: rho, &
+          turb_flux_wtheta, turb_flux_wtheta_v, turb_flux_wqv, turb_flux_uw, turb_flux_vw, turb_flux_w2
+
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (inout) :: ftz_sgs, fqz_sgs, fuz_sgs, fvz_sgs, fwz_sgs
+
+      integer :: i, j, k, ktf
+
+      ktf = min(kte, kde-1)
+
+      if (config_flags%output_tsgs_fluxes) then
+        do j = jts, min(jte, jde-1)
+        do k = kts, ktf
+        do i = its, min(ite, ide-1)
+          if (config_flags%output_dry_theta_fluxes) then
+            ftz_sgs(i,k,j) = rho(i,k,j) * turb_flux_wtheta(i,k,j)
+          else
+            ftz_sgs(i,k,j) = rho(i,k,j) * turb_flux_wtheta_v(i,k,j)
+          end if
+        end do
+        end do
+        end do
+      end if
+
+      if (config_flags%output_qsgs_fluxes) then
+        do j = jts, min(jte, jde-1)
+        do k = kts, ktf
+        do i = its, min(ite, ide-1)
+          fqz_sgs(i,k,j) = rho(i,k,j) * turb_flux_wqv(i,k,j)
+        end do
+        end do
+        end do
+      end if
+
+      if (config_flags%output_usgs_fluxes) then
+        do j = jts, min(jte, jde-1)
+        do k = kts, ktf
+        do i = its, ite
+          fuz_sgs(i,k,j) = 0.5*(rho(i,k,j)+rho(i-1,k,j)) * 0.5*(turb_flux_uw(i,k,j)+turb_flux_uw(i-1,k,j))
+        end do
+        end do
+        end do
+      end if
+
+      if (config_flags%output_vsgs_fluxes) then
+        do j = jts, jte
+        do k = kts, ktf
+        do i = its, min(ite, ide-1)
+          fvz_sgs(i,k,j) = 0.5*(rho(i,k,j)+rho(i,k,j-1)) * 0.5*(turb_flux_vw(i,k,j)+turb_flux_vw(i,k,j-1))
+        end do
+        end do
+        end do
+      end if
+
+      if (config_flags%output_wsgs_fluxes) then
+        do j = jts, min(jte, jde-1)
+        do k = kts, ktf
+        do i = its, min(ite, ide-1)
+          fwz_sgs(i,k,j) = rho(i,k,j) * turb_flux_w2(i,k,j)
+        end do
+        end do
+        end do
+      end if
+
+    end subroutine Populate_wrflux_sgs_from_pbl3d
 
   end module module_pbl3d
