@@ -18,6 +18,11 @@ configure.wrf*
 *.backup
 *.f90
 
+namelist.input.backup*
+wrflux/wrflux/test/test_results
+wrflux/wrflux/test/test_sims
+wrflux/wrflux/test/figures
+
 # Out-of-source build locations
 _build*
 wrf_config.cmake

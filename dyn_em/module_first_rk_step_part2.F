@@ -63,6 +63,7 @@ CONTAINS
     USE module_fddaobs_driver, ONLY : fddaobs_driver
     USE module_bc, ONLY : set_physical_bc3d, set_physical_bc2d
     USE module_physics_addtendc, ONLY : update_phy_ten
+    USE module_pbl_driver, ONLY : fluxes_from_bl_tend
 
     USE module_sfs_driver !JDM
     USE module_stoch, ONLY : update_stoch_ten, perturb_physics_tend, RAND_PERT_UPDATE, contiguize_2d
@@ -860,6 +861,16 @@ BENCH_START(update_phy_ten_tim)
                            grid%j_start(ij), grid%j_end(ij),                &
                            k_start, k_end                               )
 
+         if (config_flags%output_sgs_fluxes .and.  ( config_flags%bl_pbl_physics .gt. 0 )) then
+            !get turbulent fluxes from PBL scheme tendencies
+            call fluxes_from_bl_tend(grid%ftz_sgs, grid%fqz_sgs, grid%fuz_sgs, grid%fvz_sgs, config_flags, &
+                             & grid%rublten, grid%rvblten, grid%rqvblten, grid%rthblten,  &
+                             & grid%dnw, grid%moist(:,:,:,P_QV), th_phy,                  &
+                             & ids, ide, jds, jde, kds, kde,                              &
+                             & ims, ime, jms, jme, kms, kme,                              &
+                             & grid%i_start(ij), grid%i_end(ij),                          &
+                             & grid%j_start(ij), grid%j_end(ij)                           )
+         endif
        END DO
        !$OMP END PARALLEL DO
 BENCH_END(update_phy_ten_tim)
@@ -1068,6 +1079,8 @@ BENCH_END(tke_rhs_tim)
                                                chem_tend, num_chem,                                       &
                                                scalar_tend, num_scalar,                                   &
                                                tracer_tend, num_tracer,                                   &
+                                               grid%ftz_sgs, grid%fqz_sgs,                                 &
+                                               grid%fuz_sgs, grid%fvz_sgs, grid%fwz_sgs,                     &
                                                grid%u_2, grid%v_2,grid%w_2,grid%dt,                       &
                                                grid%t_2,grid%u_base,grid%v_base,grid%t_base,grid%qv_base, &
                                                grid%mut,grid%tke_2,th_phy,config_flags,                   &
@@ -1100,6 +1113,8 @@ BENCH_START(vert_diff_tim)
                                       chem_tend, num_chem,                       &
                                       scalar_tend, num_scalar,                     &
                                       tracer_tend, num_tracer,                     &
+                                      grid%ftz_sgs, grid%fqz_sgs,                                 &
+                                      grid%fuz_sgs, grid%fvz_sgs, grid%fwz_sgs,                     &
                                       grid%u_2, grid%v_2,                                  &
                                       grid%t_2,grid%u_base,grid%v_base,grid%t_base,grid%qv_base,          &
                                       grid%tke_2, th_phy, config_flags,              &
@@ -1136,6 +1151,8 @@ BENCH_START(hor_diff_tim)
                                       chem_tend, num_chem,                   &
                                       scalar_tend, num_scalar,                 &
                                       tracer_tend, num_tracer,                 &
+                                      grid%ftx_sgs, grid%fty_sgs, grid%fqx_sgs, grid%fqy_sgs,             &
+                                      grid%fux_sgs, grid%fvx_sgs, grid%fvy_sgs, grid%fwx_sgs, grid%fwy_sgs,  &
                                       grid%t_2, th_phy,                           &
                                       grid%tke_2, config_flags,              &
                                       grid%defor11, grid%defor22, grid%defor12,             &

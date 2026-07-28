@@ -781,6 +781,14 @@ BENCH_START(rk_tend_tim)
        CALL rk_tendency ( config_flags, rk_step                                                                &
                          ,grid%ru_tend, grid%rv_tend, rw_tend, ph_tend, t_tend                                 &
                          ,ru_tendf, rv_tendf, rw_tendf, ph_tendf, t_tendf                                      &
+                         ,grid%dph_x, grid%dph_y, grid%dph_n,                                                  &
+                         ,grid%u_tend_pg, grid%u_tend_cor_curv                                                 &
+                         ,grid%v_tend_pg, grid%v_tend_cor_curv                                                 &
+                         ,grid%w_tend_pg, grid%w_tend_cor_curv                                                 &
+                         ,grid%ftz_adv, grid%fty_adv, grid%ftz_adv                                          &
+                         ,grid%fux_adv, grid%fuy_adv, grid%fuz_adv                                             &
+                         ,grid%fvx_adv, grid%fvy_adv, grid%fvz_adv                                             &
+                         ,grid%fwx_adv, grid%fwy_adv, grid%fwz_adv, moist(:,:,:,P_QV)                          &
                          ,mu_tend, grid%u_save, grid%v_save, w_save, ph_save                                   &
                          ,grid%t_save, mu_save, grid%rthften                                                   &
                          ,grid%ru, grid%rv, grid%rw, grid%ww, wwE, wwI                                         &
@@ -1229,6 +1237,7 @@ BENCH_START(advance_uv_tim)
                            grid%emdiv,                                            &
                            grid%rdnw, config_flags,grid%spec_zone,                &
                            config_flags%non_hydrostatic, config_flags%top_lid,    &
+                           rk_step, grid%u_tend_pg, grid%v_tend_pg,                        &
                            ids, ide, jds, jde, kds, kde,                          &
                            ims, ime, jms, jme, kms, kme,                          &
                            grid%i_start(ij), grid%i_end(ij),                      &
@@ -1354,7 +1363,7 @@ BENCH_START(advance_mu_t_tim)
                           grid%dnw, grid%fnm, grid%fnp, grid%rdnw,                      &
                           grid%msfux,grid%msfuy, grid%msfvx, grid%msfvx_inv,            &
                           grid%msfvy, grid%msftx,grid%msfty,                            &
-                          iteration, config_flags,                                      &
+                          iteration, config_flags, rk_step,                             &
                           ids, ide, jds, jde, kds, kde,      &
                           ims, ime, jms, jme, kms, kme,      &
                           grid%i_start(ij), grid%i_end(ij),  &
@@ -1493,6 +1502,7 @@ BENCH_START(advance_w_tim)
                            grid%rdn, grid%cf1, grid%cf2, grid%cf3,     &
                            grid%msftx, grid%msfty,                     &
                            config_flags,  config_flags%top_lid,        &
+                           rk_step, grid%w_tend_pg,                    &
                            ids,ide, jds,jde, kds,kde,                  &
                            ims,ime, jms,jme, kms,kme,                  &
                            grid%i_start(ij), grid%i_end(ij),           &
@@ -3613,7 +3623,8 @@ BENCH_END(bc_end_tim)
                  &   grid%i_start(ij), grid%i_end(ij), grid%j_start(ij), grid%j_end(ij), &
                  &   k_start    , k_end, f_flux, &
                  &   grid%avgflx_cfu1,grid%avgflx_cfd1,grid%avgflx_dfu1, &
-                 &   grid%avgflx_efu1,grid%avgflx_dfd1,grid%avgflx_efd1 )
+                 &   grid%avgflx_efu1,grid%avgflx_dfd1,grid%avgflx_efd1, &
+                 &   config_flags )
 
             CALL wrf_debug(200,'In solve_em, after zero_avgflx call')
          ENDDO
@@ -3635,7 +3646,8 @@ BENCH_END(bc_end_tim)
               &   k_start    , k_end, f_flux, &
               &   grid%cfu1,grid%cfd1,grid%dfu1,grid%efu1,grid%dfd1,grid%efd1,          &
               &   grid%avgflx_cfu1,grid%avgflx_cfd1,grid%avgflx_dfu1, &
-              &   grid%avgflx_efu1,grid%avgflx_dfd1,grid%avgflx_efd1 )
+              &   grid%avgflx_efu1,grid%avgflx_dfd1,grid%avgflx_efd1, &
+              &   config_flags )
 
          CALL wrf_debug(200,'In solve_em, after upd_avgflx call')
 

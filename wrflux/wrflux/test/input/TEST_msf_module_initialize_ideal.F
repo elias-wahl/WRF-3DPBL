@@ -134,6 +134,9 @@ CONTAINS
    REAL :: randx       ! for LES
    INTEGER :: ks, ke, id
 
+   INTEGER :: state_size
+   INTEGER, ALLOCATABLE, DIMENSION(:) :: state
+
    LOGICAL, EXTERNAL :: wrf_dm_on_monitor
 
    SELECT CASE ( model_data_order )
@@ -582,15 +585,48 @@ CONTAINS
 !  here we initialize data that currently is not initialized
 !  in the input data
 
+    !set seed for repeatability
+    call random_seed( size=state_size )
+    allocate(state(state_size))
+    state = 20180815
+    CALL RANDOM_SEED(put=state)
     DO j = jts, jte
       DO i = its, ite
-         grid%msftx(i,j)    = 1.
-         grid%msfty(i,j)    = 1.
-         grid%msfux(i,j)    = 1.
-         grid%msfuy(i,j)    = 1.
-         grid%msfvx(i,j)    = 1.
-         grid%msfvx_inv(i,j)= 1.
-         grid%msfvy(i,j)    = 1.
+         if ((j < jde) .and. (i < ide)) then
+            !assign random numbers for testing purposes
+            call RANDOM_NUMBER(rnd)
+            grid%msftx(i,j)    = 1 - 0.1*rnd
+            call RANDOM_NUMBER(rnd)
+            grid%msfty(i,j)    = 1 - 0.1*rnd
+         !periodic boundary values
+         elseif (j == jde) then
+            grid%msftx(i,j)    = grid%msftx(i,jds)
+            grid%msfty(i,j)    = grid%msfty(i,jds)
+         elseif (i == ide) then
+            grid%msftx(i,j)    = grid%msftx(ids,j)
+            grid%msfty(i,j)    = grid%msfty(ids,j)
+         endif
+
+         grid%msfux(i,j)    = grid%msftx(i,j)
+         grid%msfuy(i,j)    = grid%msfty(i,j)
+         grid%msfvx(i,j)    = grid%msftx(i,j)
+         grid%msfvx_inv(i,j)= 1/grid%msfvx(i,j)
+         grid%msfvy(i,j)    = grid%msfty(i,j)
+         grid%msft(i,j)     = grid%msfty(i,j)
+         grid%msfu(i,j)     = grid%msfuy(i,j)
+         grid%msfv(i,j)     = grid%msfvx(i,j)
+         mminlu2 = ' '
+         mminlu2(1:4) = 'USGS'
+         CALL nl_set_mminlu(1, mminlu2)
+         grid%xland(i,j)     = 1.
+         grid%lu_index(i,j)  = 18
+         grid%vegfra(i,j) = 50.
+         grid%canwat(i,j) = 0.
+         grid%ivgtyp(i,j) = 18
+         grid%isltyp(i,j) = 8
+         grid%xice(i,j) = 0.
+         grid%snow(i,j) = 0.
+
          grid%sina(i,j)     = 0.
          grid%cosa(i,j)     = 1.
          grid%e(i,j)        = 0.
@@ -599,6 +635,23 @@ CONTAINS
 
       END DO
    END DO
+
+! Process the soil; note that there are some things hard-wired into share/module_soil_pre.F
+   CALL process_soil_ideal(grid%xland,grid%xice,grid%vegfra,grid%snow,grid%canwat, &
+                     grid%ivgtyp,grid%isltyp,grid%tslb,grid%smois, &
+                     grid%tsk,grid%tmn,grid%zs,grid%dzs,model_config_rec%num_soil_layers, &
+                     model_config_rec%sf_surface_physics(grid%id), &
+                                   ids,ide, jds,jde, kds,kde,&
+                                   ims,ime, jms,jme, kms,kme,&
+                                   its,ite, jts,jte, kts,kte )
+
+   DO j=jts,MIN(jte,jde-1)
+      DO k=1,model_config_rec%num_soil_layers
+         DO i=its,MIN(ite,ide-1)
+           grid%tslb(i,k,j)= 300.
+         ENDDO
+      ENDDO
+   ENDDO
 
    END SELECT ideal_landmap
 
@@ -919,11 +972,10 @@ CONTAINS
   ENDDO
   ENDDO
 
-  xs=ide/2 -3
-  xs=ids   -3
-  xe=xs + 6
-  ys=jde/2 -3
-  ye=ys + 6
+  xs=ids
+  xe=ide
+  ys=jds
+  ye=jde
   mtn_ht = config_flags%hm
 #ifdef MTN
   DO j=max(ys,jds),min(ye,jde-1)
@@ -942,14 +994,12 @@ CONTAINS
   ENDDO
   ENDDO
 #endif
-#ifdef NS_RIDGE
   DO j=jds,jde
   DO i=max(xs,ids),min(xe,ide-1)
      grid%ht(i,j) = mtn_ht * 0.50 * &
                ( 1. + COS ( 2*pi/(xe-xs) * ( i-xs ) + pi ) )
   ENDDO
   ENDDO
-#endif
   DO j=jts,jte
   DO i=its,ite
     grid%phb(i,1,j) = g * grid%ht(i,j)

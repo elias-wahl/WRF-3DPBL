@@ -3342,7 +3342,9 @@
 
       INTEGER :: numsoiltemp , nummosaictemp
       INTEGER :: i
+      INTEGER :: output_interval
 
+      LOGICAL ::  output_res, change_phi_adv_z
 
 !-----------------------------------------------------------------------
 ! Set the namelist urban dimensions if sf_urban_physics > 0  
@@ -3663,6 +3665,108 @@
       WRITE (wrf_err_message, FMT='(A,I6)') '--- NOTE: num_soil_layers has been set to ', &
                                              model_config_rec % num_soil_layers
       CALL wrf_debug ( 1, wrf_err_message )
+
+
+      !determine which flux variables to output
+      DO i = 1, model_config_rec % max_dom
+         IF ((model_config_rec%output_t_fluxes(i)==1) .or. (model_config_rec%output_t_fluxes(i)==2)) THEN
+            model_config_rec%output_tres_fluxes(i) = .true.
+            model_config_rec%output_res_fluxes(i) = .true.
+         ENDIF
+         IF ((model_config_rec%output_q_fluxes(i)==1) .or. (model_config_rec%output_q_fluxes(i)==2)) THEN
+            model_config_rec%output_qres_fluxes(i) = .true.
+            model_config_rec%output_res_fluxes(i) = .true.
+         ENDIF
+         IF ((model_config_rec%output_u_fluxes(i)==1) .or. (model_config_rec%output_u_fluxes(i)==2)) THEN
+            model_config_rec%output_ures_fluxes(i) = .true.
+            model_config_rec%output_res_fluxes(i) = .true.
+         ENDIF
+         IF ((model_config_rec%output_v_fluxes(i)==1) .or. (model_config_rec%output_v_fluxes(i)==2)) THEN
+            model_config_rec%output_vres_fluxes(i) = .true.
+            model_config_rec%output_res_fluxes(i) = .true.
+         ENDIF
+         IF ((model_config_rec%output_w_fluxes(i)==1) .or. (model_config_rec%output_w_fluxes(i)==2)) THEN
+            model_config_rec%output_wres_fluxes(i) = .true.
+            model_config_rec%output_res_fluxes(i) = .true.
+         ENDIF
+
+         IF ((model_config_rec%output_t_fluxes(i)==1) .or. (model_config_rec%output_t_fluxes(i)==3)) THEN
+            model_config_rec%output_tsgs_fluxes(i) = .true.
+            model_config_rec%output_sgs_fluxes(i) = .true.
+         ENDIF
+         IF ((model_config_rec%output_q_fluxes(i)==1) .or. (model_config_rec%output_q_fluxes(i)==3)) THEN
+            model_config_rec%output_qsgs_fluxes(i) = .true.
+            model_config_rec%output_sgs_fluxes(i) = .true.
+         ENDIF
+         IF ((model_config_rec%output_u_fluxes(i)==1) .or. (model_config_rec%output_u_fluxes(i)==3)) THEN
+            model_config_rec%output_usgs_fluxes(i) = .true.
+            model_config_rec%output_sgs_fluxes(i) = .true.
+            model_config_rec%m_opt(i) = 1
+         ENDIF
+         IF ((model_config_rec%output_v_fluxes(i)==1) .or. (model_config_rec%output_v_fluxes(i)==3)) THEN
+            model_config_rec%output_vsgs_fluxes(i) = .true.
+            model_config_rec%output_sgs_fluxes(i) = .true.
+            model_config_rec%m_opt(i) = 1
+         ENDIF
+         IF ((model_config_rec%output_w_fluxes(i)==1) .or. (model_config_rec%output_w_fluxes(i)==3)) THEN
+            model_config_rec%output_wsgs_fluxes(i) = .true.
+            model_config_rec%output_sgs_fluxes(i) = .true.
+            model_config_rec%m_opt(i) = 1
+         ENDIF
+
+         IF (model_config_rec%output_sgs_fluxes(i) .or. model_config_rec%output_res_fluxes(i)) THEN
+            model_config_rec%output_avgfluxes(i) = .true.
+         ENDIF
+
+         IF (model_config_rec%output_tres_fluxes(i) .and. (model_config_rec%use_theta_m == 1)  .and. &
+          model_config_rec%output_dry_theta_fluxes(i)) THEN
+            IF ((model_config_rec%scalar_adv_opt(i) == WENO_SCALAR) .or. (model_config_rec%scalar_adv_opt(i) == WENOPD_SCALAR) .or. &
+               (model_config_rec%moist_adv_opt(i) == WENO_SCALAR) .or. (model_config_rec%moist_adv_opt(i) == WENOPD_SCALAR)) THEN
+               CALL wrf_debug ( 0, 'WARNING: trying to output resolved fluxes for dry theta although use_theta_m=1.'// &
+                                   'This leads to an unbalanced dry theta budget if using WENO advection for theta!')
+            ENDIF
+            IF (model_config_rec%scalar_adv_opt(i) == MONOTONIC) THEN
+               CALL wrf_debug ( 0, 'WARNING: trying to output resolved fluxes for dry theta although use_theta_m=1.'// &
+                                   'This leads to an unbalanced dry theta budget if using monotonic advection for water vapor!')
+            ENDIF
+         ENDIF
+
+         IF (model_config_rec%output_avgfluxes(i)) THEN
+            !averaging time must be smaller or equal output interval
+            output_interval = model_config_rec%auxhist24_interval  (i)*   60 + &
+                              model_config_rec%auxhist24_interval_d(i)*86400 + &
+                              model_config_rec%auxhist24_interval_h(i)* 3600 + &
+                              model_config_rec%auxhist24_interval_m(i)*   60 + &
+                              model_config_rec%auxhist24_interval_s(i)
+            IF (model_config_rec%avg_interval(i) .gt. output_interval) THEN
+               WRITE (wrf_err_message, fmt='(a,F8.1,a,I7,a)') '--- ERROR: Flux averaging time (avg_interval=', model_config_rec%avg_interval(i), &
+                                           's) must be smaller or equal the output interval of auxhist24 (=', output_interval, 's)!'
+               CALL wrf_error_fatal ( TRIM(wrf_err_message) )
+            ENDIF
+            IF (model_config_rec%use_adaptive_time_step) THEN
+               CALL wrf_error_fatal ('Adaptive timestepping is not yet possible with WRFLux!' )
+            ENDIF
+            !TODO: throw warning if true model tendency for given flux averaging time cannot be calculated
+         ENDIF
+      ENDDO
+
+
+      ! turn on new option for vertical phi advection
+      output_res = .false.
+      change_phi_adv_z = .false.
+      DO i = 1, model_config_rec % max_dom
+         IF (model_config_rec%output_res_fluxes(i)) THEN
+            output_res = .true.
+         ENDIF
+         IF (model_config_rec%phi_adv_z(i) .ne. 2) THEN
+            change_phi_adv_z = .true.
+         ENDIF
+      ENDDO
+      IF (output_res .and. change_phi_adv_z) THEN
+         CALL wrf_debug ( 0, 'WARNING: Setting phi_adv_z=2 to get the diagnostic vertical velocity'// &
+                             ' in WRFlux consistent with the prognostic one.')
+         model_config_rec%phi_adv_z(:) = 2
+      ENDIF
 
    END SUBROUTINE set_physics_rconfigs
 

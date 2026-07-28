@@ -191,7 +191,7 @@ state    real   ww_m           ikj     dyn_em      1         Z      r         "w
 i1       real   wwp            ikj     dyn_em      1         Z                                          
 i1       real   rw_tend        ikj     dyn_em      1         Z                                          
 i1       real   rw_tendf       ikj     dyn_em      1         Z                                          
-i1       real   w_save         ikj     dyn_em      1         Z                                          
+state    real   w_save         ikj     dyn_em      1         Z      -         "W_SAVE"
 state    real   w_subs         |       dyn_em      1         -      i3rh      "W_SUBS" "large-scale vertical velocity" "m s-1"
 state    real   w_subs_tend    |       dyn_em      1         -      i3rh      "W_SUBS_TEND" "tendency large-scale vertical velocity" "m s-1"
 
@@ -292,6 +292,8 @@ state    real   mub_fine        ij     dyn_em      1         -      -           
 state    real   mub_save        ij     dyn_em      1         -      -           "mub_save" "nest temp, holds orig fine grid mub" "Pa"
 state    real   mu0             ij     dyn_em      1         -      i1          "mu0" "initial dry mass in column" "Pa"
 state    real   mudf            ij     dyn_em      1         -      -           "mudf" "" ""
+state    real   mudf_x          ij     dyn_em      1          X     -           "mudf_x" "" ""
+state    real   mudf_y          ij     dyn_em      1          Y     -           "mudf_y" "" ""
 state    real   muu             ij     dyn_em      1          X     -           "muu"
 state    real   muus            ij     dyn_em      1          X     -           "muus"
 state    real   muv             ij     dyn_em      1          Y     -           "muv"
@@ -418,7 +420,7 @@ state   real    thrust         ij       misc      1         -     irh       "thr
 
 # State for derived time quantities.  
 state   integer itimestep      -        -          -         -     rh         "itimestep"             ""         ""      
-state   real    xtime          -        -          -         -     rh         "xtime"                 "minutes since YYYY-MM-DD hh:mm:ss"      "minutes since simulation start"
+state   real    xtime          -        -          -         -     rh0{24}    "xtime"                 "minutes since YYYY-MM-DD hh:mm:ss"      "minutes since simulation start"
 state   real    julian         -        -          -         -     -          "julian"                "day of year, 0.0 at 0Z on 1 Jan."         "days"      
 
 # input file descriptor for lbcs on parent domain                                               
@@ -2490,6 +2492,8 @@ rconfig   real      ocean_t         namelist,domains    max_ocean      -1      -
 rconfig   real      ocean_s         namelist,domains    max_ocean      -1      -     "vertical profile of salinity" 
 rconfig   integer   num_traj        namelist,domains    1               1000    irh   "num_traj" "#of trajectory" ""
 
+rconfig   real      hm              namelist,domains    1               1000.   h     "hm"           "mountain height (m) for em_les"   ""
+
 # variable for time series of vertical profile of U, V, Theta, GHT,a nd QVAPOR
 rconfig   integer   max_ts_level    namelist,domains    1              15       -       "max_ts_level"   "Highest model level for time series output"
 
@@ -3627,6 +3631,7 @@ halo      HALO_EM_D3_5 dyn_em 48:u_1,u_2,v_1,v_2,w_1,w_2,t_1,t_2,ph_1,ph_2,tke_1
 halo      HALO_EM_E_3 dyn_em 24:u_1,u_2,v_1,v_2,w_1,w_2,t_1,t_2,ph_1,ph_2,tke_1,tke_2,q_sq_prog_1,q_sq_prog_2,;4:mu_1,mu_2
 halo      HALO_EM_E_5 dyn_em 48:u_1,u_2,v_1,v_2,w_1,w_2,t_1,t_2,ph_1,ph_2,tke_1,tke_2,q_sq_prog_1,q_sq_prog_2,;4:mu_1,mu_2
 halo      HALO_FIREBRAND_SPOTTING_5 dyn_em 48:muts,al
+halo      HALO_EM_WRFLUX dyn_em 8:u_save,v_save,w_save,dph_x,dph_y
 halo      HALO_EM_MOIST_E_3 dyn_em 24:moist
 halo      HALO_EM_MOIST_E_5 dyn_em 48:moist
 halo      HALO_EM_MOIST_E_7 dyn_em 80:moist
@@ -3728,6 +3733,7 @@ period    PERIOD_EM_DA dyn_em 2:ru_m,rv_m,ww_m,mut,muts
 period    PERIOD_EM_F dyn_em 2:muus,muvs
 period    PERIOD_EM_G dyn_em 2:msftx,msfux,msfvy
 period    PERIOD_EM_THETAM dyn_em 3:h_diabatic
+period    PERIOD_BDY_EM_WRFLUX dyn_em 2:u_save,v_save,w_save,dph_x,dph_y,fuz_imp,fvz_imp
 
 #
 #swap SWAP_ETAMP_NEW  dyn_em 1:dz8w,p_phy,pi_phy,rho,th_phy,moist,F_ICE_PHY,F_RAIN_PHY,F_RIMEF_PHY,RAINNC,RAINNCV,SR,LOWLYR

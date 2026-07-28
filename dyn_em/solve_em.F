@@ -12,7 +12,7 @@ SUBROUTINE solve_em ( grid , config_flags  &
                  ,domain_get_current_time, domain_get_start_time                           &
                  ,domain_get_sim_start_time, domain_clock_get,is_alarm_tstep
    USE module_domain_type, ONLY : history_alarm, restart_alarm, auxinput4_alarm            &
-                 ,boundary_alarm
+                 ,boundary_alarm, auxhist24_alarm
    USE module_configure, ONLY : grid_config_rec_type
    USE module_driver_constants
    USE module_machine
@@ -37,6 +37,7 @@ SUBROUTINE solve_em ( grid , config_flags  &
                  ,halo_em_tracer_e_7_sub,halo_em_tracer_old_e_5_sub                        &
                  ,halo_em_tracer_old_e_7_sub,halo_em_sbm_sub,period_bdy_em_a_sub                           &
                  ,period_bdy_em_b3_sub,period_bdy_em_b_sub,period_bdy_em_chem2_sub         &
+                 ,period_bdy_em_wrflux_sub,halo_em_wrflux_sub                              &
                  ,period_bdy_em_chem_old_sub,period_bdy_em_chem_sub,period_bdy_em_d3_sub   &
                  ,period_bdy_em_d_sub,period_bdy_em_e_sub,period_bdy_em_moist2_sub         &
                  ,period_bdy_em_moist_old_sub,period_bdy_em_moist_sub                      &
@@ -153,6 +154,7 @@ SUBROUTINE solve_em ( grid , config_flags  &
    ! Changes in tendency at this timestep
    real ,DIMENSION(grid%sm31:grid%em31,grid%sm32:grid%em32,grid%sm33:grid%em33) :: h_tendency, &
                                                                                    z_tendency
+
                                                                                    
    ! Whether advection should produce decoupled horizontal and vertical advective tendency outputs
    LOGICAL                        :: tenddec
@@ -187,13 +189,14 @@ SUBROUTINE solve_em ( grid , config_flags  &
    INTEGER :: rk_order, iwmax, jwmax, kwmax
    REAL :: dt_rk, dts_rk, dts, dtm, wmax
    REAL , ALLOCATABLE , DIMENSION(:)  :: max_vert_cfl_tmp, max_horiz_cfl_tmp
-   LOGICAL :: leapfrog
+   LOGICAL :: leapfrog, last_timestep
    INTEGER :: l,kte,kk
    LOGICAL :: f_flux  ! flag for computing averaged fluxes in cu_gd
    REAL    :: curr_secs, curr_secs2, curr_mins2
    REAL(8) :: curr_secs_r8, curr_secs2_r8
    INTEGER :: num_sound_steps
    INTEGER :: idex, jdex
+   LOGICAL :: output_fluxes, do_avg
    REAL    :: max_msft
    REAL    :: spacing
    REAL, PARAMETER :: q_sq_min = 1.0E-5  ! TWJ
@@ -215,7 +218,7 @@ SUBROUTINE solve_em ( grid , config_flags  &
    CHARACTER*256                              :: message, message2, message3
    REAL                                       :: old_dt
    TYPE(WRFU_Time)                            :: temp_time, CurrTime, restart_time
-   INTEGER, PARAMETER                         :: precision = 100
+   INTEGER, PARAMETER                         :: precision = 1000
    INTEGER                                    :: num, den
    TYPE(WRFU_TimeInterval)                    :: dtInterval, intervaltime,restartinterval
 
@@ -898,7 +901,16 @@ BENCH_START(rk_tend_tim)
        CALL rk_tendency ( config_flags, rk_step                                                                &
                          ,grid%ru_tend, grid%rv_tend, rw_tend, ph_tend, t_tend                                 &
                          ,ru_tendf, rv_tendf, rw_tendf, ph_tendf, t_tendf                                      &
-                         ,mu_tend, grid%u_save, grid%v_save, w_save, ph_save                                   &
+                         ,grid%th_save, grid%dph_x, grid%dph_y                                                 &
+                         ,grid%u_tend_pg, grid%u_tend_cor_curv                                                 &
+                         ,grid%v_tend_pg, grid%v_tend_cor_curv                                                 &
+                         ,grid%w_tend_pg, grid%w_tend_cor_curv                                                 &
+                         ,grid%t_tend_damp, grid%u_tend_damp, grid%v_tend_damp, grid%w_tend_damp               &
+                         ,grid%ftx_adv, grid%fty_adv, grid%ftz_adv, grid%ftz_imp                               &
+                         ,grid%fux_adv, grid%fuy_adv, grid%fuz_adv, grid%fuz_imp                               &
+                         ,grid%fvx_adv, grid%fvy_adv, grid%fvz_adv, grid%fvz_imp                               &
+                         ,grid%fwx_adv, grid%fwy_adv, grid%fwz_adv, grid%fwz_imp, moist(:,:,:,P_QV)            &
+                         ,mu_tend, grid%u_save, grid%v_save, grid%w_save, ph_save                              &
                          ,grid%t_save, mu_save, grid%rthften                                                   &
                          ,grid%ru, grid%rv, grid%rw, grid%ww, wwE, wwI                                         &
                          ,grid%u_2, grid%v_2, grid%w_2, grid%t_2, grid%ph_2                                    &
@@ -956,7 +968,7 @@ BENCH_START(relax_bdy_dry_tim)
 
          CALL relax_bdy_dry ( config_flags,                                &
                               grid%u_save, grid%v_save, ph_save, grid%t_save,             &
-                              w_save, mu_tend, grid%c1h, grid%c2h, grid%c1f, grid%c2f, &
+                              grid%w_save, mu_tend, grid%c1h, grid%c2h, grid%c1f, grid%c2f, &
                               grid%ru, grid%rv, grid%ph_2, grid%t_2,                           &
                               grid%w_2, grid%mu_2, grid%mut,                              &
                               grid%u_bxs,grid%u_bxe,grid%u_bys,grid%u_bye, &
@@ -984,7 +996,7 @@ BENCH_START(relax_bdy_dry_tim)
 
        CALL rk_addtend_dry( grid%ru_tend,  grid%rv_tend,  rw_tend,  ph_tend,  t_tend,  &
                             ru_tendf, rv_tendf, rw_tendf, ph_tendf, t_tendf, &
-                            grid%u_save, grid%v_save, w_save, ph_save, grid%t_save, &
+                            grid%u_save, grid%v_save, grid%w_save, ph_save, grid%t_save, &
                             mu_tend, mu_tendf, rk_step,                      &
                             grid%c1h, grid%c2h,                              &
                             grid%h_diabatic, grid%mut, grid%msftx,           &
@@ -1108,10 +1120,10 @@ BENCH_START(small_step_prep_tim)
                              grid%t_1,grid%t_2,grid%ph_1,grid%ph_2,                   &
                              grid%mub, grid%mu_1, grid%mu_2,                          &
                              grid%muu, grid%muus, grid%muv, grid%muvs,                &
-                             grid%mut, grid%muts, grid%mudf,                          &
+                             grid%mut, grid%muts, grid%mudf, grid%mudf_x, grid%mudf_y,&
                              grid%c1h, grid%c2h, grid%c1f, grid%c2f,                  &
                              grid%c3h, grid%c4h, grid%c3f, grid%c4f,                  &
-                             grid%u_save, grid%v_save, w_save,                        &
+                             grid%u_save, grid%v_save, grid%w_save,                   &
                              grid%t_save, ph_save, mu_save,                           &
                              grid%ww, ww1,                                            &
                              c2a, grid%pb, grid%p, grid%alt,                          &
@@ -1297,14 +1309,15 @@ BENCH_START(advance_uv_tim)
          CALL advance_uv ( grid%u_2, grid%ru_tend, grid%v_2, grid%rv_tend,        &
                            grid%p, grid%pb,                                       &
                            grid%ph_2, grid%php, grid%alt,  grid%al,               &
-                           grid%mu_2, grid%muu, cqu, grid%muv, cqv, grid%mudf,    &
+                           grid%mu_2, grid%muu, cqu, grid%muv, cqv,               &
+                           grid%mudf, grid%mudf_x, grid%mudf_y,                   &
                            grid%c1h, grid%c2h, grid%c1f, grid%c2f,                &
                            grid%c3h, grid%c4h, grid%c3f, grid%c4f,                &
                            grid%msfux, grid%msfuy, grid%msfvx,                    &
                            grid%msfvx_inv, grid%msfvy,                            &
                            grid%rdx, grid%rdy, dts_rk,                            &
                            grid%cf1, grid%cf2, grid%cf3, grid%fnm, grid%fnp,      &
-                           grid%emdiv,                                            &
+                           grid%emdiv, rk_step,                                   &
                            grid%rdnw, config_flags,grid%spec_zone,                &
                            config_flags%non_hydrostatic, config_flags%top_lid,    &
                            ids, ide, jds, jde, kds, kde,                          &
@@ -1413,13 +1426,14 @@ BENCH_START(advance_mu_t_tim)
                           grid%c1h, grid%c2h, grid%c1f, grid%c2f,                       &
                           grid%c3h, grid%c4h, grid%c3f, grid%c4f,                       &
                           grid%ru_m, grid%rv_m, grid%ww_m,                              &
-                          grid%t_2, grid%t_save, t_2save, t_tend,                       &
+                          grid%t_2, grid%t_save, t_2save, grid%th_save, t_tend,         &
                           mu_tend,                                                      &
                           grid%rdx, grid%rdy, dts_rk, grid%epssm,                       &
                           grid%dnw, grid%fnm, grid%fnp, grid%rdnw,                      &
                           grid%msfux,grid%msfuy, grid%msfvx, grid%msfvx_inv,            &
                           grid%msfvy, grid%msftx,grid%msfty,                            &
-                          iteration, config_flags,                                      &
+                          iteration, config_flags, rk_step,                             &
+                          grid%ftx_small, grid%fty_small, grid%ftz_small,                        &
                           ids, ide, jds, jde, kds, kde,      &
                           ims, ime, jms, jme, kms, kme,      &
                           grid%i_start(ij), grid%i_end(ij),  &
@@ -1514,7 +1528,7 @@ BENCH_END(spec_bdy_t_tim)
 
 BENCH_START(advance_w_tim)
          IF ( config_flags%non_hydrostatic ) THEN
-           CALL advance_w( grid%w_2, rw_tend, grid%ww, w_save,         &
+           CALL advance_w( grid%w_2, rw_tend, grid%ww, grid%w_save,    &
                            grid%u_2, grid%v_2,                         &
                            grid%mu_2, grid%mut, muave, grid%muts,      &
                            grid%c1h, grid%c2h, grid%c1f, grid%c2f,     &
@@ -1528,6 +1542,7 @@ BENCH_START(advance_w_tim)
                            grid%rdn, grid%cf1, grid%cf2, grid%cf3,     &
                            grid%msftx, grid%msfty,                     &
                            config_flags,  config_flags%top_lid,        &
+                           rk_step, grid%w_tend_pg, grid%w_tend_damp,  &
                            ids,ide, jds,jde, kds,kde,                  &
                            ims,ime, jms,jme, kms,kme,                  &
                            grid%i_start(ij), grid%i_end(ij),           &
@@ -1736,6 +1751,13 @@ BENCH_END(phys_bc_tim)
 
      END DO small_steps
 
+     IF ( (rk_step == rk_order) .and. (config_flags%output_res_fluxes) ) THEN
+#ifdef DM_PARALLEL
+#      include "HALO_EM_WRFLUX.inc"
+#      include "PERIOD_BDY_EM_WRFLUX.inc"
+#endif
+     ENDIF
+
      !$OMP PARALLEL DO   &
      !$OMP PRIVATE ( ij )
      DO ij = 1 , grid%num_tiles
@@ -1762,7 +1784,7 @@ BENCH_START(small_step_finish_tim)
                                grid%mut, grid%muts, grid%muu, grid%muus, grid%muv, grid%muvs,  & 
                                grid%c1h, grid%c2h, grid%c1f, grid%c2f, &
                                grid%c3h, grid%c4h, grid%c3f, grid%c4f, &
-                               grid%u_save, grid%v_save, w_save,           &
+                               grid%u_save, grid%v_save, grid%w_save,  &
                                grid%t_save, ph_save, mu_save,         &
                                grid%msfux,grid%msfuy, grid%msfvx,grid%msfvy, grid%msftx,grid%msfty, &
                                grid%h_diabatic,                       &
@@ -1800,6 +1822,49 @@ BENCH_START(small_step_finish_tim)
                                  grid%i_start(ij), grid%i_end(ij),  &
                                  grid%j_start(ij), grid%j_end(ij),  &
                                  k_start    , k_end                )
+
+         IF (config_flags%output_res_fluxes) THEN
+
+            CALL set_physical_bc3d( grid%dph_x, 'w', config_flags,      &
+                                  ids, ide, jds, jde, kds, kde,         &
+                                  ims, ime, jms, jme, kms, kme,         &
+                                  ips, ipe, jps, jpe, kps, kpe,         &
+                                  grid%i_start(ij), grid%i_end(ij),     &
+                                  grid%j_start(ij), grid%j_end(ij),     &
+                                  k_start    , k_end                    )
+
+            CALL set_physical_bc3d( grid%dph_y, 'w', config_flags,      &
+                                  ids, ide, jds, jde, kds, kde,         &
+                                  ims, ime, jms, jme, kms, kme,         &
+                                  ips, ipe, jps, jpe, kps, kpe,         &
+                                  grid%i_start(ij), grid%i_end(ij),     &
+                                  grid%j_start(ij), grid%j_end(ij),     &
+                                  k_start    , k_end                    )
+
+            CALL set_physical_bc3d( grid%u_save, 'u', config_flags,          &
+                                  ids, ide, jds, jde, kds, kde,         &
+                                  ims, ime, jms, jme, kms, kme,         &
+                                  ips, ipe, jps, jpe, kps, kpe,         &
+                                  grid%i_start(ij), grid%i_end(ij),     &
+                                  grid%j_start(ij), grid%j_end(ij),     &
+                                  k_start    , k_end                    )
+
+            CALL set_physical_bc3d( grid%v_save, 'v', config_flags,          &
+                                  ids, ide, jds, jde, kds, kde,         &
+                                  ims, ime, jms, jme, kms, kme,         &
+                                  ips, ipe, jps, jpe, kps, kpe,         &
+                                  grid%i_start(ij), grid%i_end(ij),     &
+                                  grid%j_start(ij), grid%j_end(ij),     &
+                                  k_start    , k_end                    )
+
+            CALL set_physical_bc3d( grid%w_save, 'w', config_flags,     &
+                                  ids, ide, jds, jde, kds, kde,         &
+                                  ims, ime, jms, jme, kms, kme,         &
+                                  ips, ipe, jps, jpe, kps, kpe,         &
+                                  grid%i_start(ij), grid%i_end(ij),     &
+                                  grid%j_start(ij), grid%j_end(ij),     &
+                                  k_start    , k_end                    )
+         ENDIF
 
          CALL set_physical_bc2d( grid%mut, 't', config_flags,   &
                                  ids, ide, jds, jde,               &
@@ -2331,6 +2396,11 @@ BENCH_END(small_step_finish_tim)
                tenddec = .false.
 #endif
                doing_q_sq = .false.
+               IF ((im==p_qv) .and. config_flags%output_qres_fluxes .and. (rk_step == rk_order)) THEN
+                  output_fluxes = .true.
+               ELSE
+                  output_fluxes = .false.
+               ENDIF
 
 BENCH_START(rk_scalar_tend_tim)
                CALL rk_scalar_tend (  im, im, config_flags, tenddec,         & 
@@ -2358,7 +2428,10 @@ BENCH_START(rk_scalar_tend_tim)
                            ims, ime, jms, jme, kms, kme,     &
                            grid%i_start(ij), grid%i_end(ij), &
                            grid%j_start(ij), grid%j_end(ij), &
-                           k_start    , k_end               )
+                           k_start    , k_end,               &
+                           grid%fqx_adv, grid%fqy_adv, grid%fqz_adv, grid%fqz_imp, &
+                           output_fluxes, grid%q_tend_damp,                  &
+                           grid%t_tend_damp, th_phy                         )
 
                IF( rk_step == 1 .AND. config_flags%use_q_diabatic == 1 )THEN
                IF( im.eq.p_qv .or. im.eq.p_qc )THEN
@@ -3860,66 +3933,6 @@ BENCH_END(bc_end_tim)
 #endif
 !-----------------------------------------------------------
 
-   IF (config_flags%do_avgflx_em .EQ. 1) THEN
-! Reinitialize time-averaged fluxes if history output was written after the previous time step:
-      CALL WRFU_ALARMGET(grid%alarms( HISTORY_ALARM ),prevringtime=temp_time)
-      CALL domain_clock_get ( grid, current_time=CurrTime, &
-           current_timestr=message2 )
-! use overloaded -, .LT. operator to check whether to initialize avgflx:
-! reinitialize after each history output (detect this here by comparing current time
-! against last history time and time step - this code follows what's done in adapt_timestep_em):
-      WRITE ( message , FMT = '("solve_em: old_dt =",g15.6,", dt=",g15.6," on domain ",I3)' ) &
-           & old_dt,grid%dt,grid%id
-      CALL wrf_debug(200,message)
-      old_dt=min(old_dt,grid%dt)
-      num = INT(old_dt * precision)
-      den = precision
-      CALL WRFU_TimeIntervalSet(dtInterval, Sn=num, Sd=den)
-      IF (CurrTime .lt. temp_time + dtInterval) THEN
-         WRITE ( message , FMT = '("solve_em: initializing avgflx at time ",A," on domain ",I3)' ) &
-              & TRIM(message2), grid%id
-         CALL wrf_message(trim(message)) 
-         grid%avgflx_count = 0
-!tile-loop for zero_avgflx
-   !$OMP PARALLEL DO   &
-   !$OMP PRIVATE ( ij )
-
-         DO ij = 1 , grid%num_tiles
-            CALL wrf_debug(200,'In solve_em, before zero_avgflx call')
-            CALL zero_avgflx(grid%avgflx_rum,grid%avgflx_rvm,grid%avgflx_wwm, &
-                 &   ids, ide, jds, jde, kds, kde,           &
-                 &   ims, ime, jms, jme, kms, kme,           &
-                 &   grid%i_start(ij), grid%i_end(ij), grid%j_start(ij), grid%j_end(ij), &
-                 &   k_start    , k_end, f_flux, &
-                 &   grid%avgflx_cfu1,grid%avgflx_cfd1,grid%avgflx_dfu1, &
-                 &   grid%avgflx_efu1,grid%avgflx_dfd1,grid%avgflx_efd1 )
-            CALL wrf_debug(200,'In solve_em, after zero_avgflx call')
-         ENDDO
-         !$OMP END PARALLEL DO
-      ENDIF
-
-! Update avgflx quantities
-!tile-loop for upd_avgflx
-   !$OMP PARALLEL DO   &
-   !$OMP PRIVATE ( ij )
-
-      DO ij = 1 , grid%num_tiles
-         CALL wrf_debug(200,'In solve_em, before upd_avgflx call')
-         CALL upd_avgflx(grid%avgflx_count,grid%avgflx_rum,grid%avgflx_rvm,grid%avgflx_wwm, &
-              &   grid%ru_m, grid%rv_m, grid%ww_m, &
-              &   ids, ide, jds, jde, kds, kde,           &
-              &   ims, ime, jms, jme, kms, kme,           &
-              &   grid%i_start(ij), grid%i_end(ij), grid%j_start(ij), grid%j_end(ij), &
-              &   k_start    , k_end, f_flux, &
-              &   grid%cfu1,grid%cfd1,grid%dfu1,grid%efu1,grid%dfd1,grid%efd1,          &
-              &   grid%avgflx_cfu1,grid%avgflx_cfd1,grid%avgflx_dfu1, &
-              &   grid%avgflx_efu1,grid%avgflx_dfd1,grid%avgflx_efd1 )
-         CALL wrf_debug(200,'In solve_em, after upd_avgflx call')
-         
-      ENDDO
-      !$OMP END PARALLEL DO
-      grid%avgflx_count = grid%avgflx_count + 1
-   ENDIF
 !
    !$OMP PARALLEL DO   &
    !$OMP PRIVATE ( ij )
@@ -4460,7 +4473,7 @@ BENCH_START(moist_phys_end_tim)
        ENDIF
 
        CALL moist_physics_finish_em( grid%t_2, grid%t_1, t0, grid%muts, th_phy,  &
-                                     grid%h_diabatic, dtm,                       &
+                                     grid%h_diabatic, grid%t_tend_mp, dtm,       &
                                      moist(ims,kms,jms,P_QV),grid%qv_diabatic,   &
                                      moist(ims,kms,jms,P_QC),grid%qc_diabatic,   &
                                      grid%th_phy_m_t0,                           &
@@ -5135,6 +5148,20 @@ BENCH_END(bc_2d_tim)
                            k_start, k_end                                   )
 !                          its, ite, jts, jte, k_start, min(k_end,kde-1),   &
 
+      CALL recover_small_step_tendencies( grid%u_tend_pg, grid%v_tend_pg, grid%w_tend_pg,             &
+                                          grid%u_tend_damp, grid%v_tend_damp,                         &
+                                          grid%u_1, grid%u_2, grid%v_1, grid%v_2, grid%w_1, grid%w_2, &
+                                          grid%ru_tend, grid%rv_tend, rw_tend,                        &
+                                          grid%mudf_x, grid%mudf_y,                                   &
+                                          grid%mut, grid%muu, grid%muv,                               &
+                                          grid%c1h, grid%c2h, grid%c1f, grid%c2f,                     &
+                                          grid%msfuy, grid%msfvx, grid%msfty,                         &
+                                          config_flags,                                               &
+                                          ids, ide, jds, jde, kds, kde,                               &
+                                          ims, ime, jms, jme, kms, kme,                               &
+                                          grid%i_start(ij), grid%i_end(ij),                           &
+                                          grid%j_start(ij), grid%j_end(ij),                           &
+                                          k_start, k_end                                              )
    END DO
    !$OMP END PARALLEL DO
 
@@ -5167,6 +5194,176 @@ BENCH_END(bc_2d_tim)
 #endif
 #endif
 #endif
+
+! new location for averaging. Moved here to include microphysics tendencies
+   IF ((config_flags%do_avgflx_em .EQ. 1) .or. config_flags%output_avgfluxes) THEN
+! Reinitialize time-averaged fluxes if history output was written after the previous time step:
+      CALL WRFU_ALARMGET(grid%alarms( AUXHIST24_ALARM ),prevringtime=temp_time, RingInterval=intervaltime)
+      CALL domain_clock_get ( grid, current_time=CurrTime, &
+           current_timestr=message2 )
+! use overloaded -, .LT. operator to check whether to initialize avgflx:
+! reinitialize after each auxhist24 output (detect this here by comparing current time
+! against last history time and time step - this code follows what's done in adapt_timestep_em):
+      WRITE ( message , FMT = '("solve_em: old_dt =",g15.6,", dt=",g15.6," on domain ",I3)' ) &
+           & old_dt,grid%dt,grid%id
+      CALL wrf_debug(200,message)
+      ! get timestep as time interval
+      ! round down to avoid calling zero_avgflx twice
+      old_dt = min(old_dt,grid%dt)
+      num = INT(old_dt * precision) - 1
+      den = precision
+      CALL WRFU_TimeIntervalSet(dtInterval, Sn=num, Sd=den)
+      IF (CurrTime .lt. temp_time + dtInterval) THEN
+         WRITE ( message , FMT = '("solve_em: initializing avgflx at time ",A," on domain ",I3)' ) &
+              & TRIM(message2), grid%id
+         CALL wrf_message(trim(message))
+         grid%avgflx_count = 0
+!tile-loop for zero_avgflx
+   !$OMP PARALLEL DO   &
+   !$OMP PRIVATE ( ij )
+
+         DO ij = 1 , grid%num_tiles
+            CALL wrf_debug(200,'In solve_em, before zero_avgflx call')
+            CALL zero_avgflx(grid%avgflx_rum,grid%avgflx_rvm,grid%avgflx_wwm, &
+                 &   ids, ide, jds, jde, kds, kde,           &
+                 &   ims, ime, jms, jme, kms, kme,           &
+                 &   grid%i_start(ij), grid%i_end(ij), grid%j_start(ij), grid%j_end(ij), &
+                 &   k_start    , k_end,                       &
+                 &   grid%avgflx_cfu1,grid%avgflx_cfd1,grid%avgflx_dfu1, &
+                 &   grid%avgflx_efu1,grid%avgflx_dfd1,grid%avgflx_efd1, &
+                 &   config_flags,                                                                          &
+                 &   grid%t_mean,grid%tx_mean,grid%ty_mean,grid%tz_mean,grid%tt_mean,                       &
+                 &   grid%ftx_adv_mean,grid%fty_adv_mean,grid%ftz_adv_mean,                                 &
+                 &   grid%q_mean,grid%qx_mean,grid%qy_mean,grid%qz_mean,grid%qq_mean,                       &
+                 &   grid%fqx_adv_mean,grid%fqy_adv_mean,grid%fqz_adv_mean,                                 &
+                 &   grid%u_mean,grid%ux_mean,grid%uy_mean,grid%uz_mean,                                    &
+                 &   grid%fux_adv_mean,grid%fuy_adv_mean,grid%fuz_adv_mean,                                 &
+                 &   grid%v_mean,grid%vx_mean,grid%vy_mean,grid%vz_mean,                                    &
+                 &   grid%fvx_adv_mean,grid%fvy_adv_mean,grid%fvz_adv_mean,                                 &
+                 &   grid%ww_mean,grid%wd_mean,grid%zwind_mean,grid%wx_mean,grid%wy_mean,grid%wz_mean,      &
+                 &   grid%fwx_adv_mean,grid%fwy_adv_mean,grid%fwz_adv_mean,                                 &
+                 &   grid%ftx_corr,grid%fty_corr,grid%corr_dtdt,                                            &
+                 &   grid%fqx_corr,grid%fqy_corr,grid%corr_dqdt,                                            &
+                 &   grid%fux_corr,grid%fuy_corr,grid%corr_dudt,                                            &
+                 &   grid%fvx_corr,grid%fvy_corr,grid%corr_dvdt,                                            &
+                 &   grid%fwx_corr,grid%fwy_corr,grid%corr_dwdt,                                            &
+                 &   grid%ftx_sgs_mean,grid%fty_sgs_mean,grid%ftz_sgs_mean,                                 &
+                 &   grid%fqx_sgs_mean,grid%fqy_sgs_mean,grid%fqz_sgs_mean,                                 &
+                 &   grid%fux_sgs_mean,grid%fuz_sgs_mean,                                                   &
+                 &   grid%fvx_sgs_mean,grid%fvy_sgs_mean,grid%fvz_sgs_mean,                                 &
+                 &   grid%fwx_sgs_mean,grid%fwy_sgs_mean,grid%fwz_sgs_mean,                                 &
+                 &   grid%t_tend_radlw_mean,grid%t_tend_radsw_mean,grid%t_tend_mp_mean,grid%q_tend_mp_mean, &
+                 &   grid%t_tend_cu_mean, grid%q_tend_cu_mean, grid%u_tend_cu_mean, grid%v_tend_cu_mean,    &
+                 &   grid%u_tend_pg_mean,grid%u_tend_cor_curv_mean,                                         &
+                 &   grid%v_tend_pg_mean,grid%v_tend_cor_curv_mean,                                         &
+                 &   grid%w_tend_pg_mean,grid%w_tend_cor_curv_mean,                                         &
+                 &   grid%t_tend_damp_mean,grid%q_tend_damp_mean,                                           &
+                 &   grid%u_tend_damp_mean,grid%v_tend_damp_mean,grid%w_tend_damp_mean,                     &
+                 &   grid%rhod_mean,grid%mut_mean,grid%z_mean,grid%dph_x_mean,grid%dph_y_mean                )
+            CALL wrf_debug(200,'In solve_em, after zero_avgflx call')
+         ENDDO
+   !$OMP END PARALLEL DO
+      ENDIF
+
+      ! Update avgflx quantities
+      ! WRFlux: round timestep up to reach last_timestep = .true. before saving
+      num = INT(old_dt * precision) + 1
+      CALL WRFU_TimeIntervalSet(dtInterval, Sn=num, Sd=den)
+      IF (CurrTime .gt. temp_time + intervaltime - dtInterval) THEN
+        ! in last timestep before saving auxhist24, divide by density
+        last_timestep = .true.
+        WRITE ( message , FMT = '("solve_em: divide fluxes by density before saving at time ",A," on domain ",I3)' ) &
+        & TRIM(message2), grid%id
+        CALL wrf_message(trim(message))
+      ELSE
+        last_timestep = .false.
+      ENDIF
+      num = INT(config_flags%avg_interval * precision)
+      den = precision
+      CALL WRFU_TimeIntervalSet(dtInterval, Sn=num, Sd=den)
+      ! WRFlux: only do averaging in the interval of length avg_interval before the next output
+      ! original do_avgflx_em is not affected
+      IF ((config_flags%avg_interval .eq. -1) .or. (temp_time + intervaltime - CurrTime .le. dtInterval)) THEN
+         do_avg = .true.
+      ELSE
+         do_avg = .false.
+      ENDIF
+
+      !tile-loop for upd_avgflx
+      !$OMP PARALLEL DO   &
+      !$OMP PRIVATE ( ij )
+      DO ij = 1 , grid%num_tiles
+         CALL wrf_debug(200,'In solve_em, before upd_avgflx call')
+         CALL upd_avgflx(grid%avgflx_count, do_avg, grid%avgflx_rum,grid%avgflx_rvm,grid%avgflx_wwm, &
+              &   grid%ru_m, grid%rv_m, grid%ww_m, &
+              &   ids, ide, jds, jde, kds, kde,           &
+              &   ims, ime, jms, jme, kms, kme,           &
+              &   grid%i_start(ij), grid%i_end(ij), grid%j_start(ij), grid%j_end(ij), &
+              &   k_start    , k_end, f_flux, &
+              &   grid%cfu1,grid%cfd1,grid%dfu1,grid%efu1,grid%dfd1,grid%efd1,          &
+              &   grid%avgflx_cfu1,grid%avgflx_cfd1,grid%avgflx_dfu1, &
+              &   grid%avgflx_efu1,grid%avgflx_dfd1,grid%avgflx_efd1, &
+              &   config_flags,                                                                          &
+              &   grid%t_mean,grid%tx_mean,grid%ty_mean,grid%tz_mean,grid%tt_mean,                       &
+              &   grid%ftx_adv_mean,grid%fty_adv_mean,grid%ftz_adv_mean,                                 &
+              &   grid%q_mean,grid%qx_mean,grid%qy_mean,grid%qz_mean,grid%qq_mean,                       &
+              &   grid%fqx_adv_mean,grid%fqy_adv_mean,grid%fqz_adv_mean,                                 &
+              &   grid%u_mean,grid%ux_mean,grid%uy_mean,grid%uz_mean,                                    &
+              &   grid%fux_adv_mean,grid%fuy_adv_mean,grid%fuz_adv_mean,                                 &
+              &   grid%v_mean,grid%vx_mean,grid%vy_mean,grid%vz_mean,                                    &
+              &   grid%fvx_adv_mean,grid%fvy_adv_mean,grid%fvz_adv_mean,                                 &
+              &   grid%ww_mean,grid%wd_mean,grid%zwind_mean,grid%wx_mean,grid%wy_mean,grid%wz_mean,      &
+              &   grid%fwx_adv_mean,grid%fwy_adv_mean,grid%fwz_adv_mean,                                 &
+              &   grid%ftx_corr,grid%fty_corr,grid%corr_dtdt,                                            &
+              &   grid%fqx_corr,grid%fqy_corr,grid%corr_dqdt,                                            &
+              &   grid%fux_corr,grid%fuy_corr,grid%corr_dudt,                                            &
+              &   grid%fvx_corr,grid%fvy_corr,grid%corr_dvdt,                                            &
+              &   grid%fwx_corr,grid%fwy_corr,grid%corr_dwdt,                                            &
+              &   grid%ftx_sgs_mean,grid%fty_sgs_mean,grid%ftz_sgs_mean,                                 &
+              &   grid%fqx_sgs_mean,grid%fqy_sgs_mean,grid%fqz_sgs_mean,                                 &
+              &   grid%fux_sgs_mean,grid%fuz_sgs_mean,                                                   &
+              &   grid%fvx_sgs_mean,grid%fvy_sgs_mean,grid%fvz_sgs_mean,                                 &
+              &   grid%fwx_sgs_mean,grid%fwy_sgs_mean,grid%fwz_sgs_mean,                                 &
+              &   grid%t_tend_radlw_mean,grid%t_tend_radsw_mean,grid%t_tend_mp_mean,grid%q_tend_mp_mean, &
+              &   grid%t_tend_cu_mean, grid%q_tend_cu_mean, grid%u_tend_cu_mean, grid%v_tend_cu_mean,    &
+              &   grid%u_tend_pg_mean,grid%u_tend_cor_curv_mean,                                         &
+              &   grid%v_tend_pg_mean,grid%v_tend_cor_curv_mean,                                         &
+              &   grid%w_tend_pg_mean,grid%w_tend_cor_curv_mean,                                         &
+              &   grid%t_tend_damp_mean,grid%q_tend_damp_mean,                                           &
+              &   grid%u_tend_damp_mean,grid%v_tend_damp_mean,grid%w_tend_damp_mean,                     &
+              &   grid%rhod_mean,grid%mut_mean,grid%z_mean,grid%dph_x_mean,grid%dph_y_mean,grid%w_diag,  &
+              &   grid%ftx_adv, grid%fty_adv, grid%ftz_adv, grid%ftz_imp,                                &
+              &   grid%ftx_small, grid%fty_small, grid%ftz_small,                                        &
+              &   grid%fqx_adv, grid%fqy_adv, grid%fqz_adv, grid%fqz_imp,                                &
+              &   grid%fux_adv, grid%fuy_adv, grid%fuz_adv, grid%fuz_imp,                                &
+              &   grid%fvx_adv, grid%fvy_adv, grid%fvz_adv, grid%fvz_imp,                                &
+              &   grid%fwx_adv, grid%fwy_adv, grid%fwz_adv, grid%fwz_imp,                                &
+              &   grid%ftx_sgs,grid%fty_sgs,grid%ftz_sgs,grid%fqx_sgs,grid%fqy_sgs,grid%fqz_sgs,         &
+              &   grid%fux_sgs,grid%fuz_sgs,grid%fvx_sgs,grid%fvy_sgs,grid%fvz_sgs,grid%fwx_sgs,grid%fwy_sgs,grid%fwz_sgs,  &
+              &   grid%RTHRATENLW, grid%RTHRATENSW, grid%t_tend_mp, grid%qv_diabatic,                    &
+              &   grid%rthcuten, grid%rqvcuten, grid%rucuten, grid%rvcuten,                              &
+              &   grid%rthshten, grid%rqvshten, grid%rushten, grid%rvshten,                              &
+              &   grid%u_tend_pg,grid%u_tend_cor_curv,                                                   &
+              &   grid%v_tend_pg,grid%v_tend_cor_curv,                                                   &
+              &   grid%w_tend_pg,grid%w_tend_cor_curv,                                                   &
+              &   grid%t_tend_damp,grid%q_tend_damp,grid%u_tend_damp,grid%v_tend_damp,grid%w_tend_damp,  &
+              &   grid%u_save, grid%v_save, grid%w_2, grid%w_save, grid%ru, grid%rv, ww1,                &
+              &   grid%th_save, grid%t_1, moist(:,:,:,P_QV), moist_old(:,:,:,P_QV),                      &
+              &   grid%ph_1, grid%ph_2, grid%phb, grid%zx, grid%zy, grid%alt,                            &
+              &   grid%dph_x, grid%dph_y,                                                                &
+              &   grid%fnm, grid%fnp, grid%mut, grid%c1h, grid%c2h,                                      &
+              &   grid%c1f, grid%c2f, grid%cf1, grid%cf2, grid%cf3, grid%cfn, grid%cfn1,                 &
+              &   grid%msfuy, grid%msfvx, grid%msfvy, grid%msftx, grid%msfty,                            &
+              &   last_timestep, grid%dt                                                                 )
+
+         CALL wrf_debug(200,'In solve_em, after upd_avgflx call')
+
+      ENDDO
+      !$OMP END PARALLEL DO
+      IF (do_avg .or. (.not. config_flags%output_avgfluxes)) THEN
+         grid%avgflx_count = grid%avgflx_count + 1
+      ENDIF
+   ENDIF
 
 !-----------------------------------------------------------
 !  After all of the RK steps, after the microphysics, after p-rho-phi,

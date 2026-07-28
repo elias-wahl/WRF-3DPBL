@@ -17,7 +17,8 @@ SUBROUTINE small_step_prep( u_1, u_2, v_1, v_2, w_1, w_2, &
                             t_1, t_2, ph_1, ph_2,         &
                             mub, mu_1, mu_2,              &
                             muu, muus, muv, muvs,         &
-                            mut, muts, mudf,              &
+                            mut, muts,                    &
+                            mudf, mudf_x, mudf_y,         &
                             c1h, c2h, c1f, c2f,           &
                             c3h, c4h, c3f, c4f,           &
                             u_save, v_save, w_save,       &
@@ -86,7 +87,9 @@ SUBROUTINE small_step_prep( u_1, u_2, v_1, v_2, w_1, w_2, &
   REAL, DIMENSION(ims:ime, jms:jme)         , INTENT(  OUT) :: muus, &
                                                                muvs, &
                                                                muts, &
-                                                               mudf
+                                                               mudf, &
+                                                               mudf_x, &
+                                                               mudf_y
 
   REAL, DIMENSION(ims:ime, jms:jme)         , INTENT(  OUT) :: mu_save
 
@@ -127,12 +130,14 @@ SUBROUTINE small_step_prep( u_1, u_2, v_1, v_2, w_1, w_2, &
 
     IF ((rk_step == 1) ) THEN
 
-      DO j=j_start, j_end
-      DO i=i_start, i_end
+      DO j=j_start, j_endv
+      DO i=i_start, i_endu
         MU_1(i,j)=MU_2(i,j)
         ww_save(i,kde,j) = 0.
         ww_save(i,1,j) = 0.
         MUDF(i,j) = 0.  !  initialize external mode div damp to zero
+        MUDF_X(i,j) = 0.
+        MUDF_Y(i,j) = 0.
       ENDDO
       ENDDO
 
@@ -220,8 +225,8 @@ SUBROUTINE small_step_prep( u_1, u_2, v_1, v_2, w_1, w_2, &
 
     ! set up the small timestep variables
 
-      DO j=j_start, j_end
-      DO i=i_start, i_end
+      DO j=j_start-1, jte
+      DO i=i_start-1, ite
         ww_save(i,kde,j) = 0.
         ww_save(i,1,j) = 0.
       ENDDO
@@ -278,10 +283,10 @@ SUBROUTINE small_step_prep( u_1, u_2, v_1, v_2, w_1, w_2, &
     ENDDO
     ENDDO
 
-      DO j=j_start, j_end
+      DO j=j_start-1, jte
 !      DO k=k_start, min(kde,kte)
       DO k=k_start, kde
-      DO i=i_start, i_end
+      DO i=i_start-1, ite
         ww_save(i,k,j) = ww(i,k,j)
       ENDDO
       ENDDO
@@ -654,14 +659,15 @@ END SUBROUTINE calc_coef_w
 SUBROUTINE advance_uv ( u, ru_tend, v, rv_tend,        &
                         p, pb,                         &
                         ph, php, alt, al, mu,          &
-                        muu, cqu, muv, cqv, mudf,      &
+                        muu, cqu, muv, cqv,            &
+                        mudf, mudf_x, mudf_y,          &
                         c1h, c2h, c1f, c2f,            &
                         c3h, c4h, c3f, c4f,            &
                         msfux, msfuy, msfvx,           &
                         msfvx_inv, msfvy,              &
                         rdx, rdy, dts,                 &
                         cf1, cf2, cf3, fnm, fnp,       &
-                        emdiv,                         &
+                        emdiv, rk_step,                &
                         rdnw, config_flags, spec_zone, &
                         non_hydrostatic, top_lid,      &
                         ids, ide, jds, jde, kds, kde,  &
@@ -674,11 +680,12 @@ SUBROUTINE advance_uv ( u, ru_tend, v, rv_tend,        &
       INTEGER,      INTENT(IN   )    :: ids,ide, jds,jde, kds,kde
       INTEGER,      INTENT(IN   )    :: ims,ime, jms,jme, kms,kme
       INTEGER,      INTENT(IN   )    :: its,ite, jts,jte, kts,kte
-      INTEGER,      INTENT(IN   )    :: spec_zone
+      INTEGER,      INTENT(IN   )    :: rk_step, spec_zone
       REAL, DIMENSION( ims:ime , kms:kme, jms:jme ),  &
             INTENT(INOUT) ::                          &
                                                   u,  &
                                                   v
+      REAL, DIMENSION ( ims:ime , jms:jme ),INTENT(INOUT   ) :: mudf_x, mudf_y
       REAL, DIMENSION( ims:ime , kms:kme, jms:jme ), &
             INTENT(IN   ) ::                          &
                                              ru_tend, &
@@ -807,6 +814,9 @@ SUBROUTINE advance_uv ( u, ru_tend, v, rv_tend,        &
    ENDDO
    DO i = i_start_up, i_end_up
      MUDF_XY(i)= -emdiv*dx*(MUDF(i,j)-MUDF(i-1,j))/msfuy(i,j)
+     IF (rk_step == config_flags%rk_ord) THEN
+       mudf_x(i,j) = mudf_x(i,j) + MUDF_XY(i)
+     ENDIF
    ENDDO
    DO k = k_start, k_end
    DO i = i_start_up, i_end_up
@@ -878,6 +888,9 @@ SUBROUTINE advance_uv ( u, ru_tend, v, rv_tend,        &
    ENDDO
    DO i = i_start, i_end
      MUDF_XY(i)= -emdiv*dy*(MUDF(i,j)-MUDF(i,j-1))*msfvx_inv(i,j)
+     IF (rk_step == config_flags%rk_ord) THEN
+       mudf_y(i,j) = mudf_y(i,j) + MUDF_XY(i)
+     ENDIF
    ENDDO
      IF (     ( j >= j_start_vp)  &
        .and.( j <= j_end_vp  ) )  THEN
@@ -971,12 +984,13 @@ SUBROUTINE advance_mu_t( ww, ww_1, u, u_1, v, v_1,            &
                          c1h, c2h, c1f, c2f,                  &
                          c3h, c4h, c3f, c4f,                  &
                          uam, vam, wwam, t, t_1,              &
-                         t_ave, ft, mu_tend,                  &
+                         t_ave, th_save, ft, mu_tend,         &
                          rdx, rdy, dts, epssm,                &
                          dnw, fnm, fnp, rdnw,                 &
                          msfux, msfuy, msfvx, msfvx_inv,      &
                          msfvy, msftx, msfty,                 &
-                         step, config_flags,                  &
+                         step, config_flags, rk_step,         &
+                         ftx_small, fty_small, ftz_small,     &
                          ids, ide, jds, jde, kds, kde,        &
                          ims, ime, jms, jme, kms, kme,        &
                          its, ite, jts, jte, kts, kte        )
@@ -987,6 +1001,7 @@ SUBROUTINE advance_mu_t( ww, ww_1, u, u_1, v, v_1,            &
   INTEGER,      INTENT(IN   )    :: ims,ime, jms,jme, kms,kme
   INTEGER,      INTENT(IN   )    :: its,ite, jts,jte, kts,kte
   INTEGER,      INTENT(IN   )    :: step
+  INTEGER,      INTENT(IN   )    :: rk_step
   REAL, DIMENSION( ims:ime , kms:kme, jms:jme ),   &
             INTENT(IN   ) ::                       &
                                               u,   &
@@ -994,7 +1009,8 @@ SUBROUTINE advance_mu_t( ww, ww_1, u, u_1, v, v_1,            &
                                               u_1, &
                                               v_1, &
                                               t_1, &
-                                              ft
+                                              ft,  &
+                                              th_save
   REAL, DIMENSION( ims:ime , kms:kme, jms:jme ),      &
             INTENT(INOUT) ::                          &
                                               ww,     &
@@ -1003,7 +1019,10 @@ SUBROUTINE advance_mu_t( ww, ww_1, u, u_1, v, v_1,            &
                                               t_ave,  &
                                               uam,    &
                                               vam,    &
-                                              wwam
+                                              wwam,   &
+                                              ftx_small, &
+                                              fty_small, &
+                                              ftz_small
                                               
   REAL, DIMENSION( ims:ime , jms:jme ),    INTENT(IN   ) :: muu,  &
                                                             muv,  &
@@ -1031,7 +1050,9 @@ SUBROUTINE advance_mu_t( ww, ww_1, u, u_1, v, v_1,            &
   REAL, DIMENSION( kms:kme ),INTENT(IN   ) :: c1h, c2h, c1f, c2f, &
                                               c3h, c4h, c3f, c4f
 !  Local arrays from the stack (note tile size)
-  REAL, DIMENSION (its:ite, kts:kte) :: wdtn, dvdxi
+  REAL, DIMENSION (its:ite+1, kts:kte, jts:jte+1) :: ftx, fty
+  REAL, DIMENSION (its:ite, kts:kte, jts:jte) :: wdtn
+  REAL, DIMENSION (its:ite, kts:kte) :: dvdxi
   REAL, DIMENSION (its:ite) :: dmdt
   INTEGER :: i, j, k, kk, i_start, i_end, j_start, j_end, k_start, k_end
   INTEGER :: i_endu, j_endv
@@ -1143,17 +1164,19 @@ SUBROUTINE advance_mu_t( ww, ww_1, u, u_1, v, v_1,            &
      END DO
      END DO
    ENDDO   
+
    DO j=j_start, j_end
      DO i=i_start, i_end
-       wdtn(i,1  )=0.
-       wdtn(i,kde)=0.
+       wdtn(i,1  ,j)=0.
+       wdtn(i,kde,j)=0.
      ENDDO
      DO k=2,k_end
      DO i=i_start, i_end
         ! for scalar eqn RHS term 3
-        wdtn(i,k)= ww(i,k,j)*(fnm(k)*t_1(i,k  ,j)+fnp(k)*t_1(i,k-1,j))
+        wdtn(i,k,j)= ww(i,k,j)*(fnm(k)*t_1(i,k  ,j)+fnp(k)*t_1(i,k-1,j))
      ENDDO
      ENDDO
+
 ! scalar eqn, RHS terms 1, 2 and 3
 ! multiply by msfty to uncouple result for Theta from map scale factor
      DO k=1,k_end
@@ -1168,10 +1191,69 @@ SUBROUTINE advance_mu_t( ww, ww_1, u, u_1, v, v_1,            &
              + .5*rdx*                                     &
               ( u(i+1,k,j)*(t_1(i+1,k,j)+t_1(i  ,k,j))     &
                -u(i  ,k,j)*(t_1(i  ,k,j)+t_1(i-1,k,j)) ) ) &
-             + rdnw(k)*( wdtn(i,k+1)-wdtn(i,k) ) )       
+             + rdnw(k)*( wdtn(i,k+1,j)-wdtn(i,k,j) ) )
      ENDDO
      ENDDO
    ENDDO
+   IF ((rk_step == config_flags%rk_ord) .and. (config_flags%output_tres_fluxes)) THEN
+     !save fluxes
+     IF (step == 1) THEN
+       ftx_small(:,:,:) = 0
+       fty_small(:,:,:) = 0
+       ftz_small(:,:,:) = 0
+     ENDIF
+     IF (( config_flags%use_theta_m .EQ. 1 ) .and. ( config_flags%output_dry_theta_fluxes)) THEN
+       ! dry theta fluxes
+       DO j=j_start, j_end+1
+       DO k=1,k_end
+       DO i=i_start, i_end+1
+         ftx(i,k,j) = u(i,k,j)*0.5*(th_save(i,k,j) + th_save(i-1,k,j) )
+         fty(i,k,j) = v(i,k,j)*0.5*(th_save(i,k,j) + th_save(i,k,j-1) )
+       ENDDO
+       ENDDO
+       ENDDO
+       DO j=j_start, j_end
+       DO k=2,k_end
+       DO i=i_start, i_end
+         wdtn(i,k,j) = ww(i,k,j)*(fnm(k)*th_save(i,k,j) + fnp(k)*th_save(i,k-1,j))
+       ENDDO
+       ENDDO
+       ENDDO
+     ELSE
+       DO j=j_start, j_end+1
+       DO k=1,k_end
+       DO i=i_start, i_end+1
+          ftx(i,k,j) = u(i,k,j)*0.5*(t_1(i,k,j) + t_1(i-1,k,j))
+          fty(i,k,j) = v(i,k,j)*0.5*(t_1(i,k,j) + t_1(i,k,j-1))
+       ENDDO
+       ENDDO
+       ENDDO
+       DO j=j_start, j_end
+       DO k=2,k_end
+       DO i=i_start, i_end
+          wdtn(i,k,j)= ww(i,k,j)*(fnm(k)*t_1(i,k,j) + fnp(k)*t_1(i,k-1,j))
+       ENDDO
+       ENDDO
+       ENDDO
+     ENDIF
+
+     DO j=j_start, j_end+1
+     DO k=1,k_end
+     DO i=i_start, i_end+1
+       ftx_small(i,k,j) = ftx_small(i,k,j) + ftx(i,k,j)*dts/config_flags%dt
+       fty_small(i,k,j) = fty_small(i,k,j) + fty(i,k,j)*dts/config_flags%dt
+     ENDDO
+     ENDDO
+     ENDDO
+     DO j=j_start, j_end
+     DO k=1,kde
+     DO i=i_start, i_end
+       ftz_small(i,k,j) = ftz_small(i,k,j) + wdtn(i,k,j)*dts/config_flags%dt
+     ENDDO
+     ENDDO
+     ENDDO
+   ENDIF
+
 END SUBROUTINE advance_mu_t
           
 !------------------------------------------------------------
@@ -1187,6 +1269,7 @@ SUBROUTINE advance_w( w, rw_tend, ww, w_save, u, v,  &
                       dnw, fnm, fnp, rdnw, rdn,   &
                       cf1, cf2, cf3, msftx, msfty,&
                       config_flags, top_lid,      &
+                      rk_step, w_tend_pg, w_tend_damp, &
                       ids,ide, jds,jde, kds,kde,  & ! domain dims
                       ims,ime, jms,jme, kms,kme,  & ! memory dims
                       its,ite, jts,jte, kts,kte  )  ! tile   dims
@@ -1201,6 +1284,7 @@ SUBROUTINE advance_w( w, rw_tend, ww, w_save, u, v,  &
   INTEGER,      INTENT(IN   )    :: ims,ime, jms,jme, kms,kme
   INTEGER,      INTENT(IN   )    :: its,ite, jts,jte, kts,kte
   LOGICAL,      INTENT(IN   )    :: top_lid
+  INTEGER,      INTENT(IN   )    :: rk_step
       REAL, DIMENSION( ims:ime , kms:kme , jms:jme ), &
             INTENT(INOUT) ::                          &
                                              t_2ave,  &
@@ -1249,9 +1333,14 @@ SUBROUTINE advance_w( w, rw_tend, ww, w_save, u, v,  &
                                 epssm
       REAL, DIMENSION( kms:kme ),INTENT(IN   ) :: c1h, c2h, c1f, c2f, &
                                                   c3h, c4h, c3f, c4f
+
+      REAL, DIMENSION( ims:ime , kms:kme, jms:jme ),  INTENT(INOUT) :: w_tend_pg, w_tend_damp
+
 !  Stack based 3d data, tile size.
       REAL, DIMENSION( its:ite ) :: mut_inv, msft_inv
       REAL, DIMENSION( its:ite, kts:kte ) :: rhs, wdwn
+      REAL, DIMENSION (its:ite, kts:kte, jts:jte) :: w_old
+      REAL :: rw_tend_s
       INTEGER :: i,j,k, i_start, i_end, j_start, j_end, k_start, k_end
       REAL, DIMENSION (kts:kte) :: dampwt
       real :: htop,hbot,hdepth,hk
@@ -1305,6 +1394,11 @@ SUBROUTINE advance_w( w, rw_tend, ww, w_save, u, v,  &
     DO i=i_start, i_end
       rhs(i,1) = 0.
     ENDDO
+
+    IF ((rk_step == config_flags%rk_ord) .and. (config_flags%output_w_fluxes .eq. 1)) THEN
+      w_old(its:ite, kts:kte, jts:jte) = w(its:ite, kts:kte, jts:jte)
+    ENDIF
+
   j_loop_w:  DO j = j_start, j_end
     DO i=i_start, i_end
        msft_inv(i) = 1./msfty(i,j)
@@ -1442,6 +1536,17 @@ SUBROUTINE advance_w( w, rw_tend, ww, w_save, u, v,  &
     ENDDO
     ENDDO
 
+    IF ((rk_step == config_flags%rk_ord) .and. (config_flags%output_w_fluxes .eq. 1)) THEN
+      DO k = kts+1,kte
+      DO i = i_start, i_end
+        !recover small step tendency and decouple from mu and map-scale factor
+        !kts value is set later by recover_small_step_tendencies
+        rw_tend_s = (w(i,k,j) - dts*rw_tend(i,k,j) - w_old(i,k,j))/config_flags%dt
+        w_tend_pg(i,k,j) = w_tend_pg(i,k,j) + rw_tend_s*msfty(i,j)/(c1f(k)*mut(i,j)+c2f(k))
+      ENDDO
+      ENDDO
+    ENDIF
+
     IF (config_flags%damp_opt .eq. 3) THEN
       DO k=k_end+1,2,-1
       DO i=i_start, i_end
@@ -1452,7 +1557,12 @@ SUBROUTINE advance_w( w, rw_tend, ww, w_save, u, v,  &
           if(hk .ge. hbot)then
             dampwt(k) = dampmag*sin(0.5*pi*(hk-hbot)/hdepth)*sin(0.5*pi*(hk-hbot)/hdepth)
           endif
+          w_old(i,k,j) = w(i,k,j)
           w(i,k,j) = (w(i,k,j) - dampwt(k)*(c1f(k)*mut(i,j)+c2f(k))*w_save(i,k,j))/(1.+dampwt(k))
+          IF ((rk_step == config_flags%rk_ord) .and. (config_flags%output_w_fluxes .eq. 1)) THEN
+            rw_tend_s = (w(i,k,j) - w_old(i,k,j))/config_flags%dt
+            w_tend_damp(i,k,j) = w_tend_damp(i,k,j) + rw_tend_s*msfty(i,j)/(c1f(k)*mut(i,j)+c2f(k))
+          ENDIF
       ENDDO
       ENDDO
     ENDIF
@@ -1957,5 +2067,86 @@ SUBROUTINE restore_ph_mu ( ph_2, ph_save, &
 END SUBROUTINE restore_ph_mu
 !----------------------------------------------------------------------
 #endif
+
+SUBROUTINE recover_small_step_tendencies( u_tend_pg, v_tend_pg, w_tend_pg, &
+                                          u_tend_damp, v_tend_damp,        &
+                                          u_1, u_2, v_1, v_2, w_1, w_2,    &
+                                          ru_tend, rv_tend, rw_tend,       &
+                                          mudf_x, mudf_y,                  &
+                                          mut, muu, muv,                   &
+                                          c1h, c2h, c1f, c2f,              &
+                                          msfuy, msfvx, msfty,             &
+                                          config_flags,                    &
+                                          ids, ide, jds, jde, kds, kde,    &
+                                          ims, ime, jms, jme, kms, kme,    &
+                                          its, ite, jts, jte, kts, kte     )
+
+      REAL, DIMENSION( ims:ime , kms:kme, jms:jme ),  INTENT(INOUT) :: u_tend_pg, v_tend_pg, w_tend_pg, &
+                                                                       u_tend_damp, v_tend_damp
+      REAL, DIMENSION( ims:ime , kms:kme, jms:jme ),  INTENT(IN) :: u_1, u_2, v_1, v_2, w_1, w_2,    &
+                                                                       ru_tend, rv_tend, rw_tend
+
+
+      REAL,   DIMENSION(ims:ime, jms:jme), INTENT(IN) :: mudf_x, mudf_y, mut, muu, muv
+      REAL, DIMENSION( kms:kme ),INTENT(IN   ) :: c1h, c2h, c1f, c2f
+      REAL,   DIMENSION(ims:ime, jms:jme), INTENT(IN) :: msfuy, msfvx, msfty
+
+      TYPE(grid_config_rec_type), INTENT(IN) :: config_flags
+      INTEGER,      INTENT(IN)       :: ids,ide, jds,jde, kds,kde, &
+                                        ims,ime, jms,jme, kms,kme, &
+                                        its,ite, jts,jte, kts,kte
+      REAL :: mudf_tend
+
+      ! Recover small-step momentum tendencies by subtracting
+      ! the decoupled (from mu and map-scale factors) rk tendencies
+      ! and tendencies from the external-mode filter
+      ! from the total tendencies.
+      ! Save the result in the pressure gradient tendencies.
+      ! The tendencies from the external-mode filter is saved in
+      ! the damping tendencies.
+      ! For w, only the surface values are set, since all other
+      ! values are already set during the small-step update to
+      ! avoid including tendencies from damp_opt=3.
+
+      IF (config_flags%output_u_fluxes .eq. 1) THEN
+        DO j = jts,min(jte,jde-1)
+        DO k = kts,min(kte,kde-1)
+        DO i = its,ite
+          ! add tendency from external-mode filter
+          mudf_tend = c1h(k)*mudf_x(i,j)*msfuy(i,j)/(c1h(k)*muu(i,j)+c2h(k))/config_flags%dt
+          u_tend_damp(i,k,j) = u_tend_damp(i,k,j) + mudf_tend
+          ! recover small-step pressure gradient tendency
+          u_tend_pg(i,k,j) = u_tend_pg(i,k,j) + (u_2(i,k,j) - u_1(i,k,j))/config_flags%dt &
+                             - ru_tend(i,k,j)*msfuy(i,j)/(c1h(k)*muu(i,j)+c2h(k)) - mudf_tend
+        ENDDO
+        ENDDO
+        ENDDO
+      ENDIF
+
+      IF (config_flags%output_v_fluxes .eq. 1) THEN
+        DO j = jts,jte
+        DO k = kts,min(kte,kde-1)
+        DO i = its,min(ite,ide-1)
+          ! add tendency from external-mode filter
+          mudf_tend = c1h(k)*mudf_y(i,j)*msfvx(i,j)/(c1h(k)*muv(i,j)+c2h(k))/config_flags%dt
+          v_tend_damp(i,k,j) = v_tend_damp(i,k,j) + mudf_tend
+          ! recover small-step pressure gradient tendency
+          v_tend_pg(i,k,j) = v_tend_pg(i,k,j) + (v_2(i,k,j) - v_1(i,k,j))/config_flags%dt &
+                             - rv_tend(i,k,j)*msfvx(i,j)/(c1h(k)*muv(i,j)+c2h(k)) - mudf_tend
+        ENDDO
+        ENDDO
+        ENDDO
+      ENDIF
+
+      IF (config_flags%output_w_fluxes .eq. 1) THEN
+        k = kts
+        DO j = jts,min(jte,jde-1)
+        DO i = its,min(ite,ide-1)
+          w_tend_pg(i,k,j) = w_tend_pg(i,k,j) + (w_2(i,k,j) - w_1(i,k,j))/config_flags%dt &
+                             - rw_tend(i,k,j)*msfty(i,j)/(c1f(k)*mut(i,j)+c2f(k))
+        ENDDO
+        ENDDO
+      ENDIF
+END SUBROUTINE recover_small_step_tendencies
 
 END MODULE module_small_step_em
