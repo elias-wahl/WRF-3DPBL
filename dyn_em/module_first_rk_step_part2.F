@@ -1466,7 +1466,13 @@ BENCH_END(hor_diff_tim)
              CALL Populate_wrflux_sgs_from_pbl3d ( config_flags, grid%rho_tmp, grid%fnm, grid%fnp, &
                   grid%turb_flux_wtheta, grid%turb_flux_wtheta_v, grid%turb_flux_wqv,   &
                   grid%turb_flux_uw, grid%turb_flux_vw, grid%turb_flux_w2,              &
+                  grid%turb_flux_utheta, grid%turb_flux_vtheta,                          &
+                  grid%turb_flux_utheta_v, grid%turb_flux_vtheta_v,                      &
+                  grid%turb_flux_uqv, grid%turb_flux_vqv,                                &
+                  grid%turb_flux_u2, grid%turb_flux_v2, grid%turb_flux_uv,               &
                   grid%ftz_sgs, grid%fqz_sgs, grid%fuz_sgs, grid%fvz_sgs, grid%fwz_sgs, &
+                  grid%ftx_sgs, grid%fty_sgs, grid%fqx_sgs, grid%fqy_sgs,                &
+                  grid%fux_sgs, grid%fvx_sgs, grid%fvy_sgs, grid%fwx_sgs, grid%fwy_sgs,  &
                   ids, ide, jds, jde, kds, kde,                                          &
                   ims, ime, jms, jme, kms, kme,                                          &
                   grid%i_start(ij), grid%i_end(ij),                                      &

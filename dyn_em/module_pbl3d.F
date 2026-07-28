@@ -6607,24 +6607,37 @@
 
     subroutine Populate_wrflux_sgs_from_pbl3d (config_flags, rho, fnm, fnp, &
         turb_flux_wtheta, turb_flux_wtheta_v, turb_flux_wqv, turb_flux_uw, turb_flux_vw, turb_flux_w2, &
+        turb_flux_utheta, turb_flux_vtheta, turb_flux_utheta_v, turb_flux_vtheta_v, &
+        turb_flux_uqv, turb_flux_vqv, turb_flux_u2, turb_flux_v2, turb_flux_uv, &
         ftz_sgs, fqz_sgs, fuz_sgs, fvz_sgs, fwz_sgs, &
+        ftx_sgs, fty_sgs, fqx_sgs, fqy_sgs, fux_sgs, fvx_sgs, fvy_sgs, fwx_sgs, fwy_sgs, &
         ids, ide, jds, jde, kds, kde, &
         ims, ime, jms, jme, kms, kme, &
         its, ite, jts, jte, kts, kte)
 
-      ! Populates WRFlux's vertical SGS flux state arrays (ftz_sgs, fqz_sgs, fuz_sgs, fvz_sgs, fwz_sgs)
+      ! Populates WRFlux's SGS flux state arrays (ftz_sgs/fqz_sgs/fuz_sgs/fvz_sgs/fwz_sgs and their
+      ! horizontal counterparts ftx_sgs/fty_sgs/fqx_sgs/fqy_sgs/fux_sgs/fvx_sgs/fvy_sgs/fwx_sgs/fwy_sgs)
       ! directly from the 3D PBL scheme's own native kinematic turbulent flux diagnostics. WRFlux's
-      ! generic mechanisms for this (fluxes_from_bl_tend in module_pbl_driver.F, and
-      ! vertical_diffusion_implicit in module_diffusion_em.F) are both gated off whenever pbl3d_opt is
-      ! active, since pbl3d bypasses the standard PBL/km_opt=5 tendency and diffusion paths entirely.
-      ! Converts pbl3d's kinematic fluxes (K m/s, m2/s2, ...) to WRFlux's dynamic (density-weighted)
-      ! flux convention (rho * kinematic flux), matching the units WRFlux declares for these arrays.
-      ! rho (rho_tmp) is mass-point/unstaggered, but the turb_flux_* arrays and ftz_sgs/fqz_sgs/fwz_sgs
-      ! are Z-staggered (w-levels), so rho is first interpolated to w-levels via fnm/fnp exactly as
-      ! module_diffusion_em.F does for xkxavg; at the surface (k=kts) the mass-level value is used
-      ! directly, matching how module_diffusion_em.F sets the surface flux from rho(i,kts,j). Momentum
-      ! fluxes are additionally staggered onto the u/v grid via the same two-point horizontal averaging
-      ! vertical_diffusion_implicit uses for xkxavg/muavg_u.
+      ! generic mechanisms for these (fluxes_from_bl_tend in module_pbl_driver.F,
+      ! vertical_diffusion_implicit and horizontal_diffusion_2 in module_diffusion_em.F) are all gated
+      ! off whenever pbl3d_opt is active, since pbl3d bypasses the standard PBL/km_opt=5 tendency and
+      ! diff_opt=1/2 diffusion paths entirely. Converts pbl3d's kinematic fluxes (K m/s, m2/s2, ...) to
+      ! WRFlux's dynamic (density-weighted) flux convention (rho * kinematic flux), matching the units
+      ! WRFlux declares for these arrays.
+      !
+      ! rho (rho_tmp) is mass-point/unstaggered. All of pbl3d's turb_flux_* diagnostics are Z-staggered
+      ! (w-levels) regardless of whether the component is conceptually a "horizontal" or "vertical"
+      ! flux (pbl3d computes its whole Level-2.5 closure on one common vertical grid). WRFlux's arrays
+      ! are staggered per Arakawa-C convention instead: ftz_sgs/fqz_sgs/fwz_sgs stay Z-staggered like
+      ! their pbl3d source, so only rho needs interpolating to w-levels (via fnm/fnp, mirroring
+      ! module_diffusion_em.F's xkxavg); ftx_sgs/fty_sgs/fqx_sgs/fqy_sgs/fux_sgs/fvx_sgs/fvy_sgs are
+      ! mass-level in Z, so the corresponding pbl3d flux is first de-staggered down from w-levels via a
+      ! simple two-point vertical average. fwx_sgs/fwy_sgs are the same physical stress component as
+      ! fuz_sgs/fvz_sgs (u'w'/v'w' appearing in the w-momentum equation's horizontal-flux-divergence
+      ! term rather than the u/v-momentum equation's vertical one) and reuse those exact values.
+      ! Momentum fluxes are additionally staggered horizontally via the same two-point (u/v points) or
+      ! four-point (uv corner point) averaging vertical_diffusion_implicit/horizontal_diffusion_2 use
+      ! for xkxavg/muavg_u/rho at those same points.
 
       use module_configure, only : grid_config_rec_type
 
@@ -6639,12 +6652,16 @@
       real, dimension (kms:kme), intent (in) :: fnm, fnp
 
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in) :: rho, &
-          turb_flux_wtheta, turb_flux_wtheta_v, turb_flux_wqv, turb_flux_uw, turb_flux_vw, turb_flux_w2
+          turb_flux_wtheta, turb_flux_wtheta_v, turb_flux_wqv, turb_flux_uw, turb_flux_vw, turb_flux_w2, &
+          turb_flux_utheta, turb_flux_vtheta, turb_flux_utheta_v, turb_flux_vtheta_v, &
+          turb_flux_uqv, turb_flux_vqv, turb_flux_u2, turb_flux_v2, turb_flux_uv
 
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (inout) :: ftz_sgs, fqz_sgs, fuz_sgs, fvz_sgs, fwz_sgs
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (inout) :: ftz_sgs, fqz_sgs, fuz_sgs, fvz_sgs, fwz_sgs, &
+          ftx_sgs, fty_sgs, fqx_sgs, fqy_sgs, fux_sgs, fvx_sgs, fvy_sgs, fwx_sgs, fwy_sgs
 
       integer :: i, j, k, ktf
       real, dimension (ims:ime, kms:kme, jms:jme) :: rho_w
+      real, dimension (ims:ime, kms:kme, jms:jme) :: u2_mass, v2_mass
 
       ktf = min(kte, kde-1)
 
@@ -6661,6 +6678,25 @@
       end do
       end do
       end do
+
+      ! De-stagger pbl3d's Z-staggered (w-level) u2/v2 diagnostics down to mass levels via a simple
+      ! two-point vertical average (fux_sgs/fvy_sgs are mass-level in Z, unlike ftz_sgs/fqz_sgs/fwz_sgs
+      ! above). Safe as a precomputed tile-local array since fux_sgs/fvy_sgs read it at the same (i,j)
+      ! only, with no horizontal neighbor offset - unlike utheta/vtheta/uqv/vqv/uv below, which need an
+      ! i-1 or j-1 neighbor and are therefore computed inline directly from the grid-level (halo-safe)
+      ! turb_flux_* arrays instead of via a tile-local intermediate (a tile-local array only has its
+      ! own tile's index range populated, so reading a neighboring tile's index from it would be
+      ! uninitialized memory).
+      if (config_flags%output_usgs_fluxes .or. config_flags%output_vsgs_fluxes) then
+        do j = jts, min(jte, jde-1)
+        do k = kts, ktf
+        do i = its, min(ite, ide-1)
+          u2_mass(i,k,j) = 0.5*(turb_flux_u2(i,k,j) + turb_flux_u2(i,k+1,j))
+          v2_mass(i,k,j) = 0.5*(turb_flux_v2(i,k,j) + turb_flux_v2(i,k+1,j))
+        end do
+        end do
+        end do
+      end if
 
       if (config_flags%output_tsgs_fluxes) then
         do j = jts, min(jte, jde-1)
@@ -6711,6 +6747,119 @@
         do k = kts, ktf
         do i = its, min(ite, ide-1)
           fwz_sgs(i,k,j) = rho_w(i,k,j) * turb_flux_w2(i,k,j)
+        end do
+        end do
+        end do
+      end if
+
+      ! Horizontal SGS fluxes (mass-level in Z; module_first_rk_step_part2.F skips the whole
+      ! horizontal_diffusion_2 call, which would otherwise populate these, whenever pbl3d_opt>0)
+      if (config_flags%output_tsgs_fluxes) then
+        do j = jts, min(jte, jde-1)
+        do k = kts, ktf
+        do i = its, ite
+          if (config_flags%output_dry_theta_fluxes) then
+            ftx_sgs(i,k,j) = 0.5*(rho(i,k,j)+rho(i-1,k,j)) * 0.25*( &
+                turb_flux_utheta(i,k,j) + turb_flux_utheta(i,k+1,j) + &
+                turb_flux_utheta(i-1,k,j) + turb_flux_utheta(i-1,k+1,j) )
+          else
+            ftx_sgs(i,k,j) = 0.5*(rho(i,k,j)+rho(i-1,k,j)) * 0.25*( &
+                turb_flux_utheta_v(i,k,j) + turb_flux_utheta_v(i,k+1,j) + &
+                turb_flux_utheta_v(i-1,k,j) + turb_flux_utheta_v(i-1,k+1,j) )
+          end if
+        end do
+        end do
+        end do
+        do j = jts, jte
+        do k = kts, ktf
+        do i = its, min(ite, ide-1)
+          if (config_flags%output_dry_theta_fluxes) then
+            fty_sgs(i,k,j) = 0.5*(rho(i,k,j)+rho(i,k,j-1)) * 0.25*( &
+                turb_flux_vtheta(i,k,j) + turb_flux_vtheta(i,k+1,j) + &
+                turb_flux_vtheta(i,k,j-1) + turb_flux_vtheta(i,k+1,j-1) )
+          else
+            fty_sgs(i,k,j) = 0.5*(rho(i,k,j)+rho(i,k,j-1)) * 0.25*( &
+                turb_flux_vtheta_v(i,k,j) + turb_flux_vtheta_v(i,k+1,j) + &
+                turb_flux_vtheta_v(i,k,j-1) + turb_flux_vtheta_v(i,k+1,j-1) )
+          end if
+        end do
+        end do
+        end do
+      end if
+
+      if (config_flags%output_qsgs_fluxes) then
+        do j = jts, min(jte, jde-1)
+        do k = kts, ktf
+        do i = its, ite
+          fqx_sgs(i,k,j) = 0.5*(rho(i,k,j)+rho(i-1,k,j)) * 0.25*( &
+              turb_flux_uqv(i,k,j) + turb_flux_uqv(i,k+1,j) + &
+              turb_flux_uqv(i-1,k,j) + turb_flux_uqv(i-1,k+1,j) )
+        end do
+        end do
+        end do
+        do j = jts, jte
+        do k = kts, ktf
+        do i = its, min(ite, ide-1)
+          fqy_sgs(i,k,j) = 0.5*(rho(i,k,j)+rho(i,k,j-1)) * 0.25*( &
+              turb_flux_vqv(i,k,j) + turb_flux_vqv(i,k+1,j) + &
+              turb_flux_vqv(i,k,j-1) + turb_flux_vqv(i,k+1,j-1) )
+        end do
+        end do
+        end do
+      end if
+
+      if (config_flags%output_usgs_fluxes) then
+        do j = jts, min(jte, jde-1)
+        do k = kts, ktf
+        do i = its, min(ite, ide-1)
+          fux_sgs(i,k,j) = rho(i,k,j) * u2_mass(i,k,j)
+        end do
+        end do
+        end do
+      end if
+
+      if (config_flags%output_vsgs_fluxes) then
+        do j = jts, min(jte, jde-1)
+        do k = kts, ktf
+        do i = its, min(ite, ide-1)
+          fvy_sgs(i,k,j) = rho(i,k,j) * v2_mass(i,k,j)
+        end do
+        end do
+        end do
+      end if
+
+      if (config_flags%output_usgs_fluxes .or. config_flags%output_vsgs_fluxes) then
+        do j = jts, jte
+        do k = kts, ktf
+        do i = its, ite
+          fvx_sgs(i,k,j) = 0.25*(rho(i-1,k,j)+rho(i,k,j)+rho(i-1,k,j-1)+rho(i,k,j-1)) * 0.125*( &
+              turb_flux_uv(i,  k,j  ) + turb_flux_uv(i,  k+1,j  ) + &
+              turb_flux_uv(i-1,k,j  ) + turb_flux_uv(i-1,k+1,j  ) + &
+              turb_flux_uv(i,  k,j-1) + turb_flux_uv(i,  k+1,j-1) + &
+              turb_flux_uv(i-1,k,j-1) + turb_flux_uv(i-1,k+1,j-1) )
+        end do
+        end do
+        end do
+      end if
+
+      ! fwx_sgs/fwy_sgs are the same physical stress component as fuz_sgs/fvz_sgs (u'w'/v'w'), just
+      ! appearing in the w-momentum equation's horizontal-flux-divergence term instead of the
+      ! u/v-momentum equation's vertical one - reuse the values computed above directly.
+      if (config_flags%output_wsgs_fluxes .and. config_flags%output_usgs_fluxes) then
+        do j = jts, min(jte, jde-1)
+        do k = kts, ktf
+        do i = its, ite
+          fwx_sgs(i,k,j) = fuz_sgs(i,k,j)
+        end do
+        end do
+        end do
+      end if
+
+      if (config_flags%output_wsgs_fluxes .and. config_flags%output_vsgs_fluxes) then
+        do j = jts, jte
+        do k = kts, ktf
+        do i = its, min(ite, ide-1)
+          fwy_sgs(i,k,j) = fvz_sgs(i,k,j)
         end do
         end do
         end do
