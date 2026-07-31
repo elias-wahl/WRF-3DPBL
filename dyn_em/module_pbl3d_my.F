@@ -53,6 +53,60 @@
     real, public    :: Q_SQ_MIN, TURB_FLUX_MIN
     logical, parameter :: USE_HIGH_ORDER = .true.
 
+      ! Safeguards for the full 3D closure (pbl3d_opt = 2) only. The A matrix of the
+      ! algebraic second-moment system has the structure A = (1/tau) I + S, where
+      ! tau = l / q is the turbulence relaxation time scale and S holds the mean
+      ! gradient terms. It degenerates when |S| tau ~ 1, which is exactly where the
+      ! weak-equilibrium (algebraic) assumption behind the closure itself breaks down.
+      ! The safeguards below therefore act on l, not on the matrix entries.
+      !
+      ! SK_EPS_MAX: largest S k / eps admitted by the algebraic closure. Durbin (1996,
+      !   Int. J. Heat Fluid Flow 17, 89-90) bounds the turbulence time scale by the
+      !   strain rate for exactly this reason; the value is ~2x the homogeneous shear
+      !   equilibrium value S k / eps ~ 3.3, so the limiter is inactive in equilibrium
+      !   shear layers and only engages in the strong-strain regime.
+      !   With k = q^2 / 2 and eps = q^3 / (b_1 l) this becomes l <= (2 SK_EPS_MAX / b_1) q / |S|,
+      !   i.e. the shear analogue of the buoyancy limit l <= N_TAU_MAX q / N applied by
+      !   Calc_l_master_algebra (see N_TAU_MAX below).
+      !   Set from the namelist (pbl3d_sk_eps_max, default 6.0) rather than fixed, because
+      !   it is the binding control on l wherever the raw S k / eps exceeds it, which offline
+      !   estimates put at every point of the nocturnal boundary layer, slope drainage and
+      !   low level jet regimes. Homogeneous shear equilibrium is about 3.3, so the default
+      !   is deliberately about twice as permissive. COND_MAX is deliberately NOT exposed:
+      !   with l0 fixed (pbl3d_l0_opt = 1) the median cond(A) is 10-400, eight orders of
+      !   magnitude inside the limit, so there is nothing to scan.
+      !
+      ! N_TAU_MAX: largest N tau = N l / q admitted, i.e. the buoyancy limit l <= N_TAU_MAX q / N
+      !   in stable stratification. This is the stratification counterpart of SK_EPS_MAX and
+      !   rests on the same weak-equilibrium argument: an eddy of size l and velocity q turns
+      !   over in tau = l / q, and buoyancy destroys it in 1 / N, so N tau > 1 describes an
+      !   eddy that cannot exist. Deardorff (1980, Boundary-Layer Meteorol. 18, 495-527) sets
+      !   l = 0.76 sqrt(e) / N under stable stratification; with e = q^2 / 2 that is
+      !   l = 0.53 q / N, hence the default.
+      !   It is applied in Calc_l_master_algebra, i.e. to l_master itself, not as a local
+      !   fix-up inside the solver, because it is part of how the length scale is defined:
+      !   pbl3d_l_opt = 2 (MYNN, l_f = alpha_2 q / N) and pbl3d_l_opt = 3 (Messinger,
+      !   l_d = c_r q / N) already carry exactly this limit. pbl3d_l_opt = 1 (MY74) was the
+      !   only branch without one, even though the comments here and in Diagnose_fluxes have
+      !   always claimed otherwise.
+      !   Why it is needed: q and l are computed by independent routes and nothing couples
+      !   them. q_sq is a local production/dissipation balance and correctly collapses to
+      !   Q_SQ_MIN in laminar air; l = l0 kappa z / (kappa z + l0) is geometric and asymptotes
+      !   to l0 (order 30 m) all the way to the model lid. Above the boundary layer that gives
+      !   tau = l / q ~ 8600 s against a buoyancy period of ~500 s, so N tau ~ 100 and the
+      !   algebraic system is being solved two orders of magnitude outside its validity range.
+      !   In level-2 equilibrium the limit is inert: substituting l = N_TAU_MAX q / N into
+      !   q^2 = b_1 l^2 S^2 (1 - Rif) Sm makes it bind only above Ri ~ O(1), far beyond the
+      !   Ri = 0.195 cutoff where the closure already returns no turbulence. It therefore acts
+      !   only where l and q have genuinely decoupled, which is what it is for.
+      !   Set from the namelist (pbl3d_n_tau_max, default 0.53); a very large value disables it.
+    real,    public    :: SK_EPS_MAX, N_TAU_MAX
+    real,    parameter :: STRAIN_MIN = 1.0E-10   ! avoids 0/0 in the strain limiter
+    real,    parameter :: COND_MAX   = 1.0E8     ! largest admitted condition number of A
+    real,    parameter :: L_BACKOFF  = 0.5       ! l reduction factor per escalation step
+    integer, parameter :: MAX_SOLVE_ATTEMPTS = 6
+    integer, parameter :: N_PSD_BISECT = 20      ! bisection steps of the covariance shrink
+
     integer, parameter :: SP = REAL32
     integer, parameter :: DP = REAL64
     integer, parameter :: SOLVER_PREC = DP
@@ -81,6 +135,7 @@
               turb_flux_wqnc, turb_flux_uqnr, turb_flux_vqnr, turb_flux_wqnr, turb_flux_uqni, turb_flux_vqni, turb_flux_wqni, &
               turb_flux_uqnwfa, turb_flux_vqnwfa, turb_flux_wqnwfa, turb_flux_uqnifa, turb_flux_vqnifa, turb_flux_wqnifa, &
               msfux, msfuy, msfvx, msfvy, msftx, msfty, xland, pblh, &
+              pbl3d_t1_ratio, pbl3d_t2_steps, pbl3d_t3_flags, pbl3d_sk_eps, pbl3d_n_tau, pbl3d_cond_a, pbl3d_qv2, &
               dx, dy, rdx, rdy, dn, dnw, rdz, dt, id, rdzw, fnm, fnp, cf1, cf2, cf3, zx, zy, mut, c1h, c2h, ids, ide, jds, jde, kds, kde, &
               ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
@@ -102,6 +157,9 @@
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: dz, z_at_mass, z_at_w, u, v, &
           w, th, th2, qv, rho, zx, zy, rdz, rdzw
       real, dimension (ims:ime, kms:kme, jms:jme), intent (inout) :: q_sq, q_sq_prog
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (out)   :: pbl3d_t1_ratio, pbl3d_t2_steps, &
+                                                                     pbl3d_t3_flags, pbl3d_sk_eps,   &
+                                                                     pbl3d_n_tau, pbl3d_cond_a, pbl3d_qv2
       real, dimension (its:ite, kts:kte, jts:jte), intent (in)   :: du_dx, du_dy, du_dz, dv_dx, dv_dy, dv_dz, &
           dw_dx, dw_dy, dw_dz, dthetav_dx, dthetav_dy, dthetav_dz, dqv_dx, dqv_dy, dqv_dz, dqc_dz, dqr_dz,    &
           dqi_dz, dqs_dz, dqg_dz, dqnc_dz, dqnr_dz, dqni_dz, dqnwfa_dz, dqnifa_dz
@@ -161,6 +219,7 @@
             turb_flux_vw, turb_flux_utheta_v, turb_flux_vtheta_v, turb_flux_wtheta_v,        &
             turb_flux_theta2_v, turb_flux_utheta, turb_flux_vtheta, turb_flux_wtheta,        &
             turb_flux_uqv, turb_flux_vqv, turb_flux_wqv, th2, thetav, qv, rho, hfx, qfx, rmol, u, v, ust,  &
+            pbl3d_t1_ratio, pbl3d_t2_steps, pbl3d_t3_flags, pbl3d_sk_eps, pbl3d_n_tau, pbl3d_cond_a, pbl3d_qv2,       &
             dz, rdzw, z_at_w, fnm, fnp, cf1, cf2, cf3, dn, dnw, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme,  &
             its, ite, jts, jte, kts, kte)
       end if
@@ -252,7 +311,7 @@
     end subroutine Fill_q_sq_prog_with_q_sq
 
 
-    subroutine Calc_l_master_algebra (pbl3d_l_opt, q_sq, dz, rdzw, rmol, wthv, dthetav_dz, l_master, &
+    subroutine Calc_l_master_algebra (pbl3d_l_opt, pbl3d_l0_opt, q_sq, dz, rdzw, rmol, wthv, dthetav_dz, l_master, &
               l_boulac, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -268,7 +327,7 @@
 
       implicit none
 
-      integer,                                     intent (in) :: pbl3d_l_opt
+      integer,                                     intent (in) :: pbl3d_l_opt, pbl3d_l0_opt
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in) :: q_sq
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in) :: dz, rdzw
       real, dimension (ims:ime, jms:jme),          intent (in) :: rmol
@@ -306,7 +365,7 @@
       real, parameter :: alpha_4 = 100.0
       real, parameter :: cns = 2.7
       real :: l0, l0_num, l0_den, qdz
-      real :: q, q_dz, dz_wall
+      real :: q, q_dz, dz_wall, q_min
       real :: l_s, l_b, l_f, zet, kz, N, q_c
 
       logical, parameter :: DEBUG = .false.
@@ -318,7 +377,28 @@
       j_end = Min (jte, jde - 1)
       ktf = Min (kte, kde - 1)
 
+      q_min = Sqrt (Q_SQ_MIN)
+
          ! Calculates l0 (Eq. 72 MY74)
+         !
+         ! l0 is the q-weighted mean height of the turbulence, integrated over the whole
+         ! column. MY74's integral converges because q -> 0 above the turbulent layer, but
+         ! q_sq here is floored at Q_SQ_MIN, so with pbl3d_l0_opt = 0 every quiescent level
+         ! contributes q_min = Sqrt (Q_SQ_MIN) rather than nothing. The numerator then grows
+         ! like H^2 while the denominator grows like H, so l0 -> alpha * H / 2: the boundary
+         ! layer length scale ends up set by where the model lid is, not by the turbulence.
+         ! For a 20 km top and alpha = 0.1 that is l0 = 800 m in a nocturnal boundary layer
+         ! whose turbulence supports about 3.5 m, and it drives N * tau past the point where
+         ! the 10x10 system stops being solvable inside cold pools.
+         !
+         ! pbl3d_l0_opt = 1 weights by the turbulent excess Max (q - q_min, 0) instead, which
+         ! restores the intended meaning: Q_SQ_MIN is a device to keep q_sq positive, not a
+         ! physical turbulence level to be integrated. MYNN applies the same correction (see
+         ! module_bl_mynnedmf.F, "originally integrated to model top, not just pblh"), there
+         ! by truncating at the PBL top and subtracting qmin from the weight. Truncating is
+         ! avoided here on purpose: it needs pblh, which is ill posed over complex terrain and
+         ! would cut off elevated turbulent layers such as a cold pool top or a foehn shear
+         ! layer. The excess weighting is local and needs no PBL depth at all.
       do j = j_start, j_end
         do i = i_start, i_end
           l0_num = SMALL_VAL
@@ -327,7 +407,11 @@
           do k = kts + 1, ktf
             z_at_walls_1d(k) = z_at_walls_1d(k - 1) + 1.0 / rdzw(i, k - 1, j)
             dz_wall = 0.5 * (dz(i, k, j) + dz(i, k - 1, j))
-            q = Sqrt (q_sq(i, k, j))
+            if (pbl3d_l0_opt == 1) then
+              q = Max (Sqrt (q_sq(i, k, j)) - q_min, 0.0)
+            else
+              q = Sqrt (q_sq(i, k, j))
+            end if
             q_dz = q * dz_wall
             l0_num = l0_num + q_dz * z_at_walls_1d(k)
             l0_den = l0_den + q_dz
@@ -345,6 +429,25 @@
             if (pbl3d_l_opt == 1) then
                ! Calculates master length scale (Eq. 71 MY74)
               l_master(i, k, j) = l0 * KARMAN * z_at_walls_1d(k) / (KARMAN * z_at_walls_1d(k) + l0)
+               ! Buoyancy limit l <= N_TAU_MAX q / N (Deardorff 1980; see the N_TAU_MAX block at
+               ! the top of this module). Eq. 71 is purely geometric: it knows the distance to
+               ! the ground and the depth of the turbulent layer, but not whether there is any
+               ! turbulence at this level. Where q has collapsed and l has not, tau = l / q and
+               ! hence N tau become unbounded, and the algebraic closure is solved far outside
+               ! its validity range. q_sq is used as stored, i.e. floored at Q_SQ_MIN rather
+               ! than reduced by q_min as in the l0 integral above, so that l stays strictly
+               ! positive: l appears as 1 / tau = q / l in A and as a divisor in the
+               ! dissipation, and must not be driven to zero.
+              if (dthetav_dz(i, k, j) > 0.0) then
+                N = Sqrt (G_OVER_TREF * dthetav_dz(i, k, j))
+                l_master(i, k, j) = Min (l_master(i, k, j),                                  &
+                                         N_TAU_MAX * Sqrt (q_sq(i, k, j)) / N)
+              end if
+               ! l_boulac is intent(out) and is read again below and by
+               ! Fill_dissip_length_scale, so it must be defined on every branch. MY74 makes no
+               ! distinction between the mixing and the dissipation length scale, so they are
+               ! the same field here.
+              l_boulac(i, k, j) = l_master(i, k, j)
             else if (pbl3d_l_opt == 2) then
                ! Calculates master length scale (Nakanishi 2001)
                ! l surface
@@ -404,7 +507,7 @@
     end subroutine Calc_l_master_algebra
 
 
-    subroutine Calc_l_messinger_master_algebra (q_sq, dz, rdzw, rmol, wthv, dthetav_dz, l_master, &
+    subroutine Calc_l_messinger_master_algebra (pbl3d_l0_opt, q_sq, dz, rdzw, rmol, wthv, dthetav_dz, l_master, &
               l_boulac, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -420,6 +523,7 @@
 
       implicit none
 
+      integer,                                     intent (in) :: pbl3d_l0_opt
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in) :: q_sq
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in) :: dz, rdzw
       real, dimension (ims:ime, jms:jme),          intent (in) :: rmol
@@ -436,7 +540,7 @@
       real, parameter :: SMALL_VAL = 0.00001
       real, parameter :: alpha_1 = 0.23
       real :: l0, l0_num, l0_den, qdz
-      real :: q, q_dz, dz_wall
+      real :: q, q_dz, dz_wall, q_min
       real :: l_b, l_d, l_del, N, zi
       real, parameter :: c_r = 0.25
       real, parameter :: c_g = 10.
@@ -451,7 +555,10 @@
       j_end = Min (jte, jde - 1)
       ktf = Min (kte, kde - 1)
 
-         ! Calculates l0 (Eq. 72 MY74)
+      q_min = Sqrt (Q_SQ_MIN)
+
+         ! Calculates l0 (Eq. 72 MY74). See Calc_l_master_algebra for why pbl3d_l0_opt = 1
+         ! weights the integral by the turbulent excess over the Q_SQ_MIN floor.
       do j = j_start, j_end
         do i = i_start, i_end
           l0_num = SMALL_VAL
@@ -460,7 +567,11 @@
           do k = kts + 1, ktf
             z_at_walls_1d(k) = z_at_walls_1d(k - 1) + 1.0 / rdzw(i, k - 1, j)
             dz_wall = 0.5 * (dz(i, k, j) + dz(i, k - 1, j))
-            q = Sqrt (q_sq(i, k, j))
+            if (pbl3d_l0_opt == 1) then
+              q = Max (Sqrt (q_sq(i, k, j)) - q_min, 0.0)
+            else
+              q = Sqrt (q_sq(i, k, j))
+            end if
             q_dz = q * dz_wall
             l0_num = l0_num + q_dz * z_at_walls_1d(k)
             l0_den = l0_den + q_dz
@@ -472,8 +583,15 @@
           zi = c_g * l0
 
           do k = kts + 1, ktf
-            N = Sqrt (G_OVER_TREF * dthetav_dz(i, k, j))
-            l_d = c_r * Sqrt (q_sq(i, k, j)) / N
+              ! Unstable and neutral layers have no buoyancy limit. Without this guard
+              ! Sqrt of a negative argument gives a NaN N, l_d is NaN, and whether the
+              ! Min below propagates it is processor dependent.
+            if (dthetav_dz(i, k, j) > 0.0) then
+              N = Sqrt (G_OVER_TREF * dthetav_dz(i, k, j))
+              l_d = c_r * Sqrt (q_sq(i, k, j)) / N
+            else
+              l_d = 1.0E10
+            end if
 
             l_b = l0 * KARMAN * z_at_walls_1d(k) / (KARMAN * z_at_walls_1d(k) + l0)
 
@@ -701,13 +819,13 @@
 
         ! Diagnose master length scale at faces
       if (config_flags%pbl3d_l_opt < 3) then
-        call Calc_l_master_algebra (config_flags%pbl3d_l_opt, q_sq, dz, rdzw, rmol, turb_flux_wtheta_v, dthetav_dz, l_master, &
+        call Calc_l_master_algebra (config_flags%pbl3d_l_opt, config_flags%pbl3d_l0_opt, q_sq, dz, rdzw, rmol, turb_flux_wtheta_v, dthetav_dz, l_master, &
             l_boulac, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
       else if (config_flags%pbl3d_l_opt == 3) then
         call Calc_l_boulac_master_algebra (q_sq, dz, t, dlu, dld, dls, dlk, l_master, l_boulac, &
             ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
       else
-        call Calc_l_messinger_master_algebra (q_sq, dz, rdzw, rmol, turb_flux_wtheta_v, dthetav_dz, l_master, &
+        call Calc_l_messinger_master_algebra (config_flags%pbl3d_l0_opt, q_sq, dz, rdzw, rmol, turb_flux_wtheta_v, dthetav_dz, l_master, &
             l_boulac, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
       end if
 
@@ -844,20 +962,26 @@
 
         ! local vars
       real, dimension (its:ite, kts:kte, jts:jte) :: l_dissip
-      logical, parameter :: use_hl88 = .true.
       character (4) :: my_level
 
-      if (use_hl88) then   ! calc sm and sh then q_sq for level 2 model to prepare for HL88 fix
-        my_level = 'l2'
-        call Calc_sm_sh_l2_or_l2p5 (my_level=my_level, du_dz=du_dz, dv_dz=dv_dz, dthetav_dz=dthetav_dz, &
-            ids=ids, ide=ide, jds=jds, jde=jde, kds=kds, kde=kde, ims=ims, ime=ime, jms=jms, jme=jme, kms=kms, kme=kme, &
-            its=its, ite=ite, jts=jts, jte=jte, kts=kts, kte=kte, sm=sm_l2, sh=sh_l2, rif=rif)
-        call Fill_dissip_length_scale (config_flags%pbl3d_l_opt, l_master, l_boulac, l_dissip, &
-            ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-        call Calc_q_sq_l2_pbl_approx (l_master=l_master, l_dissip=l_dissip, du_dz=du_dz, dv_dz=dv_dz, dthetav_dz=dthetav_dz, ids=ids, ide=ide, &
-            jds=jds, jde=jde, kds=kds, kde=kde, ims=ims, ime=ime, jms=jms, jme=jme, kms=kms, kme=kme, its=its, ite=ite, &
-            jts=jts, jte=jte, kts=kts, kte=kte, q_sq_hl88=q_sq_hl88, sm=sm_l2, rif=rif)
-      end if
+        ! Calc sm and sh then q_sq for the level 2 model to prepare for the HL88 fix.
+        !
+        ! This used to sit inside "if (use_hl88)" with use_hl88 a local parameter fixed at
+        ! .true. and no else branch. Flipping it would have left rif, sm_l2, sh_l2 and
+        ! q_sq_hl88 undefined while still passing them to Calc_sm_sh_l2_or_l2p5 below, which
+        ! reads all four. There is no defined physics for "HL88 off" - the else branch of the
+        ! limiter is not the identity - so the flag is removed rather than given an invented
+        ! meaning. Disabling HL88 would need a namelist option and a stated definition.
+      my_level = 'l2'
+      call Calc_sm_sh_l2_or_l2p5 (my_level=my_level, du_dz=du_dz, dv_dz=dv_dz, dthetav_dz=dthetav_dz, &
+          ids=ids, ide=ide, jds=jds, jde=jde, kds=kds, kde=kde, ims=ims, ime=ime, jms=jms, jme=jme, kms=kms, kme=kme, &
+          its=its, ite=ite, jts=jts, jte=jte, kts=kts, kte=kte, sm=sm_l2, sh=sh_l2, rif=rif)
+      call Fill_dissip_length_scale (config_flags%pbl3d_l_opt, l_master, l_boulac, l_dissip, &
+          ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+      call Calc_q_sq_l2_pbl_approx (l_master=l_master, l_dissip=l_dissip, du_dz=du_dz, dv_dz=dv_dz, dthetav_dz=dthetav_dz, ids=ids, ide=ide, &
+          jds=jds, jde=jde, kds=kds, kde=kde, ims=ims, ime=ime, jms=jms, jme=jme, kms=kms, kme=kme, its=its, ite=ite, &
+          jts=jts, jte=jte, kts=kts, kte=kte, q_sq_hl88=q_sq_hl88, sm=sm_l2, rif=rif)
+
       call Fill_q_sq_with_q_sq_prog (q_sq_prog, q_sq, dn, dnw, fnm, fnp, cf1, cf2, cf3, &
           ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
       my_level = 'l2p5'
@@ -875,6 +999,7 @@
         turb_flux_vw, turb_flux_utheta_v, turb_flux_vtheta_v, turb_flux_wtheta_v,       &
         turb_flux_theta2_v, turb_flux_utheta, turb_flux_vtheta, turb_flux_wtheta,       &
         turb_flux_uqv, turb_flux_vqv, turb_flux_wqv, t, thetav, qv, rho, hfx, qfx, rmol, u, v, ust, &
+        pbl3d_t1_ratio, pbl3d_t2_steps, pbl3d_t3_flags, pbl3d_sk_eps, pbl3d_n_tau, pbl3d_cond_a, pbl3d_qv2,   &
         dz, rdzw, z_at_w, fnm, fnp, cf1, cf2, cf3, dn, dnw, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, &
         its, ite, jts, jte, kts, kte)
 
@@ -911,6 +1036,9 @@
                                                                      turb_flux_vqv, turb_flux_wqv,             &
                                                                      q_sq, l_master, l_boulac
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: q_sq_prog
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (out)   :: pbl3d_t1_ratio, pbl3d_t2_steps, &
+                                                                     pbl3d_t3_flags, pbl3d_sk_eps,   &
+                                                                     pbl3d_n_tau, pbl3d_cond_a, pbl3d_qv2
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: u, v, rho, t, thetav, qv
       real, dimension (ims:ime, jms:jme),          intent (in)    :: ust, hfx, qfx, rmol
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: dz, rdzw, z_at_w
@@ -919,15 +1047,24 @@
       real,                                        intent (in)    :: cf1, cf2, cf3
 
         ! Local vars
-      integer :: i, j, k, i_start, i_end, j_start, j_end, ktf, iter
+      integer :: i, j, k, i_start, i_end, j_start, j_end, ktf
       real, dimension (its:ite, kts:kte, jts:jte) :: sm, sh, sm_l2, sh_l2, rif, q_sq_hl88, q_ratio
       real, dimension (its:ite, kts:kte, jts:jte) :: dlu, dld, dls, dlk
       real, dimension (its:ite, kts:kte, jts:jte) :: mat_cond_heat, mat_cond_moist
 
       real (kind = SOLVER_PREC) :: tf_utv, tf_vtv, tf_wtv, tf_uqv, tf_vqv, tf_wqv
 
-      logical, parameter :: use_hl88 = .true.
+      integer :: n_backoff_pt, n_backoff_tot, n_pts_limited
+      real    :: dg_t1_ratio, dg_t3_flags, dg_sk_eps, dg_n_tau, dg_qv2
+        ! Summary counters, binned by stratification so the report says under WHICH
+        ! conditions each tier fired, not only how often.
+      integer :: n_pts_tot, n_t1, n_t2, n_t2_max, n_t3(8)
+      integer :: n_bin(3), n_t2_bin(3), n_t3_bin(3)
+      integer :: ib, ibit
+      real    :: sk_max, ntau_min, ntau_max, cond_max_seen
+
       character (4) :: my_level
+      character (len = 256) :: wrf_err_message
 
         ! Define dimensions
       i_start = its
@@ -936,40 +1073,68 @@
       j_end = Min (jte, jde - 1)
       ktf = Min (kte, kde - 1)
 
-        ! Calculate q_sq (level 2) or Fill q_sq with prognostic q_sq (level 2.5)
-        ! Full 3D level 2 model is unstable right now
-!      if ( config_flags%pbl3d_prog .eq. 0 ) then   ! level 2 model
-!        call Prep_for_fluxes_l2 (config_flags, q_sq, l_master, l_boulac, rif, sm, sh, du_dx, dv_dy, dw_dz, &
-!            du_dy, dv_dx, dw_dx, du_dz, dw_dy, dv_dz, dthetav_dz, turb_flux_u2, turb_flux_v2, turb_flux_w2, &
-!            turb_flux_uv, turb_flux_uw, turb_flux_vw, turb_flux_wtheta_v, id, ids, ide, jds, jde, kds, kde, &
-!            ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-!      else if ( config_flags%pbl3d_prog .gt. 0 ) then   ! level 2.5 model
-!        call Prep_for_fluxes_l2p5 (config_flags, q_sq, q_sq_prog, l_master, l_boulac, rif, sm_l2, sh_l2, sm, sh, &
-!            q_ratio, q_sq_hl88, du_dx, dv_dy, dw_dz, du_dy, dv_dx, dw_dx, du_dz, dw_dy, dv_dz, dthetav_dz, &
-!            turb_flux_u2, turb_flux_v2, turb_flux_w2, turb_flux_uv, turb_flux_uw, turb_flux_vw, turb_flux_wtheta_v, &
-!            id, dn, dnw, fnm, fnp, cf1, cf2, cf3, &
-!            ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-!      end if
+        ! Calculate q_sq (level 2) or Fill q_sq with prognostic q_sq (level 2.5).
+        !
+        ! pbl3d_qsq_opt = 1 closes q^2 on the full 3D production evaluated with the stress
+        ! tensor this routine itself produced on the previous step, so the velocity scale
+        ! that sets the relaxation time q / (2 a_1 l) on the diagonal of A comes from the
+        ! same turbulence A describes. pbl3d_qsq_opt = 0 restores the legacy path, which
+        ! closes q^2 on du/dz and dv/dz alone and therefore hands the 3D system a time
+        ! scale derived from a model that cannot see the anisotropy the system exists to
+        ! represent. The legacy path is kept for testing and for bisecting against runs
+        ! made before the self consistent path was repaired.
+        !
+        ! Note that for pbl3d_prog > 0 the two differ only in q_sq_hl88, which feeds the
+        ! HL88 limiter on sm and sh, and sm and sh are not read anywhere on the full 3D
+        ! path. The switch is therefore only consequential for pbl3d_prog = 0.
+        !
+        ! sm, sh, sm_l2, sh_l2 and q_ratio are returned by the calls below and then
+        ! deliberately not used. This is not an oversight and they must not be wired in:
+        ! stability functions are how the *approximate* closure forms its fluxes, whereas
+        ! this path forms them by solving the 10x10 system, so there is no place for an Sm or
+        ! an Sh in it. HL88 is the level 2.5 realizability limiter for the stability function
+        ! formulation; its full 3D counterpart is Enforce_realizability, which is applied in
+        ! Diagnose_fluxes. The wasted work is one 3D sweep of a few tens of flops per point
+        ! against two dense linear solves per point, so it is well under one percent of the
+        ! scheme and is left in place rather than special cased, because the same prep
+        ! routines are shared with Calc_fluxes_pbl_approx where sm and sh are live.
+      if ( config_flags%pbl3d_qsq_opt .eq. 1 ) then
 
-        ! Calling level 2 model PBL approx for now
-      if ( config_flags%pbl3d_prog .eq. 0 ) then   ! level 2 model
-        call Prep_for_fluxes_l2_pbl_approx (config_flags, q_sq, l_master, l_boulac, rif, sm, sh, du_dz, dv_dz, &
-            dthetav_dz, id, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-      else if ( config_flags%pbl3d_prog .gt. 0 ) then   ! level 2.5 model
-        call Prep_for_fluxes_l2p5_pbl_approx (config_flags, q_sq, q_sq_prog, l_master, l_boulac, rif, sm_l2, sh_l2, sm, sh, &
-            q_ratio, q_sq_hl88, du_dz, dv_dz, dthetav_dz, id, dn, dnw, fnm, fnp, cf1, cf2, cf3, &
-            ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+        if ( config_flags%pbl3d_prog .eq. 0 ) then   ! level 2 model
+          call Prep_for_fluxes_l2 (config_flags, q_sq, l_master, l_boulac, rif, sm, sh, du_dx, dv_dy, dw_dz, &
+              du_dy, dv_dx, dw_dx, du_dz, dw_dy, dv_dz, dthetav_dz, turb_flux_u2, turb_flux_v2, turb_flux_w2, &
+              turb_flux_uv, turb_flux_uw, turb_flux_vw, turb_flux_wtheta_v, id, ids, ide, jds, jde, kds, kde, &
+              ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+        else if ( config_flags%pbl3d_prog .gt. 0 ) then   ! level 2.5 model
+          call Prep_for_fluxes_l2p5 (config_flags, q_sq, q_sq_prog, l_master, l_boulac, rif, sm_l2, sh_l2, sm, sh, &
+              q_ratio, q_sq_hl88, du_dx, dv_dy, dw_dz, du_dy, dv_dx, dw_dx, du_dz, dw_dy, dv_dz, dthetav_dz, &
+              turb_flux_u2, turb_flux_v2, turb_flux_w2, turb_flux_uv, turb_flux_uw, turb_flux_vw, turb_flux_wtheta_v, &
+              id, dn, dnw, fnm, fnp, cf1, cf2, cf3, &
+              ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+        end if
+
+      else
+
+        if ( config_flags%pbl3d_prog .eq. 0 ) then   ! level 2 model
+          call Prep_for_fluxes_l2_pbl_approx (config_flags, q_sq, l_master, l_boulac, rif, sm, sh, du_dz, dv_dz, &
+              dthetav_dz, id, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+        else if ( config_flags%pbl3d_prog .gt. 0 ) then   ! level 2.5 model
+          call Prep_for_fluxes_l2p5_pbl_approx (config_flags, q_sq, q_sq_prog, l_master, l_boulac, rif, sm_l2, sh_l2, sm, sh, &
+              q_ratio, q_sq_hl88, du_dz, dv_dz, dthetav_dz, id, dn, dnw, fnm, fnp, cf1, cf2, cf3, &
+              ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+        end if
+
       end if
 
         ! Diagnose master length scale at faces
       if (config_flags%pbl3d_l_opt < 3) then
-        call Calc_l_master_algebra (config_flags%pbl3d_l_opt, q_sq, dz, rdzw, rmol, turb_flux_wtheta_v, dthetav_dz, l_master, &
+        call Calc_l_master_algebra (config_flags%pbl3d_l_opt, config_flags%pbl3d_l0_opt, q_sq, dz, rdzw, rmol, turb_flux_wtheta_v, dthetav_dz, l_master, &
             l_boulac, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
       else if (config_flags%pbl3d_l_opt == 3) then
         call Calc_l_boulac_master_algebra (q_sq, dz, t, dlu, dld, dls, dlk, l_master, l_boulac, &
             ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
       else
-        call Calc_l_messinger_master_algebra (q_sq, dz, rdzw, rmol, turb_flux_wtheta_v, dthetav_dz, l_master, &
+        call Calc_l_messinger_master_algebra (config_flags%pbl3d_l0_opt, q_sq, dz, rdzw, rmol, turb_flux_wtheta_v, dthetav_dz, l_master, &
             l_boulac, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
       end if
 
@@ -979,11 +1144,32 @@
       mat_cond_heat(its:ite,kts:kte,jts:jte) = -9999.
       mat_cond_moist(its:ite,kts:kte,jts:jte) = -9999.
 
+      n_backoff_pt  = 0
+      n_backoff_tot = 0
+      n_pts_limited = 0
+
+      n_pts_tot = 0 ; n_t1 = 0 ; n_t2 = 0 ; n_t2_max = 0
+      n_t3(:) = 0 ; n_bin(:) = 0 ; n_t2_bin(:) = 0 ; n_t3_bin(:) = 0
+      sk_max = 0.0 ; ntau_min = 0.0 ; ntau_max = 0.0 ; cond_max_seen = 0.0
+
+      pbl3d_t1_ratio(its:ite, kts:kte, jts:jte) = 1.0
+      pbl3d_t2_steps(its:ite, kts:kte, jts:jte) = 0.0
+      pbl3d_t3_flags(its:ite, kts:kte, jts:jte) = 0.0
+      pbl3d_sk_eps  (its:ite, kts:kte, jts:jte) = 0.0
+      pbl3d_n_tau   (its:ite, kts:kte, jts:jte) = 0.0
+      pbl3d_cond_a  (its:ite, kts:kte, jts:jte) = 0.0
+      pbl3d_qv2     (its:ite, kts:kte, jts:jte) = 0.0
+
       loop_j: do j = j_start, j_end
         loop_k: do k = kts + 1, ktf
           loop_i: do i = i_start, i_end
 
-            if_no_turb: if (q_sq(i, k, j) == Q_SQ_MIN) then
+              ! Inequality rather than exact float equality. Calc_q_sq_l2* only ever reaches
+              ! the floor through Max (..., Q_SQ_MIN) so the two agree today, but an exact
+              ! comparison would silently stop firing after any refactor that reaches the
+              ! floor by another route, and the scheme would then solve the 10x10 system in
+              ! laminar air at q^2 = 1e-5.
+            if_no_turb: if (q_sq(i, k, j) <= Q_SQ_MIN) then
 
               call Set_fluxes_to_min (q_sq(i, k, j), turb_flux_u2(i, k, j),   &
                  turb_flux_v2(i, k, j), turb_flux_w2(i, k, j), turb_flux_uv(i, k, j), &
@@ -1000,7 +1186,49 @@
                   turb_flux_u2(i, k, j), turb_flux_v2(i, k, j), turb_flux_w2(i, k, j), turb_flux_uv(i, k, j), turb_flux_uw(i, k, j), &
                   turb_flux_vw(i, k, j), turb_flux_utheta_v(i, k, j), turb_flux_vtheta_v(i, k, j), turb_flux_wtheta_v(i, k, j),      &
                   turb_flux_theta2_v(i, k, j), turb_flux_uqv(i, k, j), turb_flux_vqv(i, k, j), turb_flux_wqv(i, k, j), tf_utv,       &
-                  tf_vtv, tf_wtv, tf_uqv, tf_vqv, tf_wqv, mat_cond_heat(i, k, j), mat_cond_moist(i, k, j)                            )
+                  tf_vtv, tf_wtv, tf_uqv, tf_vqv, tf_wqv, mat_cond_heat(i, k, j), mat_cond_moist(i, k, j), n_backoff_pt,       &
+                  dg_t1_ratio, dg_t3_flags, dg_sk_eps, dg_n_tau, dg_qv2                                                        )
+
+              if (n_backoff_pt > 0) then
+                n_backoff_tot = n_backoff_tot + n_backoff_pt
+                n_pts_limited = n_pts_limited + 1
+              end if
+
+                ! Per-point diagnostic fields, written to history
+              pbl3d_t1_ratio(i, k, j) = dg_t1_ratio
+              pbl3d_t2_steps(i, k, j) = Real (n_backoff_pt)
+              pbl3d_t3_flags(i, k, j) = dg_t3_flags
+              pbl3d_sk_eps  (i, k, j) = dg_sk_eps
+              pbl3d_n_tau   (i, k, j) = dg_n_tau
+              pbl3d_cond_a  (i, k, j) = mat_cond_heat(i, k, j)
+              pbl3d_qv2     (i, k, j) = dg_qv2
+
+                ! Summary bin: 1 unstable, 2 near neutral, 3 stable
+              if (dg_n_tau < -0.05) then
+                ib = 1
+              else if (dg_n_tau > 0.05) then
+                ib = 3
+              else
+                ib = 2
+              end if
+              n_pts_tot = n_pts_tot + 1
+              n_bin(ib) = n_bin(ib) + 1
+              if (dg_t1_ratio < 0.999999) n_t1 = n_t1 + 1
+              if (n_backoff_pt > 0) then
+                n_t2 = n_t2 + 1
+                n_t2_bin(ib) = n_t2_bin(ib) + 1
+                if (n_backoff_pt >= MAX_SOLVE_ATTEMPTS - 1) n_t2_max = n_t2_max + 1
+              end if
+              if (dg_t3_flags > 0.0) then
+                n_t3_bin(ib) = n_t3_bin(ib) + 1
+                do ibit = 1, 8
+                  if (Mod (Int (dg_t3_flags) / 2 ** (ibit - 1), 2) == 1) n_t3(ibit) = n_t3(ibit) + 1
+                end do
+              end if
+              sk_max        = Max (sk_max, dg_sk_eps)
+              ntau_min      = Min (ntau_min, dg_n_tau)
+              ntau_max      = Max (ntau_max, dg_n_tau)
+              cond_max_seen = Max (cond_max_seen, mat_cond_heat(i, k, j))
 
                 ! Calc heat fluxes
               call Calc_heat_flux (t, qv, fnm, fnp, i, j, k, tf_utv, tf_vtv, tf_wtv,  tf_uqv, tf_vqv, tf_wqv, &
@@ -1011,6 +1239,44 @@
           end do loop_i
         end do loop_k
       end do loop_j
+
+        ! Report how often the algebraic system had to be pushed back inside its
+        ! validity range. A healthy run should show this rarely or never.
+        ! How often each safeguard acted, and under which conditions. A healthy run shows
+        ! Tier 1 doing most of the work, Tier 2 occasional, Tier 3 rare, and the isotropic
+        ! fallback (TIER2 exhausted) never. Emitted at debug_level 100, per tile.
+      if (n_pts_tot > 0) then
+        write (wrf_err_message, '(A,I9,A,F6.2,A,F6.2,A,F6.2,A)')                            &
+            'pbl3d diag: pts ', n_pts_tot, ' | unstable ',                                  &
+            100.0 * Real (n_bin(1)) / Real (n_pts_tot), '% neutral ',                       &
+            100.0 * Real (n_bin(2)) / Real (n_pts_tot), '% stable ',                        &
+            100.0 * Real (n_bin(3)) / Real (n_pts_tot), '%'
+        call wrf_debug (100, wrf_err_message)
+
+        write (wrf_err_message, '(A,F8.3,A,F8.3,A,F8.3,A,E10.3)')                           &
+            'pbl3d diag: max Sk/eps ', sk_max, ' | N*tau ', ntau_min, ' to ',               &
+            ntau_max, ' | max cond(A) ', cond_max_seen
+        call wrf_debug (100, wrf_err_message)
+
+        write (wrf_err_message, '(A,F7.3,A,F7.3,A,I9,A,I8)')                                &
+            'pbl3d diag: TIER1 bound l at ', 100.0 * Real (n_t1) / Real (n_pts_tot),        &
+            '% | TIER2 escalated at ', 100.0 * Real (n_t2) / Real (n_pts_tot),              &
+            '% (', n_backoff_tot, ' steps) exhausted ', n_t2_max
+        call wrf_debug (100, wrf_err_message)
+
+        write (wrf_err_message, '(A,F7.3,A,8(1X,I7))')                                      &
+            'pbl3d diag: TIER3 acted at ',                                                  &
+            100.0 * Real (n_t3_bin(1) + n_t3_bin(2) + n_t3_bin(3)) / Real (n_pts_tot),      &
+            '% | by step [var trace CS det heat qv2 qvCS qvtvCS]:',                              &
+            n_t3(1), n_t3(2), n_t3(3), n_t3(4), n_t3(5), n_t3(6), n_t3(7), n_t3(8)
+        call wrf_debug (100, wrf_err_message)
+
+        write (wrf_err_message, '(A,3(1X,I8),A,3(1X,I8))')                                  &
+            'pbl3d diag: TIER2 by strat [unstab neut stab]:',                               &
+            n_t2_bin(1), n_t2_bin(2), n_t2_bin(3),                                          &
+            ' | TIER3:', n_t3_bin(1), n_t3_bin(2), n_t3_bin(3)
+        call wrf_debug (100, wrf_err_message)
+      end if
 
       call Diagnose_fluxes_surface (config_flags%pbl3d_sfc_opt, u, v, t, rho, dz, qv, ust, hfx, qfx, &
           rmol, q_sq, l_master, turb_flux_u2, turb_flux_v2, turb_flux_w2, turb_flux_uv, &
@@ -1067,7 +1333,7 @@
           dv_dx=dv_dx, dw_dx=dw_dx, du_dz=du_dz, dw_dy=dw_dy, dv_dz=dv_dz, dthetav_dz=dthetav_dz, &
           tf_u2=tf_u2, tf_v2=tf_v2, tf_w2=tf_w2, tf_uv=tf_uv, tf_uw=tf_uw, tf_vw=tf_vw, tf_wtv=tf_wtv, &
           ids=ids, ide=ide, jds=jds, jde=jde, kds=kds, kde=kde, ims=ims, ime=ime, jms=jms, jme=jme, kms=kms, kme=kme, &
-          its=its, ite=ite, jts=jts, jte=jte, kts=kts, kte=kte, q_sq_face=q_sq, rif=rif)
+          its=its, ite=ite, jts=jts, jte=jte, kts=kts, kte=kte, sm=sm, q_sq_face=q_sq, rif=rif)
         ! Relax q_sq at the boundaries (only for parent domain and specified B.C. runs)
       if ( id .eq. 1 .and. config_flags%specified) then
         call Taper_q_sq (q_sq, ids, jds, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
@@ -1117,22 +1383,23 @@
 
         ! local vars
       real, dimension (its:ite, kts:kte, jts:jte) :: l_dissip
-      logical, parameter :: use_hl88 = .true.
       character (4) :: my_level
 
-      if (use_hl88) then   ! calc sm and sh then q_sq for level 2 model to prepare for HL88 fix
-        my_level = 'l2'
-        call Calc_sm_sh_l2_or_l2p5 (my_level=my_level, du_dz=du_dz, dv_dz=dv_dz, dthetav_dz=dthetav_dz, &
-            ids=ids, ide=ide, jds=jds, jde=jde, kds=kds, kde=kde, ims=ims, ime=ime, jms=jms, jme=jme, kms=kms, kme=kme, &
-            its=its, ite=ite, jts=jts, jte=jte, kts=kts, kte=kte, sm=sm_l2, sh=sh_l2, rif=rif)
-        call Fill_dissip_length_scale (config_flags%pbl3d_l_opt, l_master, l_boulac, l_dissip, &
-            ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-        call Calc_q_sq_l2 (l_master=l_master, l_dissip=l_dissip, du_dx=du_dx, dv_dy=dv_dy, dw_dz=dw_dz, du_dy=du_dy, &
-            dv_dx=dv_dx, dw_dx=dw_dx, du_dz=du_dz, dw_dy=dw_dy, dv_dz=dv_dz, dthetav_dz=dthetav_dz, &
-            tf_u2=tf_u2, tf_v2=tf_v2, tf_w2=tf_w2, tf_uv=tf_uv, tf_uw=tf_uw, tf_vw=tf_vw, tf_wtv=tf_wtv, &
-            ids=ids, ide=ide, jds=jds, jde=jde, kds=kds, kde=kde, ims=ims, ime=ime, jms=jms, jme=jme, kms=kms, kme=kme, &
-            its=its, ite=ite, jts=jts, jte=jte, kts=kts, kte=kte, q_sq_hl88=q_sq_hl88, rif=rif)
-      end if
+        ! Calc sm and sh then q_sq for the level 2 model to prepare for the HL88 fix.
+        ! See Prep_for_fluxes_l2p5_pbl_approx for why the use_hl88 parameter was removed
+        ! rather than given an else branch.
+      my_level = 'l2'
+      call Calc_sm_sh_l2_or_l2p5 (my_level=my_level, du_dz=du_dz, dv_dz=dv_dz, dthetav_dz=dthetav_dz, &
+          ids=ids, ide=ide, jds=jds, jde=jde, kds=kds, kde=kde, ims=ims, ime=ime, jms=jms, jme=jme, kms=kms, kme=kme, &
+          its=its, ite=ite, jts=jts, jte=jte, kts=kts, kte=kte, sm=sm_l2, sh=sh_l2, rif=rif)
+      call Fill_dissip_length_scale (config_flags%pbl3d_l_opt, l_master, l_boulac, l_dissip, &
+          ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+      call Calc_q_sq_l2 (l_master=l_master, l_dissip=l_dissip, du_dx=du_dx, dv_dy=dv_dy, dw_dz=dw_dz, du_dy=du_dy, &
+          dv_dx=dv_dx, dw_dx=dw_dx, du_dz=du_dz, dw_dy=dw_dy, dv_dz=dv_dz, dthetav_dz=dthetav_dz, &
+          tf_u2=tf_u2, tf_v2=tf_v2, tf_w2=tf_w2, tf_uv=tf_uv, tf_uw=tf_uw, tf_vw=tf_vw, tf_wtv=tf_wtv, &
+          ids=ids, ide=ide, jds=jds, jde=jde, kds=kds, kde=kde, ims=ims, ime=ime, jms=jms, jme=jme, kms=kms, kme=kme, &
+          its=its, ite=ite, jts=jts, jte=jte, kts=kts, kte=kte, sm=sm_l2, q_sq_hl88=q_sq_hl88, rif=rif)
+
       call Fill_q_sq_with_q_sq_prog (q_sq_prog, q_sq, dn, dnw, fnm, fnp, cf1, cf2, cf3, &
           ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
       my_level = 'l2p5'
@@ -1225,7 +1492,8 @@
     subroutine Diagnose_fluxes (q_sq_at_walls_1dpbl, l_master, du_dx, du_dy, du_dz, dv_dx, dv_dy, dv_dz, dw_dx, dw_dy, dw_dz,      &
         dthetav_dx, dthetav_dy, dthetav_dz, dqv_dx, dqv_dy, dqv_dz, turb_flux_u2, turb_flux_v2, turb_flux_w2, turb_flux_uv,        &
         turb_flux_uw, turb_flux_vw, turb_flux_utheta_v, turb_flux_vtheta_v, turb_flux_wtheta_v, turb_flux_theta2_v, turb_flux_uqv, &
-        turb_flux_vqv, turb_flux_wqv, tf_utv, tf_vtv, tf_wtv, tf_uqv, tf_vqv, tf_wqv, mat_cond_heat, mat_cond_moist                )
+        turb_flux_vqv, turb_flux_wqv, tf_utv, tf_vtv, tf_wtv, tf_uqv, tf_vqv, tf_wqv, mat_cond_heat, mat_cond_moist, n_backoff,   &
+        dg_t1_ratio, dg_t3_flags, dg_sk_eps, dg_n_tau, dg_qv2                                                               )
 
       implicit none
 
@@ -1240,13 +1508,29 @@
                               turb_flux_wtheta_v, turb_flux_theta2_v,   &
                               turb_flux_uqv, turb_flux_vqv, turb_flux_wqv
       real, intent (out)   :: mat_cond_heat, mat_cond_moist
+      integer, intent (out) :: n_backoff
+        ! Diagnostics. dg_t1_ratio is l_use/l after Tier 1 (1 = the strain limit did not
+        ! bind); dg_sk_eps is the raw S k / eps the point would have run at without it;
+        ! dg_n_tau is the signed N tau, negative under unstable stratification, which is
+        ! where the buoyancy coupling degenerates the matrix; dg_t3_flags is the Tier 3
+        ! bitmask. All are recorded before limiting so they describe the flow, not the
+        ! safeguard.
+      real,    intent (out) :: dg_t1_ratio, dg_t3_flags, dg_sk_eps, dg_n_tau
+        ! Water vapour variance <qv'^2>, diagnosed from the moisture fluxes. Reported as a
+        ! history field so that the moisture-side Cauchy-Schwarz bounds can be checked
+        ! directly against turb_flux_wqv and turb_flux_w2 in the output.
+      real,    intent (out) :: dg_qv2
       real (kind = SOLVER_PREC), intent (out) :: tf_utv, tf_vtv, tf_wtv, tf_uqv, tf_vqv, tf_wqv
 
         ! Local vars
       real (kind = SOLVER_PREC) :: q, q_sq, l, tf_u2, tf_v2, tf_w2, tf_uv, tf_uw, tf_vw, tf_t2v
+      real (kind = SOLVER_PREC) :: tf_qvtv, tf_qv2
       real (kind = SOLVER_PREC) :: du_dx_tmp, dv_dy_tmp, dw_dz_tmp, du_dy_tmp, dv_dx_tmp,      &
                                    dw_dx_tmp, du_dz_tmp, dw_dy_tmp, dv_dz_tmp, dthetav_dx_tmp, &
                                    dthetav_dy_tmp, dthetav_dz_tmp, dqv_dx_tmp, dqv_dy_tmp, dqv_dz_tmp
+      real (kind = SOLVER_PREC) :: strain_mag, l_use, div_u
+      integer :: n_try, n_t3_flags
+      logical :: solve_ok
 
       logical, parameter :: DEBUG = .false.
 
@@ -1270,14 +1554,131 @@
       dqv_dy_tmp = Working_to_solver_prec(dqv_dy)
       dqv_dz_tmp = Working_to_solver_prec(dqv_dz)
 
-        ! Solve system of equations for momentum fluxes
-      call Solve_turb_system (q, q_sq, l, du_dx_tmp, du_dy_tmp, du_dz_tmp, dv_dx_tmp, dv_dy_tmp, dv_dz_tmp, dw_dx_tmp, dw_dy_tmp, dw_dz_tmp, &
-          dthetav_dx_tmp, dthetav_dy_tmp, dthetav_dz_tmp, tf_u2, tf_v2, tf_w2, tf_uv, tf_uw, tf_vw, tf_utv, tf_vtv, tf_wtv, tf_t2v, mat_cond_heat)
+        ! ---------------------------------------------------------------------------
+        ! Tier 1: limit the turbulence length scale by the strain rate.
+        !
+        ! The algebraic system is only meaningful while the turbulence relaxes faster
+        ! than the mean gradients distort it (weak-equilibrium assumption). That same
+        ! condition is what keeps A = (1/tau) I + S diagonally dominant. Bounding
+        ! S k / eps <= SK_EPS_MAX therefore keeps the closure inside its own stated
+        ! validity range and conditions the matrix with a single physical knob. This is
+        ! the shear counterpart of the buoyancy limit l <= N_TAU_MAX q / N that
+        ! Calc_l_master_algebra applies to l_master before it ever reaches here.
+        !
+        ! l enters both A and b, and is applied to both here, so the strain-free limit
+        ! is untouched: u'2 = v'2 = w'2 = q^2 / 3 independently of l.
+        ! ---------------------------------------------------------------------------
+      strain_mag = Sqrt ( 2.0_SOLVER_PREC * (du_dx_tmp ** 2 + dv_dy_tmp ** 2 + dw_dz_tmp ** 2)      &
+                        + (du_dy_tmp + dv_dx_tmp) ** 2 + (du_dz_tmp + dw_dx_tmp) ** 2               &
+                        + (dv_dz_tmp + dw_dy_tmp) ** 2 )
 
-        ! Solve system of equations for moisture fluxes
-      call Solve_turb_system_moist (q, l, du_dx_tmp, du_dy_tmp, du_dz_tmp, dv_dx_tmp, dv_dy_tmp, dv_dz_tmp, dw_dx_tmp, dw_dy_tmp, dw_dz_tmp, dthetav_dx_tmp, &
-          dthetav_dy_tmp, dthetav_dz_tmp, dqv_dx_tmp, dqv_dy_tmp, dqv_dz_tmp, tf_u2, tf_v2, tf_w2, tf_uv, tf_uw, tf_vw, tf_utv, tf_vtv, tf_wtv, &
-          tf_uqv, tf_vqv, tf_wqv, mat_cond_moist)
+      l_use = Min ( l, Real (2.0 * SK_EPS_MAX / b_1, kind = SOLVER_PREC) * q     &
+                       / Max (strain_mag, Real (STRAIN_MIN, kind = SOLVER_PREC)) )
+
+        ! S k / eps = |S| b_1 l / (2 q), from k = q^2/2 and eps = q^3/(b_1 l).
+      dg_sk_eps   = Real (strain_mag * Real (b_1, kind = SOLVER_PREC) * l                     &
+                          / (2.0_SOLVER_PREC * Max (q, Tiny (q))), kind = WORKING_PREC)
+      dg_n_tau    = Real (Sign (Sqrt (Abs (Real (G_OVER_TREF, kind = SOLVER_PREC)             &
+                                           * dthetav_dz_tmp)), dthetav_dz_tmp)                &
+                          * l / Max (q, Tiny (q)), kind = WORKING_PREC)
+      dg_t1_ratio = Real (l_use / Max (l, Tiny (l)), kind = WORKING_PREC)
+
+        ! ---------------------------------------------------------------------------
+        ! Tier 2: escalate locally while the solve is degenerate OR its solution is not
+        ! a physically possible turbulence state.
+        !
+        ! Shortening l shortens the return-to-isotropy time scale, which strengthens the
+        ! diagonal of A in a physically meaningful way. The escalation has a well defined
+        ! endpoint: as l -> 0 the matrix becomes exactly diagonal and its solution is
+        ! isotropic turbulence carrying the correct TKE, so the sequence always
+        ! terminates in an admissible state rather than in a numerical artefact.
+        !
+        ! The acceptance test is full positive semi-definiteness of the stress tensor,
+        ! not merely non negative variances. Escalating on it rather than only on solver
+        ! distress matters: an outright singular A is rare, whereas a well conditioned
+        ! solve returning an impossible stress state is common in strong strain. Every
+        ! step of the escalation returns an exact solution of the closure at a shorter
+        ! length scale, whereas the projection in Tier 3 returns a state that solves no
+        ! equation, so it is worth a few extra solves to avoid reaching for it.
+        ! ---------------------------------------------------------------------------
+      n_backoff = 0
+
+      attempts_mom: do n_try = 1, MAX_SOLVE_ATTEMPTS
+
+        call Solve_turb_system (q, q_sq, l_use, du_dx_tmp, du_dy_tmp, du_dz_tmp, dv_dx_tmp, dv_dy_tmp, dv_dz_tmp, dw_dx_tmp, dw_dy_tmp, dw_dz_tmp, &
+            dthetav_dx_tmp, dthetav_dy_tmp, dthetav_dz_tmp, tf_u2, tf_v2, tf_w2, tf_uv, tf_uw, tf_vw, tf_utv, tf_vtv, tf_wtv, tf_t2v, &
+            mat_cond_heat, solve_ok)
+
+        if (solve_ok) then
+          if (Is_realizable (tf_u2, tf_v2, tf_w2, tf_uv, tf_uw, tf_vw)) exit attempts_mom
+        end if
+
+          ! Only shorten l if another attempt follows, so that on exhaustion l_use still
+          ! describes the state actually returned. Tier 3 and the moisture system both
+          ! consume it.
+        if (n_try < MAX_SOLVE_ATTEMPTS) then
+          l_use = Real (L_BACKOFF, kind = SOLVER_PREC) * l_use
+          n_backoff = n_backoff + 1
+        end if
+
+      end do attempts_mom
+
+      if (.not. solve_ok) then
+          ! Terminal state of the escalation, written out explicitly: isotropic
+          ! equilibrium turbulence with the correct TKE and no organised transport.
+        tf_u2  = q_sq / 3.0_SOLVER_PREC
+        tf_v2  = q_sq / 3.0_SOLVER_PREC
+        tf_w2  = q_sq / 3.0_SOLVER_PREC
+        tf_uv  = 0.0_SOLVER_PREC
+        tf_uw  = 0.0_SOLVER_PREC
+        tf_vw  = 0.0_SOLVER_PREC
+        tf_utv = 0.0_SOLVER_PREC
+        tf_vtv = 0.0_SOLVER_PREC
+        tf_wtv = 0.0_SOLVER_PREC
+        tf_t2v = 0.0_SOLVER_PREC
+      end if
+
+        ! ---------------------------------------------------------------------------
+        ! Tier 3: enforce the realizability constraints the exact system already obeys.
+        ! Done before the moist solve, whose right hand side consumes these moments.
+        ! ---------------------------------------------------------------------------
+      div_u = du_dx_tmp + dv_dy_tmp + dw_dz_tmp
+
+      call Enforce_realizability (q, q_sq, l_use, div_u, tf_u2, tf_v2, tf_w2, tf_uv, tf_uw, tf_vw, &
+          tf_utv, tf_vtv, tf_wtv, tf_t2v, n_t3_flags)
+
+        ! n_t3_flags is carried on into Enforce_realizability_moist below, which adds bits
+        ! 32-128 to it; dg_t3_flags is set once, after both halves have run.
+
+        ! Solve system of equations for moisture fluxes, on the length scale the
+        ! momentum system actually accepted so both systems stay mutually consistent
+      attempts_moist: do n_try = 1, MAX_SOLVE_ATTEMPTS
+
+        call Solve_turb_system_moist (q, l_use, du_dx_tmp, du_dy_tmp, du_dz_tmp, dv_dx_tmp, dv_dy_tmp, dv_dz_tmp, dw_dx_tmp, dw_dy_tmp, dw_dz_tmp, dthetav_dx_tmp, &
+            dthetav_dy_tmp, dthetav_dz_tmp, dqv_dx_tmp, dqv_dy_tmp, dqv_dz_tmp, tf_u2, tf_v2, tf_w2, tf_uv, tf_uw, tf_vw, tf_utv, tf_vtv, tf_wtv, &
+            tf_uqv, tf_vqv, tf_wqv, tf_qvtv, mat_cond_moist, solve_ok)
+
+        if (solve_ok) exit attempts_moist
+
+        l_use = Real (L_BACKOFF, kind = SOLVER_PREC) * l_use
+        n_backoff = n_backoff + 1
+
+      end do attempts_moist
+
+        ! ---------------------------------------------------------------------------
+        ! Tier 3, moisture side. Diagnose <qv'^2> from the moisture fluxes on the length
+        ! scale the moist solve actually accepted, then apply the same realizability
+        ! constraints the heat side already obeys. Until this existed the moisture fluxes
+        ! were the only moments in the scheme with no realizability constraint at all.
+        ! ---------------------------------------------------------------------------
+      call Calc_qv_variance (q, l_use, dqv_dx_tmp, dqv_dy_tmp, dqv_dz_tmp, &
+          tf_uqv, tf_vqv, tf_wqv, tf_qv2)
+
+      call Enforce_realizability_moist (tf_u2, tf_v2, tf_w2, tf_t2v, &
+          tf_uqv, tf_vqv, tf_wqv, tf_qvtv, tf_qv2, n_t3_flags)
+
+      dg_t3_flags = Real (n_t3_flags, kind = WORKING_PREC)
+      dg_qv2      = Real (tf_qv2, kind = WORKING_PREC)
 
         ! Convert vars from double prec to single prec
       turb_flux_u2 = Solver_to_working_prec(tf_u2)
@@ -1295,6 +1696,188 @@
       turb_flux_wqv = Solver_to_working_prec(tf_wqv)
 
     end subroutine Diagnose_fluxes
+
+
+    pure logical function Is_realizable (tf_u2, tf_v2, tf_w2, tf_uv, tf_uw, tf_vw)
+
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !                                                                          !
+      ! Purpose: True when the Reynolds stress tensor is a possible covariance    !
+      !          matrix, i.e. positive semi-definite.                             !
+      !                                                                          !
+      ! Comments: By Sylvester's criterion a symmetric 3x3 matrix is positive     !
+      !           semi-definite iff all its principal minors are non negative:    !
+      !           the three diagonal entries (variances), the three 2x2 minors    !
+      !           (which are precisely the Cauchy-Schwarz inequalities) and the   !
+      !           determinant. Checking only the variances, or only the           !
+      !           variances and Cauchy-Schwarz, is necessary but not sufficient:  !
+      !           a solution can satisfy every pairwise bound and still have a    !
+      !           negative variance along some rotated axis.                      !
+      !                                                                          !
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+      implicit none
+
+      real (kind = SOLVER_PREC), intent (in) :: tf_u2, tf_v2, tf_w2, tf_uv, tf_uw, tf_vw
+
+      Is_realizable = ( tf_u2 >= 0.0_SOLVER_PREC )                                       &
+                .and. ( tf_v2 >= 0.0_SOLVER_PREC )                                       &
+                .and. ( tf_w2 >= 0.0_SOLVER_PREC )                                       &
+                .and. ( tf_u2 * tf_v2 - tf_uv ** 2 >= 0.0_SOLVER_PREC )                  &
+                .and. ( tf_u2 * tf_w2 - tf_uw ** 2 >= 0.0_SOLVER_PREC )                  &
+                .and. ( tf_v2 * tf_w2 - tf_vw ** 2 >= 0.0_SOLVER_PREC )                  &
+                .and. ( tf_u2 * tf_v2 * tf_w2                                            &
+                        - tf_u2 * tf_vw ** 2 - tf_v2 * tf_uw ** 2 - tf_w2 * tf_uv ** 2   &
+                        + 2.0_SOLVER_PREC * tf_uv * tf_uw * tf_vw >= 0.0_SOLVER_PREC )
+
+    end function Is_realizable
+
+
+    pure subroutine Enforce_realizability (q, q_sq, l, div_u, tf_u2, tf_v2, tf_w2, tf_uv, tf_uw, tf_vw, &
+        tf_utv, tf_vtv, tf_wtv, tf_t2v, t3_flags)
+
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !                                                                          !
+      ! Purpose: Restore the realizability constraints that the exact second      !
+      !          moment system obeys but its numerical solution need not.         !
+      !                                                                          !
+      ! Comments: This is the full 3D counterpart of the HL88 criterion that      !
+      !           Prep_for_fluxes_l2p5_pbl_approx applies on the approximate      !
+      !           branch, and nothing here is a free parameter:                   !
+      !                                                                          !
+      !           1. Variances are non negative by definition.                    !
+      !                                                                          !
+      !           2. Rows 1-3 of the A matrix cancel exactly on columns 4-10       !
+      !              (including the buoyancy column) and sum to q / (2 a_1 l) on   !
+      !              columns 1-3, while                                           !
+      !              b1 + b2 + b3 = q^3 / (2 a_1 l) + 3 c_1 q^2 div(U). Adding the !
+      !              three rows therefore fixes the trace of the normal stresses   !
+      !              exactly at q^2 (1 + 6 a_1 c_1 l div(U) / q); any departure    !
+      !              from it is numerical error, not physics. For non divergent    !
+      !              flow this reduces to the familiar u'2 + v'2 + w'2 = q^2.      !
+      !                                                                          !
+      !           3. Covariances obey the Cauchy-Schwarz inequality, e.g.         !
+      !              (u'w')^2 <= u'2 w'2. These are the 2x2 principal minors.      !
+      !                                                                          !
+      !           4. The stress tensor as a whole is positive semi-definite. With !
+      !              1 and 3 in place the only Sylvester condition still missing  !
+      !              is a non negative determinant, so it is restored by shrinking !
+      !              all three covariances with one common factor. That preserves  !
+      !              the trace (hence the TKE) exactly and the sign and relative   !
+      !              magnitude of every flux, and is a no-op wherever the tensor   !
+      !              is already realizable.                                       !
+      !                                                                          !
+      !           Each step is a no-op on a well conditioned, already realizable  !
+      !           solution.                                                       !
+      !                                                                          !
+      ! References: Helfand and Labraga (1988, JAS), Schumann (1977, Phys Fluids) !
+      !                                                                          !
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+      implicit none
+
+      real (kind = SOLVER_PREC), intent (in)    :: q, q_sq, l, div_u
+      real (kind = SOLVER_PREC), intent (inout) :: tf_u2, tf_v2, tf_w2, tf_uv, tf_uw, tf_vw, &
+                                                   tf_utv, tf_vtv, tf_wtv, tf_t2v
+        ! Diagnostic bitmask recording which steps actually changed the answer, so that a
+        ! run can distinguish "Tier 3 ran" from "Tier 3 had to do something":
+        !   1  variance floor clipped a negative variance
+        !   2  trace rescale moved the normal stresses by more than TIER3_TOL
+        !   4  Cauchy-Schwarz clipped a momentum covariance
+        !   8  determinant shrink fired
+        !  16  theta_v variance floor or heat-flux Cauchy-Schwarz clipped
+      integer,                   intent (out)   :: t3_flags
+
+      real (kind = SOLVER_PREC) :: trace, trace_target
+      real (kind = SOLVER_PREC) :: det_0, det_2, det_3, gam, gam_lo, gam_hi
+      real (kind = SOLVER_PREC) :: uv_in, uw_in, vw_in, t2v_in, utv_in, vtv_in, wtv_in
+      integer :: n_bis
+        ! Relative tolerance for calling the trace rescale a real correction rather than
+        ! round-off. 1e-10 was too tight: the trace identity is recovered from the solve
+        ! only to accumulated round-off, so it flagged essentially every point and told
+        ! us nothing. 1e-6 is still far below any physically meaningful rescaling.
+      real (kind = SOLVER_PREC), parameter :: TIER3_TOL = 1.0E-6_SOLVER_PREC
+
+      t3_flags = 0
+
+        ! 1. Variances are non negative
+      if (tf_u2 < 0.0_SOLVER_PREC .or. tf_v2 < 0.0_SOLVER_PREC .or. tf_w2 < 0.0_SOLVER_PREC) &
+          t3_flags = t3_flags + 1
+      tf_u2 = Max (tf_u2, 0.0_SOLVER_PREC)
+      tf_v2 = Max (tf_v2, 0.0_SOLVER_PREC)
+      tf_w2 = Max (tf_w2, 0.0_SOLVER_PREC)
+
+        ! 2. Restore the exact trace implied by the system itself
+      trace_target = q_sq * ( 1.0_SOLVER_PREC                                                  &
+          + Real (6.0 * a_1 * c_1, kind = SOLVER_PREC) * l * div_u / Max (q, Tiny (q)) )
+      trace_target = Max (trace_target, 0.0_SOLVER_PREC)
+
+      trace = tf_u2 + tf_v2 + tf_w2
+
+      if (Abs (trace - trace_target) > TIER3_TOL * Max (trace_target, TIER3_TOL)) &
+          t3_flags = t3_flags + 2
+
+      if (trace > 0.0_SOLVER_PREC) then
+        tf_u2 = tf_u2 * trace_target / trace
+        tf_v2 = tf_v2 * trace_target / trace
+        tf_w2 = tf_w2 * trace_target / trace
+      else
+          ! All three normal stresses were clipped away: fall back to isotropy
+        tf_u2 = trace_target / 3.0_SOLVER_PREC
+        tf_v2 = trace_target / 3.0_SOLVER_PREC
+        tf_w2 = trace_target / 3.0_SOLVER_PREC
+      end if
+
+        ! 3. Cauchy-Schwarz on the momentum covariances
+      uv_in = tf_uv ; uw_in = tf_uw ; vw_in = tf_vw
+      tf_uv = Sign (Min (Abs (tf_uv), Sqrt (tf_u2 * tf_v2)), tf_uv)
+      tf_uw = Sign (Min (Abs (tf_uw), Sqrt (tf_u2 * tf_w2)), tf_uw)
+      tf_vw = Sign (Min (Abs (tf_vw), Sqrt (tf_v2 * tf_w2)), tf_vw)
+      if (tf_uv /= uv_in .or. tf_uw /= uw_in .or. tf_vw /= vw_in) t3_flags = t3_flags + 4
+
+        ! 4. Positive semi-definiteness of the stress tensor as a whole.
+        !
+        ! Scaling the covariances by gamma makes the determinant the cubic
+        ! det(gamma) = det_0 - det_2 gamma^2 + det_3 gamma^3, which is non negative at
+        ! gamma = 0 because step 1 left the variances non negative. Bisection keeping
+        ! det(gam_lo) >= 0 therefore always returns an admissible factor.
+      det_0 = tf_u2 * tf_v2 * tf_w2
+      det_2 = tf_u2 * tf_vw ** 2 + tf_v2 * tf_uw ** 2 + tf_w2 * tf_uv ** 2
+      det_3 = 2.0_SOLVER_PREC * tf_uv * tf_uw * tf_vw
+
+      if (det_0 - det_2 + det_3 < 0.0_SOLVER_PREC) then
+
+        gam_lo = 0.0_SOLVER_PREC
+        gam_hi = 1.0_SOLVER_PREC
+
+        do n_bis = 1, N_PSD_BISECT
+          gam = 0.5_SOLVER_PREC * (gam_lo + gam_hi)
+          if (det_0 - det_2 * gam ** 2 + det_3 * gam ** 3 >= 0.0_SOLVER_PREC) then
+            gam_lo = gam
+          else
+            gam_hi = gam
+          end if
+        end do
+
+        tf_uv = gam_lo * tf_uv
+        tf_uw = gam_lo * tf_uw
+        tf_vw = gam_lo * tf_vw
+
+        t3_flags = t3_flags + 8
+
+      end if
+
+        ! 5. Same for the theta_v variance and the buoyancy fluxes
+      t2v_in = tf_t2v ; utv_in = tf_utv ; vtv_in = tf_vtv ; wtv_in = tf_wtv
+      tf_t2v = Max (tf_t2v, 0.0_SOLVER_PREC)
+
+      tf_utv = Sign (Min (Abs (tf_utv), Sqrt (tf_u2 * tf_t2v)), tf_utv)
+      tf_vtv = Sign (Min (Abs (tf_vtv), Sqrt (tf_v2 * tf_t2v)), tf_vtv)
+      tf_wtv = Sign (Min (Abs (tf_wtv), Sqrt (tf_w2 * tf_t2v)), tf_wtv)
+      if (tf_t2v /= t2v_in .or. tf_utv /= utv_in .or. tf_vtv /= vtv_in .or. tf_wtv /= wtv_in) &
+          t3_flags = t3_flags + 16
+
+    end subroutine Enforce_realizability
 
 
     pure function Working_to_solver_prec (var)
@@ -1322,7 +1905,8 @@
 
 
     subroutine Solve_turb_system (q, q_sq, l, du_dx, du_dy, du_dz, dv_dx, dv_dy, dv_dz, dw_dx, dw_dy, dw_dz, &
-              dthetav_dx, dthetav_dy, dthetav_dz, tf_u2, tf_v2, tf_w2, tf_uv, tf_uw, tf_vw, tf_utv, tf_vtv, tf_wtv, tf_t2v, mat_cond)
+              dthetav_dx, dthetav_dy, dthetav_dz, tf_u2, tf_v2, tf_w2, tf_uv, tf_uw, tf_vw, tf_utv, tf_vtv, tf_wtv, tf_t2v, &
+              mat_cond, solve_ok)
 
       implicit none
 
@@ -1331,27 +1915,25 @@
                                                    dw_dx, du_dz, dw_dy, dv_dz,             &
                                                    dthetav_dx, dthetav_dy, dthetav_dz
       real,                      intent (out)   :: mat_cond
+      logical,                   intent (out)   :: solve_ok
       real (kind = SOLVER_PREC), intent (out)   :: tf_u2, tf_v2, tf_w2, tf_uv, tf_uw, tf_vw, tf_utv, tf_vtv, tf_wtv, tf_t2v
 
         ! Local vars
       character (len = 1) :: equed
       integer, parameter   :: N_VARS = 10
       integer :: ipiv(N_VARS)
-      integer :: info, info2, n_iter_sor
-      real :: deter
-      integer :: aa, niter, diter
-      logical :: use_sor
-      real (kind = SOLVER_PREC) :: rcond, cond, anorm, ferr, berr
+      integer :: info
+      integer, dimension(N_VARS) :: iwork
+      real (kind = SOLVER_PREC) :: rcond, ferr, berr
       real (kind = SOLVER_PREC), dimension(4*N_VARS) :: work
-      real (kind = SOLVER_PREC) :: swork(N_VARS*(N_VARS+N_VARS))
-      real (kind = SOLVER_PREC), dimension(N_VARS) :: iwork, rsf, csf
-      real (kind = SOLVER_PREC), allocatable, dimension(:) :: b(:), x(:)
-      real (kind = SOLVER_PREC), allocatable, dimension(:,:) :: a(:, :), af(:, :)
+      real (kind = SOLVER_PREC), dimension(N_VARS) :: rsf, csf
+        ! Fixed size rather than allocatable: this routine runs once per grid point per time
+        ! step, so heap traffic here is pure overhead. N_VARS is a parameter, so the shapes
+        ! are known at compile time and these cost nothing.
+      real (kind = SOLVER_PREC), dimension(N_VARS) :: b, x
+      real (kind = SOLVER_PREC), dimension(N_VARS, N_VARS) :: a, af
 
-      external dgesv
       external dgesvx
-
-      allocate (a(N_VARS, N_VARS), af(N_VARS, N_VARS), b(N_VARS), x(N_VARS))
 
         ! Fills in the B matrix
       call Fill_in_b_vector (b, q, q_sq, l, du_dx, du_dy, du_dz, dv_dx, dv_dy, dv_dz, dw_dx, dw_dy, dw_dz)
@@ -1360,41 +1942,55 @@
       call Fill_in_a_matrix (a, q, q_sq, l, du_dx, du_dy, du_dz, dv_dx, dv_dy, dv_dz, dw_dx, dw_dy, dw_dz, &
           dthetav_dx, dthetav_dy, dthetav_dz)
 
-        ! Compute solution to system of linear equations
-      call dgesvx ('N', 'N', N_VARS, 1, a, N_VARS, af, N_VARS, ipiv, equed, rsf, csf, b, N_VARS, x, N_VARS, rcond, ferr, berr, work, iwork, info)
-!      call dgesv (N_VARS, 1, a, N_VARS, ipiv, b, N_VARS, info)
-!      mat_cond = 1. / rcond
+        ! Compute solution to system of linear equations.
+        ! FACT = 'E' equilibrates A before factoring. This is not a physical change: the
+        ! columns of A carry mixed units (m2 s-2 for the momentum moments, K m s-1 for the
+        ! heat fluxes, K2 for the theta_v variance), so the raw system is badly scaled by
+        ! construction and rcond is dominated by units rather than by the physics. With
+        ! FACT = 'N' (the previous setting) dgesvx performs no equilibration at all.
+      call dgesvx ('E', 'N', N_VARS, 1, a, N_VARS, af, N_VARS, ipiv, equed, rsf, csf, b, N_VARS, x, N_VARS, rcond, ferr, berr, work, iwork, info)
 
-!      tf_u2 = b(1)
-!      tf_v2 = b(2)
-!      tf_w2 = b(3)
-!      tf_uv = b(4)
-!      tf_uw = b(5)
-!      tf_vw = b(6)
-!      tf_utv = b(7)
-!      tf_vtv = b(8)
-!      tf_wtv = b(9)
-!      tf_t2v = b(10)
+      if (rcond > 0.0_SOLVER_PREC) then
+        mat_cond = Real (1.0_SOLVER_PREC / rcond, kind = WORKING_PREC)
+      else
+        mat_cond = Huge (mat_cond)
+      end if
 
-      tf_u2 = x(1)
-      tf_v2 = x(2)
-      tf_w2 = x(3)
-      tf_uv = x(4)
-      tf_uw = x(5)
-      tf_vw = x(6)
-      tf_utv = x(7)
-      tf_vtv = x(8)
-      tf_wtv = x(9)
-      tf_t2v = x(10)
+        ! INFO in [1, N] means U(i,i) is exactly zero and X was *not* computed, i.e. x()
+        ! holds undefined memory - it must never be used. INFO = N+1 means the matrix is
+        ! singular to working precision: x is computed but not trustworthy.
+      solve_ok = (info == 0) .and. (mat_cond <= COND_MAX)
 
-      deallocate (a, af, b, x)
+      if (solve_ok) then
+        tf_u2 = x(1)
+        tf_v2 = x(2)
+        tf_w2 = x(3)
+        tf_uv = x(4)
+        tf_uw = x(5)
+        tf_vw = x(6)
+        tf_utv = x(7)
+        tf_vtv = x(8)
+        tf_wtv = x(9)
+        tf_t2v = x(10)
+      else
+        tf_u2  = 0.0_SOLVER_PREC
+        tf_v2  = 0.0_SOLVER_PREC
+        tf_w2  = 0.0_SOLVER_PREC
+        tf_uv  = 0.0_SOLVER_PREC
+        tf_uw  = 0.0_SOLVER_PREC
+        tf_vw  = 0.0_SOLVER_PREC
+        tf_utv = 0.0_SOLVER_PREC
+        tf_vtv = 0.0_SOLVER_PREC
+        tf_wtv = 0.0_SOLVER_PREC
+        tf_t2v = 0.0_SOLVER_PREC
+      end if
 
     end subroutine Solve_turb_system
 
 
     subroutine Solve_turb_system_moist (q, l, du_dx, du_dy, du_dz, dv_dx, dv_dy, dv_dz, dw_dx, dw_dy, dw_dz, dthetav_dx, &
               dthetav_dy, dthetav_dz, dqv_dx, dqv_dy, dqv_dz, tf_u2, tf_v2, tf_w2, tf_uv, tf_uw, tf_vw, tf_utv, tf_vtv, tf_wtv, &
-              tf_uqv, tf_vqv, tf_wqv, mat_cond)
+              tf_uqv, tf_vqv, tf_wqv, tf_qvtv, mat_cond, solve_ok)
 
       implicit none
 
@@ -1405,27 +2001,28 @@
                                                    dqv_dx, dqv_dy, dqv_dz
       real (kind = SOLVER_PREC), intent (in)    :: tf_u2, tf_v2, tf_w2, tf_uv, tf_uw, tf_vw, tf_utv, tf_vtv, tf_wtv
       real (kind = SOLVER_PREC), intent (out)   :: tf_uqv, tf_vqv, tf_wqv
+        ! x(4) is the moisture-heat covariance <qv' thetav'>. It was solved for and then
+        ! discarded; it is returned now because the Cauchy-Schwarz bound
+        ! <qv' thetav'>^2 <= <qv'^2> <thetav'^2> is one of the realizability constraints
+        ! restored by Enforce_realizability_moist.
+      real (kind = SOLVER_PREC), intent (out)   :: tf_qvtv
       real,                      intent (out)   :: mat_cond
+      logical,                   intent (out)   :: solve_ok
 
         ! Local vars
       character (len = 1) :: equed
       integer, parameter   :: N_VARS = 4
       integer :: ipiv(N_VARS)
-      integer :: info, info2, n_iter_sor
-      real :: deter
-      integer :: aa, niter, diter
-      logical :: use_sor
-      real (kind = SOLVER_PREC) :: rcond, cond, anorm, ferr, berr
+      integer :: info
+      integer, dimension(N_VARS) :: iwork
+      real (kind = SOLVER_PREC) :: rcond, ferr, berr
       real (kind = SOLVER_PREC), dimension(4*N_VARS) :: work
-      real (kind = SOLVER_PREC) :: swork(N_VARS*(N_VARS+N_VARS))
-      real (kind = SOLVER_PREC), dimension(N_VARS) :: iwork, rsf, csf
-      real (kind = SOLVER_PREC), allocatable, dimension(:) :: b(:), x(:)
-      real (kind = SOLVER_PREC), allocatable, dimension(:,:) :: a(:, :), af(:, :)
+      real (kind = SOLVER_PREC), dimension(N_VARS) :: rsf, csf
+        ! Fixed size rather than allocatable, for the same reason as in Solve_turb_system.
+      real (kind = SOLVER_PREC), dimension(N_VARS) :: b, x
+      real (kind = SOLVER_PREC), dimension(N_VARS, N_VARS) :: a, af
 
-      external dgesv
       external dgesvx
-
-      allocate (a(N_VARS, N_VARS), af(N_VARS, N_VARS), b(N_VARS), x(N_VARS))
 
         ! Fills in the B matrix
       call Fill_in_b_vector_moist (b, dqv_dx, dqv_dy, dqv_dz, tf_u2, tf_v2, tf_w2, tf_uv, tf_uw, tf_vw, tf_utv, tf_vtv, tf_wtv)
@@ -1434,22 +2031,154 @@
       call Fill_in_a_matrix_moist (a, q, l, du_dx, du_dy, du_dz, dv_dx, dv_dy, dv_dz, dw_dx, dw_dy, dw_dz, &
           dthetav_dx, dthetav_dy, dthetav_dz)
 
-        ! Compute solution to system of linear equations
-      call dgesvx ('N', 'N', N_VARS, 1, a, N_VARS, af, N_VARS, ipiv, equed, rsf, csf, b, N_VARS, x, N_VARS, rcond, ferr, berr, work, iwork, info)
-!      call dgesv (N_VARS, 1, a, N_VARS, ipiv, b, N_VARS, info)
-!      mat_cond = 1. / rcond
+        ! Compute solution to system of linear equations (see Solve_turb_system for why
+        ! FACT = 'E'; this system mixes kg kg-1 m s-1 with K kg kg-1 and is likewise
+        ! badly scaled by construction).
+      call dgesvx ('E', 'N', N_VARS, 1, a, N_VARS, af, N_VARS, ipiv, equed, rsf, csf, b, N_VARS, x, N_VARS, rcond, ferr, berr, work, iwork, info)
 
-!      tf_uqv = b(1)
-!      tf_vqv = b(2)
-!      tf_wqv = b(3)
+      if (rcond > 0.0_SOLVER_PREC) then
+        mat_cond = Real (1.0_SOLVER_PREC / rcond, kind = WORKING_PREC)
+      else
+        mat_cond = Huge (mat_cond)
+      end if
 
-      tf_uqv = x(1)
-      tf_vqv = x(2)
-      tf_wqv = x(3)
+      solve_ok = (info == 0) .and. (mat_cond <= COND_MAX)
 
-      deallocate (a, af, b, x)
+      if (solve_ok) then
+        tf_uqv  = x(1)
+        tf_vqv  = x(2)
+        tf_wqv  = x(3)
+        tf_qvtv = x(4)
+      else
+        tf_uqv  = 0.0_SOLVER_PREC
+        tf_vqv  = 0.0_SOLVER_PREC
+        tf_wqv  = 0.0_SOLVER_PREC
+        tf_qvtv = 0.0_SOLVER_PREC
+      end if
 
     end subroutine Solve_turb_system_moist
+
+
+    pure subroutine Calc_qv_variance (q, l, dqv_dx, dqv_dy, dqv_dz, tf_uqv, tf_vqv, tf_wqv, tf_qv2)
+
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !                                                                          !
+      ! Purpose: Diagnose the water vapour variance <qv'^2> from the moisture     !
+      !          fluxes, so that the moisture side of the closure has the same     !
+      !          realizability constraints as the heat side.                       !
+      !                                                                          !
+      ! Comments: The steady, weak-equilibrium <qv'^2> budget is the exact         !
+      !           analogue of the <thetav'^2> equation already carried as row 10   !
+      !           of the momentum/heat system (Fill_in_a_matrix):                  !
+      !                                                                          !
+      !             <u_j' qv'> dQv/dx_j  +  q <qv'^2> / (b_2 l)  =  0              !
+      !                                                                          !
+      !           production against the mean moisture gradient balanced by        !
+      !           dissipation at rate q / (b_2 l), giving                          !
+      !                                                                          !
+      !             <qv'^2> = - (b_2 l / q) * <u_j' qv'> dQv/dx_j                  !
+      !                                                                          !
+      !           In the 1D limit <w'qv'> = -l q Sh dQv/dz this reduces to         !
+      !           <qv'^2> = b_2 l^2 Sh (dQv/dz)^2, which is exactly the form the    !
+      !           approximate branch already uses for <thetav'^2>                  !
+      !           (diag_th2v_pbl_approx), so the two branches agree by             !
+      !           construction.                                                    !
+      !                                                                          !
+      !           Why this is not a fifth row of the moist system: as a row it     !
+      !           would read (dQv/dx, dQv/dy, dQv/dz, 0, q/(b_2 l)) with a zero    !
+      !           right hand side, and no other row of that system has an entry    !
+      !           in the <qv'^2> column - nothing couples back to it, because the   !
+      !           buoyancy term in the <w'qv'> equation goes through <qv' thetav'>, !
+      !           which is already column 4. The 5x5 system is therefore block      !
+      !           triangular and its first four unknowns are identical to the 4x4   !
+      !           solution. Solving it in closed form here is algebraically exact,  !
+      !           costs nothing, and - unlike enlarging the matrix - cannot perturb !
+      !           the existing fluxes through dgesvx's equilibration (FACT = 'E'    !
+      !           rescales rows and columns, so adding a row would change the       !
+      !           computed x(1:4) at round-off level for no benefit).               !
+      !                                                                          !
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+      implicit none
+
+      real (kind = SOLVER_PREC), intent (in)  :: q, l, dqv_dx, dqv_dy, dqv_dz
+      real (kind = SOLVER_PREC), intent (in)  :: tf_uqv, tf_vqv, tf_wqv
+      real (kind = SOLVER_PREC), intent (out) :: tf_qv2
+
+      tf_qv2 = - Real (b_2, kind = SOLVER_PREC) * l / Max (q, Tiny (q))                       &
+               * (dqv_dx * tf_uqv + dqv_dy * tf_vqv + dqv_dz * tf_wqv)
+
+    end subroutine Calc_qv_variance
+
+
+    pure subroutine Enforce_realizability_moist (tf_u2, tf_v2, tf_w2, tf_t2v, &
+        tf_uqv, tf_vqv, tf_wqv, tf_qvtv, tf_qv2, t3_flags)
+
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !                                                                          !
+      ! Purpose: The moisture counterpart of step 5 of Enforce_realizability.     !
+      !                                                                          !
+      ! Comments: Before this existed the moisture fluxes were the only moments   !
+      !           in the scheme under no realizability constraint of any kind:    !
+      !           the 4x4 moist system carries no <qv'^2>, so there was nothing   !
+      !           to bound them against and the implied correlation coefficient   !
+      !           <w'qv'> / sqrt(<w'^2><qv'^2>) could exceed one without any      !
+      !           part of the code noticing.                                     !
+      !                                                                          !
+      !           With <qv'^2> available from Calc_qv_variance the same three     !
+      !           constraints the heat side already obeys can be applied:         !
+      !                                                                          !
+      !             1. <qv'^2> >= 0                                              !
+      !             2. <u_i' qv'>^2 <= <u_i'^2> <qv'^2>   (i = u, v, w)           !
+      !             3. <qv' thetav'>^2 <= <qv'^2> <thetav'^2>                    !
+      !                                                                          !
+      !           In the 1D limit all three are inactive - substituting the       !
+      !           gradient-diffusion forms turns 2 into a condition on the        !
+      !           closure constants alone, which they satisfy - so this is a      !
+      !           no-op wherever the flux is aligned with the gradient. It        !
+      !           engages where the moisture flux vector and the moisture         !
+      !           gradient are misaligned, i.e. where transport is set by the     !
+      !           3D stress tensor rather than by the local gradient. Over        !
+      !           complex terrain, a valley moisture gradient combined with a     !
+      !           slope flow is exactly that situation.                          !
+      !                                                                          !
+      !           <qv'^2> is diagnosed from the fluxes, so clipping a flux makes  !
+      !           it stale. One pass is applied rather than iterating, matching   !
+      !           step 5 of Enforce_realizability, which has the same structure   !
+      !           for <thetav'^2>. Clipping only ever reduces |flux|, so the pass !
+      !           is a contraction and cannot introduce a new violation of the    !
+      !           bound it just enforced.                                        !
+      !                                                                          !
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+      implicit none
+
+      real (kind = SOLVER_PREC), intent (in)    :: tf_u2, tf_v2, tf_w2, tf_t2v
+      real (kind = SOLVER_PREC), intent (inout) :: tf_uqv, tf_vqv, tf_wqv, tf_qvtv, tf_qv2
+        ! Bitmask, continuing the numbering of Enforce_realizability:
+        !   32  <qv'^2> was negative and has been floored at zero
+        !   64  a moisture flux was clipped by Cauchy-Schwarz
+        !  128  the moisture-heat covariance was clipped by Cauchy-Schwarz
+      integer,                   intent (inout) :: t3_flags
+
+      real (kind = SOLVER_PREC) :: uqv_in, vqv_in, wqv_in, qvtv_in
+
+      if (tf_qv2 < 0.0_SOLVER_PREC) then
+        tf_qv2 = 0.0_SOLVER_PREC
+        t3_flags = t3_flags + 32
+      end if
+
+      uqv_in = tf_uqv ; vqv_in = tf_vqv ; wqv_in = tf_wqv
+      tf_uqv = Sign (Min (Abs (tf_uqv), Sqrt (tf_u2 * tf_qv2)), tf_uqv)
+      tf_vqv = Sign (Min (Abs (tf_vqv), Sqrt (tf_v2 * tf_qv2)), tf_vqv)
+      tf_wqv = Sign (Min (Abs (tf_wqv), Sqrt (tf_w2 * tf_qv2)), tf_wqv)
+      if (tf_uqv /= uqv_in .or. tf_vqv /= vqv_in .or. tf_wqv /= wqv_in) t3_flags = t3_flags + 64
+
+      qvtv_in = tf_qvtv
+      tf_qvtv = Sign (Min (Abs (tf_qvtv), Sqrt (tf_qv2 * tf_t2v)), tf_qvtv)
+      if (tf_qvtv /= qvtv_in) t3_flags = t3_flags + 128
+
+    end subroutine Enforce_realizability_moist
 
 
     subroutine Fill_in_b_vector (b, q, q_sq, l, u_x, u_y, u_z, v_x, &
@@ -2508,6 +3237,7 @@
         ! local vars
       integer :: i, j, k, i_start, i_end, j_start, j_end, ktf, k_start, n_iter_sor
       real :: ri, turb_prtl_num, gm, gh, phi1, phi2, phi3, phi4, phi5, N, D
+      character (len = 256) :: wrf_err_message
       real, dimension (its:ite, kts:kte, jts:jte) :: l_master
 
         ! Define dimensions
@@ -2533,11 +3263,17 @@
 
                 ! Eq. on page 929 Y75
               rif(i, k, j) = fac1 * (ri + fac2 - sqrt(ri * ri + fac3 * ri + fac4))
+                ! NaN guard. This used to write to unit 90, which is never opened anywhere in
+                ! the model: gfortran auto-creates fort.90 in the working directory, every MPI
+                ! rank targets the same file name, and there is no frequency limit, so a single
+                ! NaN field could fill the run directory mid-run. Routed through wrf_debug
+                ! instead, which is rank tagged and level gated like every other diagnostic here.
               if (rif(i, k, j) /= rif(i, k, j)) then
-                write(90, *) 'i =', i, 'j = ', j, 'k = ', k
-                write(90, *) '    dt_dz = ', dthetav_dz(i, k, j)
-                write(90, *) '    du_dz = ', du_dz(i, k, j)
-                write(90, *) '    dv_dz = ', dv_dz(i, k, j)
+                write (wrf_err_message, '(A,3I6,A,3(1X,E13.6))')            &
+                    'pbl3d: NaN in rif at i,k,j =', i, k, j,                &
+                    ' ; dthetav_dz, du_dz, dv_dz =',                        &
+                    dthetav_dz(i, k, j), du_dz(i, k, j), dv_dz(i, k, j)
+                call wrf_debug (100, wrf_err_message)
               end if
 
               if_turb: if (rif(i, k, j) < rif_c) then
@@ -2692,8 +3428,15 @@
 
             if_turb: if (rif(i, k, j) < rif_c) then
  
-              q_sq(i, k, j) =  b_1 * l_master(i, k, j) ** 2.0 *        &
-                  (du_dz(i, k, j) ** 2.0 + dv_dz(i, k, j) ** 2.0) *  &
+                ! Level 2 balance Sm q l S^2 (1 - Rif) = q^3 / (b_1 l_dissip) solved for q^2.
+                ! The two length scales are not the same one: the l on the production side is
+                ! the mixing length (l_master), the l on the dissipation side is l_dissip,
+                ! which is what Fill_dissip_length_scale is called to supply. They coincide
+                ! for pbl3d_l_opt < 3 and differ for pbl3d_l_opt >= 3, where l_dissip is the
+                ! BouLac length. This previously used l_master for both, so l_dissip was
+                ! passed in and never used.
+              q_sq(i, k, j) =  b_1 * l_dissip(i, k, j) * l_master(i, k, j) *  &
+                  (du_dz(i, k, j) ** 2.0 + dv_dz(i, k, j) ** 2.0) *           &
                   (1.0 - rif(i, k, j)) * sm(i, k, j)
 
               q_sq(i, k, j) = Max (q_sq(i, k, j), Q_SQ_MIN)
@@ -2766,13 +3509,23 @@
 
     subroutine Calc_q_sq_l2 (l_master, l_dissip, du_dx, dv_dy, dw_dz, du_dy, dv_dx, dw_dx, du_dz, dw_dy, dv_dz, dthetav_dz, &
               tf_u2, tf_v2, tf_w2, tf_uv, tf_uw, tf_vw, tf_wtv, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, &
-              its, ite, jts, jte, kts, kte, q_sq_face, q_sq_hl88, rif)
+              its, ite, jts, jte, kts, kte, sm, q_sq_face, q_sq_hl88, rif)
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !                                                                                        !
       ! Purpose: Calculates diagnostic TKE equation (level 2) for full 3D model                !
       !                                                                                        !
       ! Author: Timothy W. Juliano & Pedro A. Jimenez                                          !
+      !                                                                                        !
+      ! Comments: This is the self consistent counterpart of Calc_q_sq_l2_pbl_approx. The       !
+      !           level 2 balance production = dissipation = q^3 / (b_1 l) is evaluated with    !
+      !           the full 3D production                                                        !
+      !                                                                                        !
+      !             - <u_i' u_j'> dU_i/dx_j + (g / T_ref) <w' thetav'>                          !
+      !                                                                                        !
+      !           taken from the stress tensor the 10x10 system itself returned, rather than    !
+      !           with the 1D surrogate q^2 = b_1 l^2 S^2 (1 - Rif) Sm, which knows only        !
+      !           du/dz, dv/dz and dthetav/dz.                                                  !
       !                                                                                        !
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -2781,6 +3534,7 @@
       real, dimension (its:ite, kts:kte, jts:jte), intent (in)    :: du_dx, dv_dy, dw_dz, &
                                     du_dy, dv_dx, dw_dx, du_dz, dw_dy, dv_dz, dthetav_dz
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: tf_u2, tf_v2, tf_w2, tf_uv, tf_uw, tf_vw, tf_wtv
+      real, dimension (its:ite, kts:kte, jts:jte), intent (in)    :: sm
       real, dimension (ims:ime, kms:kme, jms:jme), intent (out), optional :: q_sq_face
       real, dimension (its:ite, kts:kte, jts:jte), intent (out), optional :: q_sq_hl88
       real, dimension (its:ite, kts:kte, jts:jte), intent (in)    :: rif
@@ -2792,7 +3546,7 @@
 
         ! local vars
       integer :: i, j, k, i_start, i_end, j_start, j_end, kts1, ktf
-      real :: ri, turb_prtl_num, q
+      real :: q_cubed, q_sq_3d
       real, dimension (its:ite, kts:kte, jts:jte) :: q_sq
       logical, parameter :: DEBUG = .false.
 
@@ -2811,12 +3565,38 @@
 
             if_turb: if (rif(i, k, j) < rif_c) then
 
-              q = b_1 * l_master(i, k, j) * (- tf_u2(i, k, j) * du_dx(i, k, j) - tf_v2(i, k, j) * dv_dy(i, k, j) &
+                ! Level 2 balance, so this expression is q^3 and not q: b_1 l carries a length,
+                ! the bracket carries a production m^2 s^-3, and the product is (m s^-1)^3.
+              q_cubed = b_1 * l_dissip(i, k, j) * (- tf_u2(i, k, j) * du_dx(i, k, j) - tf_v2(i, k, j) * dv_dy(i, k, j) &
                       - tf_w2(i, k, j) * dw_dz(i, k, j) - tf_uv(i, k, j) * (du_dy(i, k, j) + dv_dx(i, k, j)) &
                       - tf_uw(i, k, j) * (du_dz(i, k, j) + dw_dx(i, k, j)) &
                       - tf_vw(i, k, j) * (dv_dz(i, k, j) + dw_dy(i, k, j)) + tf_wtv(i, k, j) * G_OVER_TREF)
-              q = q ** 1./3.
-              q_sq(i, k, j) = Max (q * q, Q_SQ_MIN)
+
+                ! q^2 = (q^3)^(2/3), taken in one step. The floor at zero is not cosmetic: the
+                ! 3D production is a sum of nine shear terms and a buoyancy term and can go
+                ! negative wherever buoyant destruction outweighs the resolved shear production,
+                ! and a negative base with a real exponent evaluates to NaN.
+              q_sq_3d = Max (q_cubed, 0.0) ** (2.0 / 3.0)
+
+                ! The 3D production is only informative once the stress tensor carries something.
+                ! At a cold start every flux sits at TURB_FLUX_MIN, so the production vanishes,
+                ! q^2 falls to its floor, Calc_fluxes then takes the no-turbulence branch and
+                ! writes the fluxes straight back to their floor: q^2 is diagnosed from the
+                ! fluxes and the fluxes from q^2, with no independent source anywhere in the
+                ! cycle. Falling back on the 1D local-equilibrium value where the 3D one carries
+                ! no information breaks that dead lock. It is the same level 2 balance evaluated
+                ! with the only gradients available before a tensor exists, and it is written to
+                ! agree bit for bit with Calc_q_sq_l2_pbl_approx so that the fallback and
+                ! pbl3d_qsq_opt = 0 cannot disagree.
+              if (q_sq_3d > Q_SQ_MIN) then
+                q_sq(i, k, j) = q_sq_3d
+              else
+                q_sq(i, k, j) = b_1 * l_dissip(i, k, j) * l_master(i, k, j) *  &
+                    (du_dz(i, k, j) ** 2.0 + dv_dz(i, k, j) ** 2.0) *           &
+                    (1.0 - rif(i, k, j)) * sm(i, k, j)
+              end if
+
+              q_sq(i, k, j) = Max (q_sq(i, k, j), Q_SQ_MIN)
 
               if (DEBUG) call Debug_big_qsq
 
@@ -2874,7 +3654,8 @@
             print *, 'dv_dz = ', dv_dz(i, k, j)
             print *, 'dthetav_dz = ', dthetav_dz(i, k, j)
             print *, 'l dissip = ', l_dissip(i, k, j)
-            print *, 'Ri = ', ri
+            print *, 'q^3 (3D production x b_1 l) = ', q_cubed
+            print *, 'q_sq from 3D production = ', q_sq_3d
             print *, 'Ri flux = ', rif(i, k, j)
           end if
 
@@ -3378,6 +4159,7 @@
 
     subroutine Set_init_turb_state_my (restart, pbl3d_constants,                &
               pbl3d_nsteps, pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt,  &
+              pbl3d_sk_eps_max, pbl3d_n_tau_max,                                                 &
               ids, ide, jds, jde, kds, kde,                                     &
               ims, ime, jms, jme, kms, kme,                                     &
               its, ite, jts, jte, kts, kte,                                     &
@@ -3409,6 +4191,7 @@
 
       logical, intent(in) :: restart
       integer, intent(in) :: pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt, pbl3d_nsteps
+      real,    intent(in) :: pbl3d_sk_eps_max, pbl3d_n_tau_max
       character (len = *), intent(in) :: pbl3d_constants
       integer, intent(in) :: ids, ide, jds, jde, kds, kde, &
                              ims, ime, jms, jme, kms, kme, &
@@ -3451,13 +4234,39 @@
 
       call Set_my_qsq_min (pbl3d_prog)
 
+        ! Tier 1 tolerance. Set here rather than compiled in so it can be scanned
+        ! between runs; it is the binding limit on l wherever the raw S k / eps exceeds
+        ! it. Guard against a nonsensical value: at or below zero Tier 1 would force
+        ! l -> 0 everywhere and the closure would return isotropic turbulence at every
+        ! point, which is a silent failure rather than a configuration.
+      if (pbl3d_sk_eps_max > 0.0) then
+        SK_EPS_MAX = pbl3d_sk_eps_max
+      else
+        SK_EPS_MAX = 6.0
+        call wrf_message ('--- WARNING: pbl3d_sk_eps_max must be > 0; using 6.0')
+      end if
+
+        ! Buoyancy limit on l. Same reasoning as SK_EPS_MAX: a non-positive value would
+        ! force l -> 0 in every stably stratified layer, which is a silent failure rather
+        ! than a configuration. To switch the limit off, set a very large value.
+      if (pbl3d_n_tau_max > 0.0) then
+        N_TAU_MAX = pbl3d_n_tau_max
+      else
+        N_TAU_MAX = 0.53
+        call wrf_message ('--- WARNING: pbl3d_n_tau_max must be > 0; using 0.53')
+      end if
+
       if (restart) return
 
         ! Initializes thetav, TKE, L, and the turbulent fluxes
       j_loop_init: do j = jts, jtf
         i_loop_init: do i = its, itf
           q_sq(i, kts:kte, j) = Q_SQ_MIN
-          l_master(i, kts:kte, j) = Q_SQ_MIN
+            ! l_master is a length, so it must not be seeded with Q_SQ_MIN, which is a TKE
+            ! floor in m2 s-2. Calc_l_master_algebra overwrites it before it is first read,
+            ! so this only fixes the units and keeps the seed strictly positive should that
+            ! ordering ever change; the layer depth is the natural scale to fall back on.
+          l_master(i, kts:kte, j) = dz(i, kts:kte, j)
           if (pbl3d_prog == 1) then
             q_sq_prog(i, kts:ktf, j) = Q_SQ_MIN
             q_sq_vdiff(i, kts:ktf, j) = 0.0
@@ -3465,7 +4274,7 @@
             q_sq_shear(i, kts:ktf, j) = 0.0
             q_sq_buoyancy(i, kts:ktf, j) = 0.0
             q_sq_dissip(i, kts:ktf, j) = 0.0
-            l_master_at_mass(i, kts:ktf, j) = Q_SQ_MIN
+            l_master_at_mass(i, kts:ktf, j) = dz(i, kts:ktf, j)   ! a length, not a TKE floor
           end if
           turb_flux_u2(i, kts:kte, j) = TURB_FLUX_MIN
           turb_flux_v2(i, kts:kte, j) = TURB_FLUX_MIN
@@ -3510,7 +4319,7 @@
 !            jts=jts, jte=jte, kts=kts, kte=kte, q_sq_face=q_sq, sm=sm, rif=rif)
 
 !          ! Diagnose master length scale
-!         call Calc_l_master_algebra (config_flags%pbl3d_l_opt, q_sq, dz, rdzw, rmol, turb_flux_wtheta_v, dthetav_dz, l_master, &
+!         call Calc_l_master_algebra (config_flags%pbl3d_l_opt, config_flags%pbl3d_l0_opt, q_sq, dz, rdzw, rmol, turb_flux_wtheta_v, dthetav_dz, l_master, &
 !             ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 !      end do
 

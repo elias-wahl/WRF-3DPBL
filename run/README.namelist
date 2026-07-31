@@ -1662,6 +1662,21 @@ The following are for observation nudging:
                                                   1 = Mellor-Yamada center of mass length scale (based on Blackadar) (default)
                                                   2 = Mellor-Yamada-Nakanishi-Niino length scale (original constants)
                                                   3 = BouLac length scale (based on Bougeault and LaCarrere, 1989)
+ pbl3d_l0_opt(max_dom)               = 1,       ! 3D PBL asymptotic length scale l0 (MY74 Eq. 72). Read for
+                                                ! pbl3d_l_opt = 1, 2 and >= 4, which all compute l0 as the
+                                                ! q-weighted mean height of the turbulence.
+                                                  1 = Weight the integral by Max(q - q_min, 0), i.e. by the
+                                                      turbulent excess over the Q_SQ_MIN floor (default).
+                                                      MY74's integral converges because q -> 0 above the
+                                                      turbulence; weighting by q itself instead lets the
+                                                      numerical floor contribute, and since the numerator then
+                                                      grows as H^2 while the denominator grows as H, l0 tends to
+                                                      alpha*H/2 -- i.e. it is set by the model top rather than by
+                                                      the turbulence. Same correction MYNN applies (see
+                                                      module_bl_mynnedmf.F, "originally integrated to model top").
+                                                  0 = Weight by q over the whole column (legacy behaviour).
+                                                      Retained only for reproducing earlier runs; l0 computed
+                                                      this way depends on the model lid height.
  pbl3d_constants                     = 'MY82'   ! 3D PBL set of model constants
                                                   'MY82'   = Mellor-Yamada (1982) paper (default)
                                                   'MY73'   = Mellor-Yamada (1973) paper
@@ -1669,9 +1684,46 @@ The following are for observation nudging:
                                                   'MYJ'    = MYJ PBL Scheme; Janjic (2002)
                                                   'Boulac' = Derived from idealized, CBL LES simulations; recommended use with pbl3d_l_opt = 3
  pbl3d_nsteps(max_dom)               = 1,       ! 3D PBL number of parameterization substeps
- pbl3d_prog(max_dom)                 = 0,       ! 3D PBL closure level option
-                                                  0 = Level 2 Mellor-Yamada model (diagnostic TKE) (default)
-                                                  1 = Level 2.5 Mellor-Yamada model (prognostic TKE)
+ pbl3d_prog(max_dom)                 = 1,       ! 3D PBL closure level option
+                                                  0 = Level 2 Mellor-Yamada model (diagnostic TKE). q^2 is diagnosed
+                                                      locally and is forced to Q_SQ_MIN wherever the flux Richardson
+                                                      number exceeds rif_c (= 0.191, reached at gradient Ri = 0.195),
+                                                      so turbulence is switched off entirely above that threshold.
+                                                  1 = Level 2.5 Mellor-Yamada model (prognostic TKE) (default). q^2 is
+                                                      advected and diffused, and is NOT gated on rif_c, so turbulence
+                                                      can persist at arbitrarily large Ri.
+ pbl3d_sk_eps_max                    = 6.0,     ! 3D PBL: largest S*k/eps admitted by the algebraic closure
+                                                ! (Durbin 1996 realizability time scale limit). Only used by
+                                                ! pbl3d_opt = 2, where it caps the length scale at
+                                                ! l <= (2*pbl3d_sk_eps_max/b_1) * q/|S| before the 10x10 system is
+                                                ! assembled. Homogeneous-shear equilibrium is about 3.3, so the
+                                                ! default of 6.0 is deliberately about twice as permissive.
+                                                ! Lower it to tighten the weak-equilibrium assumption; it is the
+                                                ! binding control on l in the nocturnal boundary layer, in slope
+                                                ! drainage flow and under a low-level jet. Must be > 0.
+ pbl3d_n_tau_max                     = 0.53,    ! 3D PBL: largest N*tau = N*l/q admitted, i.e. the buoyancy limit
+                                                ! l <= pbl3d_n_tau_max * q/N applied to the master length scale in
+                                                ! stably stratified layers. Used by pbl3d_l_opt = 1 only;
+                                                ! pbl3d_l_opt = 2 (MYNN) and 3 (Messinger) carry their own equivalent
+                                                ! limit. The default is Deardorff (1980) l = 0.76*sqrt(e)/N rewritten
+                                                ! with e = q^2/2. Without it, l is purely geometric and asymptotes to
+                                                ! l0 all the way to the model lid, while q collapses to its floor
+                                                ! above the boundary layer, so tau = l/q and hence N*tau become
+                                                ! unbounded and the algebraic closure is solved far outside its
+                                                ! validity range. Inactive in level-2 equilibrium, where it would
+                                                ! only bind above Ri ~ 1. Set a very large value to disable.
+                                                ! Must be > 0.
+ pbl3d_qsq_opt(max_dom)              = 1,       ! 3D PBL level 2 q^2 closure. Only read when pbl3d_opt = 2;
+                                                ! the approximate closure (pbl3d_opt = 1) always uses its own 1D form.
+                                                  1 = Self-consistent full 3D production (default). q^2 is closed on
+                                                      -<u_i'u_j'> dU_i/dx_j + (g/T) <w'thetav'> using the stress tensor
+                                                      returned by the 3D algebraic system itself, so the velocity scale
+                                                      that sets the system's relaxation time is derived from the same
+                                                      turbulence the system represents.
+                                                  0 = 1D surrogate (legacy behaviour). q^2 is closed on
+                                                      b_1 l^2 (du/dz^2 + dv/dz^2) (1 - Rif) Sm, i.e. on vertical
+                                                      gradients only. Retained for testing and for bisecting
+                                                      differences against earlier runs.
  pbl3d_scalar_mix(max_dom)           = 0,       ! 3D PBL scalar turbulent mixing
                                                   0 = Without scalar turbulent mixing (default)
                                                   1 = With scalar (hydrometeor + aerosol) turbulent mixing. Currently linked to select

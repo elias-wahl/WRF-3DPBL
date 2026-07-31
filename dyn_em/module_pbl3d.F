@@ -741,6 +741,8 @@
           turb_flux_wqnc, turb_flux_uqnr, turb_flux_vqnr, turb_flux_wqnr, turb_flux_uqni, turb_flux_vqni, turb_flux_wqni, &
           turb_flux_uqnwfa, turb_flux_vqnwfa, turb_flux_wqnwfa, turb_flux_uqnifa, turb_flux_vqnifa, turb_flux_wqnifa, &
           msfux, msfuy, msfvx, msfvy, msftx, msfty, xland, pblh, &
+          grid%pbl3d_t1_ratio, grid%pbl3d_t2_steps, grid%pbl3d_t3_flags, grid%pbl3d_sk_eps, grid%pbl3d_n_tau, grid%pbl3d_cond_a, &
+          grid%pbl3d_qv2, &
           dx, dy, rdx, rdy, dn, dnw, rdz, dt, id, rdzw, fnm, fnp, cf1, cf2, cf3, zx, zy, mut, c1h, c2h, ids, ide, jds, jde, kds, kde, &
           ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
@@ -5738,7 +5740,13 @@
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: q_sq_prog
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: l_boulac
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: l_master_at_mass
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (out)   :: turb_flux_u2, turb_flux_v2, turb_flux_w2, &
+        ! intent(in), not intent(out): Calc_q_sq_rhs only reads these, passing them to
+        ! Calc_q_sq_shear* and Calc_q_sq_buoyancy where they are intent(in). Declaring them
+        ! intent(out) leaves the dummies undefined on entry per the standard; it happens to
+        ! work today only because the actual arguments are contiguous full arrays, so gfortran
+        ! passes by reference and skips the copy-in. One non-contiguous actual argument at any
+        ! call site would silently turn these into garbage.
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: turb_flux_u2, turb_flux_v2, turb_flux_w2, &
                                                                      turb_flux_uv, turb_flux_uw, turb_flux_vw, &
                                                                      turb_flux_wtheta_v
       real, dimension (kms:kme),                   intent (in)    :: dn, dnw, fnm, fnp
@@ -6436,7 +6444,7 @@
 
 
     subroutine Init_pbl3d (restart, pbl3d_opt, pbl3d_sfc_opt, pbl3d_l_opt, pbl3d_prog, pbl3d_constants, &
-              pbl3d_nsteps, fnm, fnp, dnw, ph, phb, t_2, qv, thetav, alt, u, v, ust, hfx, qfx, rmol, &
+              pbl3d_nsteps, pbl3d_sk_eps_max, pbl3d_n_tau_max, fnm, fnp, dnw, ph, phb, t_2, qv, thetav, alt, u, v, ust, hfx, qfx, rmol, &
               q_sq, q_sq_prog, q_sq_vdiff, q_sq_hdiff, q_sq_shear, q_sq_buoyancy, q_sq_dissip,                       &
               ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme,               &
               its, ite, jts, jte, kts, kte, l_master, l_master_at_mass, turb_flux_u2,                     &
@@ -6460,6 +6468,7 @@
 
       logical, intent(in) :: restart
       integer, intent(in) :: pbl3d_opt, pbl3d_sfc_opt, pbl3d_l_opt, pbl3d_prog, pbl3d_nsteps
+      real,    intent(in) :: pbl3d_sk_eps_max, pbl3d_n_tau_max
       character (len = *), intent(in) :: pbl3d_constants
 
         ! Grid vars
@@ -6487,6 +6496,7 @@
 
       call Set_init_turb_state_driver (restart, pbl3d_constants,            &
           pbl3d_nsteps, pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt,  &
+          pbl3d_sk_eps_max, pbl3d_n_tau_max,                                                 &
           ids, ide, jds, jde, kds, kde,                                     &
           ims, ime, jms, jme, kms, kme,                                     &
           its, ite, jts, jte, kts, kte,                                     &
@@ -6506,6 +6516,7 @@
 
     subroutine Set_init_turb_state_driver (restart, pbl3d_constants,            &
               pbl3d_nsteps, pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt,  &
+              pbl3d_sk_eps_max, pbl3d_n_tau_max,                                                 &
               ids, ide, jds, jde, kds, kde,                                     &
               ims, ime, jms, jme, kms, kme,                                     &
               its, ite, jts, jte, kts, kte,                                     &
@@ -6534,6 +6545,7 @@
 
       logical, intent(in) :: restart
       integer, intent(in) :: pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt, pbl3d_nsteps
+      real,    intent(in) :: pbl3d_sk_eps_max, pbl3d_n_tau_max
       character (len = *), intent(in) :: pbl3d_constants
       integer :: i, j, k, itf, jtf, ktf
       integer, intent(in) :: ids, ide, jds, jde, kds, kde, &
@@ -6593,7 +6605,8 @@
       call Calc_dmassvar_dz (qv, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqv_dz)
 
         ! Call MY model to set initial state
-      call Set_init_turb_state_my (restart, pbl3d_constants, pbl3d_nsteps, pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt, ids, ide, &
+      call Set_init_turb_state_my (restart, pbl3d_constants, pbl3d_nsteps, pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt, &
+          pbl3d_sk_eps_max, pbl3d_n_tau_max, ids, ide, &
           jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, itf, jtf, ktf, i_start, i_end, j_start, j_end, &
           fnm, fnp, dnw, ph, phb, rdzw, z_at_mass, dz, t_2, qv, alt, u, v, ust, hfx, qfx, rmol, rho, du_dz, dv_dz, dthetav_dz, dqv_dz, &
           q_sq, q_sq_prog, q_sq_vdiff, q_sq_hdiff, q_sq_shear, q_sq_buoyancy, q_sq_dissip, l_master, l_master_at_mass, turb_flux_u2, turb_flux_v2, &

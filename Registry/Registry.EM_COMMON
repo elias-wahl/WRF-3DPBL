@@ -1173,20 +1173,20 @@ state   real   q_sq_vdiff            ikj     misc        1         -       r    
 state   real   q_sq_hdiff            ikj     misc        1         -       r       "q_sq_hdiff"        "Q_SQ horizontal diffusion tendency"  "m2 s-3"
 state   real   turb_flux_u2          ikj     misc        1         Z       r       "turb_flux_u2"      "u variance"  "m2 s-2"
 state   real   turb_flux_v2          ikj     misc        1         Z       r       "turb_flux_v2"      "v variance"  "m2 s-2"
-state   real   turb_flux_w2          ikj     misc        1         Z       r       "turb_flux_w2"      "w variance"  "m2 s-2"
-state   real   turb_flux_uw          ikj     misc        1         Z       r       "turb_flux_uw"      "u w covariance"  "m2 s-2"
-state   real   turb_flux_vw          ikj     misc        1         Z       r       "turb_flux_vw"      "v w covariance"  "m2 s-2"
+state   real   turb_flux_w2          ikj     misc        1         Z       rh      "turb_flux_w2"      "w variance"  "m2 s-2"
+state   real   turb_flux_uw          ikj     misc        1         Z       rh      "turb_flux_uw"      "u w covariance"  "m2 s-2"
+state   real   turb_flux_vw          ikj     misc        1         Z       rh      "turb_flux_vw"      "v w covariance"  "m2 s-2"
 state   real   turb_flux_uv          ikj     misc        1         Z       r       "turb_flux_uv"      "u v covariance"  "m2 s-2"
 state   real   turb_flux_utheta      ikj     misc        1         Z       r       "turb_flux_utheta"  "u theta covariance"  "K m s-1"
 state   real   turb_flux_vtheta      ikj     misc        1         Z       r       "turb_flux_vtheta"  "v theta covariance"  "K m s-1"
 state   real   turb_flux_wtheta      ikj     misc        1         Z       r       "turb_flux_wtheta"  "w theta covariance"  "K m s-1"
 state   real   turb_flux_utheta_v    ikj     misc        1         Z       -       "turb_flux_utheta_v"  "u theta_virtual covariance" "K m s-1"
 state   real   turb_flux_vtheta_v    ikj     misc        1         Z       -       "turb_flux_vtheta_v"  "v theta_virtual covariance" "K m s-1"
-state   real   turb_flux_wtheta_v    ikj     misc        1         Z       r       "turb_flux_wtheta_v"  "w theta_virtual covariance" "K m s-1"
-state   real   turb_flux_theta2_v    ikj     misc        1         Z       -       "turb_flux_theta2_v"  "theta_virtual variance" "K2"
+state   real   turb_flux_wtheta_v    ikj     misc        1         Z       rh      "turb_flux_wtheta_v"  "w theta_virtual covariance" "K m s-1"
+state   real   turb_flux_theta2_v    ikj     misc        1         Z       h       "turb_flux_theta2_v"  "theta_virtual variance" "K2"
 state   real   turb_flux_uqv         ikj     misc        1         Z       r       "turb_flux_uqv"  "u qv covariance"  "kg kg-1 m s-1"
 state   real   turb_flux_vqv         ikj     misc        1         Z       r       "turb_flux_vqv"  "v qv covariance"  "kg kg-1 m s-1"
-state   real   turb_flux_wqv         ikj     misc        1         Z       r       "turb_flux_wqv"  "w qv covariance"  "kg kg-1 m s-1"
+state   real   turb_flux_wqv         ikj     misc        1         Z       rh      "turb_flux_wqv"  "w qv covariance"  "kg kg-1 m s-1"
 state   real   turb_flux_uqc         ikj     misc        1         Z       -       "turb_flux_uqc"  "u qc covariance"  "kg kg-1 m s-1"
 state   real   turb_flux_vqc         ikj     misc        1         Z       -       "turb_flux_vqc"  "v qc covariance"  "kg kg-1 m s-1"
 state   real   turb_flux_wqc         ikj     misc        1         Z       -       "turb_flux_wqc"  "w qc covariance"  "kg kg-1 m s-1"
@@ -1225,6 +1225,13 @@ state   real   turb_flux_vw_mass     ikj     misc        1         -       r    
 state   real   turb_flux_uv_mass     ikj     misc        1         -       r       "turb_flux_uv_mass"      "u v covariance"  "m2 s-2"
 state   real   turb_flux_wtheta_v_mass ikj     misc        1         -       r       "turb_flux_wtheta_v_mass"  "w theta_virtual covariance"  "K m s-1"
 state   real   l_master              ikj     misc        1         Z       rh      "l_master"            "Master length scale at faces"    "m"
+state   real   pbl3d_t1_ratio        ikj     misc        1         Z       h       "pbl3d_t1_ratio"      "Tier 1 diag: l_use/l_master after the strain limit (1 = did not bind)"   ""
+state   real   pbl3d_t2_steps        ikj     misc        1         Z       h       "pbl3d_t2_steps"      "Tier 2 diag: length-scale back-off steps taken at this point"   ""
+state   real   pbl3d_t3_flags        ikj     misc        1         Z       h       "pbl3d_t3_flags"      "Tier 3 diag bitmask: 1 var floor, 2 trace, 4 Cauchy-Schwarz, 8 determinant, 16 heat"   ""
+state   real   pbl3d_sk_eps          ikj     misc        1         Z       h       "pbl3d_sk_eps"        "Diag: S k / eps before Tier 1 limiting"   ""
+state   real   pbl3d_n_tau           ikj     misc        1         Z       h       "pbl3d_n_tau"         "Diag: signed N tau (negative = unstable stratification)"   ""
+state   real   pbl3d_cond_a          ikj     misc        1         Z       h       "pbl3d_cond_a"        "Diag: condition number of the 10x10 momentum-heat matrix"   ""
+state   real   pbl3d_qv2             ikj     misc        1         Z       h       "pbl3d_qv2"           "Water vapour variance qv^2 diagnosed from the moisture fluxes"   "kg2 kg-2"
 state   real   l_master_at_mass      ikj     misc        1         -       r       "l_master_mass"       "Master length scale at mass points"    "m"
 state   real   l_boulac              ikj     misc        1         Z       r       "l_boulac"            "Dissipation length scale at faces"    "m"
 
@@ -1249,8 +1256,12 @@ rconfig  character pbl3d_constants      namelist,dynamics          1       "MY82
 rconfig  integer   pbl3d_opt            namelist,dynamics    max_domains      0      -     "pbl3d_opt"            "PBL3D mixing option" ""
 rconfig  integer   pbl3d_sfc_opt        namelist,dynamics    max_domains      0      -     "pbl3d_sfc_opt"        "PBL3D surface option" ""
 rconfig  integer   pbl3d_l_opt          namelist,dynamics    max_domains      1      -     "pbl3d_l_opt"          "PBL3D l option" ""
+rconfig  integer   pbl3d_l0_opt         namelist,dynamics    max_domains      1      -     "pbl3d_l0_opt"         "PBL3D l0 integration option" ""
 rconfig  integer   pbl3d_nsteps         namelist,dynamics    max_domains      1      -     "pbl3d_nsteps"         "PBL3D number of substeps" ""
 rconfig  integer   pbl3d_prog           namelist,dynamics    max_domains      1      -     "pbl3d_prog"           "PBL3D prognostic TKE" ""
+rconfig  integer   pbl3d_qsq_opt        namelist,dynamics    max_domains      1      -     "pbl3d_qsq_opt"        "PBL3D level 2 q^2 closure for pbl3d_opt=2" ""
+rconfig  real      pbl3d_sk_eps_max     namelist,dynamics          1        6.0      -     "pbl3d_sk_eps_max"     "PBL3D largest S k / eps admitted by the algebraic closure" ""
+rconfig  real      pbl3d_n_tau_max      namelist,dynamics          1        0.53     -     "pbl3d_n_tau_max"      "PBL3D largest N l / q admitted (buoyancy limit on the master length scale)" ""
 rconfig  integer   pbl3d_scalar_mix     namelist,dynamics    max_domains      0      -     "pbl3d_scalar_mix"     "PBL3D scalar turbulent mixing" ""
 rconfig  integer   pbl3d_scale_aware    namelist,dynamics    max_domains      1      -     "pbl3d_scale_aware"    "PBL3D scale-aware tapering" ""
 rconfig  integer   flux_limiter_w       namelist,dynamics    max_domains      0      -     "flux_limiter_w"       "Flux limiter on vertical advection of w" ""
@@ -3353,7 +3364,7 @@ package   mynn_3Doutput2 bl_mynn_output==2           -             state:edmf_a,
 
 package   sms_3dtke      km_opt==5                   -             state:gamu,gamv,nlflux,dlk,l_diss,elmin,xkmv_meso
 
-package   any_pbl3d_used pbl3d_used==1               -             state:thetav,q_sq,q_sq_shear,q_sq_buoyancy,q_sq_dissip,q_sq_vdiff,q_sq_hdiff,u_tmp,v_tmp,w_tmp,th_tmp,qv_tmp,rho_tmp,q_sq_tmp,l_master,l_master_at_mass,l_boulac,turb_flux_u2,turb_flux_v2,turb_flux_w2,turb_flux_uv,turb_flux_uw,turb_flux_vw,turb_flux_utheta,turb_flux_vtheta,turb_flux_wtheta,turb_flux_wtheta_v,turb_flux_uqv,turb_flux_vqv,turb_flux_wqv,turb_flux_u2_mass,turb_flux_v2_mass,turb_flux_w2_mass,turb_flux_uv_mass,turb_flux_uw_mass,turb_flux_vw_mass,turb_flux_wtheta_v_mass
+package   any_pbl3d_used pbl3d_used==1               -             state:thetav,q_sq,q_sq_shear,q_sq_buoyancy,q_sq_dissip,q_sq_vdiff,q_sq_hdiff,u_tmp,v_tmp,w_tmp,th_tmp,qv_tmp,rho_tmp,q_sq_tmp,l_master,l_master_at_mass,l_boulac,turb_flux_u2,turb_flux_v2,turb_flux_w2,turb_flux_uv,turb_flux_uw,turb_flux_vw,turb_flux_utheta,turb_flux_vtheta,turb_flux_wtheta,turb_flux_utheta_v,turb_flux_vtheta_v,turb_flux_wtheta_v,turb_flux_theta2_v,turb_flux_uqv,turb_flux_vqv,turb_flux_wqv,turb_flux_u2_mass,turb_flux_v2_mass,turb_flux_w2_mass,turb_flux_uv_mass,turb_flux_uw_mass,turb_flux_vw_mass,turb_flux_wtheta_v_mass,pbl3d_t1_ratio,pbl3d_t2_steps,pbl3d_t3_flags,pbl3d_sk_eps,pbl3d_n_tau,pbl3d_cond_a,pbl3d_qv2
 
 # dfi
 package   mynnpblscheme_dfi bl_pbl_physics_dfi==5   -             dfi_scalar:dfi_qke_adv

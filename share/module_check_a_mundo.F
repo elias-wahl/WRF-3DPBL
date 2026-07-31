@@ -396,6 +396,78 @@
       ENDDO
 
 !-----------------------------------------------------------------------
+! Check that the 3D PBL realizability time scale limit is usable
+!-----------------------------------------------------------------------
+
+      IF ( model_config_rec % pbl3d_sk_eps_max .LE. 0.0 ) THEN
+         wrf_err_message = '--- ERROR: pbl3d_sk_eps_max must be > 0 ' // &
+                           '(it caps l at (2*pbl3d_sk_eps_max/b_1)*q/|S|; at or below zero ' // &
+                           'the closure would return isotropic turbulence everywhere)'
+         CALL wrf_debug ( 0, TRIM( wrf_err_message ) )
+         count_fatal_error = count_fatal_error + 1
+      END IF
+
+!-----------------------------------------------------------------------
+! Check that the 3D PBL buoyancy length scale limit is usable
+!-----------------------------------------------------------------------
+
+      IF ( model_config_rec % pbl3d_n_tau_max .LE. 0.0 ) THEN
+         wrf_err_message = '--- ERROR: pbl3d_n_tau_max must be > 0 ' // &
+                           '(it caps l at pbl3d_n_tau_max*q/N in stable stratification; ' // &
+                           'at or below zero l would be forced to zero in every stable layer)'
+         CALL wrf_debug ( 0, TRIM( wrf_err_message ) )
+         count_fatal_error = count_fatal_error + 1
+      END IF
+
+      DO i = 1, model_config_rec % max_dom
+         IF ( model_config_rec % pbl3d_n_tau_max .GT. 5.0 .AND. &
+              model_config_rec % pbl3d_opt(i)    .NE. 0 ) THEN
+            wrf_err_message = '--- WARNING: pbl3d_n_tau_max > 5 effectively disables the buoyancy ' // &
+                              'limit on the master length scale; N*tau is then unbounded wherever ' // &
+                              'q collapses and l does not'
+            CALL wrf_message ( TRIM( wrf_err_message ) )
+         END IF
+      ENDDO
+
+!-----------------------------------------------------------------------
+! Check that the 3D PBL l0 integration selection is valid
+!-----------------------------------------------------------------------
+
+      DO i = 1, model_config_rec % max_dom
+         IF ( model_config_rec % pbl3d_l0_opt(i) .NE. 0 .AND. &
+              model_config_rec % pbl3d_l0_opt(i) .NE. 1 ) THEN
+            wrf_err_message = '--- ERROR: pbl3d_l0_opt must be 0 or 1'
+            CALL wrf_debug ( 0, TRIM( wrf_err_message ) )
+            count_fatal_error = count_fatal_error + 1
+         END IF
+         IF ( model_config_rec % pbl3d_l0_opt(i) .EQ. 0 .AND. &
+              model_config_rec % pbl3d_opt(i)    .NE. 0 ) THEN
+            wrf_err_message = '--- WARNING: pbl3d_l0_opt=0 makes the asymptotic length scale l0 ' // &
+                              'depend on the model top height; use only to reproduce earlier runs'
+            CALL wrf_message ( TRIM( wrf_err_message ) )
+         END IF
+      ENDDO
+
+!-----------------------------------------------------------------------
+! Check that the 3D PBL level 2 q^2 closure selection is valid
+!-----------------------------------------------------------------------
+
+      DO i = 1, model_config_rec % max_dom
+         IF ( model_config_rec % pbl3d_qsq_opt(i) .NE. 0 .AND. &
+              model_config_rec % pbl3d_qsq_opt(i) .NE. 1 ) THEN
+            wrf_err_message = '--- ERROR: pbl3d_qsq_opt must be 0 or 1'
+            CALL wrf_debug ( 0, TRIM( wrf_err_message ) )
+            count_fatal_error = count_fatal_error + 1
+         END IF
+         IF ( model_config_rec % pbl3d_qsq_opt(i) .EQ. 0 .AND. &
+              model_config_rec % pbl3d_opt(i)     .EQ. 2 ) THEN
+            wrf_err_message = '--- WARNING: pbl3d_qsq_opt=0 closes q^2 on vertical gradients only, ' // &
+                              'which is not self-consistent with the full 3D system (pbl3d_opt=2)'
+            CALL wrf_message ( TRIM( wrf_err_message ) )
+         END IF
+      ENDDO
+
+!-----------------------------------------------------------------------
 ! Check  MAD-WRF configuration
 !-----------------------------------------------------------------------
       DO i = 1, model_config_rec % max_dom

@@ -2287,7 +2287,7 @@ DEALLOCATE(dz8w)
    if(config_flags%bl_pbl_physics .eq. 0 .and. ABS(config_flags%pbl3d_opt) .gt. 0) then
      do ij = 1, grid%num_tiles
        call Init_pbl3d (config_flags%restart, config_flags%pbl3d_opt, &
-           config_flags%pbl3d_sfc_opt, config_flags%pbl3d_l_opt, config_flags%pbl3d_prog, config_flags%pbl3d_constants, config_flags%pbl3d_nsteps,    &
+           config_flags%pbl3d_sfc_opt, config_flags%pbl3d_l_opt, config_flags%pbl3d_prog, config_flags%pbl3d_constants, config_flags%pbl3d_nsteps, config_flags%pbl3d_sk_eps_max, config_flags%pbl3d_n_tau_max,    &
            grid%fnm, grid%fnp, grid%dnw, grid%ph_2, grid%phb, &
            grid%t_2, moist(:,:,:,P_QV), grid%thetav, grid%alt, grid%u_2, grid%v_2, grid%ust, grid%hfx, grid%qfx, &
            grid%rmol, grid%q_sq, grid%q_sq_prog_2, grid%q_sq_vdiff, grid%q_sq_hdiff, grid%q_sq_shear, grid%q_sq_buoyancy, grid%q_sq_dissip, &
