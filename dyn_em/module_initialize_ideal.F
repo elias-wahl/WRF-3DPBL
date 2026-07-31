@@ -130,6 +130,7 @@ CONTAINS
    REAL    :: Nsq, z, z1, z2
    INTEGER :: iter_loop
    INTEGER :: xs , xe , ys , ye
+   INTEGER :: mtn_wid   ! full width of the em_les cosine-bell mountain, in grid cells
    REAL :: mtn_ht
    REAL :: randx       ! for LES
    INTEGER :: ks, ke, id
@@ -926,6 +927,30 @@ CONTAINS
   ye=ys + 6
   mtn_ht = config_flags%hm
 #ifdef MTN
+  ! Centred 3D cosine-bell mountain of fixed physical width MTN_WIDTH_M.
+  !
+  ! Two changes from the original block, both needed to make this usable as a
+  ! complex-terrain test rather than a token bump:
+  !
+  !   1. It is centred on the domain. The lines above set xs = ids - 3, i.e. the
+  !      mountain sat on the western boundary, which is split in half by the
+  !      periodic boundary conditions em_les normally runs with.
+  !   2. Its width is fixed in metres rather than at 6 grid cells, so refining dx
+  !      resolves the same mountain instead of shrinking it.
+  !
+  ! Along the ridge line the profile is h = hm/2 * (1 - cos(2 pi s)), s in [0,1],
+  ! whose steepest slope is hm*pi/MTN_WIDTH_M. hm (namelist, &domains) therefore
+  ! sets the maximum terrain angle directly:
+  !
+  !     theta_max = atan( hm * pi / MTN_WIDTH_M )
+  !
+  ! With MTN_WIDTH_M = 7000 m:  hm = 1000 -> 24.2 deg,  hm = 1560 -> 35.0 deg,
+  !                             hm = 2000 -> 41.9 deg.
+  mtn_wid = MAX( 4, NINT( 7000. / config_flags%dx ) )
+  xs = (ids + ide)/2 - mtn_wid/2
+  xe = xs + mtn_wid
+  ys = (jds + jde)/2 - mtn_wid/2
+  ye = ys + mtn_wid
   DO j=max(ys,jds),min(ye,jde-1)
   DO i=max(xs,ids),min(xe,ide-1)
      grid%ht(i,j) = mtn_ht * 0.25 * &
