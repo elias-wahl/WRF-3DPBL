@@ -1,0 +1,40 @@
+diff --git a/sf_sfclayrev.F90 b/sf_sfclayrev.F90
+index 94be053..ec14b14 100644
+--- a/sf_sfclayrev.F90
++++ b/sf_sfclayrev.F90
+@@ -1064,7 +1064,7 @@
+  real(kind=kind_phys):: rzol
+  nzol = int(zolf*100.)
+  rzol = zolf*100. - nzol
+- if(nzol+1 .lt. 1000)then
++ if(nzol .ge. 0 .and. nzol+1 .lt. 1000)then   ! local fix: table is dimensioned 0:1000, so the lower bound must be checked too
+     psim_stable = psim_stab(nzol) + rzol*(psim_stab(nzol+1)-psim_stab(nzol))
+  else
+     psim_stable = psim_stable_full(zolf)
+@@ -1080,7 +1080,7 @@
+  real(kind=kind_phys):: rzol
+  nzol = int(zolf*100.)
+  rzol = zolf*100. - nzol
+- if(nzol+1 .lt. 1000)then
++ if(nzol .ge. 0 .and. nzol+1 .lt. 1000)then   ! local fix: table is dimensioned 0:1000, so the lower bound must be checked too
+     psih_stable = psih_stab(nzol) + rzol*(psih_stab(nzol+1)-psih_stab(nzol))
+  else
+     psih_stable = psih_stable_full(zolf)
+@@ -1096,7 +1096,7 @@
+  real(kind=kind_phys):: rzol
+  nzol = int(-zolf*100.)
+  rzol = -zolf*100. - nzol
+- if(nzol+1 .lt. 1000)then
++ if(nzol .ge. 0 .and. nzol+1 .lt. 1000)then   ! local fix: table is dimensioned 0:1000, so the lower bound must be checked too
+     psim_unstable = psim_unstab(nzol) + rzol*(psim_unstab(nzol+1)-psim_unstab(nzol))
+  else
+     psim_unstable = psim_unstable_full(zolf)
+@@ -1112,7 +1112,7 @@
+  real(kind=kind_phys):: rzol
+  nzol = int(-zolf*100.)
+  rzol = -zolf*100. - nzol
+- if(nzol+1 .lt. 1000)then
++ if(nzol .ge. 0 .and. nzol+1 .lt. 1000)then   ! local fix: table is dimensioned 0:1000, so the lower bound must be checked too
+     psih_unstable = psih_unstab(nzol) + rzol*(psih_unstab(nzol+1)-psih_unstab(nzol))
+  else
+     psih_unstable = psih_unstable_full(zolf)
