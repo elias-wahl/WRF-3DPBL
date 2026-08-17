@@ -824,7 +824,9 @@ way this does.
   where groups E and G should matter most. Everything verified so far is a daytime
   convective `em_les` run.
 - **Real terrain.** The Inn Valley target. Group J's mountain reaches 35° but is a
-  single idealized cosine bell.
+  single idealized cosine bell. **`realcase/` now holds the complete setup for
+  this** — ICON-forced, 500 m, 2025-07-18, paired against MYNN. See
+  `realcase/README.md`; nothing has been run yet.
 - **`pbl3d_l_opt = 3` (Messinger).** Group F's `l_dissip` fix and group G's NaN guard
   both change this path and neither has been run.
 

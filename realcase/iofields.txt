@@ -1,0 +1,20 @@
+# Output thinning for the 3D PBL run.  Enable it with
+#     iofields_filename = "iofields.txt"
+# in &time_control.  Off by default (iofields_filename = "NONE_SPECIFIED").
+#
+# Format:  <+|->:<h|i>:<stream>:<VAR>,<VAR>,...    stream 0 is wrfout.
+# Two parser quirks worth knowing:
+#   * a blank line ENDS parsing -- there are none in this file, keep it that way
+#   * '#' anywhere on a line comments the whole line out
+#   * an unknown variable name gives a warning in rsl.error, not an abort, so
+#     check rsl.error.0000 for "W A R N I N G" the first time you use this
+#
+# acc_phy_tend=1 allocates accumulated tendencies for every physics component.
+# In the pbl3d configuration cu_physics=0 and bl_pbl_physics=0, so the cumulus,
+# shallow-convection and PBL entries are identically zero for the whole run --
+# twelve full 3D arrays of zeros in every frame.  Dropping them costs nothing.
+# Do NOT use this file unchanged for the MYNN control: there ATHBLTEN and its
+# companions carry the scheme's actual tendencies.
+-:h:0:ATHCUTEN,AQVCUTEN,AUCUTEN,AVCUTEN
+-:h:0:ATHSHTEN,AQVSHTEN,AUSHTEN,AVSHTEN
+-:h:0:ATHBLTEN,AQVBLTEN,AUBLTEN,AVBLTEN

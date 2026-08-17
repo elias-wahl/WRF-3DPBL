@@ -1,0 +1,64 @@
+! ---------------------------------------------------------------------------
+! WPS namelist -- Inn Valley / Radfeld, 500 m, ICON forcing
+!
+! You said geo_em is already built on the target cluster.  In that case you
+! only need &share, &ungrib and &metgrid here, and geogrid.exe should NOT be
+! re-run: geo_em_d01.nc is the authority for e_we/e_sn/dx/dy/projection and
+! namelist.input gets synced to it, not the other way round.
+!
+! &geogrid below is kept so the domain can be regenerated from scratch if
+! needed.  If you do re-run geogrid, re-run prepare_namelist.py afterwards.
+!
+! ICON specifics, both of which bite:
+!   * fg_name must NOT contain 'PRES'.  ICON carries pressure natively on its
+!     model levels, so calc_ecmwf_p.exe is not run and no PRES: files exist.
+!     metgrid.exe aborts on a missing PRES: file if you list it.
+!   * Use Vtable.ICONm (model levels).  A copy ships next to this file.
+! ---------------------------------------------------------------------------
+
+&share
+ wrf_core          = 'ARW',
+ max_dom           = 1,
+ start_date        = '2025-07-18_00:00:00',
+ end_date          = '2025-07-19_00:00:00',
+ interval_seconds  = 3600,
+ io_form_geogrid   = 2,
+ opt_output_from_geogrid_path = './',
+ debug_level       = 0,
+/
+
+&geogrid
+ parent_id         = 1,
+ parent_grid_ratio = 1,
+ i_parent_start    = 1,
+ j_parent_start    = 1,
+ e_we              = 601,
+ e_sn              = 501,
+ !
+ ! geog_data_res: put the CORINE entry FIRST so it wins over the default
+ ! land-use source.  The exact name is whatever you called it in
+ ! GEOGRID.TBL / index -- 'corine_2019' here is a placeholder for yours.
+ !
+ geog_data_res     = 'corine_2019+modis_30s+default',
+ dx                = 500,
+ dy                = 500,
+ map_proj          = 'lambert',
+ ref_lat           =  47.40,
+ ref_lon           =  11.70,
+ truelat1          =  46.00,
+ truelat2          =  49.00,
+ stand_lon         =  11.70,
+ geog_data_path    = '/path/to/WPS_GEOG',
+ opt_geogrid_tbl_path = './geogrid/',
+/
+
+&ungrib
+ out_format        = 'WPS',
+ prefix            = 'ICON',
+/
+
+&metgrid
+ fg_name           = 'ICON',          ! NO 'PRES' -- see header
+ io_form_metgrid   = 2,
+ opt_metgrid_tbl_path = './metgrid/',
+/

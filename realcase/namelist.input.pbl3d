@@ -1,0 +1,176 @@
+! ---------------------------------------------------------------------------
+! Inn Valley / Radfeld, 500 m, ICON-forced -- 3D PBL run (pbl3d_opt = 2)
+!
+! Paired with namelist.input.mynn, which differs ONLY in the turbulence
+! configuration (see realcase/README.md, "The paired experiment").
+!
+! Before running, do NOT edit these by hand:
+!   e_we, e_sn, dx, dy, num_land_cat, num_metgrid_levels, num_metgrid_soil_levels
+! Let realcase/scripts/prepare_namelist.py read them out of geo_em_d01.nc and
+! met_em.*.nc and write them in.  num_metgrid_levels is deliberately left at 0
+! so that a run set up without that step fails loudly instead of quietly using
+! a wrong value.
+! ---------------------------------------------------------------------------
+
+&time_control
+ run_days               = 1,
+ run_hours              = 0,
+ run_minutes            = 0,
+ run_seconds            = 0,
+ start_year             = 2025,        ! 2025-07-18 00:00 UTC (= 02:00 CEST)
+ start_month            = 07,
+ start_day              = 18,
+ start_hour             = 00,
+ start_minute           = 00,
+ start_second           = 00,
+ end_year               = 2025,        ! 2025-07-19 00:00 UTC
+ end_month              = 07,
+ end_day                = 19,
+ end_hour               = 00,
+ end_minute             = 00,
+ end_second             = 00,
+ interval_seconds       = 3600,        ! ICON forcing is hourly
+ input_from_file        = .true.,
+ fine_input_stream      = 0,
+ history_interval       = 30,
+ frames_per_outfile     = 1,
+ restart                = .false.,
+ restart_interval       = 180,         ! minutes; lets the run be chained across a queue limit
+ io_form_history        = 2,
+ io_form_restart        = 2,
+ io_form_input          = 2,
+ io_form_boundary       = 2,
+ io_form_auxinput2      = 2,
+ debug_level            = 0,
+ auxhist24_outname      = "meanout_d<domain>_<date>.nc"
+ auxhist24_interval_m   = 30,
+ auxhist24_interval_s   = 0,
+ frames_per_auxhist24   = 1,
+ io_form_auxhist24      = 2,
+ iofields_filename      = "NONE_SPECIFIED",   ! set to "iofields.txt" to thin the output
+ /
+
+&domains
+ time_step              = 3,           ! 6*dx[km]; do not raise without checking CFL on the slopes
+ time_step_fract_num    = 0,
+ time_step_fract_den    = 1,
+ max_dom                = 1,
+ e_we                   = 601,         ! <- synced from geo_em_d01.nc
+ e_sn                   = 501,         ! <- synced from geo_em_d01.nc
+ e_vert                 = 81,
+ auto_levels_opt        = 2,           ! smooth-stretching level generator
+ dzbot                  = 24.0,        ! lowest full layer [m] -> first mass level ~12 m
+ max_dz                 = 500.0,
+ dzstretch_s            = 1.15,
+ dzstretch_u            = 1.10,
+ num_metgrid_levels     = 0,           ! <- MUST be synced from met_em (0 = not yet set)
+ num_metgrid_soil_levels= 8,           ! ICON/TERRA has 8 soil layers -- synced from met_em
+ dx                     = 500,         ! <- synced from geo_em_d01.nc
+ dy                     = 500,         ! <- synced from geo_em_d01.nc
+ grid_id                = 1,
+ parent_id              = 0,
+ i_parent_start         = 1,
+ j_parent_start         = 1,
+ feedback               = 0,
+ smooth_option          = 0,
+ max_ts_locs            = 160,
+ max_ts_level           = 80,
+ tslist_unstagger_winds = .true.,
+ ts_buf_size            = 1,
+ interp_theta           = .true.,
+ interp_type            = 2,           ! vertical interpolation linear in log(p)
+ extrap_type            = 2,
+ t_extrap_type          = 2,
+ use_surface            = .true.,
+ smooth_cg_topo         = .true.,
+ /
+
+&physics
+ mp_physics             = 8,           ! Thompson
+ ra_lw_physics          = 4,           ! RRTMG
+ ra_sw_physics          = 4,           ! RRTMG
+ radt                   = 1,
+ sf_sfclay_physics      = 1,           ! revised MM5 MO (sfclayrev) -- the pairing pbl3d expects
+ sf_surface_physics     = 4,           ! Noah-MP
+ bl_pbl_physics         = 0,           ! REQUIRED: pbl3d_opt replaces the 1D PBL scheme
+ bldt                   = 0,
+ cu_physics             = 0,
+ isfflx                 = 1,
+ ifsnow                 = 1,
+ icloud                 = 1,
+ surface_input_source   = 3,
+ num_soil_layers        = 4,
+ num_land_cat           = 33,          ! <- synced from geo_em_d01.nc NUM_LAND_CAT
+ sf_urban_physics       = 0,
+ slope_rad              = 1,           ! slope effect on shortwave -- essential in a valley
+ topo_shading           = 1,           ! terrain shadowing -- essential in a valley
+ tke_budget             = 0,           ! MYNN-only diagnostic; must be 0 with bl_pbl_physics=0
+ acc_phy_tend           = 1,
+ /
+
+&dynamics
+ hybrid_opt             = 0,           ! REQUIRED by pbl3d (checked in module_check_a_mundo)
+ w_damping              = 1,
+ diff_opt               = 0,           ! REQUIRED by pbl3d_opt=2: pbl3d does all the SGS mixing
+ km_opt                 = 1,           ! inert with diff_opt=0, but must be a legal value
+ pbl3d_opt              = 2,           ! full 3D Mellor-Yamada, vertical AND horizontal mixing
+ pbl3d_sfc_opt          = 0,           ! surface fluxes come from sf_sfclay_physics
+ pbl3d_l_opt            = 1,           ! MY centre-of-mass (Blackadar) length scale
+ pbl3d_l0_opt           = 1,           ! weight the MY74 Eq. 72 integral by max(q-q_min,0)  [group E]
+ pbl3d_prog             = 1,           ! level 2.5, prognostic q^2
+ pbl3d_qsq_opt          = 1,           ! close q^2 on the full 3D stress tensor  [group B]
+ pbl3d_nsteps           = 1,
+ pbl3d_scalar_mix       = 0,
+ pbl3d_scale_aware      = 1,           ! Honnert et al. (2011) tapering
+ pbl3d_constants        = 'MY82',
+ pbl3d_sk_eps_max       = 6.0,         ! Durbin (1996) strain limit   [Tier 1]
+ pbl3d_n_tau_max        = 0.53,        ! Deardorff (1980) buoyancy limit  [group G]
+ diff_6th_opt           = 2,           ! stays active with diff_opt=0 -- numerical noise control
+ diff_6th_factor        = 0.12,
+ diff_6th_slopeopt      = 1,           ! taper the filter off over steep slopes
+ diff_6th_thresh        = 0.10,
+ base_temp              = 290.,
+ damp_opt               = 3,
+ zdamp                  = 8000.,
+ dampcoef               = 0.2,
+ non_hydrostatic        = .true.,
+ moist_adv_opt          = 1,
+ scalar_adv_opt         = 1,
+ use_theta_m            = 1,
+ use_q_diabatic         = 0,
+ zadvect_implicit       = 1,
+ m_opt                  = 1,           ! forced to 1 anyway by output_[uvw]_fluxes
+ epssm                  = 0.7,
+ smdiv                  = 0.1,
+ emdiv                  = 0.02,
+ sfs_opt                = 0,
+ use_input_w            = .false.,
+ do_avgflx_em           = 1,
+ /
+
+&bdy_control
+ spec_bdy_width         = 10,
+ spec_zone              = 1,
+ relax_zone             = 9,
+ specified              = .true.,
+ nested                 = .false.,
+ /
+
+&grib2
+ /
+
+&namelist_quilt
+ nio_tasks_per_group    = 0,
+ nio_groups             = 1,
+ /
+
+&diag
+ avg_interval           = 1800,        ! must be <= the auxhist24 interval
+ hesselberg_avg         = .true.,
+ output_dry_theta_fluxes= .true.,
+ output_t_fluxes        = 1,
+ output_q_fluxes        = 1,
+ output_u_fluxes        = 1,
+ output_v_fluxes        = 1,
+ output_w_fluxes        = 1,
+ /
