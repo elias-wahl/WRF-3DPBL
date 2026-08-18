@@ -13,19 +13,19 @@
 ! ---------------------------------------------------------------------------
 
 &time_control
- run_days               = 1,
- run_hours              = 0,
+ run_days               = 0,           ! <- from namelist.input_inn_inner_dom_ICON
+ run_hours              = 47,          ! <- from namelist.input_inn_inner_dom_ICON
  run_minutes            = 0,
  run_seconds            = 0,
- start_year             = 2025,        ! 2025-07-18 00:00 UTC (= 02:00 CEST)
+ start_year             = 2025,
  start_month            = 07,
  start_day              = 18,
- start_hour             = 00,
+ start_hour             = 01,          ! <- from ICON namelist (01, not 00)
  start_minute           = 00,
  start_second           = 00,
- end_year               = 2025,        ! 2025-07-19 00:00 UTC
+ end_year               = 2025,
  end_month              = 07,
- end_day                = 19,
+ end_day                = 20,          ! <- from ICON namelist (20, not 19)
  end_hour               = 00,
  end_minute             = 00,
  end_second             = 00,
@@ -34,6 +34,7 @@
  fine_input_stream      = 0,
  history_interval       = 30,
  frames_per_outfile     = 1,
+ history_outname        = '/gpfs/data/fs72996/ewahl/temp/branko/wrfout_d<domain>_<date>.nc'  ! <- run_wrf.sh output-path convention
  restart                = .false.,
  restart_interval       = 180,         ! minutes; lets the run be chained across a queue limit
  io_form_history        = 2,
@@ -42,7 +43,7 @@
  io_form_boundary       = 2,
  io_form_auxinput2      = 2,
  debug_level            = 0,
- auxhist24_outname      = "meanout_d<domain>_<date>.nc"
+ auxhist24_outname      = "/gpfs/data/fs72996/ewahl/temp/branko/meanout_d<domain>_<date>.nc"  ! <- run_wrf.sh output-path convention
  auxhist24_interval_m   = 30,
  auxhist24_interval_s   = 0,
  frames_per_auxhist24   = 1,
@@ -51,14 +52,32 @@
  /
 
 &domains
- time_step              = 3,           ! 6*dx[km]; do not raise without checking CFL on the slopes
+ time_step              = 2,           ! <- from ICON namelist (was 3 = 6*dx[km]; do not raise without checking CFL on the slopes)
  time_step_fract_num    = 0,
  time_step_fract_den    = 1,
  max_dom                = 1,
  e_we                   = 601,         ! <- synced from geo_em_d01.nc
  e_sn                   = 501,         ! <- synced from geo_em_d01.nc
- e_vert                 = 81,
- auto_levels_opt        = 2,           ! smooth-stretching level generator
+ e_vert                 = 80,          ! <- from ICON namelist (was 81)
+ p_top_requested        = 20000,       ! <- added from ICON namelist: ICON forcing only reaches 200 hPa
+ ! eta_levels <- added from ICON namelist; takes precedence over auto_levels_opt below
+ eta_levels             = 1.0000, 0.9974, 0.9948, 0.9923, 0.9897,
+                          0.9870, 0.9843, 0.9814, 0.9784, 0.9752,
+                          0.9718, 0.9682, 0.9643, 0.9601, 0.9556,
+                          0.9507, 0.9455, 0.9399, 0.9339, 0.9275,
+                          0.9206, 0.9132, 0.9053, 0.8969, 0.8880,
+                          0.8786, 0.8685, 0.8579, 0.8467, 0.8349,
+                          0.8225, 0.8095, 0.7959, 0.7817, 0.7669,
+                          0.7515, 0.7355, 0.7189, 0.7018, 0.6841,
+                          0.6658, 0.6471, 0.6279, 0.6082, 0.5881,
+                          0.5677, 0.5469, 0.5257, 0.5044, 0.4828,
+                          0.4610, 0.4392, 0.4173, 0.3954, 0.3735,
+                          0.3518, 0.3302, 0.3089, 0.2879, 0.2672,
+                          0.2470, 0.2272, 0.2080, 0.1894, 0.1715,
+                          0.1542, 0.1377, 0.1220, 0.1071, 0.0931,
+                          0.0799, 0.0677, 0.0563, 0.0459, 0.0363,
+                          0.0275, 0.0196, 0.0124, 0.0059, 0.0000,
+ auto_levels_opt        = 2,           ! smooth-stretching level generator -- inert now that eta_levels is set explicitly above
  dzbot                  = 24.0,        ! lowest full layer [m] -> first mass level ~12 m
  max_dz                 = 500.0,
  dzstretch_s            = 1.15,
@@ -82,7 +101,8 @@
  extrap_type            = 2,
  t_extrap_type          = 2,
  use_surface            = .true.,
- smooth_cg_topo         = .true.,
+ smooth_cg_topo         = .false.,     ! <- from ICON namelist (was .true.)
+ sfcp_to_sfcp           = .true.,      ! <- added from ICON namelist: met_em has PSFC but not SLP (flag_slp=0); real.exe needs this to compute surface pressure
  /
 
 &physics
@@ -112,7 +132,7 @@
  hybrid_opt             = 0,           ! REQUIRED by pbl3d (checked in module_check_a_mundo)
  w_damping              = 1,
  diff_opt               = 0,           ! REQUIRED by pbl3d_opt=2: pbl3d does all the SGS mixing
- km_opt                 = 1,           ! inert with diff_opt=0, but must be a legal value
+ km_opt                 = 4,           ! <- from ICON namelist; inert with diff_opt=0, but must be a legal value
  pbl3d_opt              = 2,           ! full 3D Mellor-Yamada, vertical AND horizontal mixing
  pbl3d_sfc_opt          = 0,           ! surface fluxes come from sf_sfclay_physics
  pbl3d_l_opt            = 1,           ! MY centre-of-mass (Blackadar) length scale
@@ -131,8 +151,8 @@
  diff_6th_thresh        = 0.10,
  base_temp              = 290.,
  damp_opt               = 3,
- zdamp                  = 8000.,
- dampcoef               = 0.2,
+ zdamp                  = 5000.,        ! <- from ICON namelist (was 8000.)
+ dampcoef               = 0.02,         ! <- from ICON namelist (was 0.2)
  non_hydrostatic        = .true.,
  moist_adv_opt          = 1,
  scalar_adv_opt         = 1,
@@ -140,12 +160,13 @@
  use_q_diabatic         = 0,
  zadvect_implicit       = 1,
  m_opt                  = 1,           ! forced to 1 anyway by output_[uvw]_fluxes
- epssm                  = 0.7,
- smdiv                  = 0.1,
- emdiv                  = 0.02,
+ epssm                  = 0.9,          ! <- from ICON namelist (was 0.7)
+ smdiv                  = 0.15,         ! <- from ICON namelist (was 0.1)
+ emdiv                  = 0.03,         ! <- from ICON namelist (was 0.02)
  sfs_opt                = 0,
  use_input_w            = .false.,
  do_avgflx_em           = 1,
+ mix_isotropic          = 0,           ! <- added from ICON namelist: anisotropic vertical/horizontal diffusion using defaults
  /
 
 &bdy_control
