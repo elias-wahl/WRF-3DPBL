@@ -25,7 +25,9 @@ export OMP_NUM_THREADS=1
 
 echo "=== real.exe on $SLURM_NTASKS ranks, $(date)"
 rm -f rsl.out.* rsl.error.*
-${MPI_LAUNCHER:-srun} ./real.exe
+# eval, not a bare expansion: MPI_LAUNCHER may embed $SLURM_NTASKS (e.g.
+# "mpirun -np $SLURM_NTASKS"), which needs a second expansion pass to resolve.
+eval "${MPI_LAUNCHER:-srun} ./real.exe"
 RC=$?
 
 echo "=== real.exe returned $RC"
