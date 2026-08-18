@@ -38,6 +38,10 @@ RC=$(cd "$HERE/.." && pwd)
 WRF=$(cd "$RC/.." && pwd)
 [ -f "$ENVFILE" ] || ENVFILE="$RC/$ENVFILE"
 [ -f "$ENVFILE" ] || { echo "env file not found: $ENVFILE" >&2; exit 1; }
+# Resolve to an absolute path -- env.sh below embeds this string verbatim,
+# and it gets sourced from inside $RUNDIR (a different cwd), so a relative
+# path here would silently fail to source at job-launch time.
+ENVFILE=$(cd "$(dirname "$ENVFILE")" && pwd)/$(basename "$ENVFILE")
 # shellcheck disable=SC1090
 . "$ENVFILE"
 
