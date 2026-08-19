@@ -39,7 +39,51 @@ where the fault is and where it is not.
 
 **The fault is inside the full 3D flux path (`Calc_fluxes`, `pbl3d_opt == 2`).**
 
-## The immediate next step
+## ANSWERED before the move — do NOT repeat this measurement
+
+Job 89435 (MUSICA, 2026-08-19) ran the q²-budget diagnostic to completion. The
+question below was answered, so **VSC-5 goes straight to the fix.** Full evidence
+in `OPEN_ISSUES.md` A9.
+
+**`Q_SQ_SHEAR` — shear production — is the driver.** At the cell where q² peaks it
+grows ~×2400 (0.011 → 26.75 m² s⁻³). The runaway moment is model 01:36, where
+production reaches **2.1× dissipation**, the net budget turns positive, and q² goes
+17 → 58 → 247 before the model dies at 01:38.
+
+**It is a production runaway, not a dissipation failure.** Dissipation grows an order
+of magnitude too (0.034 → 23.07); it just cannot keep pace.
+
+**It is highly localised.** The domain-mean production/dissipation ratio is flat at
+~1.25 for the whole run and never moves. Only a few cells run away — which is why no
+aggregate diagnostic caught this earlier.
+
+**`Q_SQ_HDIFF` is exonerated**, despite looking damning in domain maxima (×183
+growth, and it is the term `pbl3d_opt=1` lacks entirely). At the blowup cell it is
+**−29.33, a sink** — it is exporting q² away from the spike, responding to the
+gradient rather than creating it. A domain maximum is not a budget.
+
+### The fix to attempt
+
+The scheme already has the right idea applied to the wrong quantity: Tier 1
+(`pbl3d_sk_eps_max`, Durbin 1996) limits `Sk/eps` — a production/dissipation ratio —
+but it bounds the *length scale*, and **nothing bounds shear production in the q²
+budget itself**.
+
+1. Cap `Q_SQ_SHEAR` against `Q_SQ_DISSIP` in the q² budget, mirroring the existing
+   Tier 1 construction. Healthy cells sit near 1.25 all run, so a cap of order 2–3
+   never binds normally and would have bound at 01:36. Make it a namelist parameter
+   next to `pbl3d_sk_eps_max`, not a hardcoded constant.
+2. Then ask why the full stress-tensor `Calc_q_sq_shear` produces such extreme local
+   values where the 1D `Calc_q_sq_shear_pbl_approx` does not — it contracts the full
+   stress tensor against all nine velocity gradients, and on a 34° slope the cross
+   terms are large with nothing bounding their sum.
+3. Only then consider realizability constraints on the stress tensor feeding it.
+
+A rebuild is still required on VSC-5 (different architecture, plus the Registry
+`r`→`rh` change), and the same `--smoke` reproduction is still the regression test —
+the crash is deterministic to the step, so a fix either moves it or it does not.
+
+## The original next step (now answered — kept for context)
 
 Find **which q² budget term** drives the runaway. `pbl3d_opt=1` and `=2` differ
 in exactly three q²-relevant places (`dyn_em/module_pbl3d.F` ~5790–5810):

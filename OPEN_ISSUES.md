@@ -208,6 +208,78 @@ and **recovers**, `opt=2` never turns over:
    along sloping coordinate surfaces, which can be a spurious *source*.
 3. The flux computation itself (10x10 solve vs analytical), which also feeds (1).
 
+### ANSWERED (2026-08-19, job 89435): shear production runs away; it is not a dissipation failure
+
+With the five budget terms promoted to history output, `pbl3d_opt=2` was rerun and
+reproduced **exactly** (FAILED 139:0, 81 ranks, same address `0x24fcd83`, model
+01:38:00 — identical even on the rebuilt binary, since the Registry change touches
+only I/O metadata).
+
+**The instability is highly localised.** The domain-mean `|SHEAR|/|DISSIP|` ratio is
+flat at ~1.25 for the entire run and does not move at the blowup. Only the maxima
+explode. So this is a few cells running away, not a domain-wide imbalance — which is
+why it was invisible in every aggregate diagnostic before now.
+
+Co-located budget at the cell where q^2 peaks (k=4, j=182, i=514), m2 s-3:
+
+| model time | Q_SQ | SHEAR | BUOY | DISSIP | VDIFF | HDIFF | net |
+|---|---|---|---|---|---|---|---|
+| 01:33 | 2.26 | 0.011 | -0.003 | 0.034 | +0.057 | +0.007 | +0.037 |
+| 01:34 | 5.87 | 0.098 | -0.004 | 0.150 | +0.012 | -0.003 | -0.047 |
+| 01:35 | 17.11 | 0.727 | +0.002 | 0.698 | -0.360 | -0.056 | -0.385 |
+| 01:36 | 57.68 | **9.032** | +0.002 | 4.284 | -3.802 | -0.052 | **+0.897** |
+| 01:37 | 246.63 | **26.752** | -0.007 | 23.070 | -10.454 | -29.332 | -36.110 |
+
+**`Q_SQ_SHEAR` is the driver.** It grows by a factor of ~2400 at that cell
+(0.011 -> 26.75). The runaway moment is **01:36**, where production reaches
+**2.1x dissipation** and the net budget turns positive; q^2 then goes 17 -> 58 -> 247
+and the model dies two minutes later.
+
+**Dissipation is not failing** — it grows an order of magnitude too (0.034 -> 23.07).
+It simply cannot keep pace with a production term that is growing faster. The
+distinction matters for the fix: the problem is an unbounded *source*, not a missing
+*sink*.
+
+### `Q_SQ_HDIFF` is exonerated — it is a sink here, not a spurious source
+
+This was the second suspect, and the natural one, because
+`Calc_q_sq_horizontal_diffusion` is the term `pbl3d_opt=1` does not have at all.
+In domain maxima it looked damning: it grows **x183** over 01:26-01:37, far faster
+than shear's x18.
+
+That reading was wrong. At the blowup cell `Q_SQ_HDIFF` is **-29.33**, a large
+*sink*, and `Q_SQ_VDIFF` is likewise negative. Both are exporting q^2 away from the
+spike. The huge domain-max value sits in a *different* cell — the neighbour receiving
+what the peak is shedding. The x183 growth is horizontal diffusion responding to the
+enormous gradient the spike created, i.e. a consequence, and a mitigating one.
+
+A domain maximum is not a budget. The co-located numbers are what settle this.
+
+### Implication for the fix
+
+The scheme already contains the right idea in the right form, applied to the wrong
+quantity. **Tier 1 (`pbl3d_sk_eps_max`, Durbin 1996) limits `Sk/eps` — precisely a
+production-to-dissipation ratio — but it bounds the *length scale*, and nothing
+bounds shear production in the q^2 budget itself.** At the blowup cell that ratio
+reaches 2.1 with no limiter in the path.
+
+Suggested first attempt, in increasing order of intrusiveness:
+
+1. **Limit shear production against dissipation in the q^2 budget**, mirroring the
+   existing Tier 1 construction — cap `Q_SQ_SHEAR` at some multiple of
+   `Q_SQ_DISSIP`. The domain mean ratio sits at ~1.25 all run, and healthy cells stay
+   near there, so a cap of order 2-3 would never bind in normal conditions and would
+   have bound at 01:36 here. Make the multiple a namelist parameter alongside
+   `pbl3d_sk_eps_max` rather than hardcoding it.
+2. Investigate *why* the full stress-tensor form produces such extreme local values
+   where the 1D form does not. `Calc_q_sq_shear` contracts the full
+   `turb_flux_u2/v2/w2/uv/uw/vw` against all nine velocity gradients; on a 34-degree
+   slope the cross terms are large and, unlike the 1D form, nothing about the
+   construction bounds their sum.
+3. Only then consider realizability constraints on the stress tensor feeding it.
+
+**Still do not** apply U2's index guard as the fix — it hides this, silently.
+
 ### Next steps
 
 - **Do not** "fix" this by applying U2's index guard alone — that converts a loud crash
