@@ -255,7 +255,51 @@ enormous gradient the spike created, i.e. a consequence, and a mitigating one.
 
 A domain maximum is not a budget. The co-located numbers are what settle this.
 
-### Implication for the fix
+### Where the fix belongs — and one measurement still missing
+
+**A cap on shear production would be the wrong instrument.** Tier 1 already *is* the
+principled limiter: it bounds `l` so that `S k / eps <= pbl3d_sk_eps_max` (6.0),
+derived from the weak-equilibrium assumption the algebraic system rests on. Adding a
+second cap on production would be a parallel mechanism doing the same job worse, and
+would tune away the symptom.
+
+What the data supports at the blowup cell (k=4, j=182, i=514):
+
+- `PBL3D_T2_STEPS = 0` and `PBL3D_T3_FLAGS = 0` for every frame through the blowup.
+  **Tiers 2 and 3 never fired**, in the one column that destroyed the run.
+- `PBL3D_SK_EPS` reaches **17.4** against a limit of 6.0. Note this diagnostic is
+  computed from the **pre-limit** `l` (`dg_sk_eps = strain_mag * b_1 * l / (2 q)`,
+  `module_pbl3d_my.F` ~1578), so it proves Tier 1 had work to do, **not** whether
+  `l_use` was actually applied.
+- `L_MASTER` holds ~16 m while q^2 grows x363, so there is no q-l runaway and the
+  q^3 dissipation superlinearity is intact.
+- Dissipation timescale `tau = b_1 l / 2q` falls 157 s -> 8 s, still well above
+  `dt = 2 s`, so this is **not** stiff explicit integration either.
+
+**The missing measurement is `PBL3D_T1_RATIO` at the blowup cell**, and it was not in
+job 89435's diagnostic stream (`iofields_nandiag.txt` lists `PBL3D_T2_STEPS`,
+`PBL3D_T3_FLAGS`, `PBL3D_SK_EPS`, `PBL3D_N_TAU` but omits it). It *is* carried in the
+full `wrfout` and is demonstrably active there — at 01:30, 899,613 cells have
+`T1_RATIO < 0.999`, reaching 0.00124 — but `wrfout` is only 10-minutely, so there is
+no frame at 01:36-01:37 when it matters.
+
+It decides between two very different fixes:
+
+1. **`T1_RATIO < 1` at that cell** — Tier 1 binds and q^2 still explodes. Then the
+   bound is the wrong bound for this regime: a strain-limited `l` still admits runaway
+   production at `strain_mag ~ 0.1 s-1`, and the fix belongs either in how `l_use`
+   feeds the stress solve or in Tier 2's escalation criteria, which demonstrably never
+   triggered here.
+2. **`T1_RATIO ~ 1` at that cell** — Tier 1 is blind to the strain that is driving
+   this. The suspect is `strain_mag`, built from raw `du_dx ... dw_dz`
+   (`module_pbl3d_my.F` ~1571): on a 34-degree terrain-following coordinate surface
+   those are not the physical strain components, so the limiter could be reading a
+   much smaller strain than the flow actually has.
+
+**Cost to settle: one line and one rerun, no rebuild.** `pbl3d_t1_ratio` is already an
+`rh` Registry field; add it to the `+:h:23:` line and repeat the ~33 min run.
+
+### Implication for the fix (superseded by the section above — read that first)
 
 The scheme already contains the right idea in the right form, applied to the wrong
 quantity. **Tier 1 (`pbl3d_sk_eps_max`, Durbin 1996) limits `Sk/eps` — precisely a
