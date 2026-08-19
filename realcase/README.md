@@ -303,15 +303,25 @@ From `KNOWN_ISSUES.md`, the ones that cost time:
 - **Do not poll the build with `pgrep -f "compile em_real"`** — the poller's own
   command line contains that string, so it self-matches and never sees the
   process exit.
-- **`phys/physics_mmm` is a git submodule** and carries a local fix that a plain
-  clone will not have: `patches/physics_mmm-sf_sfclayrev-table-lower-bound.patch`.
-  Without it `sfclayrev` (`sf_sfclay_physics=1`, which this case uses)
-  **segfaults** over steep terrain — the table lookup has no lower bound. Apply
-  it after cloning:
+- **Two submodules carry local fixes**, and both now come down with a plain
+  recursive clone — `phys/physics_mmm` a `sfclayrev` table lower-bound guard
+  (without it `sf_sfclay_physics=1`, which this case uses, **segfaults** over
+  steep terrain), and `phys/noahmp` the USGS table extended to 33 categories for
+  the CORINE-as-USGS land use. Both were local-only commits until 2026-08-19,
+  which meant `git clone --recursive` failed outright anywhere else — the SHAs
+  existed on one disk. They now live on forks (`elias-wahl/MMM-physics`,
+  `elias-wahl/noahmp`) that `.gitmodules` points at over HTTPS, so no GitHub
+  credentials are needed to clone.
 
   ```bash
   git submodule update --init --recursive
-  cd phys/physics_mmm && git apply ../../patches/physics_mmm-sf_sfclayrev-table-lower-bound.patch
+  git submodule status | grep -E 'noahmp|physics_mmm'   # expect c5b6dbc / 7071724
   ```
 
-  This is upstream issue U1 and is not yet reported to `wrf-model/WRF`.
+  Check those two SHAs before building. If they are missing the clone is
+  incomplete, and the build either fails or silently produces a WRF that
+  segfaults on the slopes.
+
+  `patches/physics_mmm-sf_sfclayrev-table-lower-bound.patch` is kept as a record
+  of the fix; **you no longer need to apply it by hand.** This is upstream issue
+  U1 and is not yet reported to `wrf-model/WRF`.
