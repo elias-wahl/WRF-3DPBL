@@ -63,11 +63,12 @@ export JASPERLIB=${EBROOTJASPER}/lib
 export JASPERINC=${EBROOTJASPER}/include
 export WRF_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 
-# NOT verified from VSC-5 -- run ./configure by hand once on MUSICA and read the
-# gfortran/dmpar entry number off the menu. 34 is the VSC-5 value and the
-# numbering moves between WRF releases and platforms. This is the one setting
-# in this file that still needs a human on the far side.
-export WRF_CONFIGURE_OPTION=34   # <-- CONFIRM THIS BEFORE THE FIRST BUILD
+# Confirmed on MUSICA 2026-08-19 by reading ./configure's own menu there:
+#   32. (serial)  33. (smpar)  34. (dmpar)  35. (dm+sm)   GNU (gfortran/gcc)
+# It is the only gfortran entry in the list, so 34 is unambiguous, and it
+# happens to match the VSC-5 value. Re-check after any WRF version bump -- the
+# numbering moves between releases.
+export WRF_CONFIGURE_OPTION=34   # Linux x86_64, gfortran, dmpar
 export WRF_NEST_OPTION=1
 
 # Output root. Everything below it is fixed by convention and identical on
