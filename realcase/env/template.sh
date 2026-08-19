@@ -50,6 +50,21 @@ export WRF_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 export WRF_CONFIGURE_OPTION=34   # Linux x86_64, gfortran, dmpar
 export WRF_NEST_OPTION=1
 
+# --- output -----------------------------------------------------------------
+# REQUIRED.  Root of the output tree.  The layout underneath it is fixed by
+# convention and must NOT be changed per cluster:
+#
+#   $WRF_OUTPUT_ROOT/temp/branko/wrfout_d<domain>_<date>.nc     live history
+#   $WRF_OUTPUT_ROOT/temp/branko/meanout_d<domain>_<date>.nc    live auxhist24
+#   $WRF_OUTPUT_ROOT/wrf_output/<jobid>/                        archive, post-run
+#
+# The namelist templates carry @OUTPUT_ROOT@ and prepare_namelist.py expands it
+# from here; submit_wrf.slurm reads this variable directly for the archive step.
+# If you ever find yourself editing history_outname by hand, that is the bug.
+# Point this at a filesystem with room for the run -- see "Cost and output
+# volume" in README.md, it is tens to hundreds of GiB.
+export WRF_OUTPUT_ROOT=/path/to/project/root
+
 # --- runtime ----------------------------------------------------------------
 export MPI_LAUNCHER="srun"       # or "mpirun -np $SLURM_NTASKS"
 export SLURM_ACCOUNT_DEFAULT=

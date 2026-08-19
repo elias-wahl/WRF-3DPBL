@@ -91,6 +91,17 @@ SYNC=("$RC/scripts/prepare_namelist.py" "$RUNDIR/namelist.input" --apply)
 [ -n "$GEO" ]    && SYNC+=(--geo "$GEO")
 [ -n "$METDIR" ] && SYNC+=(--met-dir "$METDIR")
 [ -n "$HOURS" ]  && SYNC+=(--hours "$HOURS")
+# The env file owns the output root; the layout under it is fixed by convention.
+# wrf.exe does not create the output directory and dies partway into the run if
+# it is missing, so make it here rather than discovering that from a queued job.
+if [ -n "${WRF_OUTPUT_ROOT:-}" ]; then
+  SYNC+=(--output-root "$WRF_OUTPUT_ROOT")
+  mkdir -p "$WRF_OUTPUT_ROOT/temp/branko" || exit 1
+  echo "=== output root: $WRF_OUTPUT_ROOT (live: temp/branko, archive: wrf_output/<jobid>)"
+else
+  echo "!!! WRF_OUTPUT_ROOT is not set in $ENVFILE -- prepare_namelist.py will" >&2
+  echo "!!! report the unexpanded @OUTPUT_ROOT@ as FATAL below" >&2
+fi
 if [ "$SMOKE" = 1 ]; then
   echo "=== smoke mode: 1 h, output every 10 min"
   SYNC+=(--smoke)

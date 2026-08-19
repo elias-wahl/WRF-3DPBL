@@ -34,7 +34,7 @@
  fine_input_stream      = 0,
  history_interval       = 30,
  frames_per_outfile     = 1,
- history_outname        = '/gpfs/data/fs72996/ewahl/temp/branko/wrfout_d<domain>_<date>.nc'  ! <- run_wrf.sh output-path convention
+ history_outname        = '@OUTPUT_ROOT@/temp/branko/wrfout_d<domain>_<date>.nc'  ! <- run_wrf.sh output-path convention; @OUTPUT_ROOT@ from $WRF_OUTPUT_ROOT
  restart                = .false.,
  restart_interval       = 180,         ! minutes; lets the run be chained across a queue limit
  io_form_history        = 2,
@@ -43,7 +43,7 @@
  io_form_boundary       = 2,
  io_form_auxinput2      = 2,
  debug_level            = 0,
- auxhist24_outname      = "/gpfs/data/fs72996/ewahl/temp/branko/meanout_d<domain>_<date>.nc"  ! <- run_wrf.sh output-path convention
+ auxhist24_outname      = "@OUTPUT_ROOT@/temp/branko/meanout_d<domain>_<date>.nc"  ! <- run_wrf.sh output-path convention; @OUTPUT_ROOT@ from $WRF_OUTPUT_ROOT
  auxhist24_interval_m   = 30,
  auxhist24_interval_s   = 0,
  frames_per_auxhist24   = 1,

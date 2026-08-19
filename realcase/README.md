@@ -18,7 +18,7 @@ git clone -b 3dpbl_wrflux_v4.8.0 git@github.com:elias-wahl/WRF-3DPBL.git
 cd WRF-3DPBL
 
 cp realcase/env/template.sh realcase/env/mycluster.sh
-$EDITOR realcase/env/mycluster.sh          # compiler, netCDF, LAPACK, SLURM
+$EDITOR realcase/env/mycluster.sh          # compiler, netCDF, LAPACK, SLURM, output root
 
 realcase/scripts/build_em_real.sh realcase/env/mycluster.sh --reconfigure
 
@@ -174,6 +174,41 @@ cold pool a full night to form in WRF's own dynamics rather than being inherited
 from ICON. Worth doing if you can.
 
 ---
+
+## Where the output goes
+
+One variable, `WRF_OUTPUT_ROOT`, is set in the env file. Everything below it is
+fixed by convention and is **the same on every cluster**:
+
+| | |
+|---|---|
+| `$WRF_OUTPUT_ROOT/temp/branko/wrfout_d<domain>_<date>.nc` | history, while the run is going |
+| `$WRF_OUTPUT_ROOT/temp/branko/meanout_d<domain>_<date>.nc` | `auxhist24` (the WRFlux averages) |
+| `$WRF_OUTPUT_ROOT/wrf_output/<jobid>/` | archive — `submit_wrf.slurm` moves both here at the end, with `job_info.txt` and a copy of the namelist |
+
+Both live streams use `frames_per_outfile = 1`, so one file per output time.
+The archive step runs even if `wrf.exe` fails, so a crashed run's partial output
+is still collected. This matches `run_files/RUN_WRF.sh`, which is what the
+post-processing in `proc/` expects — output from this fork lands next to the
+other forks' and is found the same way.
+
+The namelist templates ship with a literal `@OUTPUT_ROOT@` token, not a path.
+`setup_rundir.sh` passes `--output-root "$WRF_OUTPUT_ROOT"` to
+`prepare_namelist.py`, which expands it and creates
+`$WRF_OUTPUT_ROOT/temp/branko` (`wrf.exe` does not create its own output
+directory and dies partway into the run if it is missing). An unexpanded token
+is a **FATAL** finding, so a run set up without the sync step fails immediately
+rather than writing into a literal `@OUTPUT_ROOT@` directory.
+
+**If you find yourself editing `history_outname` by hand, that is the bug** —
+set `WRF_OUTPUT_ROOT` instead. Porting to a new cluster changes the root and
+nothing else.
+
+One known inconsistency: `namelist.input.mynn` still carries a *relative*
+`auxhist24_outname` and no `history_outname` at all, so the MYNN control writes
+into its own run directory instead of the shared tree. `prepare_namelist.py`
+warns about it. Left as-is deliberately rather than relocating output the
+existing post-processing may already expect there.
 
 ## Cost and output volume
 

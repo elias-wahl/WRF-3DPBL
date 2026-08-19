@@ -46,6 +46,7 @@ export OMP_NUM_THREADS=1
 
 echo "=== wrf.exe on $SLURM_NTASKS ranks, $(date)"
 rm -f rsl.out.* rsl.error.*
+START_TIME=$(date)
 # eval, not a bare expansion: MPI_LAUNCHER may embed $SLURM_NTASKS (e.g.
 # "mpirun -np $SLURM_NTASKS"), which needs a second expansion pass to resolve.
 eval "${MPI_LAUNCHER:-srun} ./wrf.exe"
@@ -73,4 +74,30 @@ echo "    PBL3D_T3_FLAGS  > 0 where realizability had to be enforced"
 echo "    PBL3D_COND_A        condition number of the 10x10 system"
 echo "    A healthy run has COND_A of order 10-500. Order 1e5+ means the closure"
 echo "    is being solved far outside its validity range."
+
+# --- archive output, matching run_files/RUN_WRF.sh's convention so branko's
+# output lands next to the other forks' and post-processing in proc/ finds it
+# the same way: $WRF_OUTPUT_ROOT/wrf_output/<jobid>/, with a
+# job_info.txt and a copy of the namelist. history_outname/auxhist24_outname
+# both point at the same temp scratch dir, so this reads that dir out of the
+# namelist rather than hardcoding it. Always archives, even on failure, so a
+# partial/crashed run's output isn't lost.
+echo
+echo "=== archiving output"
+OUTDIR="${WRF_OUTPUT_ROOT:?WRF_OUTPUT_ROOT is not set -- add it to your env file}/wrf_output/$SLURM_JOB_ID"
+mkdir -p "$OUTDIR"
+{
+  echo "Job ID: $SLURM_JOB_ID"
+  echo "Start time: $START_TIME"
+  echo "WRF run path: $SLURM_SUBMIT_DIR"
+  echo "Namelist used: $SLURM_SUBMIT_DIR/namelist.input"
+} > "$OUTDIR/job_info.txt"
+cp namelist.input "$OUTDIR/"
+TEMP_OUT_DIR=$(grep -m1 'history_outname' namelist.input | sed -E "s/^[^=]*=\s*['\"]([^'\"]*)['\"].*/\1/" | xargs dirname)
+if [ -n "$TEMP_OUT_DIR" ] && [ -d "$TEMP_OUT_DIR" ]; then
+  mv "$TEMP_OUT_DIR"/wrfout* "$OUTDIR/" 2>/dev/null
+  mv "$TEMP_OUT_DIR"/meanout* "$OUTDIR/" 2>/dev/null
+fi
+echo "    archived to $OUTDIR"
+
 [ "$RC" = 0 ] || exit "$RC"

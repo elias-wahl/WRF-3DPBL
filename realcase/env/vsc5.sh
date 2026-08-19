@@ -56,6 +56,11 @@ export JASPERLIB=/gpfs/data/fs72996/ewahl/LIBS/jasper/lib
 export JASPERINC=/gpfs/data/fs72996/ewahl/LIBS/jasper/include
 export WRF_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 
+# Root of the output tree.  Everything below it (temp/branko/ for the live run,
+# wrf_output/<jobid>/ for the archive) is fixed by convention and identical on
+# every cluster -- this is the only part that moves.  See realcase/README.md.
+export WRF_OUTPUT_ROOT=/gpfs/data/fs72996/ewahl
+
 export WRF_CONFIGURE_OPTION=34   # Linux x86_64, gfortran, dmpar -- verified by hand for this branch
 export WRF_NEST_OPTION=1         # basic nesting
 

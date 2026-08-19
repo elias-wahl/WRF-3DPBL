@@ -189,6 +189,12 @@ class Namelist:
 
 MET_RE = re.compile(r'met_em\.d(\d\d)\.(\d{4}-\d{2}-\d{2}_\d{2}:\d{2}:\d{2})\.nc$')
 
+# The namelist templates ship with this token instead of an absolute path;
+# --output-root replaces it.  An unexpanded token is FATAL (see check()) rather
+# than something WRF discovers by writing to a literal "@OUTPUT_ROOT@" directory.
+OUTPUT_ROOT_TOKEN = "@OUTPUT_ROOT@"
+OUTPUT_KEYS = ("history_outname", "auxhist24_outname")
+
 
 def scan_met(met_dir, dom=1):
     files = []
@@ -213,6 +219,9 @@ def main():
     ap.add_argument("--met", help="a single met_em file (instead of --met-dir)")
     ap.add_argument("--apply", action="store_true",
                     help="write the synced values into the namelist")
+    ap.add_argument("--output-root",
+                    help="expand @OUTPUT_ROOT@ in history_outname/auxhist24_outname; "
+                         "normally passed by setup_rundir.sh from $WRF_OUTPUT_ROOT")
     ap.add_argument("--hours", type=float,
                     help="override the run length; default is the met_em coverage")
     ap.add_argument("--smoke", action="store_true",
@@ -233,6 +242,19 @@ def main():
                      ("avg_interval", 600), ("restart_interval", 60)):
             sync(k, v, "smoke")
         args.hours = args.hours or 1.0
+
+    # ---- output root ------------------------------------------------------
+    # The two outname paths are the only absolute paths in the namelist, and the
+    # only thing about them that is cluster-specific is the root.  Keeping the
+    # rest of the path (temp/branko/, the <domain>/<date> patterns) in the
+    # template means the output layout is identical on every cluster -- see
+    # OUTPUT_KEYS below and the convention table in realcase/README.md.
+    if args.output_root:
+        root = args.output_root.rstrip("/")
+        for key in OUTPUT_KEYS:
+            cur = nl.raw(key)
+            if cur and OUTPUT_ROOT_TOKEN in cur:
+                sync(key, cur.replace(OUTPUT_ROOT_TOKEN, root), "output root")
 
     # ---- geo_em -----------------------------------------------------------
     if args.geo:
@@ -367,6 +389,19 @@ def check(nl):
     # -- values that must have been synced ---------------------------------
     if not g("num_metgrid_levels", int, 0):
         note(FATAL, "num_metgrid_levels is 0 -- run this script with --met-dir")
+
+    for key in OUTPUT_KEYS:
+        v = nl.raw(key)
+        if v is None:
+            continue
+        if OUTPUT_ROOT_TOKEN in v:
+            note(FATAL, "%s still contains %s -- pass --output-root, or set "
+                        "WRF_OUTPUT_ROOT in your env file and let setup_rundir.sh "
+                        "pass it. WRF would otherwise write to a literal '%s' "
+                        "directory." % (key, OUTPUT_ROOT_TOKEN, OUTPUT_ROOT_TOKEN))
+        elif not v.strip("'\"").startswith("/"):
+            note(WARN, "%s is a relative path (%s); output would land in the run "
+                       "directory rather than the shared output tree" % (key, v))
 
     # -- 3D PBL hard requirements (module_check_a_mundo.F) -----------------
     p3 = g("pbl3d_opt", int, 0)
