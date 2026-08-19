@@ -1,5 +1,239 @@
 # Open issues / questions — 3D PBL rebase (WRF v4.4 -> v4.8.0)
 
+## OPEN (A9): first real-terrain run blows up in nocturnal katabatic flow on the steepest slopes
+(2026-08-19 — MUSICA jobs 88703 and 88971. Terminal symptom recorded as U2 in `KNOWN_ISSUES.md`.)
+
+**Superseded framing:** this was first written up as "a NaN of unknown origin reaches
+RRTMG". The 1-minute diagnostic rerun (job 88971, `auxhist23` stream, `iofields_nandiag.txt`)
+settles it: the RRTMG segfault is only the *terminal* symptom. The actual failure is a
+**vertical-velocity instability in nocturnal downslope flow**, and it is ours.
+
+### The crash is bit-for-bit deterministic
+
+Job 88971 reran job 88703 from byte-identical `wrfinput`/`wrfbdy`, namelist unchanged
+except for adding the diagnostic stream. Identical outcome: same step (1141 / model
+2025-07-18_01:38:00), **same 81 of 190 ranks**, same fault address `0x24fcd83`. So the
+stochastic McICA cloud-overlap path is *not* implicated, and any fix can be regression-tested
+directly.
+
+### What actually happens
+
+All 27 diagnostic fields are **fully finite through 01:37:00**; at 01:38:00 roughly a
+third of the domain (8.3e6 points) is non-finite at once. The seed is visible in the
+preceding minutes as runaway `|W|` at the **lowest model level (k=0)**:
+
+| model time | max abs W | #(abs W >10) | max Q_SQ | max COND_A | #(COND_A >1e5) |
+|---|---|---|---|---|---|
+| 01:29 | 9.65 | - | - | - | 1 |
+| 01:31 | 10.31 | 1 | 29.6 | 5.6e4 | 0 |
+| 01:33 | 11.29 | 2 | 29.2 | 1.1e5 | 1 |
+| 01:35 | 14.98 | 6 | 43.0 | 7.9e4 | 0 |
+| 01:36 | 17.48 | 15 | 81.7 | 2.1e5 | 2 |
+| 01:37 | 22.44 | 20 | 247 | 5.6e4 | 0 |
+| 01:38 | 26.63 | (blown up) | 44.5 | 3.4e38 | 10247 |
+
+### The linear solve is NOT the cause — this is the key negative result
+
+The obvious suspect, given the section below this one, is the `dgesvx` solve going
+ill-conditioned. **It did not.** `COND_MAX` is 1.0E8; through 01:37 the number of points
+exceeding even 1e5 is 0-2 out of 24.1e6. The closure was healthy the entire time. The
+10247 exactly-singular solves at 01:38 (`mat_cond = Huge`, i.e. `rcond` returned 0) appear
+*after* the state has already gone non-finite — they are a consequence, not a cause.
+
+Note also that the safety net described in the section below **has since been implemented**
+and that text is stale: `info` is checked, `mat_cond = 1/rcond` is live, and
+`solve_ok = (info == 0) .and. (mat_cond <= COND_MAX)` zeroes all ten fluxes on failure
+(`module_pbl3d_my.F:1953-1985`). Realizability enforcement is live too (`PBL3D_T3_FLAGS`
+fires on ~60000 points/frame). Neither prevented this.
+
+### The instability is katabatic, on the steepest terrain in the domain
+
+Peak `|W|` sits at k=0 over slopes of **33.6 deg**, against a domain max of 34.2 deg and
+only 208 points steeper than 30 deg. It is a *downslope* flow (w and v both negative) —
+i.e. nocturnal drainage, the regime this run is the first ever to attempt.
+
+At the surface in terrain-following coordinates `w = u.grad(h)` is legitimately nonzero,
+so that had to be excluded. It does not explain it — the ratio of actual `W` to the
+kinematic value grows monotonically while the downslope wind itself accelerates:
+
+| model time | W(k=0) | v | u.grad(h) | W / u.grad(h) |
+|---|---|---|---|---|
+| 01:29 | -3.60 | -3.26 | -2.14 | 1.68 |
+| 01:31 | -4.81 | -3.57 | -2.35 | 2.05 |
+| 01:33 | -8.73 | -5.47 | -3.62 | 2.41 |
+| 01:35 | -14.98 | -8.78 | -5.80 | 2.58 |
+| 01:37 | -22.44 | -11.47 | -7.59 | **2.96** |
+
+Pure terrain-following flow holds that ratio near 1. A monotonic climb to ~3, with `v`
+accelerating 3.5x over the same window, is a positive feedback: the closure is not
+supplying enough damping to the drainage flow, the slope wind accelerates, `w` grows
+faster than kinematics allows, and it runs away. `w_damping = 1` is on and produced no
+messages.
+
+This matches the "extreme vertical-velocity blowup (`w-cfl` ~14, SIGSEGV) observed
+empirically during Phase 1 regression testing" noted in the section below — described
+there as longstanding and present pre-rebase. What is new here is that it is now
+reproduced on real terrain, deterministically, with per-minute diagnostics.
+
+### Why no idealized run caught this
+
+Two independent reasons, both structural:
+
+1. **Terrain.** Group J was a single smooth cosine bell. Real terrain has 208 points
+   steeper than 30 deg and grid-scale roughness a cosine bell does not have.
+2. **Regime.** This is the first nocturnal/cold-pool case, so it is the first time
+   katabatic drainage flow has existed at all.
+3. **The crash site was never even compiled in.** `test/em_les/namelist.input` runs
+   `mp_physics = 0`, `ra_lw_physics = 0`, `ra_sw_physics = 0`, `sf_surface_physics = 0`.
+   Not one line of RRTMG, Thompson or Noah-MP executed in any idealized run, which is why
+   the blowup surfaced as a segfault in radiation rather than as a CFL error.
+
+### The MYNN control already ran 47 h on this exact case — terrain and numerics are exonerated
+
+(user-supplied 2026-08-19: `WRF/run/namelists/namelist.input_inn_inner_dom_ICON`, stock
+current WRF, completed `run_hours = 47`.)
+
+This removes the need for the control run recommended earlier, and it is a much stronger
+result than that would have been: the control ran **twice as long**, through the same
+night, and did not blow up. Everything below is **identical** between it and the crashing
+`pbl3d` run:
+
+`dx = dy = 500`, `e_we = 601`, `e_sn = 501`, `e_vert = 80`, the full 80-entry
+`eta_levels` list, `p_top_requested = 20000`, `time_step = 2`, `num_metgrid_levels = 12`,
+`num_metgrid_soil_levels = 8`, the same ICON hourly forcing and the same start time
+(2025-07-18_01:00), `epssm = 0.9`, `smdiv = 0.15`, `emdiv = 0.03`, `w_damping = 1`,
+`damp_opt = 3`, `zdamp = 5000`, `dampcoef = 0.02`, `non_hydrostatic`, `moist_adv_opt = 1`,
+`scalar_adv_opt = 1`, `use_theta_m = 1`, `m_opt = 1`, `sfs_opt = 0`, `mix_isotropic = 0`,
+`base_temp = 290`, **the entire `diff_6th_*` block including `diff_6th_slopeopt = 1` and
+`diff_6th_thresh = 0.10`**, and every physics option that matters here
+(`mp_physics = 8`, `ra_lw/sw_physics = 4`, `radt = 1`, `sf_sfclay_physics = 1`,
+`sf_surface_physics = 4`, `isfflx = 1`, `icloud = 1`, `slope_rad = 1`, `topo_shading = 1`,
+`num_land_cat = 33`, `cu_physics = 0`).
+
+So the following are **ruled out**, not merely unlikely:
+
+- dx = 500 m being too coarse for a 34-degree slope
+- `time_step = 2` being too long
+- `epssm = 0.9` / the divergence-damping settings
+- the smoothed `geo_em` terrain
+- the ICON forcing, the soil moisture, the vertical level distribution
+- Thompson / RRTMG / Noah-MP themselves (all three ran 47 h here without incident)
+
+**Only three differences remain, and every one of them is forced by `pbl3d`:**
+
+| | MYNN control (ran 47 h) | `pbl3d` run (dies at 38 min) | forced by |
+|---|---|---|---|
+| closure | `bl_pbl_physics = 5` | `bl_pbl_physics = 0`, `pbl3d_opt = 2` | the scheme itself |
+| SGS mixing | `diff_opt = 2`, `km_opt = 4` — Smagorinsky **active** | `diff_opt = 0` — `pbl3d` does *all* SGS mixing, no backstop | scheme design |
+| vertical coordinate | `hybrid_opt = 2` (Klemp cubic — the WRF default, omitted from the namelist) | `hybrid_opt = 0` — original pure terrain-following sigma | **hard fatal check**, `share/module_check_a_mundo.F:390` |
+
+(Also `zadvect_implicit = 1` in ours, absent in the control — minor, but untested here.)
+
+The second and third rows deserve emphasis given the observed failure mode is *runaway
+vertical velocity at the surface over the steepest slopes*:
+
+- `diff_opt = 0` means that when the closure under-supplies damping there is **nothing
+  else**. The control has Smagorinsky horizontal mixing underneath it the whole time.
+- `hybrid_opt = 0` is the original coordinate; the hybrid coordinate exists specifically
+  to reduce terrain-induced error over steep topography, and `pbl3d` cannot use it —
+  `module_check_a_mundo.F` makes it a fatal error. So the one configuration that most
+  needs terrain-error mitigation is the one forbidden from having it.
+
+Neither is proof of cause on its own — but together they mean `pbl3d` is running this
+terrain with *both* safety nets the control enjoys removed, by construction.
+
+### RESOLVED BRANCH (2026-08-19, job 89167): `pbl3d_opt = 1` survives — the forced config is exonerated
+
+The discriminator was run: `pbl3d_opt = 2 -> 1` (analytical `_pbl_approx`, HL88-realizable),
+with **`hybrid_opt = 0` and `diff_opt = 0` deliberately unchanged**, same `wrfinput`/`wrfbdy`,
+same 1-minute stream. It ran straight through the failure point with **0 non-finite values
+in 41 frames**, at 0.78 s/step (vs 1.26 for the full solve).
+
+| model time | opt=2 max abs W | opt=2 max Q_SQ | opt=1 max abs W | opt=1 max Q_SQ |
+|---|---|---|---|---|
+| 01:31 | 10.31 | 29.6 | 10.14 | 11.5 |
+| 01:33 | 11.29 | 29.2 | 10.60 | 9.9 |
+| 01:35 | 14.98 | 43.0 | 11.98 | 9.2 |
+| 01:36 | 17.48 | 81.7 | 12.54 | 8.3 |
+| 01:37 | 22.44 | **246.6** | 12.69 | 8.9 |
+| 01:38 | **blowup** | - | 12.50 | 9.7 |
+| 01:40 | (dead) | - | 12.24 | 10.7 |
+
+The two runs are bit-comparable for the first ~20 minutes (W ratio 0.98-1.04), so this is
+a clean single-lever comparison.
+
+**Therefore ruled out**, on top of everything the MYNN control already excluded:
+
+- `hybrid_opt = 0` (pure terrain-following sigma) — `pbl3d_opt=1` uses it too and is stable
+- `diff_opt = 0` (no Smagorinsky backstop) — likewise
+- the katabatic flow itself being unrepresentable: at the *other* hot column (j=54, i=38)
+  `opt=1` sustains `W = -12.5 m/s` **flat** for ten minutes without trouble. Strong
+  drainage flow is fine; it is the *runaway* that is not.
+
+**The fault is inside the full 3D path (`Calc_fluxes`, `pbl3d_opt == 2`).**
+
+### The mechanism is a q^2 runaway, not the `dgesvx` solve
+
+The diagnostic that separates the two runs is not `W` — it is `Q_SQ`, and it separates
+*earlier*. `opt=2`'s `Q_SQ` grows 30 -> 43 -> 82 -> **247** over six minutes while `opt=1`
+holds flat at 9-11 the entire time. `W` follows with a lag, which is the expected causal
+order: q^2 sets the eddy diffusivity and hence the SGS flux magnitudes, so a runaway q^2
+inflates the SGS forcing on the resolved flow, which increases the strain, which feeds
+back into shear production of q^2.
+
+Note this is *not* the ill-conditioned-solve hypothesis from the section below, which the
+earlier analysis already excluded on its own evidence (`COND_A` under 1e5 essentially
+everywhere until after the state had gone non-finite).
+
+At the 33.6-degree column the difference is qualitative, not quantitative — `opt=1` peaks
+and **recovers**, `opt=2` never turns over:
+
+| | 01:31 | 01:33 | 01:35 | 01:37 | 01:39 |
+|---|---|---|---|---|---|
+| opt=2 W(k=0) | -4.81 | -8.73 | -14.98 | -22.44 | dead |
+| opt=1 W(k=0) | -3.62 | -4.98 | -5.03 | -3.32 | -2.84 |
+
+### Prime suspects, now narrow
+
+`opt=1` and `opt=2` differ in exactly three q^2-relevant places
+(`dyn_em/module_pbl3d.F:5790-5810`, `module_pbl3d_my.F:200`):
+
+1. **`Calc_q_sq_shear` vs `Calc_q_sq_shear_pbl_approx`** — full stress-tensor shear
+   production (`turb_flux_u2/v2/w2/uv/uw/vw` against all nine velocity gradients) versus
+   the 1D form using only `du_dz`, `dv_dz`, `turb_flux_uw`, `turb_flux_vw`. **Most likely
+   culprit**: it is a *production* term, it is the one that scales with the full strain
+   tensor, and strain is exactly what steep-slope drainage flow maximises.
+2. **`Calc_q_sq_horizontal_diffusion`** — only called for `pbl3d_opt > 1`. Nominally a
+   sink, but on 500 m grid over 34-degree slopes the horizontal-diffusion operator acts
+   along sloping coordinate surfaces, which can be a spurious *source*.
+3. The flux computation itself (10x10 solve vs analytical), which also feeds (1).
+
+### Next steps
+
+- **Do not** "fix" this by applying U2's index guard alone — that converts a loud crash
+  into a silently NaN radiative tendency while the blowup continues.
+- **Separate the q^2 budget.** All five terms already exist as Registry state variables —
+  `q_sq_shear`, `q_sq_buoyancy`, `q_sq_dissip`, `q_sq_vdiff`, `q_sq_hdiff`
+  (`Registry/registry.pbl3d:1169-1173`) — but every one is flagged **`r` (restart only)**,
+  so none reaches `wrfout`. This is the same blind spot `CHANGES.md` describes for
+  `turb_flux_*`, which had to be promoted `r` -> `rh`. Promote these five the same way and
+  rerun `pbl3d_opt=2` with 1-minute output: whichever term runs away identifies the
+  culprit directly, and the run only needs to reach 01:38 (~30 min).
+- If it is `Calc_q_sq_shear`: the natural first fix is a production/dissipation limiter on
+  the shear term, consistent with how Tier 1 (`pbl3d_sk_eps_max`, Durbin) already limits
+  `Sk/eps` — i.e. the machinery exists, it is just not applied to the q^2 budget.
+- **Do not** conclude `pbl3d_opt=1` is the answer for production. It is the diagnostic, not
+  the science target; the whole point of this configuration is the full 3D closure.
+- Instrument the slope columns rather than the whole domain: `PBL3D_T3_FLAGS` fires on
+  ~60000 points/frame globally, which is too coarse to see what happens in the ~208
+  points steeper than 30 deg. A tslist at the blowup columns (`j=111,i=161` and
+  `j=54,i=38`) would give per-timestep behaviour there for negligible cost.
+- The `hybrid_opt = 0` requirement deserves its own investigation. If `pbl3d` is intended
+  for real steep terrain it will keep meeting this, and the constraint is currently a
+  hard fatal error with no documented justification in this file.
+
+---
+
 ## FIX IMPLEMENTED (A1): buoyancy limit on `l` for `pbl3d_l_opt = 1` (`pbl3d_n_tau_max`)
 (2026-07-31 — full record in `CHANGES.md`, Group G)
 

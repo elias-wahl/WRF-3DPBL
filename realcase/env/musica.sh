@@ -93,11 +93,22 @@ export SLURM_PARTITION_DEFAULT=zen4_0768
 # --smoke before choosing; submit_wrf.slurm prints the mean s/step.
 export CORES_PER_NODE=192
 
-# Devel queue for smoke tests, the MUSICA equivalent of VSC-5's
-# zen3_0512_devel: dev_zen4_0768. zen4_0768 itself has MaxTime=UNLIMITED and a
-# 1-day default, so the production run does not need chaining the way it did on
-# VSC-5 -- though restart_interval is still set, which does no harm.
-export SLURM_PARTITION_DEVEL=dev_zen4_0768
+# CORRECTED 2026-08-19: there is no separate devel *partition* on MUSICA.
+# `sinfo`/`scontrol show partition` show only musica_login, zen4_0768,
+# zen4_0768_h100x4 -- dev_zen4_0768 as a partition does not exist, and a job
+# submitted with --partition=dev_zen4_0768 is rejected outright. "devel" is a
+# QOS layered on the zen4_0768 partition instead (see
+# `scontrol show partition zen4_0768`'s AllowQos list), capped at
+# MaxWall=00:10:00 and 2 nodes (`sacctmgr show qos`). zen4_0768's AllowQos
+# list also does NOT include the default "normal" QOS, so --qos is required
+# on every submission here, not optional. See branko/KNOWN_ISSUES.md E9.
+#
+# zen4_0768 itself has MaxTime=UNLIMITED and a 1-day default, so the
+# production run does not need chaining the way it did on VSC-5 -- though
+# restart_interval is still set, which does no harm.
+export SLURM_PARTITION_DEVEL=zen4_0768
+export SLURM_QOS_DEVEL=dev_zen4_0768
+export SLURM_QOS_DEFAULT=zen4_0768
 
 # check_wrfinput.py needs the netCDF4 python bindings, which in EESSI only exist
 # for the foss-2025a toolchain (netcdf4-python/1.7.2-foss-2025a) and would drag

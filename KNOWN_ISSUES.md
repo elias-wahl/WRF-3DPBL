@@ -112,6 +112,118 @@ whether upstream has fixed it and drop the local change if so.
 
 ---
 
+## U2. RRTMG-LW `taumol` species-fraction indices have upper bounds only — a NaN anywhere upstream becomes a wild read
+
+**Status:** confirmed by disassembly of the faulting instruction; **not yet fixed**
+**Severity:** high — crashes the model, and (worse) the near-miss case corrupts silently
+**File:** `phys/module_ra_rrtmg_lw.F` (`taumol`, ~line 5298 onward)
+**Affects:** `ra_lw_physics = 4`. Independent of the PBL scheme. `module_ra_rrtmg_sw.F`
+has the same construction and should be assumed to share the defect.
+
+### The code
+
+```fortran
+speccomb = colh2o(lay) + rat_h2oco2(lay)*colco2(lay)
+specparm = colh2o(lay)/speccomb
+if (specparm .ge. oneminus) specparm = oneminus   ! UPPER bound only
+specmult = 8._rb*(specparm)
+js = 1 + int(specmult)
+...
+ind0 = ((jp(lay)-1)*5+(jt(lay)-1))*nspa(3) + js   ! js used unguarded
+```
+
+The same pattern repeats for `js1`, `jmn2o` and `jpl` in every `taugbNN` band. This is
+the **identical defect class as U1**: a one-sided guard on a table index.
+
+Everything else feeding these lookups *is* clamped — `jp`, `jt`, `jt1`, `indself`,
+`indfor` and `indminor` are all `min`/`max`-bounded in `setcoef` (verified by reading
+it). The `specparm`-derived indices are the only unbounded ones in the routine.
+
+### Why it is worse than it looks
+
+`int()` of a NaN or Inf is **not** a large-but-plausible integer — on x86-64
+`cvttss2si` returns `INT_MIN`:
+
+```
+int(NaN) = -2147483648   ->   js = -2147483647
+int(Inf) = -2147483648   ->   js = -2147483647
+int(8*(-0.5)) =      -4   ->   js =          -3
+```
+
+So the two cases behave completely differently, and only one of them is survivable
+as a *diagnosis*:
+
+| upstream value | resulting `js` | what happens |
+|---|---|---|
+| NaN / Inf | ~ -2.1e9 | address ~8.6 GB below the table -> **immediate SIGSEGV** |
+| finite but out of range | small negative | reads just before the table -> **silently wrong radiation, no crash** |
+
+**The segfault is the lucky outcome.** The same defect with a slightly-out-of-range
+finite value produces a run that completes and is quietly wrong — the same failure mode
+`realcase/README.md` warns about for `SMOIS`.
+
+### Observed
+
+Inn Valley `pbl3d` smoke run, MUSICA job 88703, 2026-08-19. Crashed at model time
+2025-07-18_01:38:00 (step 1141, which is a radiation step: `radt=1`, `dt=2` -> `stepra=30`,
+and radiation fires on `mod(itimestep-1,stepra)==0`). **81 of 190 ranks segfaulted
+simultaneously at the byte-identical instruction** `0x24fcd83`
+(`__rrtmg_lw_taumol_MOD_taumol+0x2fd3`, `movss -0x24(%r12),%xmm14` — the
+`X(j+1)-X(j)` interpolation on the fastest-varying dimension). Backtrace:
+
+```
+__rrtmg_lw_taumol_MOD_taumol
+__rrtmg_lw_rad_MOD_rrtmg_lw
+__module_ra_rrtmg_lw_MOD_rrtmg_lwrad
+__module_radiation_driver_MOD_radiation_driver
+__module_first_rk_step_part1_MOD_first_rk_step_part1
+solve_em_ / solve_interface_
+```
+
+That 81 ranks fault at one address is itself the evidence for the NaN branch of the
+table above: a finite bad index would not fault at all, let alone identically.
+
+The failing ranks form a contiguous block that matches **where cloud and precipitation
+were spinning up**, not where terrain is steepest (SEGV patches average 1360 m terrain vs
+1223 m for surviving ones, and their *max* terrain is lower). The run initialises
+cloud-free and clouds develop over the first half hour:
+
+| model time | cloudy columns | max QCLOUD | max QRAIN |
+|---|---|---|---|
+| 01:00 | 0 | 0 | 0 |
+| 01:10 | 6537 | 1.05e-3 | 2.51e-6 |
+| 01:20 | 7185 | 1.47e-3 | 2.32e-5 |
+| 01:30 | 8317 | 1.25e-3 | 1.35e-4 |
+
+State variables were still **fully finite** in the 01:30 history frame (0 non-finite in
+`T`, `QVAPOR`, `P`, `PH`, `U`, `V`, `W`), so whatever goes non-finite does so in the
+final 8 minutes.
+
+### What is not yet established
+
+**Which physics produces the NaN.** `qv1d` is clamped (`max(0.,...)`, then
+`AMAX1(...,1.E-12)`) in the RRTMG driver, so it is not simply negative water vapour
+arriving from advection. Three candidates, and all three are exercised here for the
+first time — see the `OPEN_ISSUES.md` entry.
+
+### Suggested fix
+
+Guard the index rather than the fraction, in every band, so a NaN cannot become a
+pointer:
+
+```fortran
+-        js = 1 + int(specmult)
++        js = min(8, max(1, 1 + int(specmult)))
+```
+
+As with U1, this routes a bad value to a valid table entry instead of corrupting memory.
+It changes nothing for in-range values. Note this makes a NaN propagate as a NaN through
+the radiative tendency (visible) rather than crashing — which is the correct behaviour,
+but means it must be paired with an actual check on the state, not treated as a fix for
+the underlying physics.
+
+---
+
 ## E1. mambaforge shadows the spack netCDF and LAPACK at both link and run time
 
 **Severity:** high — silently produces a broken or wrongly-linked build
@@ -202,6 +314,319 @@ shared. Anything that needs to be seen from a different shell must go there.
 Related: there is no clipboard tool installed (`xclip`, `xsel`, `wl-copy` all absent),
 so `/copy` in Claude Code can only write its file fallback. `~/bin/osc52` was added as
 an OSC 52 helper that works over plain SSH.
+
+---
+
+## E6. EESSI's own init chain is not `nounset`-safe — breaks any script sourcing an env file under `set -u`
+
+**Severity:** high — the build script exits after one line of output, with no error
+message printed, which looks like a hang or a silent crash rather than what it is.
+
+`realcase/scripts/build_em_real.sh` and `setup_rundir.sh` both start with
+`set -u -o pipefail` and then source the cluster env file. On MUSICA that env file's
+first line is `source /cvmfs/.../init/bash`, which chains into
+`init/eessi_environment_variables` -> `init/minimal_eessi_env` -> `init/eessi_defaults`.
+That last file references `EESSI_VERSION_OVERRIDE` with no default:
+
+```
+/cvmfs/.../init/eessi_defaults: line 14: EESSI_VERSION_OVERRIDE: unbound variable
+```
+
+Under `set -u` this is fatal and the sourcing shell exits immediately — silently, because
+the error text goes to stderr of a redirected/logged pipeline and is easy to lose (e.g.
+`build_em_real.sh ... 2>&1 | tee log` inside a `tmux new-session -d "..."` swallows it
+entirely if the pane closes before the log flushes). The symptom is a build log
+containing only `=== environment: <envfile>` and nothing after.
+
+**Fix applied 2026-08-19** to both `build_em_real.sh` and `setup_rundir.sh` (the latter
+in two places: its own direct sourcing, and the `env.sh` it generates for
+`submit_real.slurm`/`submit_wrf.slurm`, which also run under `set -u`): wrap the env-file
+sourcing in `set +u` / `set -u`, e.g.
+
+```bash
+set +u
+. "$ENVFILE"
+set -u
+```
+
+This is an EESSI-side bug (or at least an undocumented assumption that consumers don't
+run `set -u`), not something to fix in the env file itself — `musica.sh` never referenced
+the unbound variable; it only sourced something that does. Re-check this if EESSI is
+upgraded past 2025.06.
+
+---
+
+## E7. No `/usr/bin/time` on MUSICA — every `./compile` object silently fails to build
+
+**Severity:** high — same failure mode as G4: `make -i` ignores it, `./compile` exits 0,
+and the build looks like it ran for the full 30-60 min while producing zero `.o` files.
+
+WRF's `./compile` prefixes every single compiler invocation with `time` (for the
+per-file build-time logging in the log), e.g. `time mpif90 -o module_comm_dm_4.o -c ...`.
+MUSICA has no `/usr/bin/time` (or any GNU `time` binary) anywhere on `PATH`. Because that
+recipe line has no shell metacharacters, GNU Make applies its direct-exec optimization
+and `execvp`s `time` as a literal program instead of going through a shell (where `time`
+would be a builtin keyword) — so it needs an actual binary on `PATH`, not just a shell
+that understands the word. Every compile line then fails with:
+
+```
+make[2]: time: No such file or directory
+make[2]: [../configure.wrf:376: module_comm_dm_4.o] Error 127 (ignored)
+```
+
+`build_em_real.sh`'s own verification caught this correctly on the first attempt
+(reported `BUILD FAILED`, no `main/wrf.exe`) rather than falsely reporting success — but
+700 Error-127 lines and a full run through `./compile` were needed to reach that point,
+and a plain `./compile em_real; echo $?` would have shown `0` and hidden it entirely.
+
+**Fix applied 2026-08-19:** a two-line `time` shim at `~/bin/time` (which is on `PATH`)
+that just `exec`s its arguments, dropping the timing report:
+
+```bash
+#!/bin/sh
+exec "$@"
+```
+
+Confirmed to close the gap: re-running the same build afterward showed 0 `Error 127`
+lines and objects accumulating normally. `~/bin` is not part of this repo, so a fresh
+account/cluster needs this shim recreated — check for it before assuming a `./compile`
+run that reports "Executables successfully built" is trustworthy without it.
+
+---
+
+## E8. EESSI's compat layer trips `build_em_real.sh`'s mixed-GCC check — false positive, not KNOWN_ISSUES E1
+
+**Severity:** medium — the build itself is fine; only the automated verdict is wrong,
+and it says `BUILD FAILED` even though `real.exe`/`wrf.exe`/`ndown.exe` all linked.
+
+`build_em_real.sh`'s toolchain check (added to catch the real VSC-5 mambaforge
+contamination in E1) ran `strings main/wrf.exe | grep 'GCC: (...)'` and failed the
+build because it found two GCC signatures: `GCC: (GNU) 13.3.0` (the GCCcore module
+used to build WRF, correct) and `GCC: (Gentoo 13.4.0 p5) 13.4.0`. The second one is
+**not application-code contamination** — `ldd main/wrf.exe` shows `libgfortran.so.5`,
+`libgcc_s.so.1`, `libc.so.6` etc. all resolving into
+`/cvmfs/.../compat/linux/x86_64/...`, EESSI's compat layer, which is deliberately
+built with its own (Gentoo Prefix) toolchain, separate from the GCCcore modules used
+for application software. The final binary statically links C runtime startup
+objects (`crt1.o` etc.) from that layer, which legitimately carry its GCC signature.
+This is expected EESSI architecture, not a build defect.
+
+Verified before concluding this, not assumed: scanned every `*.o` file compiled
+during the build (`find . -name '*.o' -newer configure.wrf | xargs strings | grep
+'GCC:'`) — 100% show only `GCC: (GNU) 13.3.0`, including the `io_grib1`
+bare-`gcc`-invoked C files that were the actual failure mode in E1. Zero objects
+carry the Gentoo signature; it only appears once everything is linked together.
+
+**Fix applied 2026-08-19:** `build_em_real.sh`'s toolchain check now scans `find . -name
+'*.o' -newer configure.wrf | xargs strings` (our own compiled objects) instead of
+`strings main/wrf.exe` (the linked binary). This is also a strictly better test for
+what E1 actually cares about — whether *our* compilation was toolchain-consistent —
+and no longer false-positives on EESSI's two-tier compat-layer design. If a future
+build genuinely mixes toolchains in application code (the real E1 scenario), this
+version of the check still catches it.
+
+---
+
+## E9. MUSICA has no devel *partition* — `dev_zen4_0768` is a QOS, and `--qos` is not optional
+
+**Severity:** high — a job submitted the way `CLAUDE.md`/`MIGRATION_MUSICA.md` originally
+described (`--partition=dev_zen4_0768` for smoke tests) is rejected by `sbatch` outright,
+and a job submitted with no `--qos` at all is *also* rejected, not silently defaulted.
+
+`sinfo -a` / `scontrol show partition` on MUSICA list exactly three partitions:
+`musica_login`, `zen4_0768`, `zen4_0768_h100x4`. There is no `dev_zen4_0768` partition.
+"devel" here is a **QOS** layered on top of `zen4_0768`
+(`scontrol show partition zen4_0768` → `AllowQos=admin_musica_inn,dev_zen4_0768,
+fast_zen4_0768,idle_zen4_0768,long_zen4_0768,zen4_0768`), and `sacctmgr show qos` shows
+`dev_zen4_0768` capped at `MaxWall=00:10:00`, `MaxTRESPU=node=2`.
+
+Separately: `zen4_0768`'s `AllowQos` list does not include the default `normal` QOS, so
+any `sbatch` script that (like the shipped `submit_real.slurm`/`submit_wrf.slurm`
+templates) only sets `--account`/`--partition` and never `--qos` fails at submission —
+this project's SLURM templates never had a `--qos=` line at all before this was found,
+because neither Levante nor VSC-5 needed one explicitly.
+
+**Practical consequence for smoke tests:** the 10-minute cap on `dev_zen4_0768` is a real
+hazard for a `pbl3d` smoke run specifically, because the whole point of a smoke run is
+that its per-step cost is *not yet known* — if it is slow, the job is killed by the QOS
+wall limit before `wrf.exe` prints the mean s/step, wasting the run. Prefer the plain
+`--qos=zen4_0768` (3-day cap, no node cap; see `sacctmgr show qos`) with an explicit
+`--time` bound for the first, unmeasured smoke run; `dev_zen4_0768` is fine once a rough
+per-step cost is already known and the run is expected to comfortably finish in 10 min.
+
+**Fix applied 2026-08-19:**
+- `realcase/env/musica.sh`: `SLURM_PARTITION_DEVEL` now points at `zen4_0768` (there is
+  no separate partition to point at); added `SLURM_QOS_DEVEL=dev_zen4_0768` and
+  `SLURM_QOS_DEFAULT=zen4_0768`.
+- `realcase/scripts/submit_real.slurm` / `submit_wrf.slurm` (the templates
+  `setup_rundir.sh` copies into every run directory): added a `#SBATCH --qos=CHANGEME`
+  line to the edit-before-running block, plus a MUSICA-specific comment block explaining
+  the above.
+- `branko_runs/innval_pbl3d_smoke/submit_real.slurm` / `submit_wrf.slurm`: filled in
+  directly for this smoke run (`--account=p201110 --partition=zen4_0768
+  --qos=zen4_0768`, one node, `--ntasks-per-node=192 --hint=nomultithread`).
+
+---
+
+## E10. MUSICA's "full cpu node" policy grants 190 cores/node, not 192 — OpenMPI refuses to bind the rest
+
+**Severity:** high — fails at MPI launch, before `real.exe`/`wrf.exe` does anything,
+with no useful information beyond an OpenMPI binding error.
+
+MUSICA's `zen4_0768` nodes have 192 physical cores (CLAUDE.md, `musica.sh`'s own
+comments), but requesting `--ntasks-per-node=192` on an exclusive-node allocation
+fails at `mpirun`/`srun` launch:
+
+```
+A request was made to bind to that would result in binding more
+processes than cpus available in your allocation:
+   Application:     ./real.exe
+   #processes:      192
+   Binding policy:  CORE
+```
+
+`sbatch` itself warns about this at submission time and is easy to miss among the
+other job-submit output:
+
+```
+sbatch: applying job settings for >> full cpu node(s) <<
+sbatch: setting --ntasks-per-node=190
+```
+
+The site's job-submit plugin silently reserves 2 cores/node for OS overhead on a
+full/exclusive-node allocation, so the allocation actually granted only has 190 usable
+slots — but `$SLURM_NTASKS` (and therefore `mpirun -np $SLURM_NTASKS`) still reflects
+whatever `--ntasks-per-node` was requested in the `#SBATCH` header, not what was
+silently granted. Request 192 and the mismatch surfaces at MPI launch, after the job
+has already waited in queue.
+
+**Fix applied 2026-08-19:** `--ntasks-per-node=190`, not `192`, in both
+`realcase/scripts/submit_real.slurm`/`submit_wrf.slurm` (the templates) and this run's
+`branko_runs/innval_pbl3d_smoke/submit_real.slurm`/`submit_wrf.slurm`. Re-check this
+number if MUSICA's job-submit policy ever changes, or on any partition other than
+`zen4_0768`.
+
+---
+
+## E11. Stale VSC-5-path symlinks in a run dir survive `setup_rundir.sh` reruns and only fail deep into `wrf.exe`, not `real.exe`
+
+`setup_rundir.sh` links every file in `$WRF/run/*` into the run dir
+(`ln -sfn "$f" "$RUNDIR/$b"`), which correctly re-points anything that exists
+in the source `run/` tree on every rerun. It does **not** remove entries in
+the run dir that aren't in that loop's source list — so any file placed there
+by something else (an older version of this script, a bulk copy, a prior
+migration pass) survives untouched across every later `setup_rundir.sh`
+rerun, including the "corrected, fixed the E6-E10 bugs" reruns done on
+MUSICA in this session.
+
+`branko_runs/innval_pbl3d_smoke` had exactly this: four symlinks dated
+2026-08-17 (two days before this session's build), all pointing into the
+unreachable VSC-5 path `/gpfs/data/fs72996/ewahl/branko/run/...` —
+`freezeH2O.dat`, `qr_acr_qs.dat`, `qr_acr_qg.dat`, `namelists`. None of the
+four exist in this checkout's `branko/run/` (confirmed: `qr_acr_qs.dat` /
+`qr_acr_qg.dat` aren't even referenced by `module_mp_thompson.F` — they
+belong to a different microphysics scheme — and `freezeH2O.dat` is never
+shipped as a static file; Thompson MP computes and caches it on first use).
+
+The trap: `real.exe` never opens any of these, so `check_wrfinput.py` and
+the whole `real.exe` smoke stage passed clean. The dangling symlink only
+surfaced when `wrf.exe` actually initialized Thompson MP microphysics
+(`mp_physics=8`), immediately (`FATAL CALLED ... Error writing
+freezeH2O.dat`, MPI_ABORT, <1 min wall time) — `INQUIRE` on a broken symlink
+correctly reports `exist=.false.`, so the code takes the compute-and-write
+branch, then `OPEN(63,file="freezeH2O.dat",...)` follows the symlink into
+the unreachable VSC-5 mount and the `WRITE` fails.
+
+**Fix applied 2026-08-19:** `rm` the four dangling symlinks directly (they
+are not managed by `setup_rundir.sh`'s loop, so removing them is safe and
+permanent — the next `wrf.exe` run creates a real `freezeH2O.dat` in the run
+dir itself). If setting up a **new** run dir from an old one (rather than
+fresh via `setup_rundir.sh`), check for broken symlinks first:
+`find <rundir> -maxdepth 1 -xtype l`. `branko_runs/innval_pbl3d_18th/` is
+already flagged elsewhere as having dangling VSC-5 symlinks throughout —
+recreate it with `setup_rundir.sh` rather than hand-repairing it, per the
+same reasoning.
+
+---
+
+## E12. WRF's `phys/` Makefile dependencies are incomplete — a parallel `./compile -j N` races
+
+**Severity:** high — the loud failure wastes a build; the quiet failure produces a subtly
+wrong binary
+**Observed:** MUSICA, 2026-08-19, job 89218, `./compile -j 16 em_real`, failed after 4.5 min
+
+`./compile` accepts `-j N` and passes it to `make`, which makes a 30-60 minute serial
+build look like an easy 10-minute win. It is not reliable in this tree:
+
+```
+Fatal Error: Cannot open module file 'ccpp_kind_types.mod' for reading
+Fatal Error: Cannot open module file 'bl_shinhong.mod' for reading
+Fatal Error: Cannot open module file 'module_bl_shinhong.mod' for reading
+Fatal Error: Cannot open module file 'module_physics_init.mod' for reading
+Fatal Error: Cannot open module file 'module_pbl_driver.mod' for reading
+Fatal Error: Cannot open module file 'module_first_rk_step_part1.mod' for reading
+...then at link: undefined reference to `__module_bep_bem_helper_MOD_nurbm'
+```
+
+This is the standard Fortran parallel-build race: a source file is compiled before the
+`.mod` produced by the module it `USE`s has been written. **Every module that raced is a
+stock WRF `phys/` module** — `ccpp_kind_types`, `bl_shinhong`, `module_pbl_driver`,
+`module_physics_init` — so this is WRF's own dependency graph being incomplete and relying
+on serial ordering. It is **not** caused by the `pbl3d` sources this fork adds, and
+lowering `-j` will not fix the underlying graph, only make the race less likely to be hit.
+
+### Why this matters more than a wasted build
+
+A missing `.mod` fails loudly, which is the *good* case. The same race can also compile a
+file against a `.mod` that is being written concurrently, yielding an object that links
+cleanly and runs but is subtly wrong. This tree exists to diagnose a numerical instability
+(`OPEN_ISSUES.md` A9); a miscompiled binary would corrupt exactly the evidence being
+gathered, and would be very hard to distinguish from a real physics result.
+
+For the same reason, **do not resume a raced build** by re-running `./compile` without
+cleaning to "just fill in the missing objects". The objects already on disk were produced
+under the race and cannot be trusted. `./clean` first.
+
+**Fix applied 2026-08-19:** `build_em_real.sh` defaults to `WRF_BUILD_JOBS=1` (serial) and
+documents why inline. The variable still exists so the behaviour can be re-tested if
+upstream ever fixes the `phys/` dependencies, but the default must stay serial.
+
+The legitimate way to speed this up is **not** `-j`: use
+`realcase/scripts/build_em_real.slurm`, which builds on an exclusive compute node instead
+of a contended login node, and survives losing the session without tmux.
+
+---
+
+## E13. `build_em_real.sh` appended FlexiBLAS to `LIB_LOCAL` on every rebuild
+
+**Severity:** low — cosmetic, but unbounded, and it hides a real detection gap
+**Observed:** MUSICA, 2026-08-19, after three rebuilds `LIB_LOCAL` carried
+`-lflexiblas` (with its `-L` and `-Wl,-rpath`) **three times**
+
+The `configure.wrf` patch step decided whether LAPACK was already present by sniffing
+library *names*:
+
+```python
+if 'lapack' in cur or 'mkl' in cur or 'openblas' in cur:
+    ...leave alone
+else:
+    ...append $LAPACK_LIBS
+```
+
+`flexiblas` matches none of those three, so the check never fired on MUSICA and every
+single rebuild appended another full copy. Harmless to the link — `ld` tolerates repeated
+`-l` — but it grows without bound across rebuilds and would eventually be a genuine
+problem for command-line length, quite apart from making `configure.wrf` unreadable.
+
+Worth noting *why* it went unseen: it only bites on a toolchain whose LAPACK is named
+something other than the three sniffed strings, i.e. exactly the FlexiBLAS situation that
+`DECISIONS.md` records as new for this cluster. On Levante and VSC-5 the sniff worked.
+
+**Fix applied 2026-08-19:** test for the exact `$LAPACK_LIBS` string already being present
+in `LIB_LOCAL` rather than guessing at library names, keeping the name sniff (now with
+`flexiblas` added) only as a fallback for the case where `configure.wrf` already carries a
+*different* LAPACK. The accumulated triple entry in the existing `configure.wrf` was
+de-duplicated in place (9 tokens -> 3).
 
 ---
 

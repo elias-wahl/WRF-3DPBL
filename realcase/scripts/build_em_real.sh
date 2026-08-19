@@ -39,8 +39,14 @@ WRF=$(cd "$HERE/../.." && pwd)
 [ -f "$ENVFILE" ] || { echo "env file not found: $ENVFILE" >&2; exit 1; }
 
 echo "=== environment: $ENVFILE"
+# EESSI's own init chain (init/eessi_defaults) references unset variables
+# like EESSI_VERSION_OVERRIDE with no default -- fine under a normal shell,
+# fatal under our -u. Drop -u only for the sourcing, not for the rest of
+# this script.
+set +u
 # shellcheck disable=SC1090
 . "$ENVFILE"
+set -u
 
 : "${NETCDF:?NETCDF is not set -- check your env file}"
 : "${LAPACK_LIBS:?LAPACK_LIBS is not set -- the 3D PBL closure needs LAPACK}"
@@ -118,8 +124,16 @@ for i, line in enumerate(lines):
     if not line.startswith('LIB_LOCAL'):
         continue
     key, _, cur = line.partition('=')
-    if 'lapack' in cur or 'mkl' in cur or 'openblas' in cur:
-        print('    LIB_LOCAL   already has LAPACK, left alone:%s' % cur.rstrip())
+    # Test for the exact string we are about to add, not for library *names*.
+    # The name sniff missed FlexiBLAS -- 'flexiblas' contains none of 'lapack',
+    # 'mkl' or 'openblas' -- so every rebuild appended another copy and
+    # LIB_LOCAL grew without bound (three copies by 2026-08-19). See
+    # KNOWN_ISSUES E13. Keep the name sniff as a fallback for the case where
+    # configure.wrf already carries a *different* LAPACK than ours.
+    if lapack.strip() and lapack.strip() in cur:
+        print('    LIB_LOCAL   already has exactly these libs, left alone')
+    elif 'lapack' in cur or 'mkl' in cur or 'openblas' in cur or 'flexiblas' in cur:
+        print('    LIB_LOCAL   already has a LAPACK, left alone:%s' % cur.rstrip())
     else:
         lines[i] = '%s= %s' % (key, (cur.strip() + ' ' + lapack).strip())
         print('    LIB_LOCAL   <- %s' % lines[i].partition('=')[2].strip())
@@ -140,10 +154,29 @@ grep -m1 '^LIB_LOCAL' configure.wrf
 
 # --- 4. compile ------------------------------------------------------------
 LOG="$WRF/compile_em_real.log"
-echo "=== ./compile em_real   (log: $LOG)"
-echo "    this takes 30-60 min; do not poll with pgrep -f 'compile em_real',"
+# Compile SERIALLY by default. This is not conservatism for its own sake:
+# -j 16 was tried on MUSICA 2026-08-19 (job 89218) and FAILED in 4.5 min with
+# "Cannot open module file 'ccpp_kind_types.mod' / 'bl_shinhong.mod' /
+# 'module_pbl_driver.mod'" -- the classic Fortran parallel-build race, where a
+# file is compiled before the module it USEs has been written. The modules that
+# raced are all stock WRF phys/ ones, i.e. it is WRF's own Makefile dependency
+# graph that is incomplete and relies on serial ordering, not anything this
+# fork added. See KNOWN_ISSUES E12.
+#
+# Do not "just lower -j" without reading E12 first: a race does not always fail
+# loudly. It can also compile a file against a half-written .mod and produce a
+# subtly wrong object, which is far worse here than a slow build -- this tree
+# is used to diagnose a numerical instability, and a miscompiled binary would
+# poison exactly that.
+JOBS="${WRF_BUILD_JOBS:-1}"
+if [ "$JOBS" = 1 ]; then
+  echo "=== ./compile em_real   (serial, ~30-60 min; log: $LOG)"
+else
+  echo "=== ./compile -j $JOBS em_real   (log: $LOG) -- SEE KNOWN_ISSUES E12"
+fi
+echo "    do not poll with pgrep -f 'compile em_real',"
 echo "    the pattern matches the poller itself (KNOWN_ISSUES E2)"
-./compile em_real > "$LOG" 2>&1
+./compile -j "$JOBS" em_real > "$LOG" 2>&1
 COMPILE_RC=$?
 
 # --- 5. verify -------------------------------------------------------------
@@ -165,13 +198,21 @@ for exe in main/real.exe main/wrf.exe main/ndown.exe; do
 done
 
 if [ -x main/wrf.exe ]; then
-  echo "=== toolchain check on main/wrf.exe"
+  echo "=== toolchain check on our own compiled objects"
+  # Scan the .o files WE compiled, not the linked exe -- on EESSI (and most
+  # Linux systems generally) the final binary statically pulls in crt
+  # startup objects from the base/compat-layer glibc, which legitimately
+  # carries a different GCC signature (on MUSICA: "GCC: (Gentoo ...)" from
+  # EESSI's compat layer) than the GCCcore module used to build WRF itself.
+  # That is expected and does not indicate mixed-toolchain contamination;
+  # see KNOWN_ISSUES E1 (the real VSC-5 mambaforge case, caught this way)
+  # vs the EESSI false positive this replaced.
   if command -v strings > /dev/null; then
-    FOREIGN=$(strings main/wrf.exe | grep -oE 'GCC: \(.*\) [0-9]+\.[0-9]+\.[0-9]+' | sort -u)
+    FOREIGN=$(find . -name '*.o' -newer configure.wrf 2>/dev/null | xargs -r strings 2>/dev/null | grep -oE 'GCC: \(.*\) [0-9]+\.[0-9]+\.[0-9]+' | sort -u)
     if [ -n "$FOREIGN" ]; then
       echo "$FOREIGN" | sed 's/^/    /'
       if [ "$(echo "$FOREIGN" | wc -l)" -gt 1 ]; then
-        echo "!!! more than one GCC version linked in -- mixed toolchain, see KNOWN_ISSUES E1"
+        echo "!!! more than one GCC version among our own compiled objects -- mixed toolchain, see KNOWN_ISSUES E1"
         OK=0
       fi
     else
