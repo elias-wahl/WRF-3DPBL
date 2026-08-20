@@ -1,5 +1,55 @@
 # Open issues / questions — 3D PBL rebase (WRF v4.4 -> v4.8.0)
 
+## A9 — FIXED (2026-08-20, VSC-5 job 8476273)
+
+`pbl3d_opt=2` now **completes**. Job 8476273: `COMPLETED 0:0`, 1800 steps,
+`01:00` -> `02:00`, zero errors, 1.696 s/step. The baseline died at step 1141.
+This is the first completed real-terrain run of the full 3D closure.
+
+At `2025-07-18_01:38:00`, where every previous run died:
+
+| | baseline 8472687 | rerun 8476273 |
+|---|---|---|
+| non-finite cells | 8.3e6 | **0** |
+| max `Q_SQ` | 44.5 | 30.3 |
+| max \|W\| | 26.5 m/s | 14.2 m/s |
+| outcome | SIGSEGV in RRTMG | ran on to 02:00 |
+
+Domain max `Q_SQ` over k=0..9, baseline -> rerun: 01:35 46.4 -> 15.2,
+01:36 65.8 -> 14.9, 01:37 **150.5 -> 18.5**. The baseline more than doubles in
+the last minute; the rerun is flat. The argmax also stops locking onto one cell
+and wanders normally.
+
+**The fix** (commit `db3b9176c`): write Tier 1's limited length scale back into
+`l_master`, so the dissipation, the q^2 diffusion coefficients and the history
+field see the same eddy size the stresses do. Ten lines, no new parameter, no
+Registry change. See `DECISIONS.md` for the physical argument.
+
+### Two predictions that did NOT verify, and why
+
+Recorded before the run: `P/eps` at `j=111, i=161` would go 1.146 -> ~0.46 at
+01:36. **Measured 24.6.** That is not a miss in the fix, it is a miss in the
+prediction: the cell never reached the runaway state (`Q_SQ` 0.43 against the
+baseline's 18.1), so `P/eps` there is a ratio of two near-zero numbers, exactly
+the ignition regime where the baseline itself showed 155, 3271, 57471. The
+prediction was **linearised** -- it assumed the flow would arrive at the same
+state and only the ratio would change. With the fix active from ~01:05 the
+trajectories diverge for half an hour first. The counterfactual was an estimate
+at fixed state, never a forecast, and should not have been written as one.
+
+Also: an interim comparison table showed baseline and rerun identical at 01:38.
+That was a stale file -- the rerun had not yet overwritten the baseline's
+`qsqdiag_..._01:38:00.nc`. Filter by mtime when comparing against `temp/branko/`.
+
+### What this does NOT settle
+
+- Domain `Q_SQ` runs 20-30% below baseline through the window. Whether that is
+  correct damping or over-damping is the unresolved 17-41% boundary-layer
+  deficit question. Only the 47 h MYNN comparison answers it.
+- The `sf_alpha` energy-pairing defect is **untouched**. The falsification
+  condition was "if it still dies, sf_alpha becomes primary". It did not die,
+  so that hypothesis is neither confirmed nor refuted.
+
 ## A9 — RESOLVED by measurement (2026-08-20, VSC-5 job 8472687)
 
 Job 8472687 wrote all 39 one-minute `qsqdiag` frames through 01:38 before the
@@ -1291,3 +1341,78 @@ top-down — this won't see pbl3d's mixing at all. The scheme already
 computes native `turb_flux_*` diagnostics, which is the right data source
 for a WRFlux integration, but this hasn't been implemented. See prior
 conversation for full detail. Not started.
+
+---
+
+## OPEN (A10): the `sf_alpha` slope taper breaks the SGS energy pairing
+
+Raised 2026-08-20 from code reading, after A9 was fixed. **Not measured in-model
+yet** — the offline attempt failed its own sanity check (below).
+
+`Calc_slope_factor` (`dyn_em/module_pbl3d.F:3077-3081`) builds
+
+```
+sf_alpha ~ |grad h| * dx/dz  =  max( sqrt(tmpzx^2 + tmpzy^2), 1 )
+```
+
+and `Calc_htend_du/dv/dw/ds` **divide** the horizontal turbulent tendency by it
+(`:4031-4044`, `:4299`). `Vertical_turb_mix` carries no such factor, and
+`Calc_q_sq_shear` (`:6238`) contracts the **untapered** stresses against the full
+nine-component strain.
+
+`P` is not a free-standing quantity — it is by definition the rate the resolved
+flow loses kinetic energy to those same stresses. Tapering one end and not the
+other means SGS energy appears having been removed from nothing.
+
+**The footprint is domain-wide, not a steep-slope corner case.** `dx/dz ~ 30`
+here, so a 2 deg slope already gives 1.05, 10 deg gives 5.3, 20 deg gives 10.9.
+Measured over all 300,000 columns at the lowest model level:
+
+| | |
+|---|---|
+| median `sf_alpha` | **5.2** |
+| 90th percentile | 11.3 |
+| max | 21.2 |
+| fraction of domain > 2x | **67%** |
+| fraction > 5x | **51%** |
+| fraction > 10x | 18% |
+
+So horizontal turbulent mixing of momentum, heat and moisture is suppressed
+five-fold or more over half this domain. (Earlier text in A9 described this as
+affecting the 208 points steeper than 30 deg. That was wrong by three orders of
+magnitude in footprint.)
+
+**Why it also explains the opt=1 / opt=2 split.** Of the nine production terms,
+three pair with the untapered vertical mixing (`uw*du_dz`, `vw*dv_dz`,
+`w2*dw_dz`) and six with the tapered horizontal mixing. The three untapered ones
+are almost exactly `Calc_q_sq_shear_pbl_approx`. So `opt=1` is energetically
+self-consistent by accident, and the defect switches on only at `opt=2`.
+
+**Magnitude: NOT established.** An offline decomposition was attempted at 01:30
+using `TURB_FLUX_UW/VW/W2` from wrfout plus gradients reconstructed from U, V, W,
+taking `P_horiz` as the residual against `Q_SQ_SHEAR`. **It failed**: correlation
+between the reconstructed `P_vert` and the model's `Q_SQ_SHEAR` was 0.067, so the
+residual is dominated by reconstruction error, not by horizontal production. A
+figure of "59% of production is spurious" was produced this way and is
+**retracted**. Probable cause: the mass->face interpolation smooths away the sharp
+near-surface shear that `Calc_du_dz_at_mass` resolves with `fnm`/`fnp` weights.
+
+Crude bound only: if the horizontal terms carry 10-75% of shear production, the
+spurious input is 8-60% of it over half the domain.
+
+**Why this now matters more, not less, after A9 was fixed.** The A9 fix *damps*;
+`sf_alpha` is a spurious *source*. Two large errors of opposite sign may now be
+partially cancelling — a worse position than one error, because tuning against
+the MYNN control would reward the cancellation instead of exposing it.
+
+**Next step: the SGS energy-closure diagnostic.** One Registry field comparing
+the resolved-KE loss implied by the applied turbulent tendencies against
+`Q_SQ_SHEAR/2`. In a consistent closure they are equal by construction. This
+measures the mismatch *inside* the model, where the offline reconstruction cannot
+reach. Costs one `--reconfigure`. **Do this before the 47 h control run**, not
+after, for the compensating-errors reason above.
+
+The fix itself, once the diagnostic confirms it: taper the six horizontal-pairing
+terms of `Calc_q_sq_shear` by the same `sf_alpha`, leaving the momentum tendency
+untouched. That restores the pairing without changing the dynamics or
+reintroducing whatever numerical fragility `sf_alpha` was added to suppress.

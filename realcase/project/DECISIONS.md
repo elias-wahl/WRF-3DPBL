@@ -7,6 +7,54 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-08-20 (VSC-5) — The length-scale fix works: `pbl3d_opt=2` completed its first
+real-terrain run. And the `sf_alpha` defect is now the bigger problem.**
+
+Job 8476273: `COMPLETED 0:0`, 1800 steps, 01:00 -> 02:00, zero errors, 1.696 s/step. At
+01:38:00, where every previous run died: 0 non-finite cells against 8.3e6, max `Q_SQ` 30.3
+against 44.5, max `|W|` 14.2 against 26.5 m/s. Domain max `Q_SQ` at 01:37 went 150.5 -> 18.5,
+and the argmax stopped locking onto one cell. The mechanism diagnosed in A9 was the cause, and
+unifying the master length scale removed it. Ten lines, no new parameter.
+
+**Two of my own predictions failed, and both are recorded in A9 rather than quietly dropped.**
+The predicted `P/eps` of ~0.46 at the blowup cell measured 24.6 — because the cell never
+reached the runaway state at all (`Q_SQ` 0.43 against 18.1), making it a ratio of two near-zero
+numbers. The prediction was linearised: it assumed the flow would arrive at the same state and
+only the ratio would change, when in fact the fix is active from 01:05 and the trajectories
+diverge for half an hour first. A counterfactual at fixed state is not a forecast and should
+not have been written as one. Separately, an interim comparison table showed baseline and rerun
+identical at 01:38 because the rerun had not yet overwritten the baseline's file — filter by
+mtime when comparing against `temp/branko/`.
+
+**The `sf_alpha` footprint was badly underestimated, and this changes the priority order.**
+A9 described it as affecting the 208 points steeper than 30 deg. Measured across all 300,000
+columns: median `sf_alpha` is **5.2**, and it exceeds 2 over **67%** of the domain and 5 over
+**51%**. The reason is the grid, not the terrain — `dx/dz ~ 30`, so a 2 deg slope already gives
+1.05 and 10 deg gives 5.3. Horizontal turbulent mixing is suppressed five-fold or more over half
+this domain, while the production computed from the same stresses is not. Opened as A10.
+
+**An attempt to quantify the resulting energy error failed, and the number is retracted.**
+Reconstructing `P_vert` offline from `TURB_FLUX_UW/VW/W2` plus gradients from U, V, W, and
+taking the residual against `Q_SQ_SHEAR`, gave "59% of production is spurious". Its sanity check
+then showed correlation 0.067 between the reconstructed `P_vert` and the model's own
+`Q_SQ_SHEAR` — so the residual was reconstruction error, not physics. Reported here because a
+plausible-looking number from a failed method is worse than no number.
+
+**Revised priority: build the SGS energy-closure diagnostic BEFORE the 47 h control run.**
+I previously argued it could be deferred, on the grounds that a surviving run would be indirect
+evidence about `sf_alpha`. The run survived and told us nothing about it — exactly as the
+falsification condition said it would. The stronger argument is now this: the A9 fix *damps*,
+`sf_alpha` is a spurious *source*, and two large errors of opposite sign may be partially
+cancelling. Tuning against MYNN in that state would reward the cancellation rather than expose
+it. The diagnostic costs one Registry field and one reconfigure, and it measures the mismatch
+inside the model where the offline reconstruction cannot reach.
+
+**Still unsettled:** domain `Q_SQ` runs 20-30% below baseline through the window. Whether that
+is correct damping or over-damping remains the open 17-41% boundary-layer question, and only the
+47 h MYNN comparison answers it.
+
+---
+
 **2026-08-20 (VSC-5) — Implemented the unified master length scale. This reverses yesterday's
 "deliberately not implemented".**
 
