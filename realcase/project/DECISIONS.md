@@ -7,6 +7,230 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-08-20 (VSC-5) — A9 closed by measurement; two earlier statements corrected; still not implementing the fix.**
+
+Job 8472687 ran ahead of its estimated start and completed all 39 one-minute `qsqdiag`
+frames through 01:38 before the terminal RRTMG segfault. The measurement A9 was waiting
+for exists, and it lands on **branch 1**: at the blowup cell (`j=111, i=161`, 46.639 N
+10.806 E, 33.6 deg slope) `T1_RATIO` runs 0.18-0.40 for the entire event and `SK_EPS`
+15-34 against a limit of 6.0. Tier 1 is not blind to the strain; it binds hard and the
+binding is what fails. `P/eps` as built sits at 1.09-1.23 for eight consecutive minutes
+(e-folding 105 s, doubling 73 s); with a consistent length scale it is 0.43-0.60 in every
+frame. Snapshot written to `FINDINGS_QSQ_RUNAWAY.md` (root + `realcase/project/`).
+
+**Correction 1 — Tier 2 and Tier 3 are not globally dead.** A9 and the 2026-08-19 entry
+say `T2_STEPS = T3_FLAGS = 0`. Domain-wide at 01:36 that is wrong: T2 fires in 294,398
+cells (max 5), T3 in 60,156 (max 240). The true statement is narrower and worse - they
+are silent *at the runaway column* (T3 zero at every level, every frame; T2 only
+sporadically 1-2 at k=3). Tier 2 escalates on solver distress and non-realizability;
+Tier 3 enforces PSD. A budget running 15% hot is neither, so nothing in the ladder can
+see this. Recorded because "the backstops never fire" and "the backstops cannot see this
+failure" lead to different fixes, and only the second is true.
+
+**Correction 2 — the Tier-1 footprint is 4.1%, not ~20%.** `T1_RATIO < 0.999` in 977,518
+of 24,000,000 cells at 01:36; `< 0.5` in 1.06%. The ~20% / 899,613 figure was a different
+frame of a different job. It does not change the recommendation - Group F still has Tier 1
+binding at 100% in nocturnal SBL, slope drainage and residual-LLJ - but the number in the
+previous entry was five times too large and would have overstated the blast radius.
+
+**Resolved:** that entry's honest-limit caveat asked for `SK_EPS > 12.6` co-located at
+01:36. Measured 15.07. The conclusion no longer rests on the `T1_RATIO = min(1,
+SK_EPS_MAX/SK_EPS)` identity alone.
+
+**Why a snapshot file rather than the fix.** The ask was to save findings so work can
+resume later, and the fix remains what the 2026-08-19 entry said it was: a science change
+touching every cell where Tier 1 fires, needing revalidation against the 47 h MYNN control
+and the idealized regressions. Writing it down with its falsification condition keeps the
+scope decision with the user and on evidence. Committed locally, not pushed, at the user's
+instruction.
+
+**Also corrected, on a separate point:** an exploration pass flagged that
+`realcase/namelist.input.mynn` and `namelist.input.pbl3d` are not matched (24 h vs 47 h,
+`time_step` 3 vs 2, `epssm` 0.7 vs 0.9, `sf_sfclay_physics` 5 vs 1) and inferred the MYNN
+control was therefore not a controlled comparison. It was. The 47 h control is job 8320565
+run from `WRF/run/namelists/namelist.input_inn_inner_dom_ICON`, which uses `time_step=2`,
+`epssm=0.9`, 47 h and `sf_sfclay_physics=1` - the same surface layer as pbl3d. The tracked
+`namelist.input.mynn` is a template that was never the control. Left alone; the confound
+noted in its header does not apply to the run the exclusions rest on.
+
+---
+
+**2026-08-19 (VSC-5) — Diagnosed the blowup as a split master length scale, and did NOT
+implement the fix.**
+
+The deep dive landed on a structural inconsistency rather than a missing limiter:
+`Q_SQ_SHEAR` scales with Tier 1's limited `l_use` (a local scalar in the solver, never
+written back), while `Calc_q_sq_dissip` uses `l_dissip = l_master`, the unlimited scale.
+Because `eps ~ 1/l`, Tier 1 firing reduces production and simultaneously leaves dissipation
+under-estimated by the same factor — it widens the imbalance it exists to close. Making the
+scales consistent takes `P/eps` at the blowup cell from 2.11 to 0.73, below unity, with no
+new parameter. Full reasoning and the grey-zone measurements are in `OPEN_ISSUES.md` A9.
+
+**Why this and not a production cap:** in Mellor-Yamada the master length scale is singular
+by construction — the same `l` sets the stress closure and `eps = q^3/(B_1 l)`. The k-epsilon
+analogy that would justify leaving dissipation alone does not transfer, because there `eps`
+is prognostic and here it is *diagnosed from `l`*. So this is removing an inconsistency, not
+adding a mechanism, which is what makes it different in kind from the shear-production cap
+A9 rules out.
+
+**Deliberately not implemented.** Tier 1 was active in ~20% of the domain at 01:30, so this
+changes the solution broadly and is a science change, not a bug fix. Implementing it
+unasked would have put an unvalidated physics modification into a tree whose whole purpose
+is diagnosing a numerical instability — and it needs checking against the 47 h MYNN control
+and the idealized regressions, which is the user's call on scope and priority. Written up
+with the falsification conditions instead, so the decision is theirs on evidence.
+
+**Honest limit of the result:** `T1_RATIO = 0.345` derives from A9's `SK_EPS = 17.4`, which
+is quoted as a *peak*, not co-located at 01:36. The correction suffices at that frame iff
+`SK_EPS > 12.6` there. Job 8472687 carries both at 1-minute resolution; its estimated start
+slipped to 2026-08-20T21:30, so the conclusion is on the identity and the source reading
+until then, both of which are checkable without it.
+
+**2026-08-19 (VSC-5) — Read the limiter's source before waiting 33 minutes for its
+output, and the run became a confirmation rather than the measurement.**
+
+A9 framed `PBL3D_T1_RATIO` as a missing measurement costing one rerun. Reading the Tier 1
+block first showed it is not independent data at all: `l_use`, `dg_sk_eps` and
+`dg_t1_ratio` are computed from the same `strain_mag`, `l` and `q` in one pass, which
+forces `T1_RATIO = min(1, SK_EPS_MAX/SK_EPS)` algebraically. Confirmed on archived
+`wrfout` across 4.3e6 cells at 9.5e-08 maximum deviation, so it is an identity in
+practice and not just on paper. `SK_EPS = 17.4` at the blowup cell was already measured
+in job 89435, so `T1_RATIO = 0.345` there and the branch was already decided.
+
+**Judgment: report it now rather than wait for the queue.** The derivation is checkable
+in ten lines of source and was verified against millions of cells; holding it back until
+job 8472687 lands would delay a result that redirects the next piece of work, and the run
+still serves as independent confirmation at 01:36-01:37 where no `wrfout` frame exists.
+The run was left queued rather than cancelled for exactly that reason — a derived result
+and a measured one disagreeing would itself be important.
+
+**Consequence for the fix, recorded because it narrows the search:** branch 2 is dead.
+`strain_mag` is not misreading the terrain-following gradients — it reports `S k/eps`
+at ~3x the limit and Tier 1 cuts `l` to 34.5%, and q^2 explodes anyway. Meanwhile Tier 2
+and Tier 3 never fire, because they escalate on solver degeneracy and stress
+realizability, and at that cell the solve stays well conditioned and admissible
+throughout. So no tier is triggered by the thing that actually goes wrong. That is a
+design gap in the escalation ladder rather than a coding bug, which also explains why
+`pbl3d_opt=1` survives untouched: its 1D shear production never gets large enough to
+need a tier that does not exist.
+
+**Not done, deliberately:** no fix attempted. The next question — whether
+`SK_EPS_MAX = 6.0` is simply the wrong bound in strong katabatic strain, or whether Tier
+2 needs a budget-based escalation test beside its solver/realizability ones — is a
+science decision for the user, and the crash is a clean deterministic regression test for
+whichever is chosen.
+
+**2026-08-19 (VSC-5, job 8472687) — Added four fields alongside `PBL3D_T1_RATIO`, and
+did not rebuild.**
+
+*No rebuild.* A9 asks for one iofields line and no code change, and that is right, but it
+was worth confirming rather than assuming: `pbl3d_t1_ratio` is registered for history in
+the **built** binary (`streams(1) = 1` in `inc/allocs_*.f90`), the pull touched only two
+`.md` files, and no source is newer than `main/wrf.exe`. So the VSC-5 build from earlier
+today stands. (Minor correction to A9's wording: `pbl3d_t1_ratio` is flagged `h`, not
+`rh` — history without restart. Irrelevant to this measurement, which only needs history.)
+
+*Carried four extra fields.* `PBL3D_SK_EPS`, `PBL3D_T2_STEPS`, `PBL3D_T3_FLAGS` and
+`L_MASTER` were added to stream 23 next to `PBL3D_T1_RATIO`, at ~96 MB/field/frame
+(~44 GB total instead of ~25 GB). Reason: A9 itself notes `SK_EPS` is computed from the
+**pre-limit** `l`, so it shows Tier 1 had work to do but **not** whether `l_use` was
+applied — only `T1_RATIO` and `SK_EPS` *together* separate "the limiter bound and failed"
+from "the limiter never bound". Reading them from different frames, or inferring `SK_EPS`
+from 10-minutely `wrfout` while `T1_RATIO` comes at 1 minute, would reintroduce exactly
+the non-co-located comparison that made `Q_SQ_HDIFF` look like a source. `T2_STEPS` and
+`T3_FLAGS` confirm at 1-minute resolution what `wrfout` could only show at 10, and
+`L_MASTER` shows whether `l` moved at all. The marginal cost is one run's disk, against
+the risk of needing a second 33-minute run to answer a follow-up.
+
+*Already true from a free reading of archived `wrfout` (job 8464723, 01:30):* at A9's
+blowup cell (4,182,514) `T1_RATIO = 1`, `SK_EPS = 4.611`, `T2_STEPS = T3_FLAGS = 0`,
+`L_MASTER = 15.95`. `SK_EPS` is **below** the 6.0 limit there, so `T1_RATIO = 1` is Tier 1
+correctly doing nothing rather than failing to act — which pins down that `T1_RATIO = 1`
+is the "did not bind" value, and confirms the cell is still quiet eight minutes out. It
+also confirms A9's claim that no `wrfout` frame covers 01:36-01:37: the last one before
+death is 01:30.
+
+*Analysis tooling gained a `--cell K,J,I` mode* that reports every term co-located at one
+cell and sums them to a net, because "a domain maximum is not a budget" is the lesson A9
+paid for once already and the tool should make the right comparison the easy one.
+
+**2026-08-19 (VSC-5) — Staged the q^2 diagnostic run: reused `real.exe` output, and let
+the validator overrule a sizing "optimisation".**
+
+*Skipped `real.exe`.* Linked the existing `wrfinput_d01`/`wrfbdy_d01` from
+`branko_runs/innval_pbl3d_18th` rather than regenerating them, which saves a whole queue
+cycle. `CLAUDE.md` calls re-running `real.exe` after a rebuild the safer default, and that
+is right in general — but here the only change is `r -> rh`, which is an **output** stream
+mask. Verified rather than assumed: in `inc/allocs_4.f90` the promoted `Q_SQ_SHEAR` now has
+`streams(1) = 1`, identical to `TURB_FLUX_UW` (already proven to reach `wrfout`), while
+still-`r` `Q_SQ_TMP` has `streams(1) = 0`. Input membership is untouched, so `wrfinput`
+cannot have changed. `check_wrfinput.py` passes on the linked files (SMOIS mean 0.284,
+slope max 34.2 deg). These are also the exact files job 8464723 crashed from, which makes
+the rerun a direct comparison rather than a fresh trajectory.
+
+*This also explains a scare:* all four rebuilt binaries have byte-identical sizes to the
+Aug 18 ones. That is not a stale build — WRF's field registry is a runtime data table, so
+promoting a variable to history flips a bitmask constant without changing code volume.
+
+*Rank count 256, not 200.* Running 2 nodes x 128 = 256 ranks per the VSC-5 convention,
+where job 8464723 used 200 (2 x 100). The decomposition therefore differs, so **the exact
+crash step may shift by a step or two — that is decomposition sensitivity, not a failure of
+the determinism A9 documents.** Accepted because the question ("which q^2 term runs away")
+is about a feedback developing over eight minutes and is not sensitive to a step, and
+because a fresh throughput number at the full node was explicitly wanted. Baseline to beat,
+measured here rather than imported from MUSICA: **1.405 s/step on 200 ranks**, 1140 steps
+to the blowup, ~27 min.
+
+*Reverted an "optimisation" the validator caught.* Set `auxhist24_interval_m = 0` to skip
+~75 GiB of WRFlux means that have nothing to do with A9 — and `prepare_namelist.py`
+correctly refused it: `flux output is on but no auxhist24 interval is set`. Restored to 10.
+The saving was never real (the run dies at 01:38, so only ~4 frames are written) and the
+alternative — also disabling WRFlux flux output — would have changed the model
+configuration relative to every reference run to save under a minute of I/O. Logged because
+the instinct to trim a diagnostic run's output is a good one that was wrong here, and
+because it is a clean case of the namelist validator earning its place.
+
+**2026-08-19 (VSC-5, back from MUSICA) — Rebuilt with `--reconfigure`, not a plain
+`./clean`, and recorded that the blowup is cross-cluster.** Two calls worth keeping.
+
+*Why the full clean.* The rebuild here exists to get the five `q_sq_*` budget terms into
+`wrfout` via the `r -> rh` promotion. This checkout's generated `Registry/Registry` and
+`inc/*.inc` were dated Aug 17-18, i.e. **stale against the Aug 19 Registry commit**, and
+reading `clean` shows only the `-a` branch removes them. A plain `./clean` would very
+plausibly have produced a binary that builds, runs, costs a 30-minute queue slot and
+writes an `auxhist23` stream with five silently missing fields — the failure mode this
+project keeps meeting (`SMOIS`, E13, U2) where the wrong answer is quiet. The extra few
+minutes of `./configure` is not a tradeoff worth thinking about. Verified afterwards that
+`q_sq_shear` appears in exactly the same generated files as `turb_flux_uw`, a variable
+already proven to reach `wrfout`.
+
+*The crash is not MUSICA's.* Checked the archived VSC-5 job **8464723** (2026-08-19 16:06,
+`pbl3d_opt=2`, this cluster, gcc 12.2 / OpenMPI 4.1 / zen3): its `rsl.out.0000` stops at
+`Timing for main: time 2025-07-18_01:38:00` — the **same step** as MUSICA jobs 88703 and
+88971 under an entirely different toolchain (EESSI gcc 13.3 / OpenMPI 5.0.3 / zen4). This
+was free — the evidence was already on disk — and it retires the residual "MUSICA
+compiler artifact" hypothesis that would otherwise have shadowed every result from the
+rerun. A9 is updated. Note `rsl.error.0000` is clean because rank 0 was not among the 81
+that faulted, which is consistent with A9 and not evidence of a different failure.
+
+*Deliberately not touched:* the env loads **both** `openmpi/4.1.6` (explicit) and
+`openmpi/4.1.4` (pulled in as a dependency by a later module), and 4.1.4 wins on `PATH`,
+so `mpif90` is 4.1.4. Left alone: 4.1.x is ABI-stable, this is the exact env that produced
+the working Aug 18 binaries, and re-picking modules mid-campaign would invalidate the one
+build configuration known to work here while changing nothing about the physics question.
+Recorded rather than fixed, so it is not rediscovered as a surprise.
+
+*Config, reverted from MUSICA:* account `p72996`, partition/QOS `zen3_0512`
+(devel `zen3_0512_devel`, MaxWall 10 min), **128 physical cores/node** (8 sockets x 16,
+`ThreadsPerCore=2`, so SLURM reports `CPUTot=256`) — all read off `sacct`/`scontrol`, not
+assumed. `CORES_PER_NODE` went 100 -> 128; earlier VSC-5 jobs here used 100 ranks/node
+(job 8464711), so **throughput is not comparable with those without scaling**, any more
+than it is with MUSICA's 1.26 s/step on 190 ranks. Also made `SLURM_ACCOUNT_DEFAULT` /
+`_PARTITION_` / `_QOS_` actually do something: they were dead variables, and
+`setup_rundir.sh` now substitutes them into the `CHANGEME` slots, so the values live in
+the env file instead of being retyped into every run dir. `CHANGEME` survives when the env
+file is silent, so the guard against submitting to the wrong project is intact.
+
 **2026-08-19 (later) — Resolved: the crash IS in the scheme's domain, and the earlier
 entry below is half wrong.** The 1-minute diagnostic rerun (job 88971) settles what the
 entry below deliberately left open. Radiation is only where the corpse fell: the model

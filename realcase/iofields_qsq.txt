@@ -1,0 +1,37 @@
+# q^2 budget diagnostic for OPEN_ISSUES A9 -- which term drives the runaway?
+# Enable with, in &time_control:
+#     iofields_filename    = "iofields_qsq.txt"
+#     auxhist23_outname    = "@OUTPUT_ROOT@/temp/branko/qsqdiag_d<domain>_<date>.nc"
+#     auxhist23_interval_m = 1
+#     frames_per_auxhist23 = 1
+#     io_form_auxhist23    = 2
+# Stream 23 matches the stream MUSICA job 88971 used for its NaN diagnostic, so
+# the two sets of frames are directly comparable.
+# Parser quirks (same as iofields.txt, they bite silently):
+#   * a blank line ENDS parsing -- there are NONE in this file, keep it that way
+#   * '#' anywhere on a line comments the whole line out
+#   * an unknown variable name is a WARNING in rsl.error, not an abort -- grep
+#     rsl.error.0000 for "W A R N I N G" the first time this file is used
+# An auxhist stream carries nothing until fields are added to it, so the five
+# budget terms below are the entire content of stream 23 plus two context
+# fields: Q_SQ (the quantity running away) and W (the symptom that follows it).
+# Third line added 2026-08-19 for the Tier-1 question (OPEN_ISSUES A9, "Where
+# the fix belongs"). PBL3D_T1_RATIO is THE missing measurement: it decides
+# whether Tier 1 binds at the blowup cell and still fails (ratio < 1) or is
+# blind to the driving strain (ratio ~ 1). It was omitted from job 89435's
+# stream, and wrfout only carries it 10-minutely, so there is no frame at
+# 01:36-01:37 when it matters. PBL3D_SK_EPS is carried alongside because it is
+# computed from the PRE-limit l, so on its own it shows Tier 1 had work to do,
+# not whether l_use was applied -- only the pair distinguishes those.
+# PBL3D_T2_STEPS / PBL3D_T3_FLAGS confirm at 1-minute resolution (rather than
+# wrfout's 10) that Tiers 2 and 3 never fired, and L_MASTER shows whether l
+# moved. All are already history fields in the Registry, so NO REBUILD.
+# The five terms only reach an output stream at all because they were promoted
+# r -> rh in Registry/Registry.EM_COMMON:1169-1173 -- a build older than that
+# commit will emit five "W A R N I N G" lines here and write nothing.
+# Cost: 601x501x80x4 B = 96 MB per 3D field per frame, 12 fields, 1-minute
+# frames -- about 1.2 GB/frame, ~44 GB to reach 01:38. Do not raise the
+# interval without recomputing that.
++:h:23:Q_SQ_SHEAR,Q_SQ_BUOYANCY,Q_SQ_DISSIP,Q_SQ_VDIFF,Q_SQ_HDIFF
++:h:23:Q_SQ,W
++:h:23:PBL3D_T1_RATIO,PBL3D_SK_EPS,PBL3D_T2_STEPS,PBL3D_T3_FLAGS,L_MASTER

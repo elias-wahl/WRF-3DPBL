@@ -69,6 +69,15 @@ export WRF_NEST_OPTION=1         # basic nesting
 # submit_wrf.slurm now use `eval` to resolve it at job-launch time. Matches
 # the "mpirun -np $SLURM_NTASKS" pattern already proven in run_files/RUN_WRF.sh.
 export MPI_LAUNCHER='mpirun -np $SLURM_NTASKS'
-export SLURM_ACCOUNT_DEFAULT=
+# setup_rundir.sh substitutes these three into the CHANGEME slots of
+# submit_real.slurm / submit_wrf.slurm when it copies them into a run dir.
+# All verified against sacct job history and scontrol on 2026-08-19.
+export SLURM_ACCOUNT_DEFAULT=p72996
 export SLURM_PARTITION_DEFAULT=zen3_0512
-export CORES_PER_NODE=100        # matches --ntasks-per-node used elsewhere in run_files (hint=nomultithread)
+export SLURM_QOS_DEFAULT=zen3_0512          # devel counterpart: zen3_0512_devel (MaxWall 00:10:00, 5 nodes)
+# 128 PHYSICAL cores/node: 8 sockets x 16 cores, ThreadsPerCore=2, so SLURM
+# reports CPUTot=256. Use --hint=nomultithread to keep one rank per physical
+# core. Earlier VSC-5 jobs here used 100 ranks/node (e.g. job 8464711, 5 nodes
+# / 500 tasks); 128 is the full node and is what the current campaign sizes
+# against -- if you compare throughput with those older jobs, scale for it.
+export CORES_PER_NODE=128
