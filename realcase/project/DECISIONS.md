@@ -7,6 +7,141 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-08-20 (VSC-5) — The closure is turbulence-starved: the asymptotic length scale
+collapses to a constant when q² sits at its floor, the run cold-starts at that floor, and the
+strain limiter throttles ignition.**
+
+`q_sq` = twice the turbulence kinetic energy, m^2 s^-2. `l` = the master length scale, the size
+of the energy-containing eddies, m. `alpha` = the asymptotic-scale constant, 0.1 here. All rows
+below are **measured** from job 8476273 (3D closure) against job 8320565 (MYNN-EDMF control) —
+same grid, forcing, levels, timestep and surface-layer scheme, both from the state at 01:00.
+
+| at 02:00 | 3D closure | MYNN control |
+|---|---|---|
+| `q_sq`, lowest ~100 m | 0.085, still rising linearly | 0.316, equilibrated by 01:30 |
+| ratio 3D/MYNN, flat 0-3 deg / steep 22-40 deg | 0.14 / 0.36 | — |
+| 10 m wind bias 3D - MYNN, flat / steep | -0.32 / +0.56 m s^-1 | — |
+| median `l` at 85 m AGL | **0.42 m** | **6.7 m** |
+| `l` where `q_sq` sits at its floor (1e-5) | **0.09-0.10 m** (= `alpha`) | n/a |
+| cells at the floor, lowest 5 levels, 01:10 / 01:30 / 02:00 | 65% / 41% / 27% | — |
+| strain limiter binding, lowest 5 levels, 01:38 | 38% (15% with `l` cut >2x) | no such limiter |
+
+A 0.42 m eddy at 85 m above ground is not a boundary-layer eddy; it is what the formula returns
+when it has no turbulence to integrate. **Inferred:** the three open items — "is the damping too
+strong", the slope-factor pairing, the "unexplained" slope-dependent wind bias — are one problem,
+far too little turbulence energy everywhere. The length-scale unification is not the cause: it
+moved `q_sq` by 20-30%, and the deficit is 3.7x.
+
+**Mechanism (code reading, `dyn_em/module_pbl3d_my.F`).** Every bound on `l` in the full-3D path
+scales with `q = sqrt(q_sq)`: small `q` gives tiny `l`, hence tiny stresses (they go as `l q`),
+hence tiny production, hence `q` stays small. A closed loop with a laminar fixed point.
+
+1. **The asymptotic scale collapses to a constant.** `l0 = alpha * int (q-q_min) z dz /
+   int (q-q_min) dz` (`:410-422`) — `alpha` times the energy-weighted height centroid of the
+   turbulent layer. With `q` at the floor both integrals degenerate to their 1e-5 seeds, the
+   height weighting cancels, and `l0 = alpha = 0.1 m` exactly (**measured** 0.09-0.10). The
+   Blackadar blend `l = l0 kz/(kz+l0)` (`:431`) then returns ~0.1 m at *every* level, surface to
+   model top. MYNN bounds its equivalent to [8, 400] m (`phys/module_bl_mynnedmf.F:1791`).
+2. **The run cold-starts exactly at that fixed point:** `q_sq = 1e-5` everywhere (`:4292`). The
+   friction-velocity seed that would break it is dead code (`:4327-4341`) and inert anyway — the
+   lowest level never enters the `l0` integral and the level-2 routine overwrites it.
+3. The Deardorff stable limit `l <= 0.53 q/N` (`:441-445`; `N` = buoyancy frequency, s^-1) is
+   correct physics, MYNN has the same one, and at the floor it gives 0.08 m — it adds nothing to
+   the trap once (1) has fired. The strain cap (`:1603-1612`) is the third `l ~ q` bound; below.
+
+**Spin-up is a first-order part of the deficit (measured).** MYNN initialises turbulence at local
+equilibrium — five passes of `q_sq = (b1 l P)^(2/3)`, length scale recomputed each pass — and its
+layer mean is flat by 01:30. The 3D closure starts at 1e-5 and is still rising *linearly* an hour
+later. Every run so far has measured the approach to this closure's equilibrium, not equilibrium.
+
+**The strain limiter throttles ignition; it does not laminarise equilibrium turbulence
+(measured).** Fixed run, 01:38, lowest five levels, live cells: where the cap binds, production
+over dissipation has median **1.19** (63% above 1) — those cells are *growing*; where it does not
+bind, 0.81; without the cap they would sit at median **3.0**. So it slows ignition ~2.5x and holds
+nothing down at equilibrium: under any `l ~ q` bound P/eps is independent of `q`, so growth is
+exponential until `l` meets a geometric bound (`kz` or `l0`), and with the unified length scale it
+saturates (the old blowup cell reaches `q_sq ~ 0.8`, not 44). Its equilibrium footprint duplicates
+the Deardorff limit — both shut turbulence off above Ri ~ 0.13 for these constants. It is a
+defensible shear length scale, the strain analogue of `q/N`.
+
+**A correction before the fact: the production/dissipation balance limiter designed earlier today
+is withdrawn, not deferred.** Its premise was that limited cells sit in decay and should be held
+at balance. They sit at 1.19, above balance — the premise is false. A P/eps controller also
+carries no physical content of its own and would discard the realizability pre-filter the strain
+cap gives the algebraic solve.
+
+**Two corrections to the record.** The strain limiter's footprint was reported as 4.1% of cells;
+that was diluted over all 80 levels, most of them free atmosphere — in the lowest five, the
+drainage layer where the physics is, it binds in **38%**. And the slope-dependent wind bias was
+recorded as unexplained; it needs no slope-dependent cause (**inferred**): turbulence is the
+*brake* on a locally forced drainage wind, so too little of it leaves the 3D run fast on slopes
+(+0.56 m s^-1), and the *conveyor* feeding momentum down to a remotely forced valley-floor wind,
+so too little of it leaves the run slow on flat ground (-0.32). One deficit, two signs.
+
+**Decisions.**
+
+(a) **Floor the asymptotic length scale** — new namelist `pbl3d_l0_min`, default 0.0 = current
+behaviour. It removes the laminar fixed point without touching what should bind: `kz` and the
+Deardorff limit still apply after the blend, so stable free air stays laminar and only sheared
+layers ignite. The value is a judgement — 8 m is `alpha` x 80 m, asserting a turbulent layer with
+its energy centroid 80 m up; 4 m is also run, because MYNN's 8 m sits at `alpha = 0.23` and so
+corresponds to a ~35 m centroid, not 80.
+
+(b) **Equilibrium initialisation** — `pbl3d_init_opt`, default 0 = current floor start. Option 1
+runs the closure's own level-2 solution to equilibrium against the initial shear and
+stratification: the same assumption the MYNN control already makes, self-consistent, and required
+for the 47 h comparison to be fair. It does not cover re-ignition after turbulence dies mid-run —
+the length-scale floor does.
+
+(c) **New diagnostics** `PBL3D_P_EPS` (production over dissipation as built; free, it reuses the
+accepted solve), `L0_ASYM` (so the collapse is visible in output), and `KE_LOSS_H` /
+`QSQ_SHEAR_H` — the resolved kinetic energy horizontal turbulent mixing actually takes out of the
+wind, m^2 s^-3, against the horizontal-pairing part of shear production. Those two are the
+subgrid energy-closure check the slope-factor pairing needs. **Compare domain or column integrals,
+never points:** pointwise the resolved-KE loss differs from production by a transport divergence,
+which integrates away but is large locally.
+
+(d) A **stratification-aware strain cap** (`pbl3d_limiter_opt = 2`, default 1 = present fixed cap)
+is built in the same reconfigure but not run this round — it scales the cap by the closure's own
+equilibrium `Sk/eps` at the local Richardson number, so "twice equilibrium" means the same thing
+at every stratification. Built now only to avoid a second 30-60 min rebuild if the cap turns out
+to matter.
+
+(e) **Every new switch defaults to current behaviour**, so the rebuilt binary must reproduce job
+8476273 — 1.70 s/step, `q_sq` 0.0847 at 02:00 in a smoke run. That check separates "the fix
+changed the answer" from "the rebuild changed the answer".
+
+(f) **One `WRF_OUTPUT_ROOT` per experiment**: `realcase/env/vsc5_X<n>.sh` sources `vsc5.sh` and
+sets the root to `$DATA/exp/X<n>`. Concurrent runs otherwise write the same
+`temp/branko/wrfout_d01_<date>.nc` and clobber each other *live*, mid-run. Hand-editing
+`history_outname` is not the knob; this is.
+
+(g) **Six 6 h runs, 01:00 -> 07:00 through sunrise**, against the MYNN control, every comparison
+stratified by slope bin x height bin:
+
+| run | init | strain cap `Sk/eps` | `l0` floor | answers |
+|---|---|---|---|---|
+| X0 | floor | 6 | 0 m | does the present code reach MYNN if given 6 h? |
+| X1 | equilibrium | 6 | 0 m | how much of the deficit is spin-up alone |
+| X2 | equilibrium | 6 | 8 m | **the candidate**: floor plus equilibrium start |
+| X3 | equilibrium | 6 | 4 m | floor-value sensitivity |
+| X4 | equilibrium | 12 | 8 m | does the ignition throttle still matter once `l0` is floored |
+| X5 | equilibrium | off | 8 m | upper bound on the cap's role |
+
+Decision rule: adopt the floor and the equilibrium start as defaults if the candidate run (i) is
+finite to 07:00, (ii) holds `q_sq` in the lowest 100 m within ~0.5-2x MYNN at 04:00 and 06:00 in
+**every** slope bin, and (iii) shrinks the slope-wind bias in both signs. The 4 m run picks the
+floor value. If either cap run differs materially from the candidate, the cap is a lever after all
+and the stratification-aware version earns its own run. Then the 47 h run; only after that the
+slope-factor pairing fix.
+
+**Build state:** `main/wrf.exe` and `main/real.exe` are **missing** — an incremental build was
+interrupted at 18:03, objects recompiled and never linked; tracked source is clean at HEAD.
+Nothing runs until the next build, and that build is the `--reconfigure` these Registry entries
+require anyway.
+
+---
+
 **2026-08-20 (VSC-5) — The length-scale fix works: `pbl3d_opt=2` completed its first
 real-terrain run. And the `sf_alpha` defect is now the bigger problem.**
 

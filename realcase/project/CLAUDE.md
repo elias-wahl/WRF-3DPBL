@@ -38,20 +38,17 @@ failed there — the move is purely about queue access.
 
 ## The immediate task
 
-**Find which q² budget term drives the `pbl3d_opt=2` runaway.** `pbl3d_opt=2`
-blows up deterministically at model `2025-07-18_01:38:00` (step 1141) in
-nocturnal katabatic flow on 33.6° slopes. It is a q² runaway; the RRTMG segfault
-is only the terminal symptom.
+The `pbl3d_opt=2` runaway is **fixed** — job 8476273 completed the first
+real-terrain run of the full 3D closure. The problem now is the opposite one: the
+closure carries far too little turbulence energy. Twice the turbulence kinetic
+energy (`q_sq`, m² s⁻²) in the lowest ~100 m sits at 0.085 against the MYNN
+control's 0.316, still rising after an hour, with the energy-containing eddies
+0.42 m across at 85 m above ground against the control's 6.7 m.
 
-Run `pbl3d_opt=2` with 1-minute output of `Q_SQ_SHEAR`, `Q_SQ_BUOYANCY`,
-`Q_SQ_DISSIP`, `Q_SQ_VDIFF`, `Q_SQ_HDIFF`, reach 01:38, and tabulate max and mean
-of each over 01:25→01:38. **The question: is production rising, or is dissipation
-failing?** Prime suspect `Calc_q_sq_shear` (full stress-tensor production; opt=1
-uses a 1D form), second `Calc_q_sq_horizontal_diffusion` (only active for
-`pbl3d_opt>1`). Both in `dyn_em/module_pbl3d.F` ~5790-5810.
-
-Set the run dir up with `--qsq-diag`, which adds the `auxhist23` stream and
-points `iofields_filename` at `realcase/iofields_qsq.txt`.
+**Read `HANDOVER_2026-08-20.md` and the top entry of `DECISIONS.md`.** They carry
+the mechanism (every bound on the eddy size scales with the turbulence velocity,
+the run cold-starts at the floor), the two default-off fixes, the six 6 h
+experiments and the decision rule for adopting them.
 
 ### Do NOT
 
@@ -66,6 +63,9 @@ points `iofields_filename` at `realcase/iofields_qsq.txt`.
 - **Do not re-test what is already excluded** (see A9 and the handover): terrain,
   dx=500 m, `time_step=2`, `epssm=0.9`, ICON forcing, Thompson/RRTMG/Noah-MP, the
   `dgesvx` solve, `hybrid_opt=0`, `diff_opt=0`.
+- **Do not run more than one experiment with the same `WRF_OUTPUT_ROOT`** — use
+  `realcase/env/vsc5_X<n>.sh`. Concurrent runs otherwise clobber each other's
+  `temp/branko/wrfout_d01_<date>.nc` live, mid-run.
 
 ## A rebuild is mandatory after any Registry change
 

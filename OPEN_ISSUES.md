@@ -1416,3 +1416,100 @@ The fix itself, once the diagnostic confirms it: taper the six horizontal-pairin
 terms of `Calc_q_sq_shear` by the same `sf_alpha`, leaving the momentum tendency
 untouched. That restores the pairing without changing the dynamics or
 reintroducing whatever numerical fragility `sf_alpha` was added to suppress.
+
+**Update 2026-08-20 (evening): the predicted symptom is not observed.** Steep bins
+(22-40 deg) carry **0.36x** the MYNN control's `q_sq` at 02:00 — a deficit, not the
+excess this defect implies. Masked by the energy starvation of A11, not refuted;
+the in-model diagnostic (`KE_LOSS_H` vs `QSQ_SHEAR_H`, as integrals) is being built.
+
+---
+
+## OPEN (A11): every bound on the eddy size scales with q — the closure cannot bootstrap from the floor and starts there
+
+Raised 2026-08-20 (VSC-5) from job 8476273 measured against the MYNN-EDMF control
+job 8320565 — same grid, forcing, vertical levels, timestep and surface-layer
+scheme, both from the same state at 01:00. `q_sq` = twice the turbulence kinetic
+energy, m^2 s^-2; `q = sqrt(q_sq)`; `l` = master length scale (size of the
+energy-containing eddies, m); `alpha` = asymptotic-scale constant, 0.1 here.
+
+### The loop (code reading, `dyn_em/module_pbl3d_my.F`)
+
+In the full-3D path every bound on `l` scales with `q`, so small `q` gives a tiny
+`l`, hence tiny stresses (they go as `l q`), hence tiny shear production, hence
+`q` stays small. The system has a laminar fixed point and the model starts on it.
+
+1. `l0 = alpha * int (q - q_min) z dz / int (q - q_min) dz` (`:410-422`,
+   `pbl3d_l0_opt=1`) — `alpha` times the energy-weighted height centroid of the
+   turbulent layer. With `q` at the floor both integrals degenerate to their 1e-5
+   seeds, the height weighting cancels, and `l0 = alpha = 0.1 m` exactly. The
+   Blackadar blend `l = l0 kz/(kz + l0)` (`:431`) then returns ~0.1 m at *every*
+   level, surface to model top. MYNN bounds its equivalent to [8, 400] m
+   (`phys/module_bl_mynnedmf.F:1791`).
+2. Cold start at that fixed point: `q_sq = 1e-5` everywhere (`:4292`). The
+   friction-velocity seed that would break it is dead code (`:4327-4341`) and
+   would be inert anyway — `k=kts` never enters the `l0` integral and the level-2
+   routine overwrites it. MYNN runs `mym_initialize`
+   (`module_bl_mynnedmf.F:1132-1305`): five passes of `q_sq = (b1 l P)^(2/3)`
+   with the length scale recomputed, i.e. it starts at local equilibrium.
+3. Deardorff stable limit `l <= 0.53 q/N` (`:441-445`) — correct physics, MYNN
+   has the same one, 0.08 m at the floor, so it adds nothing once (1) has fired.
+4. Strain cap `Sk/eps <= 6`, equivalently `l <= 0.72 q/S` (`:1603-1612`) — the
+   third `l ~ q` bound. See the measurement below: it throttles ignition, it is
+   not the reason equilibrium turbulence is missing.
+
+### Measured
+
+| at 02:00 | 3D closure | MYNN control |
+|---|---|---|
+| `q_sq`, lowest ~100 m | 0.085, still rising linearly | 0.316, equilibrated by 01:30 |
+| ratio 3D/MYNN, flat 0-3 deg / steep 22-40 deg | 0.14 / 0.36 | — |
+| 10 m wind bias 3D - MYNN, flat / steep | -0.32 / +0.56 m s^-1 | — |
+| median `l` at 85 m AGL | **0.42 m** | **6.7 m** |
+| `l` where `q_sq` is at its floor | **0.09-0.10 m** (= `alpha`) | n/a |
+| cells at the floor, lowest 5 levels, 01:10 / 01:30 / 02:00 | 65% / 41% / 27% | — |
+| strain cap binding, lowest 5 levels, 01:38 | 38% (15% with `l` cut >2x) | no such cap |
+
+Strain cap, fixed run at 01:38, lowest five levels, live cells: where it binds,
+production over dissipation has median **1.19** (63% above 1) — those cells are
+*growing*; where it does not bind, 0.81; without the cap they would sit at median
+**3.0**. So it slows ignition ~2.5x and holds nothing down at equilibrium. Its
+equilibrium footprint duplicates the Deardorff limit (both kill turbulence above
+Ri ~ 0.13 for these constants). **Correction:** the 4.1% footprint quoted in A9
+was diluted over all 80 levels; in the drainage layer it is 38%.
+
+Conventions verified: `Q_SQ_SHEAR = -2 sum tau_ij dU_i/dx_j` and
+`Q_SQ_DISSIP = 2 q^3 / (b1 l)` are both twice the TKE quantities, so P/eps is the
+ratio of the two fields directly.
+
+### Consequence for A9 and A10 (inferred)
+
+The three open handover items — "is the damping too strong", the A10 pairing
+defect, and the "unexplained" slope-dependent near-surface wind bias — are one
+problem. The wind bias needs no slope-dependent cause: turbulence is the *brake*
+on a locally forced drainage wind (3D too fast on slopes) and the *conveyor* for a
+remotely forced valley-floor wind (3D too slow on flat ground). The A9
+length-scale unification is not the cause of the deficit: it moved `q_sq` by
+20-30%, the deficit is 3.7x.
+
+### What is being done
+
+Two source changes, both **default-off** so the rebuilt binary reproduces 8476273:
+a floor on the asymptotic length scale (`pbl3d_l0_min`, default 0.0; 8 m and 4 m
+in experiments) and an equilibrium initialisation (`pbl3d_init_opt`, default 0)
+using the closure's own level-2 solution. Plus diagnostics `L0_ASYM`,
+`PBL3D_P_EPS`, and `KE_LOSS_H`/`QSQ_SHEAR_H` for A10; and a default-off
+stratification-aware strain cap (`pbl3d_limiter_opt=2`) built in the same
+reconfigure but not run this round. Six 6 h runs, 01:00 -> 07:00 through sunrise,
+vary the initialisation, the floor value and the cap against the MYNN control,
+stratified by slope bin x height bin. Table and decision rule in `DECISIONS.md`.
+
+A production/dissipation balance limiter was designed and **withdrawn**: its
+premise was that capped cells sit in decay, and they measure P/eps = 1.19.
+
+### Falsification
+
+If the candidate run (floor 8 m plus equilibrium start) still sits more than 2x
+below the MYNN control at 04:00-06:00 in the lowest 100 m, then the bootstrap is
+not the limiting factor and the remaining deficit lives in the closure constants
+and stability functions, or in the Deardorff coefficient — not in the length-scale
+floor or the initial condition.
