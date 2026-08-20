@@ -6,6 +6,20 @@ You are picking up an operational WRF setup that spent 2026-08-19 on **MUSICA**
 nodes and so could not use the fragments). Nothing about the science or the build
 failed there — the move is purely about queue access.
 
+## How to report back
+
+- **Physics first.** Lead with what a number means for the flow — eddy size,
+  dissipation rate, wind speed, stratification. Numerics matter only through
+  their effect on a physical quantity; name that effect.
+- **Define every variable on first use in an answer**: full name, what it
+  physically is, units. Not "`q_sq` rose" but "`q_sq` — twice the turbulence
+  kinetic energy, m² s⁻² — rose".
+- **Concise.** Answer what was asked; offer detail rather than dumping it.
+- **No internal labels in output.** Commit-group letters, internal change
+  numbering, agent names — keep them in the repo, name a change by what it does.
+- **Separate measured from inferred.** State which is which, and retract a
+  number the moment its method fails a sanity check.
+
 ## Read these first, in this order
 
 1. **`HANDOVER_MUSICA_TO_VSC5.md`** — what was learned, what is ruled out, what
