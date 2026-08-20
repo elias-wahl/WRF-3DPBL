@@ -101,6 +101,26 @@
       !   only where l and q have genuinely decoupled, which is what it is for.
       !   Set from the namelist (pbl3d_n_tau_max, default 0.53); a very large value disables it.
     real,    public    :: SK_EPS_MAX, N_TAU_MAX
+      ! Floor on the asymptotic length scale l0 (pbl3d_l0_min, m; 0 disables). With the
+      ! turbulent-excess weighting (pbl3d_l0_opt = 1) the l0 integral carries no
+      ! information where q^2 sits at its floor, and its numerator and denominator then
+      ! sit at their SMALL_VAL seeds, so l0 = alpha * SMALL_VAL / SMALL_VAL = alpha, i.e.
+      ! 0.1 m. Every bound on l downstream (kappa z blend, buoyancy limit, strain limit)
+      ! is then either at or below that, the stresses scale like l q, and a layer at the
+      ! floor cannot produce its way off it: a spurious laminar fixed point, measured in
+      ! job 8476273 as l = 0.09-0.10 m over 27-65 % of the lowest five levels in the first
+      ! hour. The floor removes that branch and nothing else: kappa z still binds near
+      ! the wall, the buoyancy limit still binds in stable air, so stable free air stays
+      ! laminar and neutral sheared layers can ignite, which is what the level-2 criterion
+      ! says they should. MYNN bounds its equivalent to [8, 400] m. Default 0 keeps the
+      ! previous behaviour bit for bit.
+    real,    public    :: L0_MIN
+      ! Strain limiter flavour (pbl3d_limiter_opt): 1 = fixed cap S k / eps <= SK_EPS_MAX;
+      ! 2 = the cap is scaled by the closure's own level-2 equilibrium S k / eps at the
+      ! local Richardson number, Sqrt (Sm_neutral / Sm_l2 (Ri)), so that SK_EPS_MAX keeps
+      ! its neutral meaning ("twice the equilibrium value") in stable shear, where
+      ! equilibrium S k / eps rises as Sm falls. Default 1.
+    integer, public    :: LIMITER_OPT
     real,    parameter :: STRAIN_MIN = 1.0E-10   ! avoids 0/0 in the strain limiter
     real,    parameter :: COND_MAX   = 1.0E8     ! largest admitted condition number of A
     real,    parameter :: L_BACKOFF  = 0.5       ! l reduction factor per escalation step
@@ -119,6 +139,7 @@
       ! For the level 2 model
     real :: rif_c, rf1, rf2, cm, ch2
     real :: fac1, fac2, fac3, fac4
+    real :: sm_neutral_l2   ! level-2 Sm at Rif = 0, used by LIMITER_OPT = 2
 
     integer, parameter :: I_TO_TEST = 4, J_TO_TEST = 4, K_TO_TEST = 3
 
@@ -127,7 +148,7 @@
     subroutine Calc_turb_fluxes_my (config_flags, dz, z_at_mass, z_at_w, u, v, w, th, th2, qv, thetav, tsk, t2, q2, psfc, rho, ust, hfx, qfx, rmol, &
               du_dx, du_dy, du_dz, dv_dx, dv_dy, dv_dz, dw_dx, dw_dy, dw_dz, dqv_dx, dqv_dy, dqv_dz, dthetav_dx, dthetav_dy, dthetav_dz, &
               dqc_dz, dqr_dz, dqi_dz, dqs_dz, dqg_dz, dqnc_dz, dqnr_dz, dqni_dz, dqnwfa_dz, dqnifa_dz, itimestep, ss, n_tracer, q_sq, q_sq_prog, &
-              Psig_bl, l_master, l_master_at_mass, l_boulac, turb_flux_u2, turb_flux_v2, turb_flux_w2, turb_flux_uv, &
+              Psig_bl, l_master, l_master_at_mass, l_boulac, l0_asym, turb_flux_u2, turb_flux_v2, turb_flux_w2, turb_flux_uv, &
               turb_flux_uw, turb_flux_vw, turb_flux_utheta_v, turb_flux_vtheta_v, turb_flux_wtheta_v, turb_flux_theta2_v, turb_flux_uqv, &
               turb_flux_vqv, turb_flux_wqv, turb_flux_utheta, turb_flux_vtheta, turb_flux_wtheta, turb_flux_uqc, turb_flux_vqc, &
               turb_flux_wqc, turb_flux_uqr, turb_flux_vqr, turb_flux_wqr, turb_flux_uqi, turb_flux_vqi, turb_flux_wqi, &
@@ -135,7 +156,7 @@
               turb_flux_wqnc, turb_flux_uqnr, turb_flux_vqnr, turb_flux_wqnr, turb_flux_uqni, turb_flux_vqni, turb_flux_wqni, &
               turb_flux_uqnwfa, turb_flux_vqnwfa, turb_flux_wqnwfa, turb_flux_uqnifa, turb_flux_vqnifa, turb_flux_wqnifa, &
               msfux, msfuy, msfvx, msfvy, msftx, msfty, xland, pblh, &
-              pbl3d_t1_ratio, pbl3d_t2_steps, pbl3d_t3_flags, pbl3d_sk_eps, pbl3d_n_tau, pbl3d_cond_a, pbl3d_qv2, &
+              pbl3d_t1_ratio, pbl3d_t2_steps, pbl3d_t3_flags, pbl3d_sk_eps, pbl3d_n_tau, pbl3d_cond_a, pbl3d_qv2, pbl3d_p_eps, &
               dx, dy, rdx, rdy, dn, dnw, rdz, dt, id, rdzw, fnm, fnp, cf1, cf2, cf3, zx, zy, mut, c1h, c2h, ids, ide, jds, jde, kds, kde, &
               ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
@@ -159,11 +180,13 @@
       real, dimension (ims:ime, kms:kme, jms:jme), intent (inout) :: q_sq, q_sq_prog
       real, dimension (ims:ime, kms:kme, jms:jme), intent (out)   :: pbl3d_t1_ratio, pbl3d_t2_steps, &
                                                                      pbl3d_t3_flags, pbl3d_sk_eps,   &
-                                                                     pbl3d_n_tau, pbl3d_cond_a, pbl3d_qv2
+                                                                     pbl3d_n_tau, pbl3d_cond_a, pbl3d_qv2, &
+                                                                     pbl3d_p_eps
       real, dimension (its:ite, kts:kte, jts:jte), intent (in)   :: du_dx, du_dy, du_dz, dv_dx, dv_dy, dv_dz, &
           dw_dx, dw_dy, dw_dz, dthetav_dx, dthetav_dy, dthetav_dz, dqv_dx, dqv_dy, dqv_dz, dqc_dz, dqr_dz,    &
           dqi_dz, dqs_dz, dqg_dz, dqnc_dz, dqnr_dz, dqni_dz, dqnwfa_dz, dqnifa_dz
       real, dimension (ims:ime, kms:kme, jms:jme), intent (inout) :: l_master, l_master_at_mass, l_boulac
+      real, dimension (ims:ime, jms:jme),          intent (inout) :: l0_asym
       real, dimension (ims:ime, jms:jme),          intent (in)    :: msfux, msfuy, msfvx, msfvy, msftx, msfty
       real, dimension (ims:ime, jms:jme),          intent (in)    :: tsk, t2, thetav, q2, psfc, ust, hfx, qfx, rmol, xland
       real, dimension (ims:ime, jms:jme),          intent (inout) :: pblh, Psig_bl
@@ -197,7 +220,7 @@
           ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
       if (config_flags%pbl3d_opt < 2) then  ! PBL approx analytical solution only
-        call Calc_fluxes_pbl_approx (config_flags, ss, Psig_bl, l_master, l_boulac, du_dz, dv_dz, dthetav_dz, dqv_dz, &
+        call Calc_fluxes_pbl_approx (config_flags, ss, Psig_bl, l_master, l_boulac, l0_asym, du_dz, dv_dz, dthetav_dz, dqv_dz, &
             dqc_dz, dqr_dz, dqi_dz, dqs_dz, dqg_dz, dqnc_dz, dqnr_dz, dqni_dz, dqnwfa_dz, dqnifa_dz, &
             th2, qv, dn, dnw, fnm, fnp, dx, dy, dz, z_at_w, zx, zy, msftx, msfty, rdz, rdzw, cf1, cf2, cf3, dt, id, &
             ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts,    &
@@ -212,14 +235,14 @@
             turb_flux_uqnwfa, turb_flux_vqnwfa, turb_flux_wqnwfa, turb_flux_uqnifa, turb_flux_vqnifa, turb_flux_wqnifa, &
             u, v, w, thetav, rho, ust, hfx, qfx, rmol)
       else if (config_flags%pbl3d_opt == 2) then  ! Full 3D numerical solution
-        call Calc_fluxes (config_flags, id, config_flags%specified, q_sq, q_sq_prog, Psig_bl, l_master, l_boulac, &
+        call Calc_fluxes (config_flags, id, config_flags%specified, q_sq, q_sq_prog, Psig_bl, l_master, l_boulac, l0_asym, &
             du_dx, du_dy, du_dz, dv_dx, dv_dy,   &
             dv_dz, dw_dx, dw_dy, dw_dz, dthetav_dx, dthetav_dy, dthetav_dz, dqv_dx, dqv_dy,  &
             dqv_dz, turb_flux_u2, turb_flux_v2, turb_flux_w2, turb_flux_uv, turb_flux_uw,    &
             turb_flux_vw, turb_flux_utheta_v, turb_flux_vtheta_v, turb_flux_wtheta_v,        &
             turb_flux_theta2_v, turb_flux_utheta, turb_flux_vtheta, turb_flux_wtheta,        &
             turb_flux_uqv, turb_flux_vqv, turb_flux_wqv, th2, thetav, qv, rho, hfx, qfx, rmol, u, v, ust,  &
-            pbl3d_t1_ratio, pbl3d_t2_steps, pbl3d_t3_flags, pbl3d_sk_eps, pbl3d_n_tau, pbl3d_cond_a, pbl3d_qv2,       &
+            pbl3d_t1_ratio, pbl3d_t2_steps, pbl3d_t3_flags, pbl3d_sk_eps, pbl3d_n_tau, pbl3d_cond_a, pbl3d_qv2, pbl3d_p_eps, &
             dz, rdzw, z_at_w, fnm, fnp, cf1, cf2, cf3, dn, dnw, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme,  &
             its, ite, jts, jte, kts, kte)
       end if
@@ -312,7 +335,7 @@
 
 
     subroutine Calc_l_master_algebra (pbl3d_l_opt, pbl3d_l0_opt, q_sq, dz, rdzw, rmol, wthv, dthetav_dz, l_master, &
-              l_boulac, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+              l_boulac, l0_asym, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         !                                                             !
@@ -334,6 +357,8 @@
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in) :: wthv
       real, dimension (its:ite, kts:kte, jts:jte), intent (in) :: dthetav_dz
       real, dimension (ims:ime, kms:kme, jms:jme), intent (out) :: l_master, l_boulac
+        ! Asymptotic length scale l0 after the floor, per column; history field L0_ASYM.
+      real, dimension (ims:ime, jms:jme),          intent (inout) :: l0_asym
       integer,                                     intent (in)  :: ids, ide, jds, jde, kds, kde, &
                                                                    ims, ime, jms, jme, kms, kme, &
                                                                    its, ite, jts, jte, kts, kte
@@ -422,6 +447,14 @@
             l0 = alpha * l0_num / l0_den
           else if (pbl3d_l_opt == 2) then  ! MYNN alpha
             l0 = alpha_1 * l0_num / l0_den
+          end if
+            ! Floor on l0 (see L0_MIN at the top of the module). Applied to l0 alone: the
+            ! kappa z blend below and the buoyancy limit after it still bind, so this
+            ! cannot lengthen eddies near the wall or in stable air. It only removes the
+            ! l0 = alpha collapse where nothing in the column has left the q^2 floor.
+          if (L0_MIN > 0.0) l0 = Max (l0, L0_MIN)
+          l0_asym(i, j) = l0
+          if (pbl3d_l_opt == 2) then
             q_c = (G_OVER_TREF * Max (wthv(i, kts, j), 0.0) * l0) ** ( 1.0 / 3.0 )
           end if
 
@@ -508,7 +541,7 @@
 
 
     subroutine Calc_l_messinger_master_algebra (pbl3d_l0_opt, q_sq, dz, rdzw, rmol, wthv, dthetav_dz, l_master, &
-              l_boulac, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+              l_boulac, l0_asym, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         !                                                             !
@@ -530,6 +563,7 @@
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in) :: wthv
       real, dimension (its:ite, kts:kte, jts:jte), intent (in) :: dthetav_dz
       real, dimension (ims:ime, kms:kme, jms:jme), intent (out) :: l_master, l_boulac
+      real, dimension (ims:ime, jms:jme),          intent (inout) :: l0_asym
       integer,                                     intent (in)  :: ids, ide, jds, jde, kds, kde, &
                                                                    ims, ime, jms, jme, kms, kme, &
                                                                    its, ite, jts, jte, kts, kte
@@ -579,6 +613,8 @@
           z_at_walls_1d(ktf + 1) = z_at_walls_1d(ktf) + 1.0 / rdzw(i, ktf, j)
 
           l0 = alpha * l0_num / l0_den
+          if (L0_MIN > 0.0) l0 = Max (l0, L0_MIN)   ! see L0_MIN at the top of the module
+          l0_asym(i, j) = l0
 
           zi = c_g * l0
 
@@ -739,7 +775,7 @@
     end subroutine Calc_l_boulac_master_algebra
 
 
-    subroutine Calc_fluxes_pbl_approx (config_flags, ss, Psig_bl, l_master, l_boulac, du_dz, dv_dz, dthetav_dz, dqv_dz, &
+    subroutine Calc_fluxes_pbl_approx (config_flags, ss, Psig_bl, l_master, l_boulac, l0_asym, du_dz, dv_dz, dthetav_dz, dqv_dz, &
               dqc_dz, dqr_dz, dqi_dz, dqs_dz, dqg_dz, dqnc_dz, dqnr_dz, dqni_dz, dqnwfa_dz, dqnifa_dz, &
               t, qv, dn, dnw, fnm, fnp, dx, dy, dz, z_at_w, zx, zy, msftx, msfty, rdz, rdzw, cf1, cf2, cf3, dt, id, &
               ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts,    &
@@ -780,6 +816,7 @@
       real, dimension (ims:ime, kms:kme, jms:jme), intent (inout) :: q_sq
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: q_sq_prog
       real, dimension (ims:ime, kms:kme, jms:jme), intent (inout) :: l_master, l_boulac
+      real, dimension (ims:ime, jms:jme),          intent (inout) :: l0_asym
       real, dimension (ims:ime, kms:kme, jms:jme), intent (out)   :: turb_flux_u2, &
           turb_flux_v2, turb_flux_w2, turb_flux_uv, turb_flux_uw, turb_flux_vw,        &
           turb_flux_utheta_v, turb_flux_vtheta_v, turb_flux_wtheta_v,                  &
@@ -820,13 +857,14 @@
         ! Diagnose master length scale at faces
       if (config_flags%pbl3d_l_opt < 3) then
         call Calc_l_master_algebra (config_flags%pbl3d_l_opt, config_flags%pbl3d_l0_opt, q_sq, dz, rdzw, rmol, turb_flux_wtheta_v, dthetav_dz, l_master, &
-            l_boulac, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+            l_boulac, l0_asym, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
       else if (config_flags%pbl3d_l_opt == 3) then
         call Calc_l_boulac_master_algebra (q_sq, dz, t, dlu, dld, dls, dlk, l_master, l_boulac, &
             ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+        l0_asym(its:ite, jts:jte) = 0.0   ! BouLac has no asymptotic length scale
       else
         call Calc_l_messinger_master_algebra (config_flags%pbl3d_l0_opt, q_sq, dz, rdzw, rmol, turb_flux_wtheta_v, dthetav_dz, l_master, &
-            l_boulac, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+            l_boulac, l0_asym, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
       end if
 
         ! Apply scale-aware tapering
@@ -993,13 +1031,13 @@
     end subroutine Prep_for_fluxes_l2p5_pbl_approx
 
 
-    subroutine Calc_fluxes (config_flags, id, specified, q_sq, q_sq_prog, Psig_bl, l_master, l_boulac, du_dx, du_dy, du_dz, dv_dx, dv_dy,  &
+    subroutine Calc_fluxes (config_flags, id, specified, q_sq, q_sq_prog, Psig_bl, l_master, l_boulac, l0_asym, du_dx, du_dy, du_dz, dv_dx, dv_dy,  &
         dv_dz, dw_dx, dw_dy, dw_dz, dthetav_dx, dthetav_dy, dthetav_dz, dqv_dx, dqv_dy, &
         dqv_dz, turb_flux_u2, turb_flux_v2, turb_flux_w2, turb_flux_uv, turb_flux_uw,   &
         turb_flux_vw, turb_flux_utheta_v, turb_flux_vtheta_v, turb_flux_wtheta_v,       &
         turb_flux_theta2_v, turb_flux_utheta, turb_flux_vtheta, turb_flux_wtheta,       &
         turb_flux_uqv, turb_flux_vqv, turb_flux_wqv, t, thetav, qv, rho, hfx, qfx, rmol, u, v, ust, &
-        pbl3d_t1_ratio, pbl3d_t2_steps, pbl3d_t3_flags, pbl3d_sk_eps, pbl3d_n_tau, pbl3d_cond_a, pbl3d_qv2,   &
+        pbl3d_t1_ratio, pbl3d_t2_steps, pbl3d_t3_flags, pbl3d_sk_eps, pbl3d_n_tau, pbl3d_cond_a, pbl3d_qv2, pbl3d_p_eps, &
         dz, rdzw, z_at_w, fnm, fnp, cf1, cf2, cf3, dn, dnw, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, &
         its, ite, jts, jte, kts, kte)
 
@@ -1035,10 +1073,12 @@
                                                                      turb_flux_wtheta, turb_flux_uqv,          &
                                                                      turb_flux_vqv, turb_flux_wqv,             &
                                                                      q_sq, l_master, l_boulac
+      real, dimension (ims:ime, jms:jme),          intent (inout) :: l0_asym
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: q_sq_prog
       real, dimension (ims:ime, kms:kme, jms:jme), intent (out)   :: pbl3d_t1_ratio, pbl3d_t2_steps, &
                                                                      pbl3d_t3_flags, pbl3d_sk_eps,   &
-                                                                     pbl3d_n_tau, pbl3d_cond_a, pbl3d_qv2
+                                                                     pbl3d_n_tau, pbl3d_cond_a, pbl3d_qv2, &
+                                                                     pbl3d_p_eps
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: u, v, rho, t, thetav, qv
       real, dimension (ims:ime, jms:jme),          intent (in)    :: ust, hfx, qfx, rmol
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: dz, rdzw, z_at_w
@@ -1055,7 +1095,7 @@
       real (kind = SOLVER_PREC) :: tf_utv, tf_vtv, tf_wtv, tf_uqv, tf_vqv, tf_wqv
 
       integer :: n_backoff_pt, n_backoff_tot, n_pts_limited
-      real    :: dg_t1_ratio, dg_t3_flags, dg_sk_eps, dg_n_tau, dg_qv2
+      real    :: dg_t1_ratio, dg_t3_flags, dg_sk_eps, dg_n_tau, dg_qv2, dg_p_eps
         ! Summary counters, binned by stratification so the report says under WHICH
         ! conditions each tier fired, not only how often.
       integer :: n_pts_tot, n_t1, n_t2, n_t2_max, n_t3(8)
@@ -1129,13 +1169,14 @@
         ! Diagnose master length scale at faces
       if (config_flags%pbl3d_l_opt < 3) then
         call Calc_l_master_algebra (config_flags%pbl3d_l_opt, config_flags%pbl3d_l0_opt, q_sq, dz, rdzw, rmol, turb_flux_wtheta_v, dthetav_dz, l_master, &
-            l_boulac, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+            l_boulac, l0_asym, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
       else if (config_flags%pbl3d_l_opt == 3) then
         call Calc_l_boulac_master_algebra (q_sq, dz, t, dlu, dld, dls, dlk, l_master, l_boulac, &
             ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+        l0_asym(its:ite, jts:jte) = 0.0   ! BouLac has no asymptotic length scale
       else
         call Calc_l_messinger_master_algebra (config_flags%pbl3d_l0_opt, q_sq, dz, rdzw, rmol, turb_flux_wtheta_v, dthetav_dz, l_master, &
-            l_boulac, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+            l_boulac, l0_asym, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
       end if
 
         ! Apply scale-aware tapering
@@ -1159,6 +1200,7 @@
       pbl3d_n_tau   (its:ite, kts:kte, jts:jte) = 0.0
       pbl3d_cond_a  (its:ite, kts:kte, jts:jte) = 0.0
       pbl3d_qv2     (its:ite, kts:kte, jts:jte) = 0.0
+      pbl3d_p_eps   (its:ite, kts:kte, jts:jte) = 0.0
 
       loop_j: do j = j_start, j_end
         loop_k: do k = kts + 1, ktf
@@ -1187,7 +1229,7 @@
                   turb_flux_vw(i, k, j), turb_flux_utheta_v(i, k, j), turb_flux_vtheta_v(i, k, j), turb_flux_wtheta_v(i, k, j),      &
                   turb_flux_theta2_v(i, k, j), turb_flux_uqv(i, k, j), turb_flux_vqv(i, k, j), turb_flux_wqv(i, k, j), tf_utv,       &
                   tf_vtv, tf_wtv, tf_uqv, tf_vqv, tf_wqv, mat_cond_heat(i, k, j), mat_cond_moist(i, k, j), n_backoff_pt,       &
-                  dg_t1_ratio, dg_t3_flags, dg_sk_eps, dg_n_tau, dg_qv2                                                        )
+                  dg_t1_ratio, dg_t3_flags, dg_sk_eps, dg_n_tau, dg_qv2, dg_p_eps                                              )
 
               if (n_backoff_pt > 0) then
                 n_backoff_tot = n_backoff_tot + n_backoff_pt
@@ -1202,6 +1244,7 @@
               pbl3d_n_tau   (i, k, j) = dg_n_tau
               pbl3d_cond_a  (i, k, j) = mat_cond_heat(i, k, j)
               pbl3d_qv2     (i, k, j) = dg_qv2
+              pbl3d_p_eps   (i, k, j) = dg_p_eps
 
                 ! One master length scale. Tier 1 has just decided the energy-containing
                 ! eddies are smaller than l_master; in Mellor-Yamada that same l sets both
@@ -1521,7 +1564,7 @@
         dthetav_dx, dthetav_dy, dthetav_dz, dqv_dx, dqv_dy, dqv_dz, turb_flux_u2, turb_flux_v2, turb_flux_w2, turb_flux_uv,        &
         turb_flux_uw, turb_flux_vw, turb_flux_utheta_v, turb_flux_vtheta_v, turb_flux_wtheta_v, turb_flux_theta2_v, turb_flux_uqv, &
         turb_flux_vqv, turb_flux_wqv, tf_utv, tf_vtv, tf_wtv, tf_uqv, tf_vqv, tf_wqv, mat_cond_heat, mat_cond_moist, n_backoff,   &
-        dg_t1_ratio, dg_t3_flags, dg_sk_eps, dg_n_tau, dg_qv2                                                               )
+        dg_t1_ratio, dg_t3_flags, dg_sk_eps, dg_n_tau, dg_qv2, dg_p_eps                                                     )
 
       implicit none
 
@@ -1548,6 +1591,10 @@
         ! history field so that the moisture-side Cauchy-Schwarz bounds can be checked
         ! directly against turb_flux_wqv and turb_flux_w2 in the output.
       real,    intent (out) :: dg_qv2
+        ! Shear production over dissipation at this point, P / eps with
+        ! P = -tau_ij dU_i/dx_j from the accepted stresses and eps = q^3 / (b_1 l) with the
+        ! Tier-1-limited l the dissipation term will actually use. Diagnostic only.
+      real,    intent (out) :: dg_p_eps
       real (kind = SOLVER_PREC), intent (out) :: tf_utv, tf_vtv, tf_wtv, tf_uqv, tf_vqv, tf_wqv
 
         ! Local vars
@@ -1557,6 +1604,8 @@
                                    dw_dx_tmp, du_dz_tmp, dw_dy_tmp, dv_dz_tmp, dthetav_dx_tmp, &
                                    dthetav_dy_tmp, dthetav_dz_tmp, dqv_dx_tmp, dqv_dy_tmp, dqv_dz_tmp
       real (kind = SOLVER_PREC) :: strain_mag, l_use, div_u
+      real (kind = SOLVER_PREC) :: cap_eff, p0, eps0
+      real                      :: sm_loc
       integer :: n_try, n_t3_flags
       logical :: solve_ok
 
@@ -1600,7 +1649,22 @@
                         + (du_dy_tmp + dv_dx_tmp) ** 2 + (du_dz_tmp + dw_dx_tmp) ** 2               &
                         + (dv_dz_tmp + dw_dy_tmp) ** 2 )
 
-      l_use = Min ( l, Real (2.0 * SK_EPS_MAX / b_1, kind = SOLVER_PREC) * q     &
+        ! Effective cap. LIMITER_OPT = 1: the fixed SK_EPS_MAX. LIMITER_OPT = 2: scaled by
+        ! Sqrt (Sm_neutral / Sm_l2 (Ri)), the ratio of the closure's own level-2 equilibrium
+        ! S k / eps at the local (vertical) Richardson number to its neutral value -- in
+        ! equilibrium l S / q = 1 / Sqrt (b_1 Sm), so S k / eps = Sqrt (b_1 / Sm) / 2 rises as
+        ! Sm falls with stability. SK_EPS_MAX = 6 is about twice the neutral equilibrium
+        ! value (3.3 for MY82); option 2 keeps that margin at every Ri instead of letting
+        ! the cap bind at equilibrium in stable shear. Sm is floored at 0.02 so the cap
+        ! stays finite as Ri -> Ri_c.
+      cap_eff = Real (SK_EPS_MAX, kind = SOLVER_PREC)
+      if (LIMITER_OPT == 2) then
+        sm_loc  = Sm_level2_local (du_dz, dv_dz, dthetav_dz)
+        cap_eff = cap_eff * Sqrt (Real (sm_neutral_l2, kind = SOLVER_PREC)                  &
+                                  / Max (Real (sm_loc, kind = SOLVER_PREC), 0.02_SOLVER_PREC))
+      end if
+
+      l_use = Min ( l, 2.0_SOLVER_PREC * cap_eff / Real (b_1, kind = SOLVER_PREC) * q     &
                        / Max (strain_mag, Real (STRAIN_MIN, kind = SOLVER_PREC)) )
 
         ! S k / eps = |S| b_1 l / (2 q), from k = q^2/2 and eps = q^3/(b_1 l).
@@ -1707,6 +1771,19 @@
 
       dg_t3_flags = Real (n_t3_flags, kind = WORKING_PREC)
       dg_qv2      = Real (tf_qv2, kind = WORKING_PREC)
+
+        ! P / eps diagnostic (PBL3D_P_EPS). P = -tau_ij dU_i/dx_j from the accepted
+        ! stresses, the same contraction Calc_q_sq_shear forms at mass points; eps =
+        ! q^3 / (b_1 l dg_t1_ratio), the dissipation the q^2 budget will see once
+        ! Calc_fluxes writes the Tier-1 result back into l_master. Buoyancy production is
+        ! deliberately not included. Faces here, mass points in the budget, so
+        ! Q_SQ_SHEAR / Q_SQ_DISSIP in the output will not equal this exactly.
+      p0   = - ( tf_u2 * du_dx_tmp + tf_v2 * dv_dy_tmp + tf_w2 * dw_dz_tmp                 &
+               + tf_uv * (du_dy_tmp + dv_dx_tmp) + tf_uw * (du_dz_tmp + dw_dx_tmp)         &
+               + tf_vw * (dv_dz_tmp + dw_dy_tmp) )
+      eps0 = q ** 3 / ( Real (b_1, kind = SOLVER_PREC)                                     &
+                      * Max (l * Real (dg_t1_ratio, kind = SOLVER_PREC), Tiny (l)) )
+      dg_p_eps = Real (p0 / Max (eps0, Tiny (eps0)), kind = WORKING_PREC)
 
         ! Convert vars from double prec to single prec
       turb_flux_u2 = Solver_to_working_prec(tf_u2)
@@ -4149,9 +4226,46 @@
       fac3 = 2.0 * (a_1 / a_2) * (e3 * e5 - 2.0 * e1 * e4 ) / (e5 * e5)
       fac4 = (a_1 * e3 / (a_2 * e5) ) ** 2.0
 
+        ! Eq. 9a Y75 at Rif = 0 (neutral): the reference value for the Ri-aware strain cap.
+      sm_neutral_l2 = cm * rif_c * rf1 / rf2
+
       if (DEBUG) print *, 'Done Set_my_l2_global_vars...'
 
     end subroutine Set_my_l2_global_vars
+
+
+    pure function Sm_level2_local (du_dz, dv_dz, dthetav_dz) result (sm)
+
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !                                                                              !
+      ! Purpose: Level-2 momentum stability function Sm at one point from the local   !
+      !          vertical shear and stratification (Y75 Eqs. on p. 929 and 9a); the   !
+      !          same algebra as the 'l2' branch of Calc_sm_sh_l2_or_l2p5, made       !
+      !          callable per point for the Ri-aware strain cap (LIMITER_OPT = 2).     !
+      !                                                                              !
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+      implicit none
+
+      real, intent (in) :: du_dz, dv_dz, dthetav_dz
+      real              :: sm
+      real              :: ri, rif
+
+      if (abs (du_dz) < DWIND_DZ_MIN .and. abs (dv_dz) < DWIND_DZ_MIN) then
+        ri = G_OVER_TREF * dthetav_dz / (2.0 * DWIND_DZ_MIN * DWIND_DZ_MIN)
+      else
+        ri = G_OVER_TREF * dthetav_dz / (du_dz ** 2 + dv_dz ** 2)
+      end if
+
+      rif = fac1 * (ri + fac2 - sqrt (ri * ri + fac3 * ri + fac4))
+
+      if (rif < rif_c) then
+        sm = cm * (rif_c - rif) * (rf1 - rif) / ((1.0 - rif) * (rf2 - rif))
+      else
+        sm = 0.0
+      end if
+
+    end function Sm_level2_local
 
 
     subroutine Set_my_qsq_min (pbl3d_prog)
@@ -4187,7 +4301,8 @@
 
     subroutine Set_init_turb_state_my (restart, pbl3d_constants,                &
               pbl3d_nsteps, pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt,  &
-              pbl3d_sk_eps_max, pbl3d_n_tau_max,                                                 &
+              pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt,                  &
+              pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min,                  &
               ids, ide, jds, jde, kds, kde,                                     &
               ims, ime, jms, jme, kms, kme,                                     &
               its, ite, jts, jte, kts, kte,                                     &
@@ -4198,7 +4313,7 @@
               du_dz, dv_dz, dthetav_dz, dqv_dz,                                 &
               q_sq, q_sq_prog, q_sq_vdiff, q_sq_hdiff, q_sq_shear,              &
               q_sq_buoyancy, q_sq_dissip,                                       &
-              l_master, l_master_at_mass,                                       &
+              l_master, l_master_at_mass, l0_asym,                              &
               turb_flux_u2, turb_flux_v2, turb_flux_w2, turb_flux_uv,           &
               turb_flux_uw, turb_flux_vw, turb_flux_utheta_v,                   &
               turb_flux_vtheta_v, turb_flux_wtheta_v, turb_flux_theta2_v,       &
@@ -4219,7 +4334,8 @@
 
       logical, intent(in) :: restart
       integer, intent(in) :: pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt, pbl3d_nsteps
-      real,    intent(in) :: pbl3d_sk_eps_max, pbl3d_n_tau_max
+      integer, intent(in) :: pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt
+      real,    intent(in) :: pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min
       character (len = *), intent(in) :: pbl3d_constants
       integer, intent(in) :: ids, ide, jds, jde, kds, kde, &
                              ims, ime, jms, jme, kms, kme, &
@@ -4242,12 +4358,16 @@
       real, dimension(ims:ime, kms:kme, jms:jme), intent(in)  :: rdzw, z_at_mass, dz
       real, dimension(its:ite, kts:kte, jts:jte), intent(in)  :: du_dz, dv_dz, &
                                                                  dthetav_dz, dqv_dz
+      real, dimension(ims:ime, jms:jme),          intent(inout) :: l0_asym
       integer, intent(in)  :: itf, jtf, ktf, i_start, i_end, j_start, j_end
 
         ! Local vars
       integer :: i, j, k
       integer :: init_iter
+      integer, parameter :: N_INIT_ITER = 5
       real, dimension (its:ite, kts:kte, jts:jte) :: sm, sh, rif
+      real, dimension (its:ite, kts:kte, jts:jte) :: l_dissip_init
+      real, dimension (:, :, :), allocatable      :: l_boulac_init
 
       if (DEBUG) then
         write (OUTPUT_UNIT, *) 'Inside subroutine Init_turb_mixing_3d:'
@@ -4282,6 +4402,18 @@
       else
         N_TAU_MAX = 0.53
         call wrf_message ('--- WARNING: pbl3d_n_tau_max must be > 0; using 0.53')
+      end if
+
+        ! Floor on the asymptotic length scale (see L0_MIN at the top of the module).
+        ! Zero or negative disables it, which is the pre-2026-08-20 behaviour.
+      L0_MIN = Max (pbl3d_l0_min, 0.0)
+
+        ! Strain limiter flavour (see LIMITER_OPT at the top of the module).
+      if (pbl3d_limiter_opt == 1 .or. pbl3d_limiter_opt == 2) then
+        LIMITER_OPT = pbl3d_limiter_opt
+      else
+        LIMITER_OPT = 1
+        call wrf_message ('--- WARNING: pbl3d_limiter_opt must be 1 or 2; using 1')
       end if
 
       if (restart) return
@@ -4324,53 +4456,86 @@
         end do i_loop_init
       end do j_loop_init
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!! FOR NOW, INITIALIZE TO MIN VALS !!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        ! ---------------------------------------------------------------------------
+        ! Initial turbulence state (pbl3d_init_opt).
+        !
+        ! 0: leave q^2 at its floor everywhere (the pre-2026-08-20 behaviour). In the
+        !    full-3D path every bound on l scales with q, so a column that starts at the
+        !    floor can only be lifted off it by the surface boundary condition diffusing
+        !    upward: job 8476273 took more than an hour and was still rising linearly
+        !    while the MYNN control, which starts at equilibrium, had settled by 01:30.
+        ! 1: level-2 equilibrium, the construction of MYNN's mym_initialize. Iterate
+        !    { stability functions at the local Ri -> q^2 = b_1 l_dissip l_master S^2
+        !    (1 - Rif) Sm, floored -> master length scale from that q^2 }. l_master is
+        !    seeded with dz above, so the first level-2 pass lands at O(0.1-1) m2 s-2 in
+        !    sheared layers and the loop only has to converge l0. Rif >= Rif_c columns
+        !    stay at the floor. Same assumption the MYNN control already makes; the
+        !    transient relaxes within ~30 min. Restart is untouched (early return above).
+        !    Column-local; no halo exchange, the first RK step fills the rest.
+        !
+        ! The level-2 routine sets q_sq(:, kts, :) = Q_SQ_MIN and Calc_l_master_algebra
+        ! integrates l0 from k = kts + 1, so a u*-based seed of the surface face would feed
+        ! nothing; none is applied.
+        ! ---------------------------------------------------------------------------
+      if (pbl3d_init_opt == 1) then
 
-!        ! Calc stability functions
-!      call Calc_sm_sh_l2_or_l2p5 (my_level='l2', du_dz=du_dz, dv_dz=dv_dz, dthetav_dz=dthetav_dz, &
-!          ids=ids, ide=ide, jds=jds, jde=jde, kds=kds, kde=kde, ims=ims, ime=ime, jms=jms, jme=jme, kms=kms, kme=kme, &
-!          its=its, ite=ite, jts=jts, jte=jte, kts=kts, kte=kte, sm=sm, sh=sh, rif=rif)
+        allocate (l_boulac_init(ims:ime, kms:kme, jms:jme))
+        l_boulac_init = 0.0
 
-!      k = 1
-!      do j = j_start, j_end
-!        do i = i_start, i_end
-!          q_sq(i, k, j) = Max(Q_SQ_MIN, b_1 ** (2.0 / 3.0) * ust(i, j) * ust(i, j))
-!        end do
-!      end do
+        do init_iter = 1, N_INIT_ITER
 
-!      do init_iter = 1, 2
-!          ! Calc q_sq
-!        call Calc_q_sq_l2_pbl_approx (l_master=l_master, du_dz=du_dz, dv_dz=dv_dz, dthetav_dz=dthetav_dz, ids=ids, ide=ide, &
-!            jds=jds, jde=jde, kds=kds, kde=kde, ims=ims, ime=ime, jms=jms, jme=jme, kms=kms, kme=kme, its=its, ite=ite, &
-!            jts=jts, jte=jte, kts=kts, kte=kte, q_sq_face=q_sq, sm=sm, rif=rif)
+          call Calc_sm_sh_l2_or_l2p5 (my_level = 'l2', du_dz = du_dz, dv_dz = dv_dz, dthetav_dz = dthetav_dz,       &
+              ids = ids, ide = ide, jds = jds, jde = jde, kds = kds, kde = kde,                                     &
+              ims = ims, ime = ime, jms = jms, jme = jme, kms = kms, kme = kme,                                     &
+              its = its, ite = ite, jts = jts, jte = jte, kts = kts, kte = kte, sm = sm, sh = sh, rif = rif)
 
-!          ! Diagnose master length scale
-!         call Calc_l_master_algebra (config_flags%pbl3d_l_opt, config_flags%pbl3d_l0_opt, q_sq, dz, rdzw, rmol, turb_flux_wtheta_v, dthetav_dz, l_master, &
-!             ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-!      end do
+            ! MY74 makes no distinction between the mixing and the dissipation length
+            ! scale for pbl3d_l_opt < 3; Fill_dissip_length_scale does the same.
+          do j = jts, jtf
+            do k = kts, ktf
+              do i = its, itf
+                if (pbl3d_l_opt == 3) then
+                  l_dissip_init(i, k, j) = 0.5 * (l_master(i, k, j) + l_master(i, k + 1, j))
+                else
+                  l_dissip_init(i, k, j) = l_master(i, k, j)
+                end if
+              end do
+            end do
+          end do
 
-!          ! Diagnose momentum, heat, moisture fluxes for pbl approx
-!      call Diagnose_fluxes_pbl_approx (fnm=fnm, fnp=fnp, t=t_2, qv=qv, ust=ust, hfx=hfx, qfx=qfx, &
-!          sm_tilde=sm, sh_tilde=sh, rif=rif, q_sq=q_sq, l_master=l_master, &
-!          du_dz=du_dz, dv_dz=dv_dz, dthetav_dz=dthetav_dz, dqv_dz=dqv_dz, u2=turb_flux_u2, v2=turb_flux_v2, w2=turb_flux_w2, uv=turb_flux_uv, &
-!          uw=turb_flux_uw, vw=turb_flux_vw, uthv=turb_flux_utheta_v, vthv=turb_flux_vtheta_v, wthv=turb_flux_wtheta_v, th2v=turb_flux_theta2_v, &
-!          uqv=turb_flux_uqv, vqv=turb_flux_vqv, wqv=turb_flux_wqv, uth=turb_flux_utheta, vth=turb_flux_vtheta, wth=turb_flux_wtheta, ids=ids, ide=ide, &
-!          jds=jds, jde=jde, kds=kds, kde=kde, ims=ims, ime=ime, jms=jms, jme=jme, kms=kms, kme=kme, its=its, ite=ite, jts=jts, jte=jte, kts=kts, kte=kte)
+          call Calc_q_sq_l2_pbl_approx (l_master = l_master, l_dissip = l_dissip_init, du_dz = du_dz, dv_dz = dv_dz, &
+              dthetav_dz = dthetav_dz, ids = ids, ide = ide, jds = jds, jde = jde, kds = kds, kde = kde,         &
+              ims = ims, ime = ime, jms = jms, jme = jme, kms = kms, kme = kme,                                 &
+              its = its, ite = ite, jts = jts, jte = jte, kts = kts, kte = kte, q_sq_face = q_sq, sm = sm, rif = rif)
 
-!      call Diagnose_fluxes_surface (pbl3d_sfc_opt, u, v, t_2, rho, dz, qv, ust, hfx, qfx, &
-!          rmol, q_sq, l_master, turb_flux_u2, turb_flux_v2, turb_flux_w2, turb_flux_uv, &
-!          turb_flux_uw, turb_flux_vw, turb_flux_utheta_v, turb_flux_vtheta_v, turb_flux_wtheta_v, &
-!          turb_flux_theta2_v, turb_flux_uqv, turb_flux_vqv, turb_flux_wqv, turb_flux_utheta, turb_flux_vtheta, &
-!          turb_flux_wtheta, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+          if (pbl3d_l_opt < 3) then
+            call Calc_l_master_algebra (pbl3d_l_opt, pbl3d_l0_opt, q_sq, dz, rdzw, rmol, turb_flux_wtheta_v, dthetav_dz, &
+                l_master, l_boulac_init, l0_asym, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme,          &
+                its, ite, jts, jte, kts, kte)
+          else if (pbl3d_l_opt > 3) then
+            call Calc_l_messinger_master_algebra (pbl3d_l0_opt, q_sq, dz, rdzw, rmol, turb_flux_wtheta_v, dthetav_dz, &
+                l_master, l_boulac_init, l0_asym, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme,        &
+                its, ite, jts, jte, kts, kte)
+          end if
+            ! pbl3d_l_opt == 3 (BouLac) needs th and the dl* arrays, which are not available
+            ! here; its l_master keeps the dz seed and Calc_fluxes replaces it on step 1.
 
-!      if (pbl3d_prog == 1) then
-!        call Fill_q_sq_prog_with_q_sq (q_sq_prog, q_sq, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-!          ! Diagnose master length scale at mass points for prognostic TKE
-!        call Fill_l_mass_with_l_face (l_master_at_face, l_master_at_mass, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-!      end if
+        end do
 
+        deallocate (l_boulac_init)
+
+        if (pbl3d_prog == 1) then
+          call Fill_q_sq_prog_with_q_sq (q_sq_prog, q_sq, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+          do j = jts, jtf
+            do k = kts, ktf
+              do i = its, itf
+                l_master_at_mass(i, k, j) = 0.5 * (l_master(i, k, j) + l_master(i, k + 1, j))
+              end do
+            end do
+          end do
+        end if
+
+      end if
       if (DEBUG) print *, 'Done Set_init_turb_state_my...'
 
     end subroutine Set_init_turb_state_my

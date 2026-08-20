@@ -435,6 +435,20 @@ def check(nl):
         elif g("pbl3d_l0_opt", int, 1) == 0:
             note(WARN, "pbl3d_l0_opt=0 makes l0 depend on the model lid height; use it "
                        "only to reproduce pre-group-E runs")
+        if g("pbl3d_init_opt", int, 0) not in (0, 1):
+            note(FATAL, "pbl3d_init_opt must be 0 (q^2 floor) or 1 (level-2 equilibrium)")
+        if g("pbl3d_limiter_opt", int, 1) not in (1, 2):
+            note(FATAL, "pbl3d_limiter_opt must be 1 (fixed S k/eps cap) or 2 (Ri-aware cap)")
+        l0min = g("pbl3d_l0_min", float, 0.0)
+        if l0min < 0:
+            note(FATAL, "pbl3d_l0_min must be >= 0 (m; 0 disables the floor on l0)")
+        elif l0min > 50:
+            note(WARN, "pbl3d_l0_min=%g m exceeds the asymptotic length of a typical stable "
+                       "boundary layer; the floor would set l0 almost everywhere" % l0min)
+        if g("pbl3d_init_opt", int, 0) == 0 and p3 == 2:
+            note(WARN, "pbl3d_init_opt=0 starts q^2 at its floor everywhere; the 3D closure "
+                       "then needs >1 h to spin up (DECISIONS 2026-08-20) -- intended only "
+                       "for the reference run")
         if g("pbl3d_qsq_opt", int, 1) == 0 and p3 == 2:
             note(WARN, "pbl3d_qsq_opt=0 closes q^2 on vertical gradients only, which is "
                        "not self-consistent with the full 3D system")

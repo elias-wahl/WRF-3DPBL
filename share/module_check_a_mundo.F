@@ -408,6 +408,38 @@
       END IF
 
 !-----------------------------------------------------------------------
+! Check the 3D PBL initial-state, limiter and length-scale-floor switches
+!-----------------------------------------------------------------------
+
+      DO i = 1, model_config_rec % max_dom
+         IF ( model_config_rec % pbl3d_init_opt(i) .LT. 0 .OR. &
+              model_config_rec % pbl3d_init_opt(i) .GT. 1 ) THEN
+            wrf_err_message = '--- ERROR: pbl3d_init_opt must be 0 (q^2 floor) or 1 (level-2 equilibrium)'
+            CALL wrf_debug ( 0, TRIM( wrf_err_message ) )
+            count_fatal_error = count_fatal_error + 1
+         END IF
+      ENDDO
+
+      IF ( model_config_rec % pbl3d_limiter_opt .LT. 1 .OR. &
+           model_config_rec % pbl3d_limiter_opt .GT. 2 ) THEN
+         wrf_err_message = '--- ERROR: pbl3d_limiter_opt must be 1 (fixed S k / eps cap) or 2 (Ri-aware cap)'
+         CALL wrf_debug ( 0, TRIM( wrf_err_message ) )
+         count_fatal_error = count_fatal_error + 1
+      END IF
+
+      IF ( model_config_rec % pbl3d_l0_min .LT. 0.0 ) THEN
+         wrf_err_message = '--- ERROR: pbl3d_l0_min must be >= 0 (m; 0 disables the floor on l0)'
+         CALL wrf_debug ( 0, TRIM( wrf_err_message ) )
+         count_fatal_error = count_fatal_error + 1
+      END IF
+
+      IF ( model_config_rec % pbl3d_l0_min .GT. 50.0 ) THEN
+         wrf_err_message = '--- WARNING: pbl3d_l0_min > 50 m is larger than the asymptotic length of a ' // &
+                           'typical stable boundary layer; the floor would then set l0 almost everywhere'
+         CALL wrf_debug ( 0, TRIM( wrf_err_message ) )
+      END IF
+
+!-----------------------------------------------------------------------
 ! Check that the 3D PBL buoyancy length scale limit is usable
 !-----------------------------------------------------------------------
 

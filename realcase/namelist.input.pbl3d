@@ -145,6 +145,9 @@
  pbl3d_constants        = 'MY82',
  pbl3d_sk_eps_max       = 6.0,         ! Durbin (1996) strain limit   [Tier 1]
  pbl3d_n_tau_max        = 0.53,        ! Deardorff (1980) buoyancy limit  [group G]
+ pbl3d_init_opt         = 1,           ! start q^2 at level-2 equilibrium (as MYNN does); 0 = floor everywhere (pre-2026-08-20)
+ pbl3d_l0_min           = 8.0,         ! floor on the asymptotic length scale l0, m; 0 = off (pre-2026-08-20). See DECISIONS 2026-08-20
+ pbl3d_limiter_opt      = 1,           ! 1 fixed S k/eps cap; 2 cap scaled by the level-2 equilibrium value at local Ri (default-off option)
  diff_6th_opt           = 2,           ! stays active with diff_opt=0 -- numerical noise control
  diff_6th_factor        = 0.12,
  diff_6th_slopeopt      = 1,           ! taper the filter off over steep slopes

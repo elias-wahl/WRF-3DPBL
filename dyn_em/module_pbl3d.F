@@ -733,7 +733,7 @@
       call Calc_turb_fluxes_my (config_flags, dz, z_at_mass, z_at_w, u, v, w, th, th2, qv, thetav, tsk, t2, q2, psfc, rho, ust, hfx, qfx, rmol, &
           du_dx, du_dy, du_dz, dv_dx, dv_dy, dv_dz, dw_dx, dw_dy, dw_dz, dqv_dx, dqv_dy, dqv_dz, dthetav_dx, dthetav_dy, dthetav_dz, &
           dqc_dz, dqr_dz, dqi_dz, dqs_dz, dqg_dz, dqnc_dz, dqnr_dz, dqni_dz, dqnwfa_dz, dqnifa_dz, itimestep, ss, n_tracer, q_sq, q_sq_prog, &
-          Psig_bl, l_master, l_master_at_mass, l_boulac, turb_flux_u2, turb_flux_v2, turb_flux_w2, turb_flux_uv, &
+          Psig_bl, l_master, l_master_at_mass, l_boulac, grid%l0_asym, turb_flux_u2, turb_flux_v2, turb_flux_w2, turb_flux_uv, &
           turb_flux_uw, turb_flux_vw, turb_flux_utheta_v, turb_flux_vtheta_v, turb_flux_wtheta_v, turb_flux_theta2_v, turb_flux_uqv, &
           turb_flux_vqv, turb_flux_wqv, turb_flux_utheta, turb_flux_vtheta, turb_flux_wtheta, turb_flux_uqc, turb_flux_vqc, &
           turb_flux_wqc, turb_flux_uqr, turb_flux_vqr, turb_flux_wqr, turb_flux_uqi, turb_flux_vqi, turb_flux_wqi, &
@@ -742,7 +742,7 @@
           turb_flux_uqnwfa, turb_flux_vqnwfa, turb_flux_wqnwfa, turb_flux_uqnifa, turb_flux_vqnifa, turb_flux_wqnifa, &
           msfux, msfuy, msfvx, msfvy, msftx, msfty, xland, pblh, &
           grid%pbl3d_t1_ratio, grid%pbl3d_t2_steps, grid%pbl3d_t3_flags, grid%pbl3d_sk_eps, grid%pbl3d_n_tau, grid%pbl3d_cond_a, &
-          grid%pbl3d_qv2, &
+          grid%pbl3d_qv2, grid%pbl3d_p_eps, &
           dx, dy, rdx, rdy, dn, dnw, rdz, dt, id, rdzw, fnm, fnp, cf1, cf2, cf3, zx, zy, mut, c1h, c2h, ids, ide, jds, jde, kds, kde, &
           ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
@@ -2839,7 +2839,8 @@
               turb_flux_uqnr, turb_flux_vqnr, turb_flux_uqni, turb_flux_vqni, turb_flux_uqnwfa, turb_flux_vqnwfa, &
               turb_flux_uqnifa, turb_flux_vqnifa, khx, khy, n_tracer, tracer, &
               msfux, msfuy, msfvx, msfvy, msftx, msfty, dx, dy, rdx, rdy, rdz, rdzw, fnm, fnp, cf1, cf2, cf3, &
-              zx, zy, dn, dnw, rho, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+              zx, zy, dn, dnw, rho, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, &
+              u_tmp, v_tmp, w_tmp, mut, c1h, c2h, c1f, c2f, ke_loss_h)
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !                                               !
@@ -2898,13 +2899,27 @@
 
       REAL, INTENT(IN) :: rdx, rdy
 
+        ! Energy-closure diagnostic (OPEN_ISSUES A10). u_tmp/v_tmp/w_tmp are the substep
+        ! state the tendencies act on, on their own staggers; mut, c1h/c2h (half levels)
+        ! and c1f/c2f (full levels) decouple the mass-coupled tendencies.
+      REAL, DIMENSION( ims:ime, kms:kme, jms:jme), INTENT(IN)    :: u_tmp, v_tmp, w_tmp
+      REAL, DIMENSION( ims:ime, jms:jme),          INTENT(IN)    :: mut
+      REAL, DIMENSION( kms:kme ),                  INTENT(IN)    :: c1h, c2h, c1f, c2f
+      REAL, DIMENSION( ims:ime, kms:kme, jms:jme), INTENT(INOUT) :: ke_loss_h
+
         ! Local
-      INTEGER :: im
+      INTEGER :: im, i, j, k, ip1, jp1, ktf_h
       REAL, DIMENSION (its-1:ite, kts:kte, jts-1:jte) :: sf_alpha
       REAL, DIMENSION (its:ite, kts:kte, jts:jte) :: hydromet_tend
+      REAL, DIMENSION (its:ite, kts:kte, jts:jte) :: ru_before, rv_before, rw_before
+      REAL :: eu, ev, ew, n_sub
 
       call Calc_slope_factor (config_flags, msftx, msfty, dx, dy, zx, zy, rdzw, sf_alpha, &
           ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+
+      ru_before(its:ite, kts:kte, jts:jte) = ru_tendf(its:ite, kts:kte, jts:jte)
+      rv_before(its:ite, kts:kte, jts:jte) = rv_tendf(its:ite, kts:kte, jts:jte)
+      rw_before(its:ite, kts:kte, jts:jte) = rw_tendf(its:ite, kts:kte, jts:jte)
 
       call Horizontal_mixing_u (ru_tendf, config_flags, turb_flux_u2, turb_flux_uv,  &
           msfux, msfuy, rdx, rdy, fnm, fnp, dnw, zx, zy, rdzw, rho, sf_alpha, &
@@ -2917,6 +2932,45 @@
       call Horizontal_mixing_w (rw_tendf, config_flags, turb_flux_uw, turb_flux_vw, &
           msftx, msfty, rdx, rdy, fnm, fnp, dn, zx, zy, rdz, rho, sf_alpha, &
           ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+
+        ! ---------------------------------------------------------------------------
+        ! ke_loss_h = u_i * (du_i/dt)_horizontal-turbulence, at mass points, m2 s-3.
+        !
+        ! The three Horizontal_mixing_* calls above add the horizontal turbulent flux
+        ! divergence -- including the 1/sf_alpha slope taper and the high-order stencil --
+        ! to the mass-coupled tendencies, so the delta against the snapshot is exactly
+        ! what the model applies. Decoupling: ru/rv carry mu at half levels, rw carries
+        ! mu at full levels; the per-substep /N_PBL3D is undone so the rate is per second.
+        ! u and v are taken at their own stagger and averaged to the mass point with
+        ! Min(i+1, ite) / Min(j+1, jte): the tendency arrays are tile sized, so the last
+        ! column/row of each patch is one-sided (sub-percent in a domain sum). w is
+        ! averaged over the two bounding full levels, which are always both owned.
+        !
+        ! Pointwise this is NOT minus the production: they differ by the divergence of
+        ! the energy flux u_i tau_ij. Compare mass-weighted domain (or column) sums with
+        ! qsq_shear_h / 2; a consistent closure gives zero.
+        ! ---------------------------------------------------------------------------
+      n_sub = Real (Max (config_flags%pbl3d_nsteps, 1))
+      ktf_h = Min (kte, kde - 1)
+      do j = jts, Min (jte, jde - 1)
+        jp1 = Min (j + 1, jte)
+        do k = kts, ktf_h
+          do i = its, Min (ite, ide - 1)
+            ip1 = Min (i + 1, ite)
+            eu = 0.5 * ( u_tmp(i,   k, j) * (ru_tendf(i,   k, j) - ru_before(i,   k, j))        &
+                       + u_tmp(ip1, k, j) * (ru_tendf(ip1, k, j) - ru_before(ip1, k, j)) )      &
+                 / (c1h(k) * mut(i, j) + c2h(k))
+            ev = 0.5 * ( v_tmp(i, k, j  ) * (rv_tendf(i, k, j  ) - rv_before(i, k, j  ))        &
+                       + v_tmp(i, k, jp1) * (rv_tendf(i, k, jp1) - rv_before(i, k, jp1)) )      &
+                 / (c1h(k) * mut(i, j) + c2h(k))
+            ew = 0.5 * ( w_tmp(i, k,     j) * (rw_tendf(i, k,     j) - rw_before(i, k,     j))  &
+                         / (c1f(k)     * mut(i, j) + c2f(k))                                    &
+                       + w_tmp(i, k + 1, j) * (rw_tendf(i, k + 1, j) - rw_before(i, k + 1, j))  &
+                         / (c1f(k + 1) * mut(i, j) + c2f(k + 1)) )
+            ke_loss_h(i, k, j) = (eu + ev + ew) * n_sub
+          end do
+        end do
+      end do
 
       call Horizontal_mixing_s_with_flux (rt_tendf, config_flags, msftx, msfty, rdx, rdy, &
           fnm, fnp, zx, zy, rdz, rdzw, dnw, rho, sf_alpha, turb_flux_utheta, turb_flux_vtheta, &
@@ -5803,10 +5857,11 @@
       if ( config_flags%pbl3d_opt .lt. 2 ) then
         call Calc_q_sq_shear_pbl_approx (N_PBL3D, l_master_at_mass, q_sq_prog, q_sq_shear_tend, q_sq_tend, du_dz, dv_dz, turb_flux_uw, turb_flux_vw, &
             mut, c1, c2, fnm, fnp, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, i_start, i_end, j_start, j_end, ktf)
+        grid%qsq_shear_h(its:ite, kts:kte, jts:jte) = 0.0   ! no horizontal production terms in the 1D approximation
       else
         call Calc_q_sq_shear (N_PBL3D, q_sq_shear_tend, q_sq_tend, du_dx, du_dy, du_dz, dv_dx, dv_dy, dv_dz, dw_dx, dw_dy, dw_dz, &
             turb_flux_u2, turb_flux_uw, turb_flux_v2, turb_flux_vw, turb_flux_w2, turb_flux_uv, mut, c1, c2, fnm, fnp, &
-            ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, i_start, i_end, j_start, j_end, ktf)
+            ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, i_start, i_end, j_start, j_end, ktf, grid%qsq_shear_h)
       end if
 
         !!! Buoyancy !!!
@@ -6209,12 +6264,20 @@
 
     subroutine Calc_q_sq_shear (N_PBL3D, q_sq_shear_tend, q_sq_tend, du_dx, du_dy, du_dz, dv_dx, dv_dy, dv_dz, dw_dx, dw_dy, dw_dz, &
               turb_flux_u2, turb_flux_uw, turb_flux_v2, turb_flux_vw, turb_flux_w2, turb_flux_uv, mut, c1, c2, fnm, fnp, &
-              ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, i_start, i_end, j_start, j_end, ktf)
+              ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, i_start, i_end, j_start, j_end, ktf, qsq_shear_h)
 
       implicit none
 
       real,                                        intent (in)  :: N_PBL3D
       real, dimension (ims:ime, kms:kme, jms:jme), intent (out) :: q_sq_shear_tend
+        ! The six of the nine production terms that pair with the HORIZONTAL turbulent
+        ! momentum tendency (u2 du/dx, uv du/dy, uv dv/dx, v2 dv/dy, uw dw/dx, vw dw/dy).
+        ! Energy-closure diagnostic: that tendency is divided by the slope factor
+        ! (Calc_htend_du/dv/dw) while this production is not, so the mass-weighted domain
+        ! sum of ke_loss_h + qsq_shear_h / 2 measures the energy the subgrid budget is
+        ! credited with that the resolved flow never paid (OPEN_ISSUES A10). History field
+        ! QSQ_SHEAR_H; same sign convention as q_sq_shear_tend (twice the TKE production).
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (out) :: qsq_shear_h
       real, dimension (its:ite, kts:kte, jts:jte), intent (inout) :: q_sq_tend
       real, dimension (its:ite, kts:kte, jts:jte), intent (in)  :: du_dx, du_dy, du_dz,  &
                                                                    dv_dx, dv_dy, dv_dz,  &
@@ -6244,6 +6307,12 @@
                                                turb_flux_uw(i, k, j) * dw_dx(i, k, j) +  &
                                                turb_flux_vw(i, k, j) * dw_dy(i, k, j) +  &
                                                turb_flux_w2(i, k, j) * dw_dz(i, k, j) )
+            qsq_shear_h(i, k, j)     = -2. * ( turb_flux_u2(i, k, j) * du_dx(i, k, j) +  &
+                                               turb_flux_uv(i, k, j) * du_dy(i, k, j) +  &
+                                               turb_flux_uv(i, k, j) * dv_dx(i, k, j) +  &
+                                               turb_flux_v2(i, k, j) * dv_dy(i, k, j) +  &
+                                               turb_flux_uw(i, k, j) * dw_dx(i, k, j) +  &
+                                               turb_flux_vw(i, k, j) * dw_dy(i, k, j) )
             q_sq_tend(i, k, j) = q_sq_tend(i, k, j) + ( (c1(k) * mut(i, j) + c2(k)) * q_sq_shear_tend(i, k, j) / N_PBL3D )
 
             if ( DEBUG .and. i == I_TO_TEST .and. j == J_TO_TEST ) then
@@ -6444,7 +6513,9 @@
 
 
     subroutine Init_pbl3d (restart, pbl3d_opt, pbl3d_sfc_opt, pbl3d_l_opt, pbl3d_prog, pbl3d_constants, &
-              pbl3d_nsteps, pbl3d_sk_eps_max, pbl3d_n_tau_max, fnm, fnp, dnw, ph, phb, t_2, qv, thetav, alt, u, v, ust, hfx, qfx, rmol, &
+              pbl3d_nsteps, pbl3d_sk_eps_max, pbl3d_n_tau_max,                                                        &
+              pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt, pbl3d_l0_min, l0_asym,                                &
+              fnm, fnp, dnw, ph, phb, t_2, qv, thetav, alt, u, v, ust, hfx, qfx, rmol, &
               q_sq, q_sq_prog, q_sq_vdiff, q_sq_hdiff, q_sq_shear, q_sq_buoyancy, q_sq_dissip,                       &
               ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme,               &
               its, ite, jts, jte, kts, kte, l_master, l_master_at_mass, turb_flux_u2,                     &
@@ -6468,7 +6539,9 @@
 
       logical, intent(in) :: restart
       integer, intent(in) :: pbl3d_opt, pbl3d_sfc_opt, pbl3d_l_opt, pbl3d_prog, pbl3d_nsteps
-      real,    intent(in) :: pbl3d_sk_eps_max, pbl3d_n_tau_max
+      integer, intent(in) :: pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt
+      real,    intent(in) :: pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min
+      real, dimension(ims:ime, jms:jme),          intent(inout) :: l0_asym
       character (len = *), intent(in) :: pbl3d_constants
 
         ! Grid vars
@@ -6496,7 +6569,8 @@
 
       call Set_init_turb_state_driver (restart, pbl3d_constants,            &
           pbl3d_nsteps, pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt,  &
-          pbl3d_sk_eps_max, pbl3d_n_tau_max,                                                 &
+          pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt,                  &
+          pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min,                  &
           ids, ide, jds, jde, kds, kde,                                     &
           ims, ime, jms, jme, kms, kme,                                     &
           its, ite, jts, jte, kts, kte,                                     &
@@ -6504,7 +6578,7 @@
           t_2, qv, thetav, alt, u, v, ust, hfx, qfx, rmol,                  &
           q_sq, q_sq_prog, q_sq_vdiff, q_sq_hdiff, q_sq_shear,              &
           q_sq_buoyancy, q_sq_dissip,                                       &
-          l_master, l_master_at_mass,                                       &
+          l_master, l_master_at_mass, l0_asym,                              &
           turb_flux_u2, turb_flux_v2, turb_flux_w2, turb_flux_uv,           &
           turb_flux_uw, turb_flux_vw, turb_flux_utheta_v,                   &
           turb_flux_vtheta_v, turb_flux_wtheta_v, turb_flux_theta2_v,       &
@@ -6516,7 +6590,8 @@
 
     subroutine Set_init_turb_state_driver (restart, pbl3d_constants,            &
               pbl3d_nsteps, pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt,  &
-              pbl3d_sk_eps_max, pbl3d_n_tau_max,                                                 &
+              pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt,                  &
+              pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min,                  &
               ids, ide, jds, jde, kds, kde,                                     &
               ims, ime, jms, jme, kms, kme,                                     &
               its, ite, jts, jte, kts, kte,                                     &
@@ -6524,7 +6599,7 @@
               t_2, qv, thetav, alt, u, v, ust, hfx, qfx, rmol,                  &
               q_sq, q_sq_prog, q_sq_vdiff, q_sq_hdiff, q_sq_shear,              &
               q_sq_buoyancy, q_sq_dissip,                                       &
-              l_master, l_master_at_mass,                                       &
+              l_master, l_master_at_mass, l0_asym,                              &
               turb_flux_u2, turb_flux_v2, turb_flux_w2, turb_flux_uv,           &
               turb_flux_uw, turb_flux_vw, turb_flux_utheta_v,                   &
               turb_flux_vtheta_v, turb_flux_wtheta_v, turb_flux_theta2_v,       &
@@ -6545,7 +6620,9 @@
 
       logical, intent(in) :: restart
       integer, intent(in) :: pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt, pbl3d_nsteps
-      real,    intent(in) :: pbl3d_sk_eps_max, pbl3d_n_tau_max
+      integer, intent(in) :: pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt
+      real,    intent(in) :: pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min
+      real, dimension(ims:ime, jms:jme),          intent(inout) :: l0_asym
       character (len = *), intent(in) :: pbl3d_constants
       integer :: i, j, k, itf, jtf, ktf
       integer, intent(in) :: ids, ide, jds, jde, kds, kde, &
@@ -6606,10 +6683,10 @@
 
         ! Call MY model to set initial state
       call Set_init_turb_state_my (restart, pbl3d_constants, pbl3d_nsteps, pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt, &
-          pbl3d_sk_eps_max, pbl3d_n_tau_max, ids, ide, &
+          pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt, pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, ids, ide, &
           jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, itf, jtf, ktf, i_start, i_end, j_start, j_end, &
           fnm, fnp, dnw, ph, phb, rdzw, z_at_mass, dz, t_2, qv, alt, u, v, ust, hfx, qfx, rmol, rho, du_dz, dv_dz, dthetav_dz, dqv_dz, &
-          q_sq, q_sq_prog, q_sq_vdiff, q_sq_hdiff, q_sq_shear, q_sq_buoyancy, q_sq_dissip, l_master, l_master_at_mass, turb_flux_u2, turb_flux_v2, &
+          q_sq, q_sq_prog, q_sq_vdiff, q_sq_hdiff, q_sq_shear, q_sq_buoyancy, q_sq_dissip, l_master, l_master_at_mass, l0_asym, turb_flux_u2, turb_flux_v2, &
           turb_flux_w2, turb_flux_uv, turb_flux_uw, turb_flux_vw, turb_flux_utheta_v, turb_flux_vtheta_v, turb_flux_wtheta_v, turb_flux_theta2_v, &
           turb_flux_utheta, turb_flux_vtheta, turb_flux_wtheta, turb_flux_uqv, turb_flux_vqv, turb_flux_wqv)
 

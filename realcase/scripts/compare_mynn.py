@@ -39,6 +39,11 @@ Subcommands:
              into cells where the Tier-1 limiter is bound vs unbound.
              Answers: does the limiter actually suppress net production where
              it engages, or is it engaging too late/too weakly?
+  exp     -- multi-run, multi-time report for the six 6-hour experiments
+             (DECISIONS.md 2026-08-20 top entry): slope x height stratified
+             q^2, 10 m wind bias, per-level length scales/floor fraction,
+             strain-limiter footprint, and a q^2-shear vs KE-loss budget
+             check, each run vs the MYNN control at matching times.
 
 Reference numbers this script must reproduce (see DECISIONS.md 2026-08-20):
   slope : all-domain q^2 3D 0.0847 vs MYNN 0.3156 (ratio 0.27); wind bias
@@ -54,6 +59,11 @@ import numpy as np
 
 DEFAULT_RUN_DIR = '/gpfs/data/fs72996/ewahl/wrf_output/8476273'
 DEFAULT_MYNN_DIR = '/gpfs/data/fs72996/ewahl/wrf_output/8320565'
+
+# bins used by the `exp` subcommand
+EXP_SLOPE_BINS_DEG = [(0, 3), (3, 8), (8, 15), (15, 22), (22, 40)]
+EXP_HEIGHT_BINS_M = [(0, 50), (50, 100), (100, 200), (200, 400)]
+EXP_NL_MASS = 25  # mass levels 0..24 -- covers ~0-800 m AGL, well past the 200-400 m bin
 
 
 def wrfout(run_dir, time):
@@ -245,6 +255,214 @@ def cmd_cap(args):
                   f"P/eps median {np.median(x):5.2f} frac<1 {np.mean(x<1):.2f}")
 
 
+def slope_deg(hgt, dx=500.):
+    """Terrain slope [deg] from centred differences of HGT, matching `slope`."""
+    dhdx = np.gradient(hgt, dx, axis=1)
+    dhdy = np.gradient(hgt, dx, axis=0)
+    return np.degrees(np.arctan(np.hypot(dhdx, dhdy)))
+
+
+def cmd_exp(args):
+    """Multi-run report for the six 6-hour experiments vs the MYNN control.
+
+    q^2 (Q_SQ / QKE) = twice the turbulence kinetic energy, m^2 s^-2. All
+    face-level (staggered, "w" grid) fields are averaged to mass levels with
+    face_to_mass() before being compared level-for-level to a mass quantity,
+    same convention as `slope`/`spinup`. Height AGL is (PH+PHB)/9.81 minus
+    the k=0 (surface) value of that same profile, at mass levels unless noted.
+
+    For every run in --runs and every time in --times, against the MYNN file
+    at the same time:
+
+    [1] Table stratified by slope bin x height-AGL bin: mean q^2 of the run,
+        mean MYNN QKE, their ratio (mean/mean, not mean-of-ratios), and cell
+        count. This is the block written to --csv if given.
+    [2] Per slope bin: 10 m wind-speed bias, run minus MYNN (U10/V10 hypot).
+    [3] Per face level k=0..7: mean AGL, fraction of cells at/under the q^2
+        floor (1.5e-5 m^2 s^-2), median L_MASTER (run) and median EL_PBL
+        (MYNN) -- both mixing-length scales in metres, face levels. If the
+        run file carries L0_ASYM (a 2-D, level-independent asymptotic-length
+        field, m), its domain median is printed once, not per level.
+    [4] Only if PBL3D_T1_RATIO and PBL3D_SK_EPS are in the run file: the
+        fraction of "live" cells (Q_SQ > 2e-5 m^2 s^-2) in the lowest 5 face
+        levels where the Tier-1 strain limiter binds (T1_RATIO < 0.999).
+        Only if PBL3D_P_EPS is also present: median P/eps (production over
+        dissipation) and the fraction < 1, split into limiter-bound vs
+        unbound live cells -- same masking as `cap`. PBL3D_P_EPS is itself a
+        face-level field with the same (Time, bottom_top_stag, ...) shape as
+        Q_SQ, so unlike Q_SQ_SHEAR/Q_SQ_DISSIP in `cap` there is no k offset
+        between it and PBL3D_T1_RATIO.
+    [5] Only if KE_LOSS_H and QSQ_SHEAR_H are in the run file (mass-level 3-D
+        fields, m^2 s^-3): mass-weighted domain sums over the lowest --top-m
+        metres AGL of KE_LOSS_H (S_ke) and QSQ_SHEAR_H/2 (S_p, the /2
+        converting q^2 production to a TKE-production rate comparable to
+        KE_LOSS_H). The per-column layer weight is the dry-air column mass
+        per unit area, weight = -(MU+MUB)*DNW[k]/9.81 (kg m^-2; DNW < 0 so
+        the sign makes weight > 0). S_ke and S_p are pointwise different
+        terms in the q^2/TKE budget that differ by a transport-divergence
+        term cell by cell -- only their domain integrals are expected to
+        cancel (residual = S_ke + S_p near 0) in a closed, consistent
+        budget; the residual and residual/|S_p| are printed as the check.
+    """
+    runs = {}
+    for kv in args.runs:
+        name, sep, path = kv.partition('=')
+        if not sep or not name or not path:
+            raise SystemExit(f"--runs entries must be NAME=DIR, got {kv!r}")
+        runs[name] = path
+
+    times = args.times.split(',')
+    csv_rows = []
+
+    for t in times:
+        mynn_path = f'{args.mynn_dir}/wrfout_d01_{args.date}_{t}:00.nc'
+        try:
+            b = nc.Dataset(mynn_path)
+        except OSError:
+            print(f'[{t}] MYNN file missing: {mynn_path} -- skipping this time')
+            continue
+
+        for name, run_dir in runs.items():
+            run_path = f'{run_dir}/wrfout_d01_{args.date}_{t}:00.nc'
+            try:
+                a = nc.Dataset(run_path)
+            except OSError:
+                print(f'[{name} {t}] run file missing: {run_path} -- skipping')
+                continue
+
+            print(f'\n=== run={name}  time={t} ===')
+            print('times', a['Times'][0].tobytes(), b['Times'][0].tobytes())
+
+            hgt = a['HGT'][0]
+            slope = slope_deg(hgt)
+
+            NL = EXP_NL_MASS
+            q3m = face_to_mass(a['Q_SQ'][0, 0:NL + 1])
+            qm = b['QKE'][0, 0:NL]
+
+            zf = (a['PH'][0, 0:NL + 1] + a['PHB'][0, 0:NL + 1]) / 9.81
+            zf = zf - zf[0]
+            zm = face_to_mass(zf)
+
+            # --- [1] slope x height stratified q^2 table --------------------
+            print(f"\n[1] q^2 (m^2 s^-2) by slope x height-AGL bin, {name} vs MYNN")
+            print(f"{'slope deg':>10} {'height m':>10} {'n':>9} {'q2_run':>9} "
+                  f"{'q2_MYNN':>9} {'ratio':>7}")
+            for slo, shi in EXP_SLOPE_BINS_DEG:
+                sm = (slope >= slo) & (slope < shi)
+                for hlo, hhi in EXP_HEIGHT_BINS_M:
+                    m = (zm >= hlo) & (zm < hhi) & sm[None, :, :]
+                    n = int(m.sum())
+                    if n == 0:
+                        continue
+                    qr = float(q3m[m].mean())
+                    qk = float(qm[m].mean())
+                    ratio = qr / qk if qk else float('nan')
+                    print(f"{slo:>3}-{shi:<6} {hlo:>3}-{hhi:<6} {n:>9d} {qr:9.4f} "
+                          f"{qk:9.4f} {ratio:7.2f}")
+                    csv_rows.append(dict(run=name, time=t, slope_lo=slo, slope_hi=shi,
+                                          height_lo=hlo, height_hi=hhi, n=n,
+                                          q2_run=qr, q2_mynn=qk, ratio=ratio))
+            h100 = zm < 100
+            r100 = float(q3m[h100].mean()) / float(qm[h100].mean())
+            print(f"  all-domain, lowest 100 m: q2_run {q3m[h100].mean():.4f}  "
+                  f"q2_MYNN {qm[h100].mean():.4f}  ratio {r100:.2f}")
+
+            # --- [2] 10 m wind bias by slope bin -----------------------------
+            print(f"\n[2] 10 m wind bias (run - MYNN), m/s, by slope bin")
+            w3 = np.hypot(a['U10'][0], a['V10'][0])
+            wm = np.hypot(b['U10'][0], b['V10'][0])
+            for slo, shi in EXP_SLOPE_BINS_DEG:
+                sm = (slope >= slo) & (slope < shi)
+                if sm.sum() == 0:
+                    continue
+                print(f"  {slo:>3}-{shi:<4} deg: n={int(sm.sum()):7d}  "
+                      f"bias {(w3[sm] - wm[sm]).mean():+.2f}")
+
+            # --- [3] per-level floor fraction and length scales --------------
+            print(f"\n[3] per face level k=0..7: floor fraction, length scales (m)")
+            print(f"{'k':>3} {'z_AGL':>8} {'frac<=floor':>12} {'med L_MASTER':>13} "
+                  f"{'med EL_PBL':>11}")
+            q_face = a['Q_SQ'][0, 0:8]
+            L = a['L_MASTER'][0, 0:8]
+            EL = b['EL_PBL'][0, 0:8]
+            zface = (a['PH'][0, 0:8] + a['PHB'][0, 0:8]) / 9.81
+            zface = zface - zface[0]
+            floor = q_face <= 1.5e-5
+            for k in range(8):
+                print(f"{k:>3} {float(zface[k].mean()):8.1f} {float(floor[k].mean()):12.3f} "
+                      f"{np.median(L[k]):13.3f} {np.median(EL[k]):11.3f}")
+            if 'L0_ASYM' in a.variables:
+                print(f"  L0_ASYM (2-D, domain median): {np.median(a['L0_ASYM'][0]):.3f} m")
+            else:
+                print("  L0_ASYM not in run file -- skipping")
+
+            # --- [4] strain-limiter footprint / P-eps -------------------------
+            print(f"\n[4] strain-limiter footprint (needs PBL3D_T1_RATIO, PBL3D_SK_EPS)")
+            if 'PBL3D_T1_RATIO' in a.variables and 'PBL3D_SK_EPS' in a.variables:
+                t1 = a['PBL3D_T1_RATIO'][0, 0:5]
+                qlo = a['Q_SQ'][0, 0:5]
+                live = qlo > 2e-5
+                if live.any():
+                    frac = float((t1[live] < 0.999).mean())
+                    print(f"  live cells (Q_SQ>2e-5), lowest 5 face levels: "
+                          f"fraction T1<0.999 = {frac:.3f}  (n_live={int(live.sum())})")
+                else:
+                    print("  no live cells (Q_SQ>2e-5) in lowest 5 face levels")
+
+                if 'PBL3D_P_EPS' in a.variables:
+                    # face-level, same shape as Q_SQ -- no k offset vs T1_RATIO
+                    pe = a['PBL3D_P_EPS'][0, 0:5]
+                    bound = live & (t1 < 0.999)
+                    unbound = live & (t1 >= 0.999)
+                    for label, mask in (('bound', bound), ('unbound', unbound)):
+                        x = pe[mask]
+                        x = x[np.isfinite(x)]
+                        if x.size:
+                            print(f"  {label:>7}: n={x.size:8d}  median P/eps "
+                                  f"{np.median(x):5.2f}  frac<1 {np.mean(x < 1):.2f}")
+                        else:
+                            print(f"  {label:>7}: no cells")
+                else:
+                    print("  PBL3D_P_EPS not in run file -- skipping P/eps split")
+            else:
+                print("  PBL3D_T1_RATIO/PBL3D_SK_EPS not in run file -- skipping block 4")
+
+            # --- [5] mass-weighted q^2-shear vs KE-loss budget check ----------
+            print(f"\n[5] mass-weighted q^2-shear vs KE-loss budget, lowest "
+                  f"{args.top_m:g} m AGL (needs KE_LOSS_H, QSQ_SHEAR_H)")
+            if 'KE_LOSS_H' in a.variables and 'QSQ_SHEAR_H' in a.variables:
+                dnw = a['DNW'][0]
+                mu = a['MU'][0] + a['MUB'][0]
+                zmass_mean = zm.mean(axis=(1, 2))
+                kmax = max(int(np.searchsorted(zmass_mean, args.top_m)), 1)
+                kmax = min(kmax, dnw.shape[0])
+                weight = -mu[None, :, :] * dnw[:kmax, None, None] / 9.81  # kg m^-2
+                ke = a['KE_LOSS_H'][0, 0:kmax]
+                qs = a['QSQ_SHEAR_H'][0, 0:kmax]
+                S_ke = float((weight * ke).sum())
+                S_p = float((weight * qs / 2.).sum())
+                resid = S_ke + S_p
+                print(f"  levels used: k=0..{kmax - 1} (AGL up to ~{zmass_mean[kmax - 1]:.0f} m)")
+                print(f"  S_ke={S_ke:.4e}  S_p={S_p:.4e}  residual={resid:.4e}  "
+                      f"residual/|S_p|={(resid / abs(S_p)) if S_p else float('nan'):.3f}")
+                print("  (pointwise S_ke and S_p differ by a transport-divergence term; only "
+                      "the domain integrals should cancel in a consistent closure)")
+            else:
+                print("  KE_LOSS_H/QSQ_SHEAR_H not in run file -- skipping block 5")
+
+    if args.csv:
+        if csv_rows:
+            import csv as csvmod
+            with open(args.csv, 'w', newline='') as f:
+                w = csvmod.DictWriter(f, fieldnames=list(csv_rows[0].keys()))
+                w.writeheader()
+                w.writerows(csv_rows)
+            print(f"\nwrote {len(csv_rows)} rows (block [1]) to {args.csv}")
+        else:
+            print(f"\nno block [1] rows produced -- not writing {args.csv}")
+
+
 def main():
     p = argparse.ArgumentParser(
         description='Compare the 3D PBL closure (pbl3d_opt=2) run against the MYNN control.')
@@ -280,6 +498,19 @@ def main():
     sp.add_argument('--subset', default=None,
                      help='qsq_subset NetCDF file (default: <run-dir>/qsq_subset_k0-9_0125-0138.nc)')
     sp.set_defaults(func=cmd_cap)
+
+    sp = sub.add_parser('exp', help='six 6-hour experiments: slope x height q^2, wind bias, '
+                         'length scales, strain limiter, budget check, each vs MYNN')
+    sp.add_argument('--runs', nargs='+', required=True, metavar='NAME=DIR',
+                     help='one or more NAME=DIR run archive dirs to compare against MYNN')
+    sp.add_argument('--times', required=True,
+                     help='comma-separated model times HH:MM, e.g. 02:00,04:00,06:00,07:00')
+    sp.add_argument('--date', default='2025-07-18', help='model date (default: %(default)s)')
+    sp.add_argument('--top-m', dest='top_m', type=float, default=100.,
+                     help='depth in metres AGL for the block-5 budget sums (default: %(default)s)')
+    sp.add_argument('--csv', default=None,
+                     help='optional path to write the block-1 slope x height table as CSV')
+    sp.set_defaults(func=cmd_exp)
 
     args = p.parse_args()
     if getattr(args, 'subset', None) is None and args.cmd in ('t1', 'cap'):

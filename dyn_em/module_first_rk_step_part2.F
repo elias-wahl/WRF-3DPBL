@@ -1425,7 +1425,9 @@ BENCH_END(hor_diff_tim)
                     ims = ims, ime = ime, jms = jms, jme = jme, kms = kms, kme = kme, &
                     its = grid%i_start(ij), ite = grid%i_end(ij), &
                     jts = grid%j_start(ij), jte = grid%j_end(ij), &
-                    kts = k_start, kte = k_end                    )
+                    kts = k_start, kte = k_end, &
+                    u_tmp = grid%u_tmp, v_tmp = grid%v_tmp, w_tmp = grid%w_tmp, mut = grid%mut, &
+                    c1h = grid%c1h, c2h = grid%c2h, c1f = grid%c1f, c2f = grid%c2f, ke_loss_h = grid%ke_loss_h )
              END DO
              !$OMP END PARALLEL DO
            END IF
