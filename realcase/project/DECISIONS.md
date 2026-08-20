@@ -7,6 +7,75 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-08-20 (VSC-5) — Implemented the unified master length scale. This reverses yesterday's
+"deliberately not implemented".**
+
+Yesterday's entry deferred this fix because it is a science change and the scope call was the
+user's. That call has now been made, after a physical re-derivation that made three things
+clearer than they were.
+
+**Why it is a bug fix and not a tuning change.** In Mellor-Yamada the master length scale does
+two jobs that come from the *same* picture — an eddy of size `l` moving at speed `q`. It is the
+displacement that sets the flux (`P ~ q l`), and it is the lifetime `l/q` that sets the cascade
+rate (`eps = q^3/(b_1 l)`). Those are one geometry read twice. So an eddy that transports like a
+2.41 m eddy and dissipates like a 6.04 m one is not a defensible modelling choice; it is not a
+physical object. Tier 1's finding is "the eddies are smaller than you assumed", and smaller
+eddies both transport less *and* die sooner. The code implemented the first and dropped the
+second, leaving turbulence that is simultaneously weakly-mixing and long-lived — which is the
+opposite of what strong shear produces.
+
+**The size of the error is the size of the failure.** At the blowup cell the turbulence is given
+a lifetime of 11.8 s when its own asserted 2.41 m permits 4.7 s. At 01:25, where the instability
+is seeded, 1.21 m eddies are given 395 s against a permitted 78 s — five times too long. The
+runaway e-folds in 105 s. An error of two-to-five-fold in the lifetime of the energy-containing
+eddies, in a process whose own timescale is the same order, is not a bookkeeping detail.
+
+**Blast radius, measured rather than assumed.** Yesterday's entry worried this changes the
+solution broadly. It does, but less than feared: at 01:36 Tier 1 is active in 4.1% of cells, and
+among those the *median* `T1_RATIO` is 0.71 — a 40% increase in dissipation for the typical
+affected cell, not the 5.6x seen at the blowup point. Only the worst 5% (`T1_RATIO ~ 0.10`) see a
+tenfold correction, and that tail is exactly where the runaway lives. Tier 1 activity is 0% at
+01:00 and grows monotonically to 4.1% by 01:36 as the drainage layer spins up.
+
+**Implementation choice worth recording: `dg_t1_ratio`, not the final `l_use`.** `dg_t1_ratio` is
+set at `module_pbl3d_my.F:1584`, before both Tier 2 loops, so it carries the Tier 1 result alone.
+That is what we want. Tier 1 is a physical claim about eddy size; Tier 2 shortens `l` in response
+to solver distress or non-realizability, and a failed linear solve is not evidence that the
+eddies got smaller. Feeding numerical distress into the dissipation would be a different bug.
+A happy consequence: `Diagnose_fluxes` needed no modification at all — the write is one line in
+the caller, where the `pbl3d_*` diagnostics are already stored.
+
+**A trap that would have failed quietly.** `Calc_l_master_algebra` copies `ktf` up to `kte`
+*before* the point loop runs. Without redoing that copy afterwards, the model-top face keeps the
+unlimited value while `ktf` holds the limited one — and `Fill_l_mass_with_l_face` and both
+`xkxavg` blocks read index `kte`. It would not have crashed; it would have been subtly wrong at
+one level. Edit B exists for that.
+
+**Deliberately still out of scope.** Three other changes were designed and are not in this
+commit: the SGS energy-closure diagnostic (needs a Registry field, hence a full reconfigure), a
+budget-based `P/eps` limiter threshold (insurance for near-neutral regimes; it would not fire at
+this blowup cell once the length scale is unified), and pairing the `sf_alpha` slope taper with
+its production terms (larger, and it depends on the diagnostic to justify). A fourth — using
+perpendicular rather than vertical wall distance in `kappa*z` — was dropped: the geometry is
+right, but it is ~17% at the steepest points, it is inconsistent with WRF's vertical-height
+surface layer, and it would have muddied attribution of the first test.
+
+**No namelist switch, on purpose.** A new namelist variable is a Registry change and would have
+forced a 30-60 min reconfigure for a ten-line source edit. The old behaviour is reproducible by
+reverting the commit, and the baseline output is preserved
+(`wrf_output/8472687/baseline_qsq_subset_k0-9_0125-0138.nc`, 1.1 GB, lowest 10 levels,
+01:25-01:38) because the rerun overwrites `temp/branko/`.
+
+**Falsifiable predictions, recorded before the result.** At `j=111, i=161`, stag `k=1`, 01:36:
+`P/eps` 1.146 -> ~0.46; cascade timescale 11.8 s -> ~4.7 s; `L_MASTER` 6.04 -> ~2.41 m; and the
+run clears `2025-07-18_01:38:00`. If it still dies there, the split length scale is not
+sufficient and the `sf_alpha` energy-pairing hypothesis becomes primary. If it clears but a
+different cell runs away, the budget limiter is needed. If it clears but boundary-layer q^2 falls
+further below the MYNN control, this over-damps and the budget limiter should replace the fixed
+`SK_EPS_MAX` so limited cells sit at balance rather than decay. Job 8476273.
+
+---
+
 **2026-08-20 (VSC-5) — A9 closed by measurement; two earlier statements corrected; still not implementing the fix.**
 
 Job 8472687 ran ahead of its estimated start and completed all 39 one-minute `qsqdiag`

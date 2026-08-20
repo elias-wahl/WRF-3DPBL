@@ -1203,6 +1203,24 @@
               pbl3d_cond_a  (i, k, j) = mat_cond_heat(i, k, j)
               pbl3d_qv2     (i, k, j) = dg_qv2
 
+                ! One master length scale. Tier 1 has just decided the energy-containing
+                ! eddies are smaller than l_master; in Mellor-Yamada that same l sets both
+                ! the transport (flux ~ q l) and the cascade rate (eps = q^3 / (b_1 l)), so
+                ! the dissipation, the q^2 diffusion coefficients and the L_MASTER history
+                ! field must see it too. Leaving eps on the unlimited scale gives an eddy
+                ! that transports like a short one and lives like a long one, and since
+                ! P/eps ~ l^2 that widens the imbalance Tier 1 exists to close (A9).
+                !
+                ! dg_t1_ratio is the Tier 1 result alone: it is set before both Tier 2
+                ! loops. That is deliberate -- Tier 2 shortens l in response to solver
+                ! distress or non-realizability, which is not evidence about eddy size.
+                !
+                ! l_master therefore becomes a mixed field: limited where the solver ran,
+                ! unlimited at k = kts, in laminar cells taking the Q_SQ_MIN short circuit
+                ! above, and wherever Tier 1 did not bind (dg_t1_ratio = 1).
+              l_master(i, k, j) = l_master(i, k, j) * dg_t1_ratio
+              l_boulac(i, k, j) = l_boulac(i, k, j) * dg_t1_ratio
+
                 ! Summary bin: 1 unstable, 2 near neutral, 3 stable
               if (dg_n_tau < -0.05) then
                 ib = 1
@@ -1239,6 +1257,16 @@
           end do loop_i
         end do loop_k
       end do loop_j
+
+        ! Calc_l_master_algebra copied ktf up to kte before this loop ran, so the top face
+        ! still holds the unlimited value while ktf now holds the limited one. Redo it:
+        ! Fill_l_mass_with_l_face and both xkxavg blocks read index kte.
+      do j = j_start, j_end
+        do i = i_start, i_end
+          l_master(i, kte, j) = l_master(i, ktf, j)
+          l_boulac(i, kte, j) = l_boulac(i, ktf, j)
+        end do
+      end do
 
         ! Report how often the algebraic system had to be pushed back inside its
         ! validity range. A healthy run should show this rarely or never.

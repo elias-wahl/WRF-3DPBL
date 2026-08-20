@@ -23,9 +23,13 @@
 # 01:36-01:37 when it matters. PBL3D_SK_EPS is carried alongside because it is
 # computed from the PRE-limit l, so on its own it shows Tier 1 had work to do,
 # not whether l_use was applied -- only the pair distinguishes those.
-# PBL3D_T2_STEPS / PBL3D_T3_FLAGS confirm at 1-minute resolution (rather than
-# wrfout's 10) that Tiers 2 and 3 never fired, and L_MASTER shows whether l
-# moved. All are already history fields in the Registry, so NO REBUILD.
+# PBL3D_T2_STEPS / PBL3D_T3_FLAGS resolve at 1 minute (rather than wrfout's 10)
+# whether Tiers 2 and 3 fire, and L_MASTER shows whether l moved. All are
+# already history fields in the Registry, so NO REBUILD.
+# CORRECTED 2026-08-20: this comment used to assert Tiers 2 and 3 "never
+# fired". Domain-wide that is wrong -- at 01:36 T2_STEPS is non-zero in 294,398
+# cells and T3_FLAGS in 60,156. What is true is narrower and worse: they are
+# silent at the runaway column specifically. See OPEN_ISSUES A9.
 # The five terms only reach an output stream at all because they were promoted
 # r -> rh in Registry/Registry.EM_COMMON:1169-1173 -- a build older than that
 # commit will emit five "W A R N I N G" lines here and write nothing.
