@@ -22,6 +22,9 @@ failed there — the move is purely about queue access.
 
 ## Read these first, in this order
 
+0. **`HANDOVER_2026-08-20.md`** — current state. The 3D closure now completes a
+   real-terrain run; what was fixed, what is still open, and five corrections to
+   the earlier record. **Start here.**
 1. **`HANDOVER_MUSICA_TO_VSC5.md`** — what was learned, what is ruled out, what
    to do next. Written for whoever picks this up.
 2. `DECISIONS.md` — why non-obvious science/config choices were made. **Append to
