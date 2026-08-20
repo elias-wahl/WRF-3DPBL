@@ -1657,15 +1657,19 @@
         ! value (3.3 for MY82); option 2 keeps that margin at every Ri instead of letting
         ! the cap bind at equilibrium in stable shear. Sm is floored at 0.02 so the cap
         ! stays finite as Ri -> Ri_c.
-      cap_eff = Real (SK_EPS_MAX, kind = SOLVER_PREC)
       if (LIMITER_OPT == 2) then
         sm_loc  = Sm_level2_local (du_dz, dv_dz, dthetav_dz)
-        cap_eff = cap_eff * Sqrt (Real (sm_neutral_l2, kind = SOLVER_PREC)                  &
-                                  / Max (Real (sm_loc, kind = SOLVER_PREC), 0.02_SOLVER_PREC))
+        cap_eff = Real (SK_EPS_MAX, kind = SOLVER_PREC)                                     &
+                * Sqrt (Real (sm_neutral_l2, kind = SOLVER_PREC)                            &
+                        / Max (Real (sm_loc, kind = SOLVER_PREC), 0.02_SOLVER_PREC))
+        l_use = Min ( l, 2.0_SOLVER_PREC * cap_eff / Real (b_1, kind = SOLVER_PREC) * q     &
+                         / Max (strain_mag, Real (STRAIN_MIN, kind = SOLVER_PREC)) )
+      else
+          ! Kept bit for bit as before 2026-08-20 (the 2 SK_EPS_MAX / b_1 factor is formed
+          ! in working precision first), so that the default path reproduces earlier runs.
+        l_use = Min ( l, Real (2.0 * SK_EPS_MAX / b_1, kind = SOLVER_PREC) * q     &
+                         / Max (strain_mag, Real (STRAIN_MIN, kind = SOLVER_PREC)) )
       end if
-
-      l_use = Min ( l, 2.0_SOLVER_PREC * cap_eff / Real (b_1, kind = SOLVER_PREC) * q     &
-                       / Max (strain_mag, Real (STRAIN_MIN, kind = SOLVER_PREC)) )
 
         ! S k / eps = |S| b_1 l / (2 q), from k = q^2/2 and eps = q^3/(b_1 l).
       dg_sk_eps   = Real (strain_mag * Real (b_1, kind = SOLVER_PREC) * l                     &
