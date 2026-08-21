@@ -83,7 +83,9 @@ Elias is an atmospheric scientist, fluent in turbulence closures; he wants the
   04:00 restart shows the terminal ridge-top cluster fed 77–164 % by horizontal
   pairing with only 6–10 % paid; the strain cap holding l ∝ q at P/ε ≈ 2 is the
   amplifier, not the source. With the fix the run reaches **07:00 complete**, the
-  first one ever and as far as anything is tested.
+  first one ever — but its continuation dies at **07:10** in the radiation table
+  lookup with no CFL warning (NaN-type, south-west block, cause not yet measured;
+  diagnosis run `exp/A13`). No run is expected to complete past 07:00 yet.
 - **Retracted**: the slope-dependent 10 m wind bias is *not* a q² effect (halving
   q² left it unchanged to 0.01 m/s); cause unknown. Unexamined: 3D is +2.4…+3.9 m/s
   faster at 10 m at 07:00 on every slope class, with 0.4–0.5 of MYNN's q² aloft.
