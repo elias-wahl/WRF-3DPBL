@@ -5817,6 +5817,8 @@
         ! Local vars
       integer :: i, j, k, i_start, i_end, j_start, j_end, ktf
       real, dimension (its:ite, kts:kte, jts:jte) :: l_dissip
+        ! slope factor for the production pairing (pbl3d_sf_pair), see Calc_q_sq_shear
+      real, dimension (its-1:ite, kts:kte, jts-1:jte) :: sf_alpha_pair
       logical, parameter :: DEBUG = .false.
       real (kind = kind(q_sq_tend)) :: N_PBL3D
 
@@ -5859,9 +5861,15 @@
             mut, c1, c2, fnm, fnp, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, i_start, i_end, j_start, j_end, ktf)
         grid%qsq_shear_h(its:ite, kts:kte, jts:jte) = 0.0   ! no horizontal production terms in the 1D approximation
       else
+          ! The same slope factor Horizontal_turb_mix divides the horizontal momentum
+          ! tendency by (recomputed here: it is a tile-local array there). Only read when
+          ! pbl3d_sf_pair = 1.
+        call Calc_slope_factor (config_flags, msftx, msfty, grid%dx, grid%dy, zx, zy, rdzw, sf_alpha_pair, &
+            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
         call Calc_q_sq_shear (N_PBL3D, q_sq_shear_tend, q_sq_tend, du_dx, du_dy, du_dz, dv_dx, dv_dy, dv_dz, dw_dx, dw_dy, dw_dz, &
             turb_flux_u2, turb_flux_uw, turb_flux_v2, turb_flux_vw, turb_flux_w2, turb_flux_uv, mut, c1, c2, fnm, fnp, &
-            ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, i_start, i_end, j_start, j_end, ktf, grid%qsq_shear_h)
+            ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, i_start, i_end, j_start, j_end, ktf, grid%qsq_shear_h, &
+            sf_alpha_pair, config_flags%pbl3d_sf_pair)
       end if
 
         !!! Buoyancy !!!
@@ -6264,12 +6272,23 @@
 
     subroutine Calc_q_sq_shear (N_PBL3D, q_sq_shear_tend, q_sq_tend, du_dx, du_dy, du_dz, dv_dx, dv_dy, dv_dz, dw_dx, dw_dy, dw_dz, &
               turb_flux_u2, turb_flux_uw, turb_flux_v2, turb_flux_vw, turb_flux_w2, turb_flux_uv, mut, c1, c2, fnm, fnp, &
-              ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, i_start, i_end, j_start, j_end, ktf, qsq_shear_h)
+              ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, i_start, i_end, j_start, j_end, ktf, qsq_shear_h, &
+              sf_alpha, pair)
 
       implicit none
 
       real,                                        intent (in)  :: N_PBL3D
       real, dimension (ims:ime, kms:kme, jms:jme), intent (out) :: q_sq_shear_tend
+        ! Slope factor at mass points (Calc_slope_factor) and the pairing switch
+        ! (pbl3d_sf_pair). The horizontal turbulent momentum tendency is divided by
+        ! sf_alpha (Calc_htend_du/dv/dw), so the kinetic energy the resolved flow actually
+        ! loses to the horizontal stresses is the untapered production divided by the same
+        ! factor. pair = 1 credits the q^2 budget with that amount; pair = 0 keeps the
+        ! untapered production (pre-2026-08-21 behaviour). Measured 2026-08-21 (jobs
+        ! 8477283-8477286): with pair = 0 about 90 % of the horizontal-pairing production,
+        ! a third of the total, is never paid by the resolved flow (OPEN_ISSUES A10).
+      real, dimension (its-1:ite, kts:kte, jts-1:jte), intent (in) :: sf_alpha
+      integer,                                         intent (in) :: pair
         ! The six of the nine production terms that pair with the HORIZONTAL turbulent
         ! momentum tendency (u2 du/dx, uv du/dy, uv dv/dx, v2 dv/dy, uw dw/dx, vw dw/dy).
         ! Energy-closure diagnostic: that tendency is divided by the slope factor
@@ -6298,6 +6317,24 @@
       do j = j_start, j_end
         do k = kts, ktf
           do i = i_start, i_end
+            if (pair == 1) then
+                ! Horizontal pairing credited with what the resolved flow actually pays:
+                ! the six horizontal terms divided by the slope factor the momentum
+                ! tendency was divided by. The three vertical terms pair with the
+                ! untapered vertical mixing and are unchanged.
+              qsq_shear_h(i, k, j)     = -2. / sf_alpha(i, k, j) *                       &
+                                             ( turb_flux_u2(i, k, j) * du_dx(i, k, j) +  &
+                                               turb_flux_uv(i, k, j) * du_dy(i, k, j) +  &
+                                               turb_flux_uv(i, k, j) * dv_dx(i, k, j) +  &
+                                               turb_flux_v2(i, k, j) * dv_dy(i, k, j) +  &
+                                               turb_flux_uw(i, k, j) * dw_dx(i, k, j) +  &
+                                               turb_flux_vw(i, k, j) * dw_dy(i, k, j) )
+              q_sq_shear_tend(i, k, j) = -2. * ( turb_flux_uw(i, k, j) * du_dz(i, k, j) +  &
+                                                 turb_flux_vw(i, k, j) * dv_dz(i, k, j) +  &
+                                                 turb_flux_w2(i, k, j) * dw_dz(i, k, j) )  &
+                                         + qsq_shear_h(i, k, j)
+            else
+                ! pre-2026-08-21 form, kept bit for bit
             q_sq_shear_tend(i, k, j) = -2. * ( turb_flux_u2(i, k, j) * du_dx(i, k, j) +  &
                                                turb_flux_uv(i, k, j) * du_dy(i, k, j) +  &
                                                turb_flux_uw(i, k, j) * du_dz(i, k, j) +  &
@@ -6313,6 +6350,7 @@
                                                turb_flux_v2(i, k, j) * dv_dy(i, k, j) +  &
                                                turb_flux_uw(i, k, j) * dw_dx(i, k, j) +  &
                                                turb_flux_vw(i, k, j) * dw_dy(i, k, j) )
+            end if
             q_sq_tend(i, k, j) = q_sq_tend(i, k, j) + ( (c1(k) * mut(i, j) + c2(k)) * q_sq_shear_tend(i, k, j) / N_PBL3D )
 
             if ( DEBUG .and. i == I_TO_TEST .and. j == J_TO_TEST ) then

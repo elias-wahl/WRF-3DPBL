@@ -12,6 +12,7 @@
 #   X3        1              4             6          floor-value sensitivity
 #   X4        1              8            12          does the ignition throttle still matter once l0 is floored
 #   X5        1              8          1000          upper bound on the cap's role (Tier 2 only)
+#   X6        0              0             6          X0 + pbl3d_sf_pair=1: the slope-factor energy pairing (A10), 2026-08-21
 #
 # Each run has its own env file realcase/env/vsc5_X<n>.sh, which overrides
 # WRF_OUTPUT_ROOT to $DATA/exp/X<n> so concurrent runs cannot clobber each other
@@ -37,15 +38,17 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-declare -A INIT L0MIN CAP WALL
+declare -A INIT L0MIN CAP WALL PAIR
 INIT[X0]=0; L0MIN[X0]=0.0; CAP[X0]=6.0;    WALL[X0]=07:00:00
 INIT[X1]=1; L0MIN[X1]=0.0; CAP[X1]=6.0;    WALL[X1]=07:00:00
 INIT[X2]=1; L0MIN[X2]=8.0; CAP[X2]=6.0;    WALL[X2]=07:00:00
 INIT[X3]=1; L0MIN[X3]=4.0; CAP[X3]=6.0;    WALL[X3]=07:00:00
 INIT[X4]=1; L0MIN[X4]=8.0; CAP[X4]=12.0;   WALL[X4]=07:00:00
 INIT[X5]=1; L0MIN[X5]=8.0; CAP[X5]=1000.0; WALL[X5]=08:00:00
+INIT[X6]=0; L0MIN[X6]=0.0; CAP[X6]=6.0;    WALL[X6]=07:00:00
+PAIR[X0]=0; PAIR[X1]=0; PAIR[X2]=0; PAIR[X3]=0; PAIR[X4]=0; PAIR[X5]=0; PAIR[X6]=1
 
-RUNS="X0 X1 X2 X3 X4 X5"
+RUNS="X0 X1 X2 X3 X4 X5 X6"
 [ -n "$ONLY" ] && RUNS=$(echo "$ONLY" | tr ',' ' ')
 
 WRFIN=$(readlink -f "$SRC/wrfinput_d01"); WRFBDY=$(readlink -f "$SRC/wrfbdy_d01")
@@ -68,8 +71,10 @@ for X in $RUNS; do
   sed -i -E "s/^( pbl3d_init_opt[[:space:]]*=[[:space:]]*)[-0-9.]+,/\1${INIT[$X]},/"       "$NL"
   sed -i -E "s/^( pbl3d_l0_min[[:space:]]*=[[:space:]]*)[-0-9.]+,/\1${L0MIN[$X]},/"        "$NL"
   sed -i -E "s/^( pbl3d_sk_eps_max[[:space:]]*=[[:space:]]*)[-0-9.]+,/\1${CAP[$X]},/"      "$NL"
+  sed -i -E "s/^( pbl3d_sf_pair[[:space:]]*=[[:space:]]*)[-0-9.]+,/\1${PAIR[$X]},/"        "$NL"
+  sed -i -E "s/^( auxhist24_interval_m[[:space:]]*=[[:space:]]*)[0-9]+,/\1360,/"            "$NL"   # WRFlux stream: one frame per 6 h (KNOWN_ISSUES E15)
   sed -i -E "s/^( iofields_filename[[:space:]]*=[[:space:]]*)\"[^\"]*\"/\1\"iofields_lscale.txt\"/" "$NL"
-  for key in pbl3d_init_opt pbl3d_l0_min pbl3d_sk_eps_max iofields_filename history_interval run_hours; do
+  for key in pbl3d_init_opt pbl3d_l0_min pbl3d_sk_eps_max pbl3d_sf_pair auxhist24_interval_m iofields_filename history_interval run_hours; do
     grep -E "^ $key[[:space:]]*=" "$NL" | head -1
   done
     # the namelist keys must actually be there (a silent no-op sed would leave the template value)

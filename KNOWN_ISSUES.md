@@ -691,6 +691,18 @@ namelist template says so in a comment above the variable — read it before edi
 
 ---
 
+## E16. A pending job whose `wrf.exe` is a symlink into `main/` fails at start if a rebuild is running
+
+Run directories link `real.exe`/`wrf.exe` into `branko/main/` on purpose (a rebuild is picked up
+without redoing the run dir). The flip side: `build_em_real.sh` runs `./clean -a`, which removes
+`main/*.exe` for the whole 30-60 min of the build, and a queued job that gets backfilled in that
+window dies in `mpirun` with "Executable: ./wrf.exe ... while attempting to start process rank 0"
+— job 8478217 (2026-08-21 11:04, the morning-runaway diagnosis restart) did exactly that, 23 min
+into a reconfigure. Before starting any rebuild: `scontrol hold <jobid>` every pending job that
+links the binary (release after `BUILD OK`), or copy the executables into the run dir for runs
+that must not move with the tree. Resubmit the casualty; nothing in the run dir is damaged.
+
+
 ## G1. WRF requires at least 10 grid cells per MPI patch in each direction
 
 A 120x120 domain on 128 tasks gives an 8x16 decomposition = 7 cells in y, and WRF

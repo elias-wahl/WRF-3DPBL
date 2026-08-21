@@ -437,6 +437,12 @@ def check(nl):
                        "only to reproduce pre-group-E runs")
         if g("pbl3d_init_opt", int, 0) not in (0, 1):
             note(FATAL, "pbl3d_init_opt must be 0 (q^2 floor) or 1 (level-2 equilibrium)")
+        if g("pbl3d_sf_pair", int, 0) not in (0, 1):
+            note(FATAL, "pbl3d_sf_pair must be 0 or 1")
+        elif g("pbl3d_sf_pair", int, 0) == 0 and p3 == 2:
+            note(WARN, "pbl3d_sf_pair=0: the horizontal-pairing q^2 production is not tapered by the "
+                       "slope factor the momentum tendency uses -- measured 2026-08-21 as ~33 % of "
+                       "total production never paid by the resolved flow (OPEN_ISSUES A10)")
         if g("pbl3d_limiter_opt", int, 1) not in (1, 2):
             note(FATAL, "pbl3d_limiter_opt must be 1 (fixed S k/eps cap) or 2 (Ri-aware cap)")
         l0min = g("pbl3d_l0_min", float, 0.0)

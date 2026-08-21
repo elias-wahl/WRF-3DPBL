@@ -420,6 +420,15 @@
          END IF
       ENDDO
 
+      DO i = 1, model_config_rec % max_dom
+         IF ( model_config_rec % pbl3d_sf_pair(i) .LT. 0 .OR. &
+              model_config_rec % pbl3d_sf_pair(i) .GT. 1 ) THEN
+            wrf_err_message = '--- ERROR: pbl3d_sf_pair must be 0 (untapered production) or 1 (production paired with the slope-tapered tendency)'
+            CALL wrf_debug ( 0, TRIM( wrf_err_message ) )
+            count_fatal_error = count_fatal_error + 1
+         END IF
+      ENDDO
+
       IF ( model_config_rec % pbl3d_limiter_opt .LT. 1 .OR. &
            model_config_rec % pbl3d_limiter_opt .GT. 2 ) THEN
          wrf_err_message = '--- ERROR: pbl3d_limiter_opt must be 1 (fixed S k / eps cap) or 2 (Ri-aware cap)'

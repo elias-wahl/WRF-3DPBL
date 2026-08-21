@@ -1269,6 +1269,7 @@ rconfig  real      pbl3d_n_tau_max      namelist,dynamics          1        0.53
 rconfig  integer   pbl3d_init_opt       namelist,dynamics    max_domains      0      -     "pbl3d_init_opt"       "PBL3D initial turbulence state: 0 q^2 floor everywhere, 1 level-2 equilibrium" ""
 rconfig  integer   pbl3d_limiter_opt    namelist,dynamics          1        1      -     "pbl3d_limiter_opt"    "PBL3D strain limiter: 1 fixed S k / eps cap, 2 cap scaled by the level-2 equilibrium value at local Ri" ""
 rconfig  real      pbl3d_l0_min         namelist,dynamics          1        0.0      -     "pbl3d_l0_min"         "PBL3D floor on the asymptotic length scale l0 (m; 0 disables)" ""
+rconfig  integer   pbl3d_sf_pair        namelist,dynamics    max_domains      0      -     "pbl3d_sf_pair"        "PBL3D: 1 = credit q^2 with the horizontal-pairing production divided by the slope factor the momentum tendency uses (energy-consistent); 0 = untapered" ""
 rconfig  integer   pbl3d_scalar_mix     namelist,dynamics    max_domains      0      -     "pbl3d_scalar_mix"     "PBL3D scalar turbulent mixing" ""
 rconfig  integer   pbl3d_scale_aware    namelist,dynamics    max_domains      1      -     "pbl3d_scale_aware"    "PBL3D scale-aware tapering" ""
 rconfig  integer   flux_limiter_w       namelist,dynamics    max_domains      0      -     "flux_limiter_w"       "Flux limiter on vertical advection of w" ""

@@ -7,6 +7,46 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-08-21 (VSC-5), later — Two follow-ups started the same day: the slope-factor energy pairing is fixed in its minimal form, and the morning runaway gets a 1-minute budget from a restart.**
+
+**Pairing fix, and why the minimal form.** The measurement (previous entry) is that about
+90 % of the horizontal-pairing shear production — a third of all production, essentially all of
+it on slopes — is never extracted from the resolved flow, because the horizontal turbulent
+momentum tendency is divided by the slope factor (|∇h|·Δx/Δz, median 5.2, a WRF-core stability
+device) and the production is not. Two ways to pair them: (a) divide the six horizontal
+production terms by the same factor at the mass point, leaving the applied momentum tendency
+untouched; (b) taper the stresses before the horizontal divergence is formed and reuse those
+stresses in production — the WRF-core design, in which the transport term is an exact
+divergence. The two differ by a transport term, (u·τ)·∇(1/α), of order (u/L_h)/S ≈ 5 % of the
+production, second order to the 90 % being fixed. (b) changes the momentum tendency the model
+applies and needs the slope factor on the wide high-order stencil halos (its−2:ite+2), i.e. a
+dozen declarations and the stencil arithmetic. (a) is ~20 lines in `Calc_q_sq_shear` plus one
+call to `Calc_slope_factor` from `Calc_q_sq_rhs`, and the dynamics stay bit for bit. Chosen: (a),
+behind `pbl3d_sf_pair` (0 = previous behaviour, default; 1 = paired). The diagnostic field
+`QSQ_SHEAR_H` now reports what is credited, so the in-model residual `KE_LOSS_H + QSQ_SHEAR_H/2`
+must fall from ~0.9 to ~0 of the production when the switch is on — that is the acceptance test,
+run X6 = reference settings + `pbl3d_sf_pair=1` (the only difference from the bit-validated X0).
+Scalar (heat, moisture) horizontal mixing is also tapered but has no energy pairing in the q²
+budget; left as is. One more reconfigure (the switch is a Registry entry).
+
+**Stable-regime deficit: no tuning before observations.** Agreed with the user: less turbulence
+than MYNN at Ri ~ 1 may be the better answer — MYNN is known to under-forecast the valley wind,
+consistent with too much nocturnal mixing. The rule now is: a full 23 h run against the TEAMx
+observations before any change to constants, the buoyancy-limit coefficient, or the cap.
+
+**Morning runaway: diagnose from a restart.** The reference run wrote `wrfrst_d01_2025-07-18_04:00:00`
+(`restart_interval=180`). Run A12 (`branko_runs/innval_pbl3d_A12`, job 8478217) restarts from it
+on the same 2-node layout (so the same columns blow up — KNOWN_ISSUES E14), 04:00→06:30, with the
+1-minute stream from 05:00 carrying the q² budget terms, `Q_SQ`, `W`, `U`, `V`, `T`, the length
+scale and its limiters, `PBL3D_P_EPS`, the six stresses, `HFX` and `UST` (`realcase/iofields_a12.txt`,
+~1 GB per frame, ~60 GB). Output root `exp/A12`. The diagnosis question is the same one A9 had:
+at the ridge-top column, is production outrunning dissipation at constant P/ε because the strain
+cap makes l ∝ q (the inferred mechanism), or is something else — the Tier-2 split length scale,
+the buoyancy term in the transition, the high-order stencil — driving it. Until answered, no run
+is expected to pass 06:00.
+
+---
+
 **2026-08-21 (VSC-5) — Six-run result: the bootstrap trap is real but not the lever — the deficit
 is the closure's stable-regime equilibrium; a third of production is unpaid on slopes; the strain
 cap is load-bearing; and every run blows up two hours after sunrise.**

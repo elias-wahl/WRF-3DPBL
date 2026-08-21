@@ -148,6 +148,7 @@
  pbl3d_init_opt         = 1,           ! start q^2 at level-2 equilibrium (as MYNN does); 0 = floor everywhere (pre-2026-08-20)
  pbl3d_l0_min           = 8.0,         ! floor on the asymptotic length scale l0, m; 0 = off (pre-2026-08-20). See DECISIONS 2026-08-20
  pbl3d_limiter_opt      = 1,           ! 1 fixed S k/eps cap; 2 cap scaled by the level-2 equilibrium value at local Ri (default-off option)
+ pbl3d_sf_pair          = 0,           ! 1 = credit q^2 only with the horizontal production the slope-tapered tendency actually extracts (A10); 0 = pre-2026-08-21. Validated run pending
  diff_6th_opt           = 2,           ! stays active with diff_opt=0 -- numerical noise control
  diff_6th_factor        = 0.12,
  diff_6th_slopeopt      = 1,           ! taper the filter off over steep slopes
