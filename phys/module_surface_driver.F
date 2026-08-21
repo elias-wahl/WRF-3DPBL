@@ -3300,6 +3300,22 @@ CONTAINS
                 MP_RAINC =  RAINCV, MP_RAINNC =    RAINNCV, MP_SHCV = RAINSHV,&
 		MP_SNOW  = SNOWNCV, MP_GRAUP  = GRAUPELNCV, MP_HAIL = HAILNCV )
 !$omp end critical (noahmp_driver)
+           ! Undefined albedo guard (2026-08-21). The refactored Noah-MP driver writes
+           ! AlbedoSfc into ALBEDO unconditionally; where the land surface receives no
+           ! short-wave that value is Noah-MP's undefined marker (-9999). At night that is
+           ! harmless, but with topographic shading a shaded cell has cos(zenith) > 0 and
+           ! RRTMG-SW then reflects -9999 x the beam: diffuse surface flux -480 W m-2 and
+           ! column heating rates of -80 K/h in 9 % of the domain (run 8478327, 07:00), the
+           ! cold bias / fog / drainage runaway that killed every morning. WRF 4.6's driver
+           ! guarded this with "IF (SALB > -999) ALBEDO = SALB". Fall back to the background
+           ! albedo (the lit value is not available here); the short-wave flux in such a
+           ! cell is a few W m-2 of diffuse light, so the choice of fallback is immaterial.
+           ! Upstream report pending (OPEN_ISSUES U3).
+         DO j = j_start(ij),j_end(ij)
+           DO i = i_start(ij),i_end(ij)
+             IF ( ALBEDO(I,J) .LT. 0.0 ) ALBEDO(I,J) = ALBBCK(I,J)
+           END DO
+         END DO
            ! NaN detector (2026-08-21), land-surface side: see the SFCLAYREV one above.
          DO j = j_start(ij),j_end(ij)
            DO i = i_start(ij),i_end(ij)

@@ -44,6 +44,14 @@ Subcommands:
              q^2, 10 m wind bias, per-level length scales/floor fraction,
              strain-limiter footprint, and a q^2-shear vs KE-loss budget
              check, each run vs the MYNN control at matching times.
+  fog     -- morning fog / cold-air-pool diagnostics (A12 follow-on): per
+             terrain band x slope-aspect low-cloud fraction and cloud-top
+             height, T2/Q2/RH2, surface fluxes, TSK-T(k=0), q^2; cold cells
+             vs cloud co-location; the near-surface saturation path
+             (T, QVAPOR, RH at k=0) and its 30-min tendency; and drainage-flow
+             cells (>15 m/s at the lowest mass level) vs cold/cloudy
+             neighbours. Runs and the MYNN control (as a run named "MYNN")
+             are each reported independently, band x aspect x time.
 
 Reference numbers this script must reproduce (see DECISIONS.md 2026-08-20):
   slope : all-domain q^2 3D 0.0847 vs MYNN 0.3156 (ratio 0.27); wind bias
@@ -463,6 +471,390 @@ def cmd_exp(args):
             print(f"\nno block [1] rows produced -- not writing {args.csv}")
 
 
+# --- constants for `fog` -----------------------------------------------------
+# Terrain bands (m, HGT) and their labels -- rows of block [1]/[3] below.
+FOG_TERRAIN_BANDS_M = [(0, 1000), (1000, 1500), (1500, 2000), (2000, 2500), (2500, 1.e9)]
+FOG_BAND_LABELS = ['<1000', '1000-1500', '1500-2000', '2000-2500', '>2500']
+# Slope-aspect labels: "N-facing"/"S-facing" only assigned above this slope
+# [deg]; flatter terrain has no well-defined downslope direction.
+FOG_ASPECT_LABELS = ['N-facing', 'S-facing', 'flat']
+FOG_ASPECT_SLOPE_MIN_DEG = 3.0
+FOG_CLOUD_THRESH = 1.e-5   # kg/kg, QCLOUD+QICE threshold marking a level "cloudy"
+FOG_K_FOG = 12             # mass levels 0..11 ~ <200 m AGL -- ground fog layer
+FOG_K_DECK = 25            # mass levels 0..24 ~ <700 m AGL -- low stratus deck
+FOG_K_CLOUDTOP = 30        # search range (mass levels 0..29) for the cloud top
+FOG_COLD_T2_K = 270.0      # 2 m temperature threshold marking a "cold" (pooled) cell
+FOG_DRAIN_WIND_MS = 15.0   # lowest-mass-level wind speed threshold for drainage flow
+FOG_NEIGHBOURHOOD_HALF = 5  # 11x11 cell (half-width 5) neighbourhood, dx=500 m -> 5.5 km
+
+
+def _fog_band_index(hgt):
+    """Terrain-band index 0..4 into FOG_TERRAIN_BANDS_M/FOG_BAND_LABELS."""
+    idx = np.zeros(hgt.shape, dtype=int)
+    for i, (lo, hi) in enumerate(FOG_TERRAIN_BANDS_M):
+        idx = np.where((hgt >= lo) & (hgt < hi), i, idx)
+    return idx
+
+
+def _fog_aspect_index(hgt):
+    """Slope-aspect index 0=N-facing, 1=S-facing, 2=flat, from HGT (dx=500 m).
+
+    facing = direction of -grad(h) (the downslope direction); N-facing when
+    that direction has a northward (-dh/dy > 0) component. Only assigned
+    where slope_deg(hgt) > FOG_ASPECT_SLOPE_MIN_DEG, else "flat".
+    """
+    slope = slope_deg(hgt)
+    dhdy = np.gradient(hgt, 500., axis=0)
+    north_facing = (-dhdy) > 0
+    steep = slope > FOG_ASPECT_SLOPE_MIN_DEG
+    idx = np.full(hgt.shape, 2, dtype=int)
+    idx[steep & north_facing] = 0
+    idx[steep & ~north_facing] = 1
+    return idx, slope
+
+
+def _box_sum(a, half):
+    """Sum of `a` over a (2*half+1)x(2*half+1) cell window centred on each
+    cell. Edge-padded (border value repeated) so every window is full size --
+    a deliberate approximation, adequate for the neighbourhood checks here."""
+    win = 2 * half + 1
+    ap = np.pad(np.asarray(a, dtype=float), ((half, half), (half, half)), mode='edge')
+    ii = np.zeros((ap.shape[0] + 1, ap.shape[1] + 1))
+    ii[1:, 1:] = ap.cumsum(0).cumsum(1)
+    ny, nx = a.shape
+    return (ii[win:win + ny, win:win + nx] - ii[:ny, win:win + nx]
+            - ii[win:win + ny, :nx] + ii[:ny, :nx])
+
+
+def _box_mean(a, half):
+    return _box_sum(a, half) / float((2 * half + 1) ** 2)
+
+
+def _median_or_nan(x):
+    x = np.asarray(x, dtype=float)
+    x = x[np.isfinite(x)]
+    return float(np.median(x)) if x.size else float('nan')
+
+
+def _pctl_or_nan(x, p):
+    x = np.asarray(x, dtype=float)
+    x = x[np.isfinite(x)]
+    return float(np.percentile(x, p)) if x.size else float('nan')
+
+
+def _saturation_rh_pct(T, p, q):
+    """RH [%] from temperature T [K], pressure p [Pa], mixing ratio q [kg/kg].
+
+    es = 611.2*exp(17.67*(T-273.15)/(T-29.65)) [Pa] (saturation vapour
+    pressure, Bolton-form); qs = 0.622*es/(p-es) [kg/kg] (saturation mixing
+    ratio); RH = 100*q/qs.
+    """
+    es = 611.2 * np.exp(17.67 * (T - 273.15) / (T - 29.65))
+    qs = 0.622 * es / np.maximum(p - es, 1.)
+    return 100. * q / np.maximum(qs, 1.e-12)
+
+
+def _time_to_minutes(t):
+    hh, mm = t.split(':')
+    return int(hh) * 60 + int(mm)
+
+
+def _fog_fields(d, is_mynn):
+    """Per-cell/column fields `cmd_fog` needs from one wrfout Dataset `d`.
+
+    Units, once: T2/TSK/Tk0 in K; Q2/QVk0 in kg/kg (converted to g/kg at the
+    print/CSV site, not here); RH in %; SWDOWN/GLW/HFX/LH in W/m^2; UST in
+    m/s; wind0 (lowest mass level horizontal wind speed) in m/s; q2 (Q_SQ or
+    QKE, twice the turbulence kinetic energy) in m^2/s^2; cloud_top_z in m
+    AGL; hgt (surface elevation) in m.
+    """
+    hgt = d['HGT'][0]
+    xland = d['XLAND'][0]
+    aspect_idx, slope = _fog_aspect_index(hgt)
+
+    qcloud = d['QCLOUD'][0]
+    qice = d['QICE'][0] if 'QICE' in d.variables else np.zeros_like(qcloud)
+    qc_qi = qcloud + qice
+
+    nk = FOG_K_CLOUDTOP
+    cld = qc_qi[0:nk] > FOG_CLOUD_THRESH                     # (nk, ny, nx) bool
+    fog_mask = cld[0:FOG_K_FOG].any(axis=0)                  # fog, ~<200 m AGL
+    deck_mask = cld[0:FOG_K_DECK].any(axis=0)                 # deck, ~<700 m AGL
+    has_cloud = cld.any(axis=0)
+    k_idx = np.arange(nk)[:, None, None]
+    topk = np.where(cld, k_idx, -1).max(axis=0)               # highest cloudy k, -1 if none
+    zf = (d['PH'][0, 0:nk + 1] + d['PHB'][0, 0:nk + 1]) / 9.81  # face height AGL, m
+    zf = zf - zf[0]
+    cloud_top_z = np.take_along_axis(zf, np.clip(topk, 0, None)[None, :, :], axis=0)[0]
+    cloud_top_z = np.where(has_cloud, cloud_top_z, np.nan)
+
+    T2 = d['T2'][0]
+    Q2 = d['Q2'][0]
+    PSFC = d['PSFC'][0]
+    RH2 = _saturation_rh_pct(T2, PSFC, Q2)
+
+    T = d['T'][0]
+    P = d['P'][0]
+    PB = d['PB'][0]
+    Tk0 = (T[0] + 300.) * ((P[0] + PB[0]) / 1.e5) ** 0.2857   # actual temperature, k=0, K
+    QVk0 = d['QVAPOR'][0, 0]
+    RHk0 = _saturation_rh_pct(Tk0, P[0] + PB[0], QVk0)
+
+    TSK = d['TSK'][0]
+
+    U = d['U'][0, 0]
+    V = d['V'][0, 0]
+    u0 = 0.5 * (U[:, :-1] + U[:, 1:])          # unstaggered lowest-mass-level wind, m/s
+    v0 = 0.5 * (V[:-1, :] + V[1:, :])
+    wind0 = np.hypot(u0, v0)
+
+    if is_mynn:
+        q2 = d['QKE'][0, 0:6].mean(axis=0)                    # already on mass levels
+    else:
+        q2 = face_to_mass(d['Q_SQ'][0, 0:7])[0:6].mean(axis=0)  # face -> mass, lowest 6
+
+    return dict(hgt=hgt, land=(xland < 1.5), slope=slope, aspect_idx=aspect_idx,
+                fog_mask=fog_mask, deck_mask=deck_mask, cloud_top_z=cloud_top_z,
+                T2=T2, Q2=Q2, RH2=RH2, Tk0=Tk0, QVk0=QVk0, RHk0=RHk0,
+                SWDOWN=d['SWDOWN'][0], GLW=d['GLW'][0], HFX=d['HFX'][0], LH=d['LH'][0],
+                TSK_minus_T0=TSK - Tk0, UST=d['UST'][0], wind0=wind0, q2=q2)
+
+
+def cmd_fog(args):
+    """Morning fog / cold-air-pool diagnostics, each run (and the MYNN control,
+    added as a run named "MYNN") reported independently -- not a run-vs-MYNN
+    ratio like `slope`/`exp`, since the question here is where and how each
+    closure's near-surface state saturates, not how far apart they are.
+
+    Variables, defined once (units in parentheses):
+      q^2 (Q_SQ in the 3D run, QKE in MYNN) -- twice the turbulence kinetic
+        energy (m^2 s^-2), mean over the lowest 6 mass levels (Q_SQ is
+        face-averaged to mass first, as in `slope`/`exp`).
+      "fog" -- max over mass levels k<12 (~<200 m AGL) of QCLOUD+QICE
+        exceeding 1e-5 kg/kg, i.e. a shallow ground-fog layer.
+      "deck" -- same test over k<25 (~<700 m AGL), a low stratus deck.
+      cloud top -- for columns with any QCLOUD+QICE>1e-5 kg/kg in k<30, the
+        AGL height (m) of the highest such level, from (PH+PHB)/9.81 minus
+        the surface value of that same face-height profile.
+      T2, TSK (K) -- 2 m and skin temperature; T(k=0) -- actual (not
+        potential) temperature at the lowest mass level, K, from
+        (T+300)*((P+PB)/1e5)^0.2857; TSK-T(k=0) is the surface-minus-air
+        temperature difference (K) that flags a strong nocturnal inversion.
+      Q2 (g/kg), QVAPOR(k=0) (g/kg) -- water-vapour mixing ratio.
+      RH2, RH(k=0) (%) -- relative humidity from the Bolton saturation-vapour-
+        pressure formula (see _saturation_rh_pct docstring).
+      SWDOWN, GLW (W/m^2) -- downward shortwave / longwave radiation at the
+        surface; HFX, LH (W/m^2) -- surface sensible / latent heat flux;
+        UST (m/s) -- friction velocity.
+      wind speed, lowest mass level (m/s) -- hypot of U,V unstaggered to mass
+        points at k=0; used to flag drainage-flow cells (>15 m/s).
+      terrain band -- HGT (m) bin: <1000, 1000-1500, 1500-2000, 2000-2500,
+        >2500. slope aspect -- N-facing/S-facing (only where slope_deg(HGT)
+        > 3 deg) else "flat"; see _fog_aspect_index.
+
+    Per run x time (land cells, XLAND<1.5, unless noted):
+
+    A header line gives the ALL-CELL (land+water) fog/deck fraction and the
+    ALL-CELL count of T2<270 K cells, as a check against reference numbers.
+
+    [1] Per terrain band x aspect: n; fog/deck cloud fraction; median cloud-
+        top height (cloudy columns only); T2 1st/10th/50th percentile; Q2,
+        RH2, SWDOWN, GLW, HFX, LH, TSK-T(k=0), UST medians; mean q^2.
+    [2] Cold cells (T2<270 K): count, fraction with deck cloud, median
+        SWDOWN, median TSK-T(k=0), median terrain band. Per band: median T2
+        of deck-cloud cells vs cloud-free cells, and their difference.
+    [3] Saturation path per band: median T(k=0), QVAPOR(k=0), RH(k=0); and,
+        when the previous requested time for the same run is exactly 30 min
+        earlier, the 30-min change in median T(k=0) and QVAPOR(k=0).
+    [4] Drainage cells (land, wind speed at k=0 > 15 m/s): n; median T(k=0)
+        anomaly vs the 11x11-cell (5.5 km) neighbourhood mean; median HGT;
+        fraction lying within that same neighbourhood of a cold (T2<270 K)
+        or deck-cloudy land cell.
+
+    All values are also written to --csv in long format: run,time,band,
+    aspect,metric,value (band/aspect are "ALL" where a metric is not
+    stratified that way).
+    """
+    runs = {}
+    for kv in args.runs:
+        name, sep, path = kv.partition('=')
+        if not sep or not name or not path:
+            raise SystemExit(f"--runs entries must be NAME=DIR, got {kv!r}")
+        runs[name] = path
+    runs.setdefault('MYNN', args.mynn_dir)
+
+    times = args.times.split(',')
+    csv_rows = []
+    prev_state = {}  # (run, band_label) -> (time_minutes, median_Tk0, median_QVk0_gkg)
+
+    def emit(run, time, band, aspect, metric, value):
+        csv_rows.append(dict(run=run, time=time, band=band, aspect=aspect,
+                              metric=metric, value=value))
+
+    for t in times:
+        for name, run_dir in runs.items():
+            path = f'{run_dir}/wrfout_d01_{args.date}_{t}:00.nc'
+            try:
+                d = nc.Dataset(path)
+            except OSError:
+                print(f'[{name} {t}] file missing: {path} -- skipping')
+                continue
+
+            f = _fog_fields(d, is_mynn=(name == 'MYNN'))
+            land = f['land']
+            band_idx = _fog_band_index(f['hgt'])
+            aspect_idx = f['aspect_idx']
+
+            fog_all = float(f['fog_mask'].mean())
+            deck_all = float(f['deck_mask'].mean())
+            ncold_all = int((f['T2'] < FOG_COLD_T2_K).sum())
+            print(f"\n=== run={name}  time={t} ===  "
+                  f"[ALL-CELL CHECK] fog(k<{FOG_K_FOG})={fog_all*100:.1f}%  "
+                  f"deck(k<{FOG_K_DECK})={deck_all*100:.1f}%  n(T2<{FOG_COLD_T2_K:.0f}K)={ncold_all}")
+
+            # --- [1] band x aspect table ---------------------------------
+            print(f"\n[1] land cells by terrain band x slope aspect")
+            print(f"{'band':>11} {'aspect':>9} {'n':>7} {'fog%':>6} {'deck%':>6} "
+                  f"{'ctop_m':>7} {'T2p1':>7} {'T2p10':>7} {'T2p50':>7} {'Q2gkg':>6} "
+                  f"{'RH2%':>6} {'SW':>6} {'GLW':>6} {'HFX':>6} {'LH':>6} {'TSKmT':>6} "
+                  f"{'UST':>5} {'q2':>8}")
+            for bi, band_label in enumerate(FOG_BAND_LABELS):
+                bmask = land & (band_idx == bi)
+                for ai, aspect_label in enumerate(FOG_ASPECT_LABELS):
+                    m = bmask & (aspect_idx == ai)
+                    n = int(m.sum())
+                    if n == 0:
+                        continue
+                    fog_pct = float(f['fog_mask'][m].mean()) * 100.
+                    deck_pct = float(f['deck_mask'][m].mean()) * 100.
+                    ctop = _median_or_nan(f['cloud_top_z'][m])
+                    t2p1 = _pctl_or_nan(f['T2'][m], 1)
+                    t2p10 = _pctl_or_nan(f['T2'][m], 10)
+                    t2p50 = _pctl_or_nan(f['T2'][m], 50)
+                    q2gkg = _median_or_nan(f['Q2'][m]) * 1000.
+                    rh2 = _median_or_nan(f['RH2'][m])
+                    sw = _median_or_nan(f['SWDOWN'][m])
+                    glw = _median_or_nan(f['GLW'][m])
+                    hfx = _median_or_nan(f['HFX'][m])
+                    lh = _median_or_nan(f['LH'][m])
+                    tskmt = _median_or_nan(f['TSK_minus_T0'][m])
+                    ust = _median_or_nan(f['UST'][m])
+                    q2mean = float(f['q2'][m].mean())
+                    print(f"{band_label:>11} {aspect_label:>9} {n:>7d} {fog_pct:6.1f} "
+                          f"{deck_pct:6.1f} {ctop:7.1f} {t2p1:7.2f} {t2p10:7.2f} "
+                          f"{t2p50:7.2f} {q2gkg:6.2f} {rh2:6.1f} {sw:6.1f} {glw:6.1f} "
+                          f"{hfx:6.1f} {lh:6.1f} {tskmt:6.2f} {ust:5.2f} {q2mean:8.4f}")
+                    for metric, value in (
+                        ('n', n), ('fog_frac_pct', fog_pct), ('deck_frac_pct', deck_pct),
+                        ('cloud_top_median_m', ctop), ('T2_p1_K', t2p1),
+                        ('T2_p10_K', t2p10), ('T2_p50_K', t2p50), ('Q2_median_gkg', q2gkg),
+                        ('RH2_median_pct', rh2), ('SWDOWN_median_Wm2', sw),
+                        ('GLW_median_Wm2', glw), ('HFX_median_Wm2', hfx),
+                        ('LH_median_Wm2', lh), ('TSKminusT0_median_K', tskmt),
+                        ('UST_median_ms', ust), ('q2_mean_lowest6_m2s2', q2mean),
+                    ):
+                        emit(name, t, band_label, aspect_label, metric, value)
+
+            # --- [2] cold cells vs cloud ----------------------------------
+            print(f"\n[2] cold cells vs cloud (land, T2<{FOG_COLD_T2_K:.0f} K)")
+            cold = land & (f['T2'] < FOG_COLD_T2_K)
+            n_cold = int(cold.sum())
+            if n_cold:
+                frac_lc = float(f['deck_mask'][cold].mean())
+                sw_cold = _median_or_nan(f['SWDOWN'][cold])
+                tskmt_cold = _median_or_nan(f['TSK_minus_T0'][cold])
+                med_band_i = int(round(float(np.median(band_idx[cold]))))
+                med_band_i = min(max(med_band_i, 0), len(FOG_BAND_LABELS) - 1)
+                med_band_lbl = FOG_BAND_LABELS[med_band_i]
+            else:
+                frac_lc = sw_cold = tskmt_cold = float('nan')
+                med_band_lbl = 'n/a'
+            print(f"  n_cold={n_cold}  frac_deck_cloud={frac_lc:.3f}  "
+                  f"median_SWDOWN={sw_cold:.1f}  median_TSKminusT0={tskmt_cold:.2f}  "
+                  f"median_band={med_band_lbl}")
+            emit(name, t, 'ALL', 'ALL', 'coldcells_n', n_cold)
+            emit(name, t, 'ALL', 'ALL', 'coldcells_frac_deck_cloud', frac_lc)
+            emit(name, t, 'ALL', 'ALL', 'coldcells_SWDOWN_median_Wm2', sw_cold)
+            emit(name, t, 'ALL', 'ALL', 'coldcells_TSKminusT0_median_K', tskmt_cold)
+
+            print(f"  per band: median T2 of deck-cloud cells vs cloud-free cells")
+            for bi, band_label in enumerate(FOG_BAND_LABELS):
+                bmask = land & (band_idx == bi)
+                lc = bmask & f['deck_mask']
+                clr = bmask & ~f['deck_mask']
+                t2_lc = _median_or_nan(f['T2'][lc])
+                t2_clr = _median_or_nan(f['T2'][clr])
+                diff = t2_lc - t2_clr if np.isfinite(t2_lc) and np.isfinite(t2_clr) else float('nan')
+                print(f"    {band_label:>11}: n_deckcloud={int(lc.sum()):6d} "
+                      f"n_clear={int(clr.sum()):6d}  T2_deckcloud={t2_lc:7.2f}  "
+                      f"T2_clear={t2_clr:7.2f}  diff={diff:+7.2f}")
+                emit(name, t, band_label, 'ALL', 'lowcloud_T2_median_K', t2_lc)
+                emit(name, t, band_label, 'ALL', 'clear_T2_median_K', t2_clr)
+                emit(name, t, band_label, 'ALL', 'lowcloud_minus_clear_T2_K', diff)
+
+            # --- [3] saturation path per band ------------------------------
+            print(f"\n[3] saturation path per band: median T(k=0), QVAPOR(k=0), RH(k=0), "
+                  f"and 30-min change vs the previous requested time (same run)")
+            tmin = _time_to_minutes(t)
+            for bi, band_label in enumerate(FOG_BAND_LABELS):
+                bmask = land & (band_idx == bi)
+                if bmask.sum() == 0:
+                    continue
+                medT0 = _median_or_nan(f['Tk0'][bmask])
+                medQ0 = _median_or_nan(f['QVk0'][bmask]) * 1000.
+                medRH0 = _median_or_nan(f['RHk0'][bmask])
+                key = (name, band_label)
+                prev = prev_state.get(key)
+                dtxt = 'no prior frame'
+                if prev is not None:
+                    prev_t, prev_tmin, prev_medT0, prev_medQ0 = prev
+                    if abs((tmin - prev_tmin) - 30.) < 1.e-6:
+                        dT = medT0 - prev_medT0
+                        dQ = medQ0 - prev_medQ0
+                        dtxt = f"dT30={dT:+.3f} K  dQ30={dQ:+.4f} g/kg"
+                        emit(name, t, band_label, 'ALL', 'Tk0_change_30min_K', dT)
+                        emit(name, t, band_label, 'ALL', 'QVk0_change_30min_gkg', dQ)
+                    else:
+                        dtxt = f"n/a (prev frame {prev_t!r} is {tmin-prev_tmin:+.0f} min away)"
+                prev_state[key] = (t, tmin, medT0, medQ0)
+                print(f"    {band_label:>11}: T(k0)={medT0:7.2f} K  QVAPOR(k0)={medQ0:6.3f} g/kg  "
+                      f"RH(k0)={medRH0:5.1f}%   {dtxt}")
+                emit(name, t, band_label, 'ALL', 'Tk0_median_K', medT0)
+                emit(name, t, band_label, 'ALL', 'QVk0_median_gkg', medQ0)
+                emit(name, t, band_label, 'ALL', 'RHk0_median_pct', medRH0)
+
+            # --- [4] drainage flow ------------------------------------------
+            print(f"\n[4] drainage cells (land, wind speed at k=0 > {FOG_DRAIN_WIND_MS:.0f} m/s)")
+            drain = land & (f['wind0'] > FOG_DRAIN_WIND_MS)
+            n_drain = int(drain.sum())
+            if n_drain:
+                anom = f['Tk0'] - _box_mean(f['Tk0'], FOG_NEIGHBOURHOOD_HALF)
+                med_anom = _median_or_nan(anom[drain])
+                med_hgt = _median_or_nan(f['hgt'][drain])
+                near = land & ((f['T2'] < FOG_COLD_T2_K) | f['deck_mask'])
+                near_count = _box_sum(near, FOG_NEIGHBOURHOOD_HALF)
+                frac_near = float((near_count[drain] > 0.5).mean())
+            else:
+                med_anom = med_hgt = frac_near = float('nan')
+            print(f"  n_drain={n_drain}  median_Tk0_anomaly_vs_11x11={med_anom:.3f} K  "
+                  f"median_HGT={med_hgt:.0f} m  frac_near_cold_or_cloud={frac_near:.3f}")
+            emit(name, t, 'ALL', 'ALL', 'drainage_n', n_drain)
+            emit(name, t, 'ALL', 'ALL', 'drainage_Tk0_anomaly_median_K', med_anom)
+            emit(name, t, 'ALL', 'ALL', 'drainage_HGT_median_m', med_hgt)
+            emit(name, t, 'ALL', 'ALL', 'drainage_frac_near_cold_or_cloud', frac_near)
+
+    if args.csv:
+        if csv_rows:
+            import csv as csvmod
+            with open(args.csv, 'w', newline='') as fh:
+                w = csvmod.DictWriter(fh, fieldnames=list(csv_rows[0].keys()))
+                w.writeheader()
+                w.writerows(csv_rows)
+            print(f"\nwrote {len(csv_rows)} rows to {args.csv}")
+        else:
+            print(f"\nno rows produced -- not writing {args.csv}")
+
+
 def main():
     p = argparse.ArgumentParser(
         description='Compare the 3D PBL closure (pbl3d_opt=2) run against the MYNN control.')
@@ -511,6 +903,19 @@ def main():
     sp.add_argument('--csv', default=None,
                      help='optional path to write the block-1 slope x height table as CSV')
     sp.set_defaults(func=cmd_exp)
+
+    sp = sub.add_parser('fog', help='morning fog / cold-air-pool diagnostics per terrain '
+                         'band x slope aspect, each run (and MYNN) reported independently')
+    sp.add_argument('--runs', nargs='+', required=True, metavar='NAME=DIR',
+                     help='one or more NAME=DIR run archive dirs; MYNN (--mynn-dir) is '
+                          'added automatically as an extra run named "MYNN"')
+    sp.add_argument('--times', required=True,
+                     help='comma-separated model times HH:MM, e.g. 01:30,02:00,...,07:00')
+    sp.add_argument('--date', default='2025-07-18', help='model date (default: %(default)s)')
+    sp.add_argument('--csv', default=None,
+                     help='optional path to write the long-format '
+                          'run,time,band,aspect,metric,value table as CSV')
+    sp.set_defaults(func=cmd_fog)
 
     args = p.parse_args()
     if getattr(args, 'subset', None) is None and args.cmd in ('t1', 'cap'):

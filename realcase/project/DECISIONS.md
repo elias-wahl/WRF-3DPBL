@@ -7,6 +7,56 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-08-21 (VSC-5), 22:15 — ROOT CAUSE of the morning failures: an undefined land-surface albedo (−9999) reaches the short-wave radiation scheme in terrain-shaded cells. A model bug, not closure physics. Guarded; the morning has to be re-run.**
+
+**How it was found.** The θ budget of the cloud layer from the WRFlux averages (06:30–07:00,
+run 8478327 vs MYNN 8320565, same columns): long-wave, microphysics and turbulence terms are
+ordinary, but the **short-wave radiative tendency is −10 to −14 K h⁻¹ throughout the lowest 750 m
+at 09:00 local — in cloud-free high-terrain columns as much as under the fog** (MYNN: +0.06 K h⁻¹).
+Short-wave radiation cannot cool. The raw `RTHRATEN` in the 07:00 restart: median ≈ 0, 1st
+percentile −85 K h⁻¹, extreme −232 K h⁻¹ (04:00: a normal −0.15 / −2). The columns: 27 740
+(9.3 % of the domain), all land, median 1660 m, **all in terrain shadow (median SWDOWN 16 W m⁻²,
+diffuse only)**; the cooling profile is smooth, −80 K h⁻¹ at the surface to −40 at 750 m; only
+17 % have any cloud. In those columns **`ALBEDO` = −9999** (lit land 0.145), diffuse surface flux
+−480 W m⁻², slope-normal flux −127 W m⁻²: RRTMG-SW reflects −9999 × the beam.
+
+**The chain.** `ALBEDO < 0` on every land cell with SWDOWN < 50 W m⁻² — all land at night
+(297 582 at 03:00) and the shaded cells after sunrise (55 011 at 05:30, 39 859 at 07:00); the
+cold cells (T2 < 270 K) are a subset (1 222 of 1 391 at 05:30; 13 713 of 20 933 at 07:00). The
+refactored Noah-MP driver of 4.8 writes `NoahmpIO%ALBEDO(i,j) = AlbedoSfc` unconditionally
+(`phys/noahmp/drivers/wrf/EnergyVarOutTransferMod.F90:140`), and `AlbedoSfc` is the undefined
+marker wherever the land surface receives no short-wave; WRF 4.6's driver guarded it
+(`IF (SALB > -999) ALBEDO = SALB`, `module_sf_noahmpdrv.F:1231`). Harmless at night; with working
+topographic shading a shaded cell has cos(zenith) > 0 and the SW scheme uses the value. The
+control (stock 4.6.0) never meets the case: no negative albedo, and its topographic shading is
+effectively inert (196 shaded land cells at 07:30 local, 0 at 09:00, against 55 000 / 40 000 here —
+implausibly few for the Inn valley, so the *control's* morning insolation is also suspect).
+
+**Consequences (all measured before, now explained).** From ~04:00 the shaded high terrain cools at
+80 K h⁻¹ in the radiation term; by 07:00 7 % of the domain is below −3 °C, the air saturates into
+fog/stratus over 10 % of the cells (which then shades more cells), skins decouple, cold air drains
+at 15–25 m s⁻¹, a column collapses numerically (07:54 in the continuation; the ridge-top shear
+runaways of 05:52–06:14 in the unpaired runs sat on top of it). The **nocturnal results stand**
+(no short-wave, albedo unused): the stable-regime q² deficit, its Ri dependence, the energy-pairing
+measurement, the strain-cap result. Everything said about the *morning* — the fog feedback, the
+decoupling statistics, the +3 m s⁻¹ wind bias at 07:00, the surface-layer NaN — was downstream of
+this bug and is withdrawn as closure physics; the surface-layer guard and bounds stay (harmless;
+the detector found the NaN in minutes).
+
+**Decision.** Guard at the point where the value enters WRF, `phys/module_surface_driver.F` after
+the Noah-MP call: `IF (ALBEDO(I,J) < 0.) ALBEDO(I,J) = ALBBCK(I,J)` (background albedo; the lit
+value is not available there, and the short-wave in such a cell is a few W m⁻² of diffuse light,
+so the fallback is immaterial). No switch: the previous behaviour is garbage radiation, and the
+nocturnal reference is unaffected (ALBEDO at night changes in the output, not in the physics).
+Upstream report as **U3** (Noah-MP refactor dropped the albedo guard; reproduces with
+`sf_surface_physics=4`, `topo_shading=1`, any PBL scheme). Incremental rebuild, then **X7** =
+paired configuration, 01:00→10:00 — the first morning of the 3D closure free of the bug; its night
+must be bit-identical to X6 through 03:30 (a verification), its morning is new information.
+F2/F3 of the fog plan are dropped (their premise is gone); F1 (job 8483357, running) documents the
+bug's time evolution at 5 min and is kept.
+
+---
+
 **2026-08-21 (VSC-5), 18:50 — With the surface-layer guard the continuation reaches 07:54, then the atmosphere itself blows up; the morning failure is a fog / cold-air feedback over the high terrain that the weak stable-regime mixing lets run away.**
 
 **Measured.** The 12-minute guard test (job 8481844) passes 07:10 without NaN; every land cell
