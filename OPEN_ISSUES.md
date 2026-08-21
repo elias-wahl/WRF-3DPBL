@@ -1495,6 +1495,13 @@ scheme, resolved slope-flow dynamics — **candidates, not measured**).
 **And it removed the morning runaway** — see A12. X6 is the first run of this
 closure to complete the morning transition (07:00 UTC).
 
+**Note 2026-08-21 22:15.** The nocturnal numbers above are unaffected by what follows and
+stand as measured. The morning claim is weaker than it reads: the runaway it removed was
+being driven by a spurious -80 K h^-1 short-wave cooling of the shaded terrain
+(`KNOWN_ISSUES.md` **U3**), so "it removed the morning runaway" means it removed the
+closure's amplification of a bug's forcing, not that the paired closure has been shown to
+survive a physically correct morning. X7 (job 8483386) tests that.
+
 ---
 
 ## A11 — TRAP CONFIRMED, NOT THE LEVER (2026-08-21): every bound on the eddy size scales with q — the closure cannot bootstrap from the floor and starts there
@@ -1626,8 +1633,12 @@ with the MY82 constants loses its turbulence beyond `Ri` ~ 0.2, MYNN holds
 
 1. **The reference is undecided.** MYNN is the control, not the truth. Whether
    `q_sq` of 0.1 or 0.3 m^2 s^-2 is correct for this valley at `Ri` ~ 1 needs
-   observations — TEAMx intensive-observation data under `$DATA/TEAMx_sEOP_IOP17`
-   and `$DATA/TEAMx_sEOP_IOP18-20` (pointer only; not analysed).
+   observations. **Correction 2026-08-21:** `$DATA/TEAMx_sEOP_IOP17` and
+   `$DATA/TEAMx_sEOP_IOP18-20` hold **ECMWF analyses and forecasts (GRIB)**, not
+   station observations — the IOP measurements are not on disk and must be asked
+   for. Nothing in this issue's nocturnal numbers depends on that; the *reference*
+   for them does. (This section's conclusions are nocturnal and are unaffected by
+   the morning retraction in A13.)
 2. **Not to be tuned yet.** A10 is a spurious *source* worth ~33% of production;
    fixing it moves `q_sq` down. Tuning the stable-regime constants first would
    reward the cancellation.
@@ -1647,7 +1658,24 @@ with the MY82 constants loses its turbulence beyond `Ri` ~ 0.2, MYNN holds
 
 ---
 
-## A12 — DIAGNOSED 2026-08-21: fed by the unpaid horizontal production (A10); does not occur with the pairing fix through 07:00. Originally: every run blows up 2-2.5 h after sunrise at ridge-top columns, including the unchanged code
+## A12 — EXPLAINED 2026-08-21 22:15: the engine was `KNOWN_ISSUES.md` U3 (an undefined land-surface albedo reaching RRTMG-SW, -80 K h^-1 of spurious short-wave cooling over shaded terrain); the unpaid-production part (A10) was real but secondary. Re-assess after X7. Originally: every run blows up 2-2.5 h after sunrise at ridge-top columns, including the unchanged code
+
+**STATUS 2026-08-21 22:15.** Everything below about the *source* of the energy in the
+terminal clusters stands as measured — the horizontal-pairing production really is 77-164 %
+of total shear production there with 6-10 % paid, and removing it really does postpone the
+failure by ~1 h. What does **not** stand is the framing of the morning as a turbulence
+problem. From ~04:00 the shaded high terrain in every run of this configuration is cooled at
+**80 K h^-1 at the surface (40 K h^-1 at 750 m AGL) by the short-wave scheme**, because the
+4.8 Noah-MP driver hands it an undefined albedo of -9999 in any column that receives no
+direct beam and topographic shading is active (`KNOWN_ISSUES.md` **U3**, measured; guarded in
+`phys/module_surface_driver.F`, commit `1fc2fa464`). The neutral, strongly sheared plunging
+flow the ridge-top runaways sat in is itself a product of that cooling — 20 933 cells below
+270 K at 07:00, cold air draining at 15-25 m s^-1. **The unpaid production was the
+amplifier's fuel; the bug was the forcing.** Run **X7** (job 8483386, paired configuration
+plus the guard, 01:00 -> 10:00) is the first morning of this closure without it: its night
+must be bit-identical to X6 through 03:30, its morning is new information, and the question
+"does this closure have a morning-transition instability?" is open again until it lands.
+Nothing in this section should be quoted as closure physics after 04:00 until then.
 
 Raised 2026-08-21 (VSC-5) from the six 6 h runs 8477283-8477288, 2025-07-18 01:00
 -> 07:00 UTC, sunrise ~03:40. `q_sq` = twice the turbulence kinetic energy,
@@ -1769,3 +1797,39 @@ stream never opens — `KNOWN_ISSUES.md` **E17**, which cost one 1.6 h run (8478
    anyway, and it may remove the runaway as a side effect. — **Done, and it did**
    (X6 = job 8478327, complete to 07:00). (1) and (2) were never needed and stay
    untried; neither should be reached for again without new evidence.
+
+---
+
+## A13 — fog / cold-air feedback after sunrise: **WITHDRAWN 2026-08-21 22:15**, it was `KNOWN_ISSUES.md` U3
+
+Raised 2026-08-21 18:50 as a closure result: after sunrise the weakly mixed near-surface
+layer over the high terrain kept cooling and moistening, saturated into fog / low stratus
+over 10 % of the cells, which blocked the morning sun and closed a positive feedback that
+MYNN, mixing more strongly in stable air, never entered; the decoupled skins (17:00 entry of
+`DECISIONS.md`) and the 07:54 column collapse were read as its consequences.
+
+**The premise was a model bug, not the closure.** The layer was not cooling because it was
+unmixed: the short-wave scheme was cooling it at 80 K h^-1 at the surface, in 27 740 columns
+(9.3 % of the domain, all land, all in terrain shadow, median 1660 m) that Noah-MP had given
+an albedo of -9999 (`KNOWN_ISSUES.md` **U3**). The fog is downstream of the cooling. So all
+of the following are **withdrawn as closure physics**: the fog / cold-air feedback itself,
+the post-sunrise decoupling statistics, the -11 K 2 m temperature bias at the first
+percentile, the 15-25 m s^-1 drainage jets, the +2.4 to +3.9 m s^-1 10 m wind excess at
+07:00, and the surface-layer NaN at 07:54. The morning is unmeasured, not measured-and-bad.
+
+**What survives.** (1) The surface-layer work of the 17:00 entry — the `zolri` early-return
+fix, `sfclay_zol_max`, `sfclay_ust_min` and the NaN detector in `module_surface_driver` —
+stays: it is harmless robustness, it changes nothing in a healthy run, and the detector
+found the NaN in minutes. (2) The **nocturnal** results are untouched (no short-wave at
+night): the stable-regime q^2 deficit and its Ri dependence, the energy-pairing measurement
+and fix, the strain-cap result. (3) The observational plan that came out of this entry —
+"morning fog cover and shaded-slope 2 m temperature are the first observables" — is
+suspended until X7 (job 8483386) shows what the closure actually does after sunrise.
+F1 (job 8483357) documents the bug's time evolution at 5-minute resolution and is kept;
+the follow-up fog runs of that plan were dropped, their premise being gone.
+
+**Caveat on the observations, recorded here because it changes the plan:**
+`$DATA/TEAMx_sEOP_IOP17` and `$DATA/TEAMx_sEOP_IOP18-20` hold **ECMWF analyses and
+forecasts (GRIB), not station observations**. Any earlier text in this repository calling
+them "TEAMx observations" is wrong; station data for the IOPs is not on disk and has to be
+asked for.

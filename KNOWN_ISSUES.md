@@ -224,6 +224,98 @@ the underlying physics.
 
 ---
 
+## U3. Noah-MP (WRF 4.8 driver) passes an undefined albedo (-9999) to radiation; with topographic shading RRTMG-SW then cools shaded columns at 80 K h^-1
+
+**Status:** measured 2026-08-21 (VSC-5), **fixed locally 2026-08-21**
+(`phys/module_surface_driver.F`, commit `1fc2fa464`), **not yet reported upstream**
+**Severity:** high — no crash, no warning; the model runs on with a short-wave heating
+rate two orders of magnitude too large and of the wrong sign over shaded terrain
+**Files:** `phys/noahmp/drivers/wrf/EnergyVarOutTransferMod.F90:140` (4.8, unguarded);
+`phys/module_sf_noahmpdrv.F:1231` (4.6, guarded: `IF (SALB > -999)`)
+**Affects:** `sf_surface_physics = 4` (Noah-MP) together with `topo_shading = 1`, and any
+short-wave scheme that consumes `ALBEDO` (`ra_sw_physics = 4` here). Nothing about this is
+specific to `pbl3d` — any PBL scheme reproduces it.
+
+### The code
+
+The refactored 4.8 driver copies the Noah-MP albedo out unconditionally:
+
+```fortran
+ NoahmpIO%ALBEDO(I,J) = AlbedoSfc      ! EnergyVarOutTransferMod.F90:140
+```
+
+`AlbedoSfc` is the undefined marker **-9999** wherever the land surface receives no
+short-wave — the albedo is simply not defined without an incident beam. WRF 4.6's driver
+never let that leave the surface scheme:
+
+```fortran
+ IF (SALB > -999) ALBEDO(I,J) = SALB   ! module_sf_noahmpdrv.F:1231
+```
+
+At night the marker is harmless: the sun is below the horizon and the short-wave scheme is
+not called. **With working topographic shading it is not**: a shaded cell has
+cos(zenith) > 0, so RRTMG-SW runs there and reflects `-9999 x` the diffuse beam.
+
+### Observed (run 8478327, 2025-07-18, Inn valley, 300 000 columns)
+
+| quantity at 07:00 UTC (09:00 local) | value |
+|---|---|
+| columns with `ALBEDO` = -9999 and cos(zenith) > 0 | **27 740** (9.3 % of domain), all land, median terrain 1660 m |
+| their `SWDOWN` | median 16 W m^-2 (diffuse only — they are in terrain shadow) |
+| diffuse surface flux there | **-480 W m^-2**; slope-normal -127 W m^-2 |
+| `RTHRATEN` (potential-temperature radiative tendency, K h^-1) | median ~0, 1st percentile **-85**, extreme **-232** (at 04:00: -0.15 / -2) |
+| cooling profile | **-80 K h^-1** at the surface, -40 K h^-1 at 750 m AGL, smooth |
+| clouds in those columns | only 17 % have any |
+| lit land `ALBEDO` for comparison | 0.145 |
+
+`ALBEDO < 0` on **every** land cell with `SWDOWN` < 50 W m^-2: all land at night
+(297 582 at 03:00, harmless), then 55 011 at 05:30 and 39 859 at 07:00 after sunrise. The
+cold cells (`T2` < 270 K) are a subset of the shaded ones: 1 222 of 1 391 at 05:30,
+13 713 of 20 933 at 07:00.
+
+The stock 4.6.0 MYNN control (job 8320565) never meets the case — no negative albedo — and
+its topographic shading is *effectively inert*: 196 shaded land cells at 07:30 local and 0
+at 09:00, against 55 000 / 40 000 here. That is implausibly few for this valley, so the
+**control's morning insolation is itself suspect** and is not a clean reference after
+sunrise either.
+
+### Reproduction
+
+`sf_surface_physics = 4`, `topo_shading = 1`, any PBL scheme, real terrain with slopes that
+shade after sunrise. In any post-sunrise frame compare the count of land cells with
+`ALBEDO < 0` against the count with `SWDOWN < 50 W m^-2`: they coincide. Then read
+`RTHRATEN` in the same columns — a 4.6 run has O(1) K h^-1 there, a 4.8 run O(-80).
+
+### The fix carried here
+
+At the point where the value enters WRF, `phys/module_surface_driver.F`, immediately after
+the Noah-MP call:
+
+```fortran
+ IF (ALBEDO(I,J) < 0.) ALBEDO(I,J) = ALBBCK(I,J)
+```
+
+`ALBBCK` is the background (climatological) albedo. The lit value is not available at that
+point, and the short-wave in such a cell is a few W m^-2 of diffuse light, so the fallback
+is immaterial to the energy budget. **No namelist switch**: the previous behaviour is not a
+physics choice, it is garbage radiation. The nocturnal reference is unaffected — `ALBEDO`
+changes in the output at night, not in the physics, because no short-wave is computed.
+
+Upstream this belongs in the driver: restore the 4.6 guard in
+`EnergyVarOutTransferMod.F90`, or define `AlbedoSfc` from the background albedo when no
+beam is incident.
+
+### What it explained
+
+Everything the 3D-closure runs did after ~04:00: the shaded high terrain cooling instead of
+warming, a 2 m temperature 11 K below the control at the first percentile by 07:00, fog and
+low stratus over 10 % of the cells (which then shade further cells), skins decoupled from
+the air, cold air draining at 15-25 m s^-1, and the 07:54 column collapse with the
+surface-layer NaN. None of it was closure physics — see `OPEN_ISSUES.md` A12/A13. The
+nocturnal results are untouched, since no short-wave is used at night.
+
+---
+
 ## E1. mambaforge shadows the spack netCDF and LAPACK at both link and run time
 
 **Severity:** high — silently produces a broken or wrongly-linked build
@@ -731,6 +823,35 @@ carries the line, and the comment above the variable in the namelist template no
 Note the scope: this affects the *timers*, so it also re-arms `history_interval` and
 `restart_interval` from the namelist — intended here, but check the other streams' intervals in the
 same file before setting it.
+
+---
+
+## E18. A physically impossible tendency in a WRFlux budget term is worth an hour on the raw model array
+
+**Severity:** none to the model — this is a diagnostic habit that saved a week
+**Observed:** VSC-5, 2026-08-21, tracking the morning failures down to `U3`
+
+The WRFlux θ budget of the fog layer (06:30-07:00, run 8478327 against the MYNN control)
+showed a **short-wave radiative tendency of -10 to -14 K h^-1** through the lowest 750 m,
+in cloud-free high-terrain columns as much as under the fog, where the control had
++0.06 K h^-1. Short-wave radiation cannot cool. That single impossible sign — not any
+turbulence quantity — was the whole lead: the next step was the raw `RTHRATEN` array in the
+07:00 restart file (1st percentile -85 K h^-1), then the columns it lived in (all land, all
+in terrain shadow), then `ALBEDO` in those columns (-9999). About an hour from the budget
+term to the upstream bug, after two days of interpreting the same fields as closure physics.
+
+Two practical points:
+
+- **The restart files carry the diagnostic arrays** — `RTHRATEN`, `ALBEDO`, `SWDOWN`,
+  `SWDDIF`, `TSK`, `HFX` — at full precision and at `restart_interval` (180 min here), so
+  a suspicious tendency can be traced without re-running anything.
+- **When a morning goes cold, check `ALBEDO < 0` against `SWDOWN < 50 W m^-2` first**
+  (`U3`). It is one line of Python and it decides immediately whether the radiation or the
+  physics is at fault.
+
+The general rule: in a budget, trust the term whose *sign* is impossible over the term whose
+*magnitude* merely looks wrong. A magnitude can be a closure being bad at its job; an
+impossible sign is a bug, and it points at a specific array.
 
 ---
 

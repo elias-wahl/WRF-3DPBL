@@ -54,12 +54,12 @@ Elias is an atmospheric scientist, fluent in turbulence closures; he wants the
 
 ## Read these first, in this order
 
-0. **`HANDOVER_2026-08-20.md`** — current state; the 2026-08-21 evening update at
-   the top carries the pairing result. **Start here.**
-1. `DECISIONS.md` — the three 2026-08-21 entries, then the 2026-08-20 ones.
+0. **`HANDOVER_2026-08-20.md`** — current state; the 2026-08-21 night block at the
+   top carries the albedo bug and what it retracts. **Start here.**
+1. `DECISIONS.md` — the 22:15 entry (root cause), then the earlier 2026-08-21 ones.
 2. `branko/OPEN_ISSUES.md` **A10** (slope-factor pairing, fixed), **A11**
-   (bootstrap trap — real, not the lever), **A12** (morning runaway, diagnosed).
-3. `branko/KNOWN_ISSUES.md` **U2, E11–E17** — the traps that cost time.
+   (bootstrap trap — real, not the lever), **A12/A13** (the morning, re-opened).
+3. `branko/KNOWN_ISSUES.md` **U2, U3, E11–E18** — the traps that cost time.
 4. `ARCHITECTURE.md`, `branko/realcase/README.md` (build/run guide), `CHANGES.md`.
 
 ## Where the science stands (2026-08-21) and the standing rules
@@ -71,29 +71,28 @@ Elias is an atmospheric scientist, fluent in turbulence closures; he wants the
   and unstable air. **MYNN is the control, not the truth** — it over-mixes at
   night and under-forecasts the valley wind. **Rule: no change to constants, the
   buoyancy-limit coefficient or the strain cap before a full 23 h run is held
-  against the TEAMx observations** (`$DATA/TEAMx_sEOP_IOP17`, `…IOP18-20`).
+  against observations** — but `$DATA/TEAMx_sEOP_*` holds **ECMWF analyses (GRIB)**;
+  station observations for the IOPs are **not** on disk — ask for them.
 - **Slope-factor energy pairing — fixed and validated (2026-08-21).** ~90 % of the
   horizontal-pairing shear production (a third of all production, essentially all
-  on slopes) was never paid by the resolved flow. `pbl3d_sf_pair` (Registry
-  default 0, **template now 1**) credits q² only with what the slope-tapered
-  tendency extracts: the energy residual falls from +14…+37 % to **+0.3 %**, and
-  nocturnal q² halves (0.33 → 0.17 of MYNN at 04:00, uniform across slope bins —
-  the slope structure *was* the spurious source).
-- **Morning runaway (A12) — diagnosed: the same defect.** A 1-minute budget from a
-  04:00 restart shows the terminal ridge-top cluster fed 77–164 % by horizontal
-  pairing with only 6–10 % paid; the strain cap holding l ∝ q at P/ε ≈ 2 is the
-  amplifier, not the source. With the fix the run reaches **07:00 complete**, the
-  first one ever — but its continuation dies at **07:10** in the radiation table
-  lookup with no CFL warning (NaN-type, south-west block, cause not yet measured;
-  diagnosis run `exp/A13`). No run is expected to complete past 07:00 yet.
-- **Retracted**: the slope-dependent 10 m wind bias is *not* a q² effect (halving
-  q² left it unchanged to 0.01 m/s); cause unknown. Unexamined: 3D is +2.4…+3.9 m/s
-  faster at 10 m at 07:00 on every slope class, with 0.4–0.5 of MYNN's q² aloft.
+  on slopes) was never paid by the resolved flow. `pbl3d_sf_pair` (Registry default
+  0, **template now 1**) credits q² only with what the slope-tapered tendency
+  extracts: residual +14…+37 % → **+0.3 %**, nocturnal q² halves (0.33 → 0.17 of
+  MYNN at 04:00, flat across slope bins — that structure *was* the spurious source).
+- **The morning failures were a WRF bug, not the closure** (`KNOWN_ISSUES.md` **U3**,
+  22:15 entry of `DECISIONS.md`): the 4.8 Noah-MP driver hands radiation its
+  undefined albedo (−9999) wherever the surface gets no direct beam, so with
+  `topo_shading=1` RRTMG-SW cools the shaded terrain at **−80 K/h** at the ground
+  (9.3 % of the domain at 07:00). The fog, the −11 K cold bias, the drainage jets,
+  the 07:54 collapse and the +3 m/s 10 m wind excess are downstream of it and are
+  **withdrawn as closure physics**; guarded in `1fc2fa464` (no switch; night
+  unaffected). **X7** (job 8483386) is the first clean morning — pending. Also
+  retracted: the slope-dependent 10 m wind bias is not a q² effect (halving q²
+  left it unchanged to 0.01 m/s); cause unknown.
 - **The strain cap (`pbl3d_sk_eps_max = 6`) is load-bearing**: 12 or off brings the
   nocturnal runaway back within 45 min. The asymptotic-length floor (`pbl3d_l0_min`),
   the equilibrium start (`pbl3d_init_opt`) and the Ri-aware cap
-  (`pbl3d_limiter_opt=2`) stay default-off: the first two buy 2–4 % of q², the
-  third is unrun.
+  (`pbl3d_limiter_opt=2`) stay default-off: the first two buy 2–4 % of q², third unrun.
 
 ### Do NOT
 
@@ -103,8 +102,11 @@ Elias is an atmospheric scientist, fluent in turbulence closures; he wants the
 - Re-test what is excluded (A9, handover): terrain, dx=500 m, `time_step=2`,
   `epssm=0.9`, ICON forcing, Thompson/RRTMG/Noah-MP, the `dgesvx` solve,
   `hybrid_opt=0`, `diff_opt=0`.
+- Interpret any morning (post-04:00) result of a run built before `1fc2fa464` as
+  closure physics — it is U3's radiation (this includes every X-run and the MYNN
+  control's inert topographic shading).
 - Loosen `pbl3d_sk_eps_max` above 6, or tune the stable regime before the 23 h
-  run is held against the TEAMx observations.
+  run is held against observations.
 - Add an output stream to a restart run without `override_restart_timers=.true.`
   — it never opens, silently, and the run's wall time is wasted (E17).
 - Run more than one experiment with the same `WRF_OUTPUT_ROOT` (they clobber each
@@ -128,8 +130,8 @@ Elias is an atmospheric scientist, fluent in turbulence closures; he wants the
   1-minute stream 23). No blank lines in an iofields file; an unknown name is
   only a WARNING — grep `rsl.error.0000` for `W A R N I N G`.
 - MYNN control: job 8320565, `wrf_output/8320565/`, 01:00 start, 30-min frames.
-  3D runs: `exp/X0..X5/wrf_output/`; compare against 8478327 (`exp/X6/…`, paired,
-  01:00→07:00 complete), not the older ones.
+  3D runs: `exp/X0..X5/wrf_output/`; compare against 8478327 (`exp/X6/…`, paired),
+  not the older ones — and only its night; the morning reference is X7 (8483386).
 
 ## A rebuild is mandatory after any Registry change
 
@@ -184,6 +186,6 @@ exception (writes into its run dir).
 - The shared `data/WRF/run/wrfinput_d01`/`wrfbdy_d01` were overwritten by
   branko's first `real.exe` run and never restored (see `DECISIONS.md`).
 - MUSICA job 89435 may still be queued there; cancel from a MUSICA session.
-- U1 and U2 should be reported upstream to `wrf-model/WRF`.
+- U1, U2 and U3 should be reported upstream to `wrf-model/WRF`.
 - *Known unknowns* in `realcase/README.md` apply to every interpretation: first
   real-terrain, first nocturnal cold-pool run of this scheme.
