@@ -1,0 +1,32 @@
+# Length-scale / limiter diagnostic for OPEN_ISSUES A9/A10 -- which tier of
+# the length-scale hierarchy is doing the work, and where the strain limiter
+# and horizontal q^2 diffusion actually act?
+# Enable with, in &time_control:
+#     iofields_filename    = "iofields_lscale.txt"
+# Unlike iofields_qsq.txt, every directive below targets stream 0 (":h:0:"),
+# i.e. the ordinary history stream (wrfout), not auxhist23 -- no extra stream
+# needs to be turned on, this just adds fields to the existing history output.
+# Parser quirks (same as iofields.txt/iofields_qsq.txt, they bite silently):
+#   * a blank line ENDS parsing -- there are NONE in this file, keep it that way
+#   * '#' anywhere on a line comments the whole line out
+#   * an unknown variable name is a WARNING in rsl.error, not an abort -- grep
+#     rsl.error.0000 for "W A R N I N G" the first time this file is used
+# L0_ASYM, PBL3D_P_EPS, KE_LOSS_H, and QSQ_SHEAR_H are NEW Registry fields
+# added alongside the 2026-08-20 A9/A10 work (Registry/Registry.EM_COMMON).
+# A build older than that reconfigure will emit four "W A R N I N G" lines
+# here and write nothing for those four -- see CLAUDE.md, "A rebuild is
+# mandatory after any Registry change", and rebuild with --reconfigure before
+# trusting this stream.
+# L_MASTER, PBL3D_T1_RATIO, PBL3D_SK_EPS, PBL3D_T2_STEPS, PBL3D_T3_FLAGS are
+# already history fields (promoted r -> rh for iofields_qsq.txt) and need no
+# further rebuild on their own.
++:h:0:L_MASTER,L0_ASYM,PBL3D_T1_RATIO,PBL3D_SK_EPS,PBL3D_P_EPS,PBL3D_T2_STEPS,PBL3D_T3_FLAGS
++:h:0:KE_LOSS_H,QSQ_SHEAR_H
+-:h:0:ATHCUTEN,AQVCUTEN,AUCUTEN,AVCUTEN
+-:h:0:ATHSHTEN,AQVSHTEN,AUSHTEN,AVSHTEN
+-:h:0:ATHBLTEN,AQVBLTEN,AUBLTEN,AVBLTEN
++:h:23:Q_SQ_SHEAR,Q_SQ_BUOYANCY,Q_SQ_DISSIP,Q_SQ_VDIFF,Q_SQ_HDIFF,QSQ_SHEAR_H,KE_LOSS_H
++:h:23:Q_SQ,W,U,V,T,L_MASTER,L0_ASYM
++:h:23:PBL3D_T1_RATIO,PBL3D_SK_EPS,PBL3D_P_EPS,PBL3D_T2_STEPS,PBL3D_T3_FLAGS,PBL3D_N_TAU,PBL3D_COND_A
++:h:23:TURB_FLUX_UW,TURB_FLUX_VW,TURB_FLUX_W2,TURB_FLUX_U2,TURB_FLUX_V2,TURB_FLUX_UV,HFX,UST
++:h:23:QVAPOR,P,PH,TSK,HFX,QFX,PBLH

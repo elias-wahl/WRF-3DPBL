@@ -10,6 +10,19 @@ lessons file) and not things `branko/realcase/README.md`,
 **2026-08-21 (VSC-5), evening — The pairing fix closes the energy budget to 0.3 %, halves nocturnal
 q², and is what the morning runaway was made of — first run through 07:00.**
 
+**Addendum, 18:20 — the continuation from 07:00 dies at 07:10.** Run X6r (job 8481238),
+a restart of X6 from its 07:00 restart file on the same layout, segfaults after 300 steps
+in the long-wave radiation table lookup (`rrtmg_lw taumol`, 7 adjacent ranks in the
+south-west block, j ≲ 94, i ≈ 37–150) with **no CFL warning** — the signature of a NaN
+appearing and spreading through the halos, not of a vertical-velocity runaway. At 07:00 that
+block is unremarkable (q² ≤ 32 m² s⁻², |W| ≤ 11 m s⁻¹, T 221–294 K, humidity normal). The
+restart is bit-faithful (the 04:00 restart reproduced the 05:52 blow-up exactly), so X6 itself
+would have died at 07:10. **Read "first run through 07:00" literally: the paired closure
+survives 1.3 h longer than the unpaired one and then fails by a different route, in the
+morning convective growth, cause not yet measured.** Diagnosis run A13 (job 8481309): 12-minute
+restart from 07:00 with the 1-minute budget stream plus humidity/pressure, output `exp/A13`.
+Until it is read, the standing rule holds: no run is expected to complete past 07:00.
+
 `q_sq` = twice the turbulence kinetic energy, m^2 s^-2. `l` = master length scale, the size of the
 energy-containing eddies, m. `sf_alpha` = the slope factor (|grad h| dx/dz, the number of coordinate
 layers a surface crosses per grid cell, median 5.2 here), the divisor WRF's core applies to the
