@@ -104,6 +104,196 @@ stopgap: the real fix is to report U1 upstream.
 
 ---
 
+## 2026-08-20/21 — turbulence-energy diagnosis, pairing fix, guards
+*(`dyn_em/module_pbl3d.F`, `dyn_em/module_pbl3d_my.F`, `dyn_em/start_em.F`,
+`phys/module_surface_driver.F`, `phys/physics_mmm` (submodule),
+`Registry/Registry.EM_COMMON`, `share/module_check_a_mundo.F`, `realcase/*`)*
+
+The first real-terrain runs of this closure, and the first comparison against a
+control. It needed instruments that did not exist: a view of the length-scale
+hierarchy, and a way to ask whether the energy the closure produces is the
+energy the resolved flow pays. What they measured drove one physics change
+inside the closure and two guards outside it.
+
+**Behavioural footprint.** Everything in the closure is opt-in and every default
+reproduces the previous behaviour bit for bit — the reference run of job 8476273
+was reproduced exactly by the rebuilt binary on the same 2 nodes × 128 ranks.
+The one exception is the albedo guard, which changes the model by default,
+deliberately: the previous behaviour is not a physics choice. `namelist.input.pbl3d`
+opts in to the energy pairing and to the two surface-layer bounds; the Registry
+defaults do not.
+
+### Diagnostics: four new history fields
+
+None of them feeds back into the solution.
+
+| field | what it measures |
+|---|---|
+| `L0_ASYM` (`ij`, m) | the asymptotic (Blackadar) master length scale `l0` — the eddy size the blend relaxes to away from the wall, after the floor below is applied |
+| `PBL3D_P_EPS` (`ikj`) | shear production over dissipation at faces, formed from the accepted stresses and the strain-limited length scale, with no re-solve. Buoyancy excluded, so it is the shear part alone |
+| `KE_LOSS_H` (`ikj`, m² s⁻³) | the resolved kinetic-energy tendency from the *horizontal* turbulent momentum mixing — a snapshot difference taken inside `Horizontal_turb_mix`, decoupled by `mu`, per second. This is what the mean flow actually pays |
+| `QSQ_SHEAR_H` (`ikj`, m² s⁻³) | the six horizontal-pairing terms of the `q²` shear production, i.e. twice the TKE production credited for the same mixing |
+
+`q_sq` is twice the turbulence kinetic energy, m² s⁻². The last two are the
+instrument: pointwise they differ by a transport divergence, but the
+mass-weighted domain sums must cancel in a closure that conserves energy, so
+`KE_LOSS_H + QSQ_SHEAR_H/2` is a residual that should be zero. It is the
+in-model measurement `OPEN_ISSUES.md` A10 asked for.
+
+### Four namelist switches, all defaulting to the previous behaviour
+
+| switch | default | what it does physically |
+|---|---|---|
+| `pbl3d_init_opt` | `0` = `q²` floor everywhere | `1` starts the turbulence at the level-2 equilibrium (MYNN's `mym_initialize` construction: five passes of level-2 `Sm`, `Sh` at local Ri → `q² = b₁ l_dissip l_master S²(1−Rif) Sm` → master length scale), reusing the routines already there. Restart path untouched |
+| `pbl3d_l0_min` | `0.0` = off | floor in metres on `l0`. With the turbulent-excess weighting `l0` collapses to its prefactor α = 0.1 m wherever `q²` sits at its floor, and every downstream bound on `l` scales with `q`, so a layer at the floor cannot produce its way off it — a spurious laminar fixed point, measured at `l` = 0.09–0.10 m over 27–65 % of the lowest five levels in the first hour. The floor acts on `l0` alone; the κz blend and the buoyancy limit still bind |
+| `pbl3d_limiter_opt` | `1` = fixed `S k/ε` cap | `2` scales the cap by `sqrt(Sm_neutral / Sm_l2(Ri))`, the closure's own level-2 equilibrium strain at the local Richardson number, so `pbl3d_sk_eps_max` keeps its neutral meaning in stable shear. **Never run** — built to avoid a second reconfigure |
+| `pbl3d_sf_pair` | `0` = previous form | `1` credits `q²` only with the horizontal production the slope-tapered momentum tendency actually extracts (below). Template value **1** |
+
+`module_check_a_mundo.F` and `prepare_namelist.py` both validate the four; the
+template sets `pbl3d_init_opt=1`, `pbl3d_l0_min=8.0`, `pbl3d_limiter_opt=1`,
+`pbl3d_sf_pair=1`.
+
+Measured effect of the first two: none worth having. Six 6 h runs (jobs
+8477283–8477288) put the equilibrium start and both floor values within ±0.01 of
+the reference `q²`/control ratio at every output time — 2–4 %. The deficit
+against MYNN is the closure's stable-regime equilibrium, not a cold start. In
+the same set, loosening the strain cap from 6 to 12 or off brings the nocturnal
+runaway back within 45 min: the cap is load-bearing.
+
+### The slope-factor energy pairing
+
+WRF's core divides the horizontal turbulent momentum tendency by the slope
+factor `sf_alpha` = |∇h|·Δx/Δz — the number of coordinate layers a surface
+crosses per grid cell, median 5.2 over this domain, ~17 at the ridge tops. It is
+a stability device, and it is legitimate. The `q²` budget was credited with the
+production computed from the *untapered* stresses, so subgrid energy appeared
+having been removed from nothing: measured with the new fields, **~90 % of the
+horizontal-pairing production — about a third of all production, essentially all
+of it on slopes — was never paid by the resolved flow.**
+
+`pbl3d_sf_pair=1` divides the six horizontal production terms by the same factor
+at the mass point (`Calc_q_sq_shear`, with the slope factor recomputed in
+`Calc_q_sq_rhs`), leaving the applied momentum tendency bit for bit unchanged.
+The alternative — tapering the stresses before the horizontal divergence is
+formed, so the transport term stays an exact divergence — differs by
+`(u·τ)·∇(1/α)`, of order `(u/L_h)/S` ≈ 5 % of the production, second order to
+the 90 %; it would change the momentum tendency and need the slope factor on the
+wide high-order halos. The ~20-line form was chosen over it deliberately.
+
+Acceptance test, run as job 8478327 (the bit-validated reference configuration
+plus this switch, its only difference), mass-weighted over the lowest ~100 m:
+
+| residual / total shear production | 02:00 | 04:00 | 05:30 |
+|---|---|---|---|
+| previous form (job 8477283) | +28 % | +37 % | +14 % |
+| paired | **+0.4 %** | **+0.3 %** | **+0.3 %** |
+
+Removing the spurious source halves the nocturnal turbulence: `q²`/MYNN in the
+lowest ~100 m goes 0.33 → 0.17 at 04:00, and becomes flat across slope bins
+(0.15–0.19 in every slope × height bin, against 0.19 on flat ground and ~0.5 on
+22–40° slopes before) — that slope structure *was* the unpaid production. The
+median eddy size follows, 1.0–2.1 m → 0.46–0.92 m over faces 17–121 m, because
+`l` follows `q` through the buoyancy and strain limits. At 07:00 the lowest 50 m
+agree with MYNN within 0.94–1.18 on every slope class. The 1-minute budget from a
+04:00 restart shows the ridge-top blow-up cluster fed 77–164 % by the unpaid
+production, with the resolved flow paying 6–10 % of it: the runaway was made of
+this defect, and the strain cap was its amplifier, not its source.
+
+### Surface layer: a NaN detector, a solver-result fix, two bounds
+
+A morning continuation died with a NaN born in the surface stress on shaded
+ridge slopes that had decoupled after sunrise — skin 20–37 K below the air at
+8 m, friction velocity `u*` = 0.010–0.017 m s⁻¹, bulk Richardson number of order
+40 — after which the radiation table lookup segfaulted and named nothing useful.
+
+- **NaN detector** in `module_surface_driver.F`, after the surface-layer call
+  (`u*`, `HFX`, `CHS`) and after Noah-MP (`TSK`, `HFX`, `QFX`): on the first
+  non-finite value it prints the cell and its inputs and stops. Loud, named,
+  early. No effect on a healthy run.
+- **`zolri` result fix** in `sf_sfclayrev`: the `z/L` solver left its result
+  undefined on the early-return paths; it now returns 0, i.e. neutral.
+- **`sfclay_zol_max`** (Registry default `1e30` = no cap; template **10**, which
+  is bulk Ri ≈ 0.4 here) caps `z/L` in stable conditions, so the exchange
+  coefficients stop falling instead of vanishing. **`sfclay_ust_min`** (default
+  `0.001` = the scheme's own; template **0.03 m s⁻¹**) floors `u*` over land.
+  Both are set once from the namelist through `sf_sfclayrev_set_limits`, called
+  from `start_em.F`.
+
+At the template values, with `u*` = 0.03 and `z/L` ≤ 10 in a 0.5 m s⁻¹ wind, the
+heat exchange coefficient is ~6·10⁻⁴ m s⁻¹ — about 20 W m⁻² at a 30 K skin–air
+difference, 7 W m⁻² at 10 K. A gentle recoupling that cannot by itself erase a
+cold pool. At the Registry defaults the scheme is exactly as it was. The
+surface-layer edits live in the `physics_mmm` submodule, now commit `ef5ef44` on
+the fork branch `sfclayrev-table-lower-bound`, so a recursive clone carries them.
+
+### The undefined land-surface albedo reaching radiation (`U3`)
+
+The refactored WRF 4.8 Noah-MP driver copies its albedo out unconditionally
+(`EnergyVarOutTransferMod.F90:140`), and that value is the undefined marker
+**−9999** wherever the surface receives no short-wave; the 4.6 driver guarded it
+(`IF (SALB > -999)`). At night the marker is harmless — the short-wave scheme is
+not called. With working topographic shading it is not: a shaded cell has
+cos(zenith) > 0, so RRTMG-SW runs there and reflects −9999 × the diffuse beam. At
+07:00 of job 8478327, 27 740 columns (9.3 % of the domain, all land, median
+terrain 1660 m, median `SWDOWN` 16 W m⁻²) carried a diffuse surface flux of
+−480 W m⁻² and a radiative cooling profile of −80 K h⁻¹ at the ground easing to
+−40 K h⁻¹ at 750 m. Lit land albedo, for scale, is 0.145.
+
+Guarded where the value enters WRF, in `module_surface_driver.F` immediately
+after the Noah-MP call: `IF (ALBEDO(I,J) < 0.) ALBEDO(I,J) = ALBBCK(I,J)`, the
+background albedo. **No switch** — the previous behaviour is garbage radiation,
+and the nocturnal reference is unaffected because no short-wave is computed at
+night. This explains, and withdraws as closure physics, everything the runs did
+after ~04:00: the cooling shaded terrain, the 11 K cold bias, the fog over 10 %
+of the cells, the decoupled skins, the drainage jets and the 07:54 column
+collapse. The nocturnal results stand. Not yet reported upstream.
+
+### The strain cap's arithmetic, kept bit for bit
+
+With `pbl3d_limiter_opt=1` the bound is formed exactly as before —
+`2·SK_EPS_MAX/b₁` in working precision first — while the Ri-aware option keeps
+its own double-precision form. A single factor rewritten from single to double
+had been enough to break bit-reproducibility of the reference configuration
+(`KNOWN_ISSUES.md` E14), and that reproducibility is the only way a switch's
+"default = previous behaviour" claim can be checked at all.
+
+### Run and analysis tooling (`realcase/`)
+
+- `scripts/setup_experiments_20260820.sh [--only X6] [--submit]` — builds the
+  sensitivity run directories from `namelist.input.pbl3d` (per-run output root,
+  2 nodes, thinned history, WRFlux stream at 6 h); the table of what each run
+  varies is in its header.
+- `scripts/compare_mynn.py` — one tool against the archived runs and the MYNN
+  control, replacing five ad-hoc scripts: `slope`, `spinup`, `lscale`, `t1`,
+  `cap`, `exp` (slope × height bins, wind bias, length scales, limiter footprint
+  and the energy-closure residual for several runs at once, `--csv`) and `fog`
+  (morning fog and cold-pool statistics per terrain band × slope aspect).
+- `iofields_lscale.txt` adds the length-scale hierarchy, the limiter state and
+  the two energy fields to the history stream and drops the twelve identically
+  zero cumulus/PBL tendency arrays; `iofields_a12.txt` adds the 1-minute `q²`
+  budget on stream 23, `iofields_a13.txt` the same plus humidity and pressure,
+  `iofields_fog.txt` a cloud/radiation/surface set for the morning.
+- `env/vsc5_X<n>.sh` — one env file per concurrent run, each sourcing `vsc5.sh`
+  and overriding only `WRF_OUTPUT_ROOT` (→ `exp/X<n>`). Two runs sharing a root
+  clobber each other live under `temp/branko/`.
+- `prepare_namelist.py` validates the four new `pbl3d_*` keys and the two
+  `sfclay_*` bounds before the job is queued, and warns when the 3D closure runs
+  unpaired or starts from the `q²` floor.
+
+### Commits
+
+| commit | what |
+|---|---|
+| `db3b9176c` | one master length scale — the strain limiter's `l_use` written back into `l_master`, which is what stopped the nocturnal runaway |
+| `0612fd307` | the four diagnostic fields, the first three switches, the experiment script and the `exp` analysis |
+| `16fa7407b` | strain cap: default path's arithmetic kept bit for bit |
+| `7b8d2e4ad` | slope-factor energy pairing behind `pbl3d_sf_pair` |
+| `edf577b8a` | pairing validated (residual 0.3 %); template `pbl3d_sf_pair=1` |
+| `abc89849e` | surface layer: NaN detector, `zolri` result fix, `sfclay_zol_max` / `sfclay_ust_min` (submodule `ef5ef44`) |
+| `1fc2fa464` | guard the undefined Noah-MP albedo before radiation |
+
+---
+
 ## Group J — Centred, fixed-width test mountain for `em_les`
 *(2026-07-31; `dyn_em/module_initialize_ideal.F`)*
 

@@ -24,6 +24,16 @@ dependency alone prevents X8. The control question stands: the MYNN control's to
 is inert, so a MYNN run on this build (with the guard) is the like-for-like morning reference —
 not queued, the user's call.
 
+*Addendum 23:05 — gate moved into SLURM.* The session monitor that held the gate does not
+survive a session restart (three restarts today), so the gate is now a job of its own:
+**8483413** (`realcase/scripts/gate_x7_to_x8.slurm` → `gate_x7_to_x8.py`, devel QOS, 1 node,
+`--dependency=afterok:8483386`), and X8's dependency was re-pointed to `afterok:8483413`. The
+script applies the criteria above — (a) 03:30 U, T, q², TSK bit-identical to X6, (b) the 07:00
+thresholds, (c) a finite 10:00 frame — and `scancel`s X8 on failure. Tested on the X6 archive:
+(a) passes, (b) fails on all four counts (39 859 negative land albedos, T2 p1 265.0 K, 20 933
+cold cells, 1 458 fast cells), (c) fails — i.e. it detects the bug it is meant to exclude.
+Output: `branko_runs/innval_pbl3d_X7/gate_X7_8483413.out`.
+
 ---
 
 **2026-08-21 (VSC-5), 22:15 — ROOT CAUSE of the morning failures: an undefined land-surface albedo (−9999) reaches the short-wave radiation scheme in terrain-shaded cells. A model bug, not closure physics. Guarded; the morning has to be re-run.**

@@ -30,10 +30,13 @@ this length — trim before adding.
 - **Orchestration**: `run_files/` — generic, fork-agnostic scripts
   (`RUN_WPS.sh`, `RUN_WRF_*.sh`, `check_*.py` sanity checks) used across
   all forks except branko, which has its own `realcase/` tooling instead.
-- **Run directories**: `branko_runs/` (branko's per-experiment run dirs,
-  e.g. `innval_pbl3d_smoke/`), `wrf_output/` (archived production output
-  by job ID), `temp/` (scratch history/aux output paths referenced by
-  namelists — must exist before `wrf.exe` runs).
+- **Run directories**: `branko_runs/innval_pbl3d_<NAME>/` (one per
+  experiment: X0–X8 six-hour/23 h runs, A12/A13/F1–F3 restart diagnostics,
+  `smoke`), each with its own output root `exp/<NAME>/` (env file
+  `branko/realcase/env/vsc5_<NAME>.sh` sets `WRF_OUTPUT_ROOT`; below it
+  `temp/branko/` live output, `wrf_output/<jobid>/` archive). Legacy
+  `wrf_output/` at top level holds the MYNN control (job 8320565) and the
+  older forks' runs; `temp/` is the pre-`exp/` scratch path.
 - **Other**: `data/` = observational validation data (soundings,
   stations, lidar, UAS), not model output. `proc/` = Python
   post-processing pipeline.
@@ -53,18 +56,28 @@ it affects every fork.
 - Branch `3dpbl_wrflux_v4.8.0`. `pbl3d_opt=2` hard-requires
   `bl_pbl_physics=0`, `hybrid_opt=0`, `diff_opt=0`, `tke_budget=0`,
   `sf_sfclay_physics=1` (enforced by `module_check_a_mundo.F`).
-- Submodules (each its own git repo, upstream NCAR remotes, no personal
-  fork — local-only commits possible, can't be pushed): `phys/noahmp`
-  (refactored Noah-MP, reads `parameters/NoahmpTable.TBL`, driver in
-  `drivers/wrf/NoahmpReadTableMod.F90`), `phys/physics_mmm`,
-  `phys/MYNN-EDMF`, `phys/MYNN-SFC`, `phys/GFL`, `phys/TEMPO`,
-  `phys/fire_behavior`, `.ci/hpc-workflows`.
+- Submodules (each its own git repo): `phys/noahmp` (refactored 4.8
+  Noah-MP, reads `parameters/NoahmpTable.TBL`; its driver leaks the
+  undefined-albedo marker −9999 — `KNOWN_ISSUES.md` U3, guarded in
+  `phys/module_surface_driver.F`) and `phys/physics_mmm` (surface layer
+  `sf_sfclayrev`; fork `elias-wahl/MMM-physics`, branch
+  `sfclayrev-table-lower-bound`, carries the `sfclay_zol_max`/`ust_min`
+  bounds) point at personal forks and are pushable; `phys/MYNN-EDMF`,
+  `phys/MYNN-SFC`, `phys/GFL`, `phys/TEMPO`, `phys/fire_behavior`,
+  `.ci/hpc-workflows` still point at upstream NCAR (local commits only).
 - `realcase/` — branko's own build/run tooling (not `run_files/`):
   `env/vsc5.sh` (cluster env — VSC-5 Spack modules need
   `LD_LIBRARY_PATH` seeded from `LIBRARY_PATH` manually), `namelist.input.pbl3d`
   (ICON-merged template), `scripts/build_em_real.sh`,
   `scripts/setup_rundir.sh`, `scripts/submit_real.slurm`/`submit_wrf.slurm`,
-  `scripts/check_job.sh` (job status + RSL log check), `scripts/check_wrfinput.py`.
+  `scripts/check_job.sh` (job status + RSL log check), `scripts/check_wrfinput.py`,
+  `scripts/setup_experiments_20260820.sh` (X-run matrix),
+  `scripts/setup_restart_run.sh` (restart-based diagnosis runs),
+  `scripts/compare_mynn.py` (statistical run-vs-control comparison),
+  `scripts/prepare_namelist.py` (validates every `pbl3d_*`/`sfclay_*` key);
+  `iofields_*.txt` (extra history fields / 1–5-min stream 23).
+  Project docs are mirrored in `realcase/project/` (edit the root copies,
+  sync, commit).
 - Land use gotcha: this project's `WPS_GEOG` CORINE data is remapped onto
   33 categories but declared `MMINLU="USGS"`. Stock Noah-MP hardcodes 27
   categories for "USGS" — branko's `NoahmpTable.TBL`/`MVT` were extended

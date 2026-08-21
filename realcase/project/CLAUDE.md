@@ -51,6 +51,15 @@ Elias is an atmospheric scientist, fluent in turbulence closures; he wants the
 7. **Queue reality**: priority estimates say days; backfill starts 2-node jobs
    within hours. A shorter wall time is the only lever (`scontrol update
    JobId=… TimeLimit=…`). Hold pending jobs during a rebuild (E16).
+8. **Automation survives only inside SLURM.** Background monitors die with the
+   session (three restarts on 2026-08-21). Chain runs with
+   `sbatch --dependency=afterok:<jobid>`; first action of every session is
+   `squeue -u $USER` + re-arming monitors on whatever is pending. Automatic
+   follow-on runs are allowed once a quality gate is written down
+   (`DECISIONS.md` 2026-08-21 22:30: X8 behind X7).
+9. **Impossible budget term ⇒ raw arrays first** (E18): a short-wave *cooling*
+   in the WRFlux θ budget was a −9999 albedo (U3), found in an hour from the
+   restart file after a day of physics hypotheses.
 
 ## Read these first, in this order
 
@@ -86,7 +95,9 @@ Elias is an atmospheric scientist, fluent in turbulence closures; he wants the
   (9.3 % of the domain at 07:00). The fog, the −11 K cold bias, the drainage jets,
   the 07:54 collapse and the +3 m/s 10 m wind excess are downstream of it and are
   **withdrawn as closure physics**; guarded in `1fc2fa464` (no switch; night
-  unaffected). **X7** (job 8483386) is the first clean morning — pending. Also
+  unaffected). **X7** (job 8483386, 01:00→10:00) is the first clean morning;
+  **X8** (job 8483404, the 23 h run → `exp/X8`) is queued behind it with an
+  automatic gate (DECISIONS 22:30) — both pending at the end of 2026-08-21. Also
   retracted: the slope-dependent 10 m wind bias is not a q² effect (halving q²
   left it unchanged to 0.01 m/s); cause unknown.
 - **The strain cap (`pbl3d_sk_eps_max = 6`) is load-bearing**: 12 or off brings the
@@ -122,13 +133,19 @@ Elias is an atmospheric scientist, fluent in turbulence closures; he wants the
   builds the X-run dirs (per-run output root, 2 nodes, thinned history, WRFlux
   stream at 6 h) from `namelist.input.pbl3d`; table of runs in its header.
 - `realcase/scripts/compare_mynn.py` — `slope`, `spinup`, `lscale`, `t1`, `cap`,
-  and `exp --runs NAME=DIR … --mynn-dir … --times …` (slope × height bins, wind
-  bias, length scales, limiter footprint, energy-closure residual, `--csv`).
+  `exp --runs NAME=DIR … --mynn-dir … --times …` (slope × height bins, wind
+  bias, length scales, limiter footprint, energy-closure residual, `--csv`), and
+  `fog` (low cloud, cold cells, insolation, drainage — the morning gate).
 - `realcase/scripts/setup_rundir.sh <env> <rundir> pbl3d --met-dir … --hours N
   [--smoke] [--qsq-diag]`; `prepare_namelist.py` validates every `pbl3d_*` key.
-- `realcase/iofields_lscale.txt` (stream 0 additions), `iofields_a12.txt` (+ the
-  1-minute stream 23). No blank lines in an iofields file; an unknown name is
-  only a WARNING — grep `rsl.error.0000` for `W A R N I N G`.
+- `realcase/scripts/setup_restart_run.sh <NAME> --rst <wrfrst> --start HH
+  --hours H [--minutes M] [--stream23-min N] [--iofields F] [--set key=val]
+  [--qos devel] [--submit]` — restart-based diagnosis/continuation runs (sets
+  `override_restart_timers`, per-run env + output root). Read its header.
+- `realcase/iofields_lscale.txt` (stream 0 additions), `iofields_a12.txt` /
+  `iofields_a13.txt` (+ the 1-minute stream 23), `iofields_fog.txt` (5-min
+  stream 23 for the morning). No blank lines in an iofields file; an unknown
+  name is only a WARNING — grep `rsl.error.0000` for `W A R N I N G`.
 - MYNN control: job 8320565, `wrf_output/8320565/`, 01:00 start, 30-min frames.
   3D runs: `exp/X0..X5/wrf_output/`; compare against 8478327 (`exp/X6/…`, paired),
   not the older ones — and only its night; the morning reference is X7 (8483386).

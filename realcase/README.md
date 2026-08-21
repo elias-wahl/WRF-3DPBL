@@ -50,12 +50,20 @@ you the throughput, which you need before choosing `--nodes` and `--time` for th
 | `namelist.wps` | WPS template, only needed if geo_em must be regenerated |
 | `Vtable.ICONm`, `Vtable.ICONp` | ICON Vtables, copied from `icon2wrf` so this is self-contained |
 | `iofields.txt` | optional output thinning (off by default) |
+| `iofields_lscale.txt` | length-scale hierarchy, limiter state and the two energy-closure fields into the history stream; drops the identically zero cumulus/PBL tendency arrays |
+| `iofields_a12.txt` | the above plus the 1-minute `q²` budget on stream 23 (`auxhist23`) |
+| `iofields_a13.txt` | the same with humidity and pressure added, for a crash that is not obviously turbulent |
+| `iofields_fog.txt` | cloud, radiation and surface fields on stream 23, for the morning |
 | `env/levante.sh` | filled-in, verified environment (DKRZ Levante) |
+| `env/vsc5.sh`, `env/vsc5_X<n>.sh` | VSC-5 environment, and one file per concurrent experiment overriding only `WRF_OUTPUT_ROOT` |
 | `env/template.sh` | copy this for your cluster |
 | `scripts/build_em_real.sh` | configure + compile, with the LAPACK wiring WRF's own configure omits |
 | `scripts/setup_rundir.sh` | assemble a run directory |
+| `scripts/setup_experiments_20260820.sh` | build (and optionally submit) a set of sensitivity runs from the template, each with its own output root |
 | `scripts/prepare_namelist.py` | sync the namelist to geo_em/met_em and check it |
 | `scripts/check_wrfinput.py` | sanity-check `wrfinput_d01` before burning core-hours |
+| `scripts/add_qsq_diag.py` | add the 1-minute `q²` budget stream to a namelist (`setup_rundir.sh --qsq-diag`) |
+| `scripts/compare_mynn.py` | all the analysis against the MYNN control: `slope`, `spinup`, `lscale`, `t1`, `cap`, `exp`, `fog` |
 | `scripts/submit_real.slurm`, `scripts/submit_wrf.slurm` | SLURM templates |
 
 ---
@@ -139,6 +147,26 @@ and group G's NaN guard both changed that path and neither has ever been run.
 
 ---
 
+## Switches added 2026-08-21
+
+Every one of them defaults to the behaviour that existed before, so a build
+carrying them reproduces an older run bit for bit unless a namelist opts in.
+What the shipped template actually sets is the last column.
+
+| setting | default | template | what it does |
+|---|---|---|---|
+| `pbl3d_init_opt` | `0` | `1` | `1` starts `q²` at the level-2 equilibrium instead of at its floor everywhere. Worth 2–4 % of the nocturnal `q²`, no more |
+| `pbl3d_l0_min` | `0.0` (off) | `8.0` | floor in metres on the asymptotic length scale `l0`. Without it `l0` collapses to its 0.1 m prefactor wherever `q²` is at its floor, and since every other bound on the eddy size scales with `q`, such a layer cannot produce its way off the floor. κz and the buoyancy limit still bind |
+| `pbl3d_limiter_opt` | `1` | `1` | `2` scales the `S k/ε` cap by the closure's own level-2 equilibrium value at the local Richardson number, so `pbl3d_sk_eps_max` keeps its neutral meaning in stable shear. **Never run** |
+| `pbl3d_sf_pair` | `0` | **`1`** | credit `q²` only with the horizontal production the slope-tapered momentum tendency actually extracts. Without it about a third of all production is paid by nothing, almost all of it on slopes; with it the energy residual falls from +14…+37 % to +0.3 % and nocturnal `q²` halves. The applied momentum tendency is unchanged either way |
+| `sfclay_zol_max` | `1e30` (none) | `10.0` | cap on `z/L` in stable conditions in `sf_sfclayrev` — about bulk Ri 0.4 here. Below it the exchange coefficients stop falling instead of vanishing, so a shaded slope cannot decouple from the air completely |
+| `sfclay_ust_min` | `0.001` | `0.03` | floor on the friction velocity over land, m s⁻¹. With `z/L ≤ 10` this is ~20 W m⁻² at a 30 K skin–air difference — a gentle recoupling, not a cold-pool eraser |
+
+`module_check_a_mundo.F` and `prepare_namelist.py` both range-check all six, and
+`prepare_namelist.py` warns if the 3D closure is left unpaired.
+
+---
+
 ## The paired experiment
 
 `namelist.input.pbl3d` and `namelist.input.mynn` are identical outside the
@@ -204,6 +232,13 @@ rather than writing into a literal `@OUTPUT_ROOT@` directory.
 set `WRF_OUTPUT_ROOT` instead. Porting to a new cluster changes the root and
 nothing else.
 
+**One env file per concurrent experiment.** Two runs that share a
+`WRF_OUTPUT_ROOT` overwrite each other's frames live under `temp/branko/`, and
+neither fails — you find out when the numbers stop making sense. Copy the
+cluster env file per run and override the root alone:
+`realcase/env/vsc5_X<n>.sh` → `$DATA/exp/X<n>`, which is what
+`setup_experiments_20260820.sh` generates.
+
 One known inconsistency: `namelist.input.mynn` still carries a *relative*
 `auxhist24_outname` and no `history_outname` at all, so the MYNN control writes
 into its own run directory instead of the shared tree. `prepare_namelist.py`
@@ -258,6 +293,49 @@ In the idealized runs the worst regime for Tier 2 was the convective mixed layer
 something different. If Tier 3 activation is high in the drainage layer on the
 slopes, that is new information and worth recording.
 
+### Is the energy budget closed?
+
+`KE_LOSS_H` is the resolved kinetic-energy tendency from the horizontal
+turbulent momentum mixing (m² s⁻³, what the mean flow pays) and `QSQ_SHEAR_H`
+the horizontal-pairing part of the `q²` production (twice the TKE production
+credited for the same mixing). Pointwise they differ by a transport divergence,
+but the **mass-weighted domain sum of `KE_LOSS_H + QSQ_SHEAR_H/2` must be ≈ 0**
+in a closure that conserves energy. `compare_mynn.py exp` reports it as a
+fraction of the total shear production; anything of order 10 % means subgrid
+energy is appearing out of nothing. Expect ±0.5 % with `pbl3d_sf_pair = 1`.
+
+### Re-entering a run just before it fails
+
+A blow-up two hours in is cheap to study from a restart file
+(`restart_interval = 180`) and expensive to study by re-running. The recipe:
+
+1. `restart = .true.`, `start_*` moved to the restart file's time, same run
+   directory, **same node and rank layout** — the model is not bit-reproducible
+   across decompositions (`KNOWN_ISSUES.md` E14), so a different layout gives a
+   different blow-up. On the same layout it reproduces to the second.
+2. Add the 1-minute (or 5-minute) diagnostic stream with
+   `setup_rundir.sh --qsq-diag` (or `add_qsq_diag.py` on an existing namelist)
+   and point `iofields_filename` at `iofields_a12.txt`. Set
+   `auxhist23_begin_m` so the frames start shortly before the event — they are
+   of order 1 GB each.
+3. **`override_restart_timers = .true.`** in `&time_control`. A restart restores
+   every stream's output alarm from the restart file, and a stream that did not
+   exist when that file was written has no alarm: it never opens, silently, and
+   the run's whole wall time is wasted (`KNOWN_ISSUES.md` E17). Note that this
+   also re-arms `history_interval` and `restart_interval` from the namelist —
+   check the other streams before setting it.
+
+### When a morning goes cold
+
+**Check `ALBEDO < 0` against `SWDOWN < 50 W m⁻²` first** (`KNOWN_ISSUES.md` U3,
+E18). It is one line of Python and it decides immediately whether the radiation
+or the turbulence is at fault. Noah-MP's WRF 4.8 driver hands radiation an
+undefined albedo of −9999 wherever the surface gets no direct beam, and with
+`topo_shading = 1` the short-wave scheme then cools shaded terrain at
+−80 K h⁻¹. It is guarded in this fork; the general habit is worth keeping —
+in a budget, trust the term whose *sign* is impossible over the term whose
+magnitude merely looks wrong.
+
 ---
 
 ## Known unknowns
@@ -274,6 +352,13 @@ this run:
   This is the first.
 - **Real terrain has never been run.** Group J's 35° mountain is a single
   idealized cosine bell.
+- **The MYNN control is not a like-for-like reference after sunrise.** Run on
+  stock 4.6.0, its topographic shading is effectively inert — 196 shaded land
+  cells at 07:30 local and none at 09:00, against tens of thousands in this
+  fork's runs over the same terrain. That is implausibly few for a valley of
+  this depth, so the control's morning insolation is itself suspect and the
+  nocturnal comparison is the defensible one. A MYNN run on *this* build is the
+  fix, and has not been done.
 - **Issue A3 is open**: `q_sq` and `l_master` are updated in sequence rather than
   iterated to a fixed point. Group G made `l` an explicit function of `q`, so the
   two are now directly coupled and the sequencing matters more than it used to.
