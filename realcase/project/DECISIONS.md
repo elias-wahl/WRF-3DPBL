@@ -7,6 +7,59 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-08-21 (VSC-5), 18:50 — With the surface-layer guard the continuation reaches 07:54, then the atmosphere itself blows up; the morning failure is a fog / cold-air feedback over the high terrain that the weak stable-regime mixing lets run away.**
+
+**Measured.** The 12-minute guard test (job 8481844) passes 07:10 without NaN; every land cell
+has u* ≥ 0.030 exactly (the floor acts; Noah-MP does not overwrite u*). The 07:00→10:00
+continuation (job 8482046) then dies at 07:54:30 with the new NaN detector firing in the
+surface layer at i = 221, j = 22 — a valley-floor cell at 294 m — with **air at 217 K and 29 m s⁻¹
+at the lowest level** under a 284 K skin: the atmospheric column had already collapsed; the
+surface NaN is a symptom. At 07:30 that column was a neutral 282 K easterly jet of 13 m s⁻¹
+at 17 m AGL, q² ≈ 5 m² s⁻², unremarkable.
+
+**The domain-wide picture after sunrise** (3D paired run vs MYNN):
+
+| | T2 1st pct (K) | cells T2 < 270 K | cells wind > 15 m s⁻¹ at 8 m | land with SWDOWN < 50 W m⁻² | cells with low cloud |
+|---|---|---|---|---|---|
+| MYNN 05:30 | 275.3 | 7 | 16 | 0.1 % | 0.3 % |
+| 3D 05:30 | 271.2 | 1 394 | 6 | 18.6 % | 2.5 % |
+| MYNN 07:00 | 276.2 | 0 | 3 | 0.0 % | 0.0 % |
+| 3D 07:00 | 265.0 | 20 933 | 1 458 | 13.5 % | 10.1 % |
+| 3D 07:30 | 263.8 | 25 225 | 2 750 | — | — |
+
+(both runs use the same radiation, `slope_rad=1`, `topo_shading=1`; low cloud = qc+qi > 1e-5 kg kg⁻¹
+below ~k25, max qc 2.1 g kg⁻¹ in the 3D run.) After sunrise the 3D closure's high shaded terrain
+does not warm but cools: at 09:00 local, 7 % of the domain is below −3 °C, 11 K colder than MYNN
+at the first percentile, under **fog / low stratus that covers 10 % of the cells and cuts the
+insolation to < 50 W m⁻² over 13.5 % of the land (MYNN: 0 %)**; the cold air drains at 15–24 m s⁻¹
+(MYNN: 3 cells) and eventually a column collapses numerically. The coldest cells are *not* the
+deeply decoupled ones (their skin is only 3 K below the air, wind 7 m s⁻¹, u* 0.34): they are cells
+under the cloud, receiving 18 W m⁻² of sunlight against 560 in MYNN's coldest cells.
+
+**Mechanism (inferred, with the numbers above).** In the weakly mixed stable air of the 3D closure
+the near-surface layer over the high terrain cools and moistens unopposed through the night;
+around sunrise it saturates into fog / low stratus, which blocks the morning sun, so the layer
+keeps cooling while its neighbours warm — a positive feedback the closure enters and MYNN, with
+its stronger stable-regime mixing, never does. The decoupled skins (previous entry) and the
+ridge-top shear runaways are side effects of the same cold, unmixed layer; the surface-layer
+bounds (kept; they are harmless and the detector earned its keep) cannot touch it because the
+fog forms in the air, not at the surface.
+
+**What it means for the cold pool.** "Less mixing than MYNN at night" is physically defensible —
+until it produces fog over a third of the high terrain that observations do not show. This makes
+the **morning low-cloud / fog cover and the shaded-slope 2 m temperature** the first observables
+for the 23 h comparison, ahead of the nocturnal q² level: TEAMx radiation and cloud observations
+(and webcams) at the IOP sites decide whether the 3D run's fog is real. If it is not, the stable
+regime is too weak in the sense that matters — moisture and heat are not mixed away from the
+surface — and the constants / buoyancy limit / Ri-aware cap discussion opens with a target.
+
+**Operational.** No run passes 08:00 yet. The continuation's archive holds the 07:30 frame
+(`exp/X6/wrf_output/8482046/`). Next diagnostic, if wanted: the 1-minute stream 07:30→07:54 from
+X6's 07:00 restart with the moisture/cloud fields, plus a comparison of the nocturnal fog onset
+(where and when QCLOUD first appears below 200 m AGL in the 3D runs vs MYNN).
+
+---
+
 **2026-08-21 (VSC-5), 17:00 — The 07:10 crash is surface decoupling: shaded slopes the closure cannot recouple after sunrise; a NaN detector, a robustness fix and two loose physical bounds in the surface layer.**
 
 **Measured** (run A13, job 8481309: 12-minute restart of the paired run from 07:00, 1-minute
