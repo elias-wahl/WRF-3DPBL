@@ -2189,8 +2189,8 @@ CONTAINS
                ims,ime, jms,jme, kms,kme,                          &
                i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte,    &
                ustm,ck,cka,cd,cda,isftcflx,iz0tlnd,                &
-               shalwater_z0,water_depth,                           & 
-               scm_force_flux,errmsg,errflg                        ) 
+               shalwater_z0,water_depth,                           &
+               scm_force_flux,errmsg,errflg                        )
 #if ( EM_CORE==1)
            DO j = j_start(ij),j_end(ij)
            DO i = i_start(ij),i_end(ij)
@@ -2200,6 +2200,22 @@ CONTAINS
            end do
 #endif
          ENDIF
+           ! NaN detector (2026-08-21): stop loudly at the first non-finite surface-layer
+           ! output, naming the cell and its inputs, instead of letting the NaN reach the
+           ! radiation scheme two steps later (rrtmg_lw taumol segfault, jobs 8481238/8481309).
+           ! x /= x is true only for NaN (no -ffast-math in this build).
+         DO j = j_start(ij),j_end(ij)
+           DO i = i_start(ij),i_end(ij)
+             IF ( ust(i,j) /= ust(i,j) .OR. hfx(i,j) /= hfx(i,j) .OR. chs(i,j) /= chs(i,j) ) THEN
+               WRITE(message,'(A,2I6,A,6(1X,E12.4))') 'SFCLAYREV produced NaN at i,j =', i, j, &
+                 ' : ust,hfx,chs,br,zol,wspd =', ust(i,j), hfx(i,j), chs(i,j), br(i,j), zol(i,j), wspd(i,j)
+               CALL wrf_message(TRIM(message))
+               WRITE(message,'(A,5(1X,E12.4))') '   inputs tsk,t1,qv1,xland,znt =', &
+                 tsk(i,j), t_phy(i,kts,j), qv_curr(i,kts,j), xland(i,j), znt(i,j)
+               CALL wrf_error_fatal(TRIM(message))
+             END IF
+           END DO
+         END DO
        ELSE
          CALL wrf_error_fatal('Lacking arguments for SFCLAY in surface driver')
        ENDIF
@@ -3284,6 +3300,17 @@ CONTAINS
                 MP_RAINC =  RAINCV, MP_RAINNC =    RAINNCV, MP_SHCV = RAINSHV,&
 		MP_SNOW  = SNOWNCV, MP_GRAUP  = GRAUPELNCV, MP_HAIL = HAILNCV )
 !$omp end critical (noahmp_driver)
+           ! NaN detector (2026-08-21), land-surface side: see the SFCLAYREV one above.
+         DO j = j_start(ij),j_end(ij)
+           DO i = i_start(ij),i_end(ij)
+             IF ( tsk(i,j) /= tsk(i,j) .OR. hfx(i,j) /= hfx(i,j) .OR. qfx(i,j) /= qfx(i,j) ) THEN
+               WRITE(message,'(A,2I6,A,7(1X,E12.4))') 'NOAHMP produced NaN at i,j =', i, j, &
+                 ' : tsk,hfx,qfx,t1,ust,chs,xland =', tsk(i,j), hfx(i,j), qfx(i,j), &
+                 t_phy(i,kts,j), ust(i,j), chs(i,j), xland(i,j)
+               CALL wrf_error_fatal(TRIM(message))
+             END IF
+           END DO
+         END DO
 
          IF(SF_URBAN_PHYSICS > 0 ) THEN  !urban
          

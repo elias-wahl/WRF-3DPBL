@@ -51,6 +51,7 @@
    use initialize_mod, only : Init_fire_state_within_wrf
 #endif
    USE module_pbl3d, ONLY : Init_pbl3d
+   USE sf_sfclayrev, ONLY : sf_sfclayrev_set_limits
    USE module_wind_fitch, ONLY : init_module_wind_fitch
 
    USE NoahmpIOVarType, only : NoahmpIOdom
@@ -2282,6 +2283,10 @@ DEALLOCATE(z_at_q)
    ENDIF
 
 DEALLOCATE(dz8w)
+
+     ! Loose physical bounds on the stable surface layer (sf_sfclayrev): namelist
+     ! sfclay_zol_max, sfclay_ust_min; defaults reproduce the scheme as it was.
+   call sf_sfclayrev_set_limits(config_flags%sfclay_zol_max, config_flags%sfclay_ust_min)
 
      ! Init pbl3d
    if(config_flags%bl_pbl_physics .eq. 0 .and. ABS(config_flags%pbl3d_opt) .gt. 0) then

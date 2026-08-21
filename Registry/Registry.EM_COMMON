@@ -2771,6 +2771,8 @@ rconfig   real    oml_gamma               namelist,physics      1            0.1
 rconfig   real    oml_relaxation_time     namelist,physics      1            0.        h     "oml_relaxation_time"   "Relaxation time of mixed layer ocean model back to original values"      "s"
 rconfig   integer isftcflx                namelist,physics      1            0         h     "isftcflx"    "switch to control sfc fluxes"   ""
 rconfig   integer iz0tlnd                 namelist,physics      1            0         h     "iz0tlnd"    "switch to control land thermal roughness length"   ""
+rconfig   real    sfclay_zol_max          namelist,physics      1            1.0e30    h     "sfclay_zol_max"  "sf_sfclayrev: cap on z/L in stable conditions (1e30 = none; 10 ~ bulk Ri 0.4)"   ""
+rconfig   real    sfclay_ust_min          namelist,physics      1            0.001     h     "sfclay_ust_min"  "sf_sfclayrev: floor on u* over land, m s-1 (0.001 = the scheme's own)"   "m s-1"
 rconfig   logical kim_tofd                namelist,physics      max_domains   .false.  rh    "kim_tofd"   "turbulent form drag (tofd) option for kim gravity wave drag"   ""
 rconfig   real    tofd_factor             namelist,physics      max_domains   .003     rh    "tofd_factor" "factor in  kim tofd scheme"   ""
 rconfig   real    shadlen                 namelist,physics      1            25000.    -     "shadow_length" "maximum length of orographic shadow" "m"

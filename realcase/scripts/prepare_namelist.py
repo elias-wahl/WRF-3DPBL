@@ -437,6 +437,11 @@ def check(nl):
                        "only to reproduce pre-group-E runs")
         if g("pbl3d_init_opt", int, 0) not in (0, 1):
             note(FATAL, "pbl3d_init_opt must be 0 (q^2 floor) or 1 (level-2 equilibrium)")
+        if g("sfclay_zol_max", float, 1.0e30) <= 0:
+            note(FATAL, "sfclay_zol_max must be > 0 (cap on z/L in sf_sfclayrev; 1e30 = none)")
+        um = g("sfclay_ust_min", float, 0.001)
+        if um < 0 or um > 0.5:
+            note(FATAL, "sfclay_ust_min must be in [0, 0.5] m/s")
         if g("pbl3d_sf_pair", int, 0) not in (0, 1):
             note(FATAL, "pbl3d_sf_pair must be 0 or 1")
         elif g("pbl3d_sf_pair", int, 0) == 0 and p3 == 2:

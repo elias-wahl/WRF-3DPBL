@@ -7,6 +7,63 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-08-21 (VSC-5), 17:00 — The 07:10 crash is surface decoupling: shaded slopes the closure cannot recouple after sunrise; a NaN detector, a robustness fix and two loose physical bounds in the surface layer.**
+
+**Measured** (run A13, job 8481309: 12-minute restart of the paired run from 07:00, 1-minute
+frames). Every field is finite and unremarkable at 07:09; at 07:10 a cone of ~3 000 NaN columns
+expands from a point on the southern lateral boundary (j = 0–1, i ≈ 95–104, a 2.0–2.5 km ridge
+on the boundary, lowest level). Order of events read from which fields are NaN where: the
+interior stresses `u'²`, `w'²` nowhere; the **surface** stress `u'w'`, `v'w'` (face k = 0) first;
+`u*`, skin temperature and heat flux NaN in the same strip; then production, diffusion, the
+length scale, W, T, humidity. The seed cells at 07:09: skin temperature 10–26 K below the air at
+8 m (TSK − θ = −35…−53 K, ~24 K of it the θ–T offset at 2.4 km), wind 0.5–1.3 m s⁻¹,
+**u\* = 0.010–0.017 m s⁻¹** (scheme floor 0.001), sensible heat flux −30…−90 W m⁻²: a surface that
+has decoupled radiatively — no turbulence to carry the warming air down to it, a colder skin
+making the layer more stable still. The surface-layer scheme (`sf_sfclayrev`, bulk Richardson
+number of order 40) and/or Noah-MP then return NaN, which enters the closure through the surface
+stress and the dynamics through T, and the long-wave radiation lookup segfaults two steps later.
+
+**Decoupling statistics** (skin minus lowest-level air temperature, K; cells of 300 000):
+
+| | min ΔT | ΔT < −10 K | ΔT < −20 K | HFX < −50 W m⁻² |
+|---|---|---|---|---|
+| MYNN 04:00 | −20.6 | 7 122 | 2 | 23 108 |
+| 3D (X0 / X6) 04:00 | −18.9 | 4 377 / 4 454 | 0 | 44 297 / 43 783 |
+| MYNN 05:30 | −17.6 | 1 063 | 0 | 5 591 |
+| 3D (X0 / X6) 05:30 | −32.7 / −33.1 | 6 647 / 6 671 | 157 / 152 | 39 509 / 39 323 |
+| MYNN 07:00 | −12.1 | 21 | 0 | 3 518 |
+| 3D (X6) 07:00 | −37.0 | 2 117 | 180 | 21 349 |
+
+At night the two closures couple the surface about equally; after sunrise MYNN's surfaces recouple
+within two hours, the 3D closure's shaded slopes do not — six times as many cells with a strong
+downward heat flux 3.5 h after sunrise. X0 and X6 are identical in this, so the pairing fix did
+not cause it; the unpaired runs simply died earlier by the other route.
+
+**What it means for the cold pool.** This is the second face of the weak stable-regime turbulence:
+too little mixing ⇒ surfaces that cannot recouple. A clamp that only keeps the surface-layer
+scheme finite changes no physics — the exchange is already ~0 in that limit — but leaves the model
+producing skins 20–37 K below the air, which in a July valley is not plausible (5–10 K is), and
+delays the morning erosion of the cold pool; that bias becomes a primary observable of the 23 h run
+against the TEAMx surface and 2 m temperatures. A *minimum coupling* does change the physics and is
+what most schemes carry against exactly this runaway. Agreed with the user: add the NaN guard and a
+**very loose** physical lower bound.
+
+**Implemented (commit follows the build).** (1) `sf_sfclayrev`: the z/L solver `zolri` had an
+undefined result on its early-return paths (now 0 = neutral); **`sfclay_zol_max`** caps z/L in stable
+conditions (Registry default 1e30 = no cap; template **10**, which is bulk Ri ≈ 0.4 in this scheme —
+beyond it the exchange coefficients stay at their z/L = 10 value instead of vanishing); **`sfclay_ust_min`**
+floors u* over land (default 0.001 = the scheme's own; template **0.03 m s⁻¹**). Both set once from
+the namelist through `sf_sfclayrev_set_limits` (called in `start_em`). (2) A NaN detector in
+`module_surface_driver` after the surface-layer call and after Noah-MP: on the first non-finite
+`u*`/`HFX`/`CHS` or `TSK`/`HFX`/`QFX` it prints the cell, its inputs and stops — a loud, informative
+crash instead of a radiation segfault two steps later; no effect on a healthy run. (3) Numbers for
+the record: with u* = 0.03 and z/L ≤ 10 in 0.5 m s⁻¹ wind, the heat exchange coefficient is
+~6·10⁻⁴ m s⁻¹, i.e. ~20 W m⁻² at a 30 K skin–air difference, ~7 W m⁻² at 10 K — a gentle recoupling
+that cannot by itself erase a cold pool. Test: the 12-minute restart from 07:00 must pass 07:10;
+then the 07:00→10:00 continuation; then the 23 h run.
+
+---
+
 **2026-08-21 (VSC-5), evening — The pairing fix closes the energy budget to 0.3 %, halves nocturnal
 q², and is what the morning runaway was made of — first run through 07:00.**
 

@@ -429,6 +429,17 @@
          END IF
       ENDDO
 
+      IF ( model_config_rec % sfclay_zol_max .LE. 0.0 ) THEN
+         wrf_err_message = '--- ERROR: sfclay_zol_max must be > 0 (cap on z/L in sf_sfclayrev; 1e30 = no cap)'
+         CALL wrf_debug ( 0, TRIM( wrf_err_message ) )
+         count_fatal_error = count_fatal_error + 1
+      END IF
+      IF ( model_config_rec % sfclay_ust_min .LT. 0.0 .OR. model_config_rec % sfclay_ust_min .GT. 0.5 ) THEN
+         wrf_err_message = '--- ERROR: sfclay_ust_min must be in [0, 0.5] m s-1 (floor on u* over land in sf_sfclayrev)'
+         CALL wrf_debug ( 0, TRIM( wrf_err_message ) )
+         count_fatal_error = count_fatal_error + 1
+      END IF
+
       IF ( model_config_rec % pbl3d_limiter_opt .LT. 1 .OR. &
            model_config_rec % pbl3d_limiter_opt .GT. 2 ) THEN
          wrf_err_message = '--- ERROR: pbl3d_limiter_opt must be 1 (fixed S k / eps cap) or 2 (Ri-aware cap)'

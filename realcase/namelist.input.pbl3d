@@ -113,6 +113,8 @@
  ra_sw_physics          = 4,           ! RRTMG
  radt                   = 1,
  sf_sfclay_physics      = 1,           ! revised MM5 MO (sfclayrev) -- the pairing pbl3d expects
+ sfclay_zol_max         = 10.0,        ! loose cap on z/L in stable conditions (~ bulk Ri 0.4): the surface must not decouple completely. 1e30 = the scheme as it was. 2026-08-21
+ sfclay_ust_min         = 0.03,        ! loose floor on u* over land, m/s (scheme's own: 0.001). 2026-08-21
  sf_surface_physics     = 4,           ! Noah-MP
  bl_pbl_physics         = 0,           ! REQUIRED: pbl3d_opt replaces the 1D PBL scheme
  bldt                   = 0,
