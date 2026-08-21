@@ -7,6 +7,25 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-08-21 (VSC-5), 22:30 — The 23 h run is queued behind X7, with an automatic gate.**
+
+Agreed with the user: if X7 (job 8483386, paired configuration + albedo guard, 01:00→10:00) runs
+without obvious flaws, the 23 h run starts without a further decision. Implemented so that it
+survives a session restart: **X8** = job 8483404 (`branko_runs/innval_pbl3d_X8`, output root
+`exp/X8`, same configuration, 2025-07-18 01:00 → 2025-07-19 00:00, `restart_interval=180`,
+history 30 min, WRFlux averages every 6 h, 2 nodes, 20 h wall requested) is submitted with
+`--dependency=afterok:8483386`, so SLURM starts it only if X7 exits successfully. The session
+monitor adds the quality gate and cancels X8 if X7 fails it: (a) X7's 03:30 frame must be
+bit-identical to X6 (U, T, q², TSK — the night has no short-wave, so the albedo guard must change
+nothing); (b) at 07:00: all temperatures finite, no negative land albedo, 2 m temperature first
+percentile above 271 K (the buggy run had 265.0, MYNN 276.2), fewer than 2 000 cells below 270 K
+(20 933), fewer than 200 cells with more than 15 m s⁻¹ at 8 m (1 458). If X7 crashes, the
+dependency alone prevents X8. The control question stands: the MYNN control's topographic shading
+is inert, so a MYNN run on this build (with the guard) is the like-for-like morning reference —
+not queued, the user's call.
+
+---
+
 **2026-08-21 (VSC-5), 22:15 — ROOT CAUSE of the morning failures: an undefined land-surface albedo (−9999) reaches the short-wave radiation scheme in terrain-shaded cells. A model bug, not closure physics. Guarded; the morning has to be re-run.**
 
 **How it was found.** The θ budget of the cloud layer from the WRFlux averages (06:30–07:00,
