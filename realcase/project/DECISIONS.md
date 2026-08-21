@@ -7,6 +7,115 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-08-21 (VSC-5), evening — The pairing fix closes the energy budget to 0.3 %, halves nocturnal
+q², and is what the morning runaway was made of — first run through 07:00.**
+
+`q_sq` = twice the turbulence kinetic energy, m^2 s^-2. `l` = master length scale, the size of the
+energy-containing eddies, m. `sf_alpha` = the slope factor (|grad h| dx/dz, the number of coordinate
+layers a surface crosses per grid cell, median 5.2 here), the divisor WRF's core applies to the
+horizontal turbulent momentum tendency for stability. `KE_LOSS_H` = the resolved kinetic-energy
+tendency from horizontal turbulent momentum mixing, m^2 s^-3 — what the mean flow actually pays.
+`QSQ_SHEAR_H` = the six horizontal-pairing production terms of `q_sq`, m^2 s^-3, i.e. twice the TKE
+production, so the pairing residual is `KE_LOSS_H + QSQ_SHEAR_H/2` and is zero in a consistent
+closure. `P/eps` = production over dissipation of `q_sq`. Measured unless marked inferred.
+
+**Behavioural footprint.** The Registry default of `pbl3d_sf_pair` stays 0, so the reference
+configuration and its bit-reproducibility are untouched; the run template
+`realcase/namelist.input.pbl3d` now carries `pbl3d_sf_pair = 1`, so every new run is paired. The
+applied momentum tendency is unchanged — only the production credited to `q_sq` changes.
+
+| run | job | difference from the reference | reached | s/step |
+|---|---|---|---|---|
+| X0 (reference = previous form) | 8477283 | — | 05:52 (CFL, then SIGSEGV) | 1.50 |
+| X6 (paired) | 8478327 | `pbl3d_sf_pair=1` only | **07:00, complete, 13 frames** | 1.50 |
+| A12 (diagnosis) | 8479338 | restart of X0 from 04:00, 1-min budget | 05:51:54 (same column, same `W`) | — |
+
+**The acceptance test passed, and by a wide margin.** Residual as a percentage of total shear
+production, mass-weighted over the lowest ~100 m:
+
+| pairing residual / total shear production | 02:00 | 04:00 | 05:30 |
+|---|---|---|---|
+| X0 | +28 % | +37 % | +14 % |
+| X6 | **+0.4 %** | **+0.3 %** | **+0.3 %** |
+
+**Removing the spurious source halves the nocturnal turbulence, as predicted, and the two closures
+converge after sunrise.** `q_sq` in the lowest ~100 m, domain mean:
+
+| | 02:00 | 04:00 | 05:30 | 06:00 | 07:00 |
+|---|---|---|---|---|---|
+| X0 / MYNN control (8320565) | 0.27 | 0.33 | 0.51 | — | — |
+| **X6 / MYNN** | **0.14** | **0.17** | **0.38** | **0.57** | **0.84** |
+| X6 absolute, m^2 s^-2 | 0.043 | 0.052 | 0.27 | 0.52 | 1.20 |
+| MYNN absolute, m^2 s^-2 | 0.316 | 0.316 | 0.72 | 0.91 | 1.42 |
+
+At 07:00 the ratio is 0.94-1.18 in the lowest 50 m on every slope class — the convective boundary
+layer is the same in both closures near the ground — and 0.4-0.5 at 200-400 m above ground, where
+MYNN grows a deeper mixed layer.
+
+**The slope structure of the deficit *was* the spurious source.** At 04:00 the paired run's ratio is
+**0.15-0.19 in every slope x height bin**, flat. The previous form gave 0.19 on flat ground against
+~0.5 on 22-40 deg slopes; that steep-slope excess was the unpaid production, not physics. The median
+`l` at 04:00 over faces 17-121 m is 0.46-0.92 m paired, against 1.0-2.1 m unpaired and 1.5-6.7 m in
+the control — `l` follows `q` through the buoyancy and strain limits, so halving the energy shortens
+the eddies proportionally.
+
+**Retraction.** The 2026-08-20 inference that the slope-dependent 10 m wind bias is one deficit
+"acting as a brake on slopes and a conveyor on flat ground" is **retracted**. Halving `q_sq` left the
+bias at 04:00 unchanged to 0.01 m s^-1: -0.35 m s^-1 on 0-3 deg slopes and +0.54 on 22-40 deg paired,
+against -0.35 and +0.61 unpaired. The bias is not a function of the turbulence level; its cause is
+elsewhere — the surface-layer scheme or the resolved slope-flow dynamics, both shared by the two runs
+(**candidates, not measured**).
+
+**New and open: a daytime wind discrepancy.** At 07:00 the paired run is **+2.4 to +3.9 m s^-1**
+faster than the control at 10 m on *every* slope class, flat ground included — a daytime, not a
+slope, signature. Not examined; it is a target for the 23 h run, together with the 0.4-0.5 `q_sq`
+ratio at 200-400 m after sunrise.
+
+**The morning runaway is the same defect, made explosive by daytime shear (measured).** The
+diagnosis restart reproduced the blow-up at 05:51:54 at the same column with the same vertical
+velocity. It is not one bad column but a growing population of ridge-top hotspots: cells with
+`q_sq` > 5 m^2 s^-2 go 4 126 at 05:00 to 31 500 at 05:52. The terminal cluster (j 204-206, i 182-189;
+30.5 deg slope at 2107 m, `sf_alpha` ~ 17), budget over +-5 cells and the lowest six mass levels:
+
+| cluster, lowest 6 mass levels | 05:30 | 05:35 | 05:40 | 05:45 | 05:50 | 05:51 |
+|---|---|---|---|---|---|---|
+| horizontal pairing / total shear production | 97 % | 77 % | 86 % | 95 % | 141 % | 164 % |
+
+The resolved flow pays **6-10 %** of that horizontal production at every one of those times. (The
+vertical part turns negative in the last two minutes, hence the values above 100 %.) Dissipation
+tracks the total production; buoyancy is ~1 %. In the single column at mass level 4, in `q_sq` units (these are
+d(`q_sq`)/dt divided by 2):
+
+| column j=205 i=185, k=4 | 05:48 | 05:50 | 05:51 |
+|---|---|---|---|
+| `q_sq`, m^2 s^-2 | 3.5 | 25.7 | **146** |
+| total production, m^2 s^-3 | 0.03 | 1.07 | 14.9 |
+| of it, untapered horizontal | 0.03 | 2.3 | 33 |
+| paid (`KE_LOSS_H`) | 0.007 | 0.12 | 1.04 |
+
+The strain limiter is binding throughout (ratio 0.73 -> 0.48), `P/eps` holds at 2.0-2.4, and no
+Tier-2 back-off fires. A single column flickers between the floor and O(1) m^2 s^-2 from 05:28 to
+05:48, so the cluster sum is the robust quantity. **Conclusion: the earlier inferred mechanism — the
+strain cap keeping `l ~ q` so `P/eps` stays above 1 — is the amplifier, not the source. The source is
+the unpaid horizontal production, and with the pairing fixed the runaway does not occur through
+07:00** (as far as any run has been carried).
+
+**Decision: `pbl3d_sf_pair = 1` becomes the value in the run template**, Registry default still 0.
+The fix was agreed in principle before it was built, the acceptance test passed, and it is
+energetically consistent rather than tuned. **Next: the 23 h run against the TEAMx observations** —
+now possible for the first time, since this is the first configuration to survive the morning. No
+change to the closure constants, the buoyancy-limit coefficient or the strain cap before it.
+
+**Trap found on the way** (`KNOWN_ISSUES.md` E17): a restart restores its output timers from the
+restart file, so a newly added stream never opens unless `override_restart_timers = .true.` — job
+8478325 ran 1.6 h and wrote no 1-minute frames because of it.
+
+**Archives.** X6: `exp/X6/wrf_output/8478327/`, 13 half-hourly frames. The 1-minute diagnosis frames
+(53 frames 05:00-05:52, ~50 GB) sit in `exp/A12/temp/branko/` and were **not** archived by the submit
+script — keep or subset them deliberately.
+
+---
+
 **2026-08-21 (VSC-5), later — Two follow-ups started the same day: the slope-factor energy pairing is fixed in its minimal form, and the morning runaway gets a 1-minute budget from a restart.**
 
 **Pairing fix, and why the minimal form.** The measurement (previous entry) is that about

@@ -702,6 +702,37 @@ into a reconfigure. Before starting any rebuild: `scontrol hold <jobid>` every p
 links the binary (release after `BUILD OK`), or copy the executables into the run dir for runs
 that must not move with the tree. Resubmit the casualty; nothing in the run dir is damaged.
 
+---
+
+## E17. A restart ignores a newly added output stream unless `override_restart_timers = .true.`
+
+**Severity:** high — the run succeeds, writes nothing, and costs its whole wall time
+**Observed:** VSC-5, 2026-08-21, adding the 1-minute q^2 budget stream to the morning-runaway
+diagnosis restart
+
+WRF stores the output timers (alarms) of every stream in the restart file and restores them on
+restart. A stream that did not exist when the restart file was written has no stored alarm, and
+WRF does not create one from the namelist: the stream simply never opens. `auxhist23_interval`,
+`auxhist23_begin_m`, `iofields_filename` and the `io_form` are all read and all ignored.
+
+Job 8478325 ran the full 1.6 h from the 04:00 restart file, exited cleanly, and wrote **zero**
+1-minute frames — no error, no warning in `rsl.error.0000`, only the missing `qsqdiag_*` files.
+
+The fix is one namelist line in `&time_control`:
+
+```
+override_restart_timers = .true.
+```
+
+which makes WRF rebuild every alarm from the namelist instead of the restart file. Devel-QOS job
+8479232 confirmed it: frames appear from `auxhist23_begin_m` onward. `branko_runs/innval_pbl3d_A12`
+carries the line, and the comment above the variable in the namelist template now says why.
+
+Note the scope: this affects the *timers*, so it also re-arms `history_interval` and
+`restart_interval` from the namelist — intended here, but check the other streams' intervals in the
+same file before setting it.
+
+---
 
 ## G1. WRF requires at least 10 grid cells per MPI patch in each direction
 

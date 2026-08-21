@@ -37,6 +37,8 @@
  history_outname        = '@OUTPUT_ROOT@/temp/branko/wrfout_d<domain>_<date>.nc'  ! <- run_wrf.sh output-path convention; @OUTPUT_ROOT@ from $WRF_OUTPUT_ROOT
  restart                = .false.,
  restart_interval       = 180,         ! minutes; lets the run be chained across a queue limit
+                                       ! on a restart that ADDS an output stream (e.g. auxhist23), also set
+                                       ! override_restart_timers = .true., or the new stream never opens (KNOWN_ISSUES E17)
  io_form_history        = 2,
  io_form_restart        = 2,
  io_form_input          = 2,
@@ -148,7 +150,7 @@
  pbl3d_init_opt         = 1,           ! start q^2 at level-2 equilibrium (as MYNN does); 0 = floor everywhere (pre-2026-08-20)
  pbl3d_l0_min           = 8.0,         ! floor on the asymptotic length scale l0, m; 0 = off (pre-2026-08-20). See DECISIONS 2026-08-20
  pbl3d_limiter_opt      = 1,           ! 1 fixed S k/eps cap; 2 cap scaled by the level-2 equilibrium value at local Ri (default-off option)
- pbl3d_sf_pair          = 0,           ! 1 = credit q^2 only with the horizontal production the slope-tapered tendency actually extracts (A10); 0 = pre-2026-08-21. Validated run pending
+ pbl3d_sf_pair          = 1,           ! credit q^2 only with the horizontal production the slope-tapered tendency actually extracts (A10). Validated 2026-08-21 (run X6: energy residual 0.3 %, first run through 07:00); 0 = pre-2026-08-21 form
  diff_6th_opt           = 2,           ! stays active with diff_opt=0 -- numerical noise control
  diff_6th_factor        = 0.12,
  diff_6th_slopeopt      = 1,           ! taper the filter off over steep slopes
