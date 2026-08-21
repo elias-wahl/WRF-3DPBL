@@ -29,8 +29,10 @@ failed there — the move is purely about queue access.
    to do next. Written for whoever picks this up.
 2. `DECISIONS.md` — why non-obvious science/config choices were made. **Append to
    it in the same turn as the work**, newest first.
-3. `branko/OPEN_ISSUES.md` **section A9** — the diagnosis of the current blowup.
-4. `branko/KNOWN_ISSUES.md` **U2, E11, E12, E13** — the traps that cost time.
+3. `branko/OPEN_ISSUES.md` **sections A10, A11, A12** — the two open defects and
+   the new morning blowup. (A9, the nocturnal runaway, is fixed.)
+4. `branko/KNOWN_ISSUES.md` **U2, E11, E12, E13, E14, E15** — the traps that cost
+   time.
 5. `ARCHITECTURE.md`, then `branko/realcase/README.md` (the authoritative
    build/run guide) and `CHANGES.md`.
 
@@ -38,17 +40,37 @@ failed there — the move is purely about queue access.
 
 ## The immediate task
 
-The `pbl3d_opt=2` runaway is **fixed** — job 8476273 completed the first
-real-terrain run of the full 3D closure. The problem now is the opposite one: the
-closure carries far too little turbulence energy. Twice the turbulence kinetic
-energy (`q_sq`, m² s⁻²) in the lowest ~100 m sits at 0.085 against the MYNN
-control's 0.316, still rising after an hour, with the energy-containing eddies
-0.42 m across at 85 m above ground against the control's 6.7 m.
+Six 6 h sensitivity runs (2026-08-20/21, jobs 8477283–8477288) closed the previous
+question and opened two others.
 
-**Read `HANDOVER_2026-08-20.md` and the top entry of `DECISIONS.md`.** They carry
-the mechanism (every bound on the eddy size scales with the turbulence velocity,
-the run cold-starts at the floor), the two default-off fixes, the six 6 h
-experiments and the decision rule for adopting them.
+**The turbulence deficit is not a spin-up or bootstrap problem.** Twice the
+turbulence kinetic energy (`q_sq`, m² s⁻²) averaged over the lowest ~100 m
+equilibrates by 02:30 at one third of the MYNN control, and neither an equilibrium
+start nor a floor on the asymptotic length scale moves it by more than 2–4 %.
+Binned by the gradient Richardson number (buoyant suppression over shear
+production) the two closures agree within 4 % in neutral and unstable air, and the
+ratio is a flat 0.22 for every bin above 0.3 — where 69 % of the nocturnal valley
+cells sit. That is the stable-regime equilibrium of Mellor–Yamada level 2.5 with
+the 1982 constants, not a defect to be patched. **MYNN is the control, not the
+truth**; deciding the reference needs the TEAMx observations.
+
+**Two tasks, in this order.**
+
+1. **Fix the slope-factor energy pairing.** Measured inside the model: ~90 % of
+   the horizontal-pairing shear production is never paid for by the resolved
+   flow — ~33 % of total production domain-wide, 92 % unpaid on 22–40° slopes.
+   Taper the stresses before the horizontal divergence and reuse those same
+   stresses in production. It is a spurious *source*, so it must land **before**
+   any tuning of the stable regime, or the tuning rewards a cancellation.
+2. **Diagnose and contain the morning runaway.** Every run — the unchanged code
+   included — blows up 2–2.5 h after sunrise at ridge-top columns in neutral,
+   strongly sheared plunging flow. Take the 1-minute budget at the culprit column
+   first; the field list is in `branko/OPEN_ISSUES.md`.
+
+**Read the 2026-08-21 entry of `DECISIONS.md` and the update at the top of
+`HANDOVER_2026-08-20.md`** — they carry the numbers, the two corrections to the
+earlier record, and why the length-scale floor and the equilibrium start stay
+default-off options rather than defaults.
 
 ### Do NOT
 
@@ -66,6 +88,14 @@ experiments and the decision rule for adopting them.
 - **Do not run more than one experiment with the same `WRF_OUTPUT_ROOT`** — use
   `realcase/env/vsc5_X<n>.sh`. Concurrent runs otherwise clobber each other's
   `temp/branko/wrfout_d01_<date>.nc` live, mid-run.
+- **Do not loosen `pbl3d_sk_eps_max` above 6.** The strain cap is load-bearing:
+  raising it to 12 or removing it brought the nocturnal runaway back within 45 min
+  in two of the six runs.
+- **Do not run past 05:30 UTC expecting completion** until the morning runaway is
+  addressed. Every run so far dies between 05:52 and 06:14.
+- **Do not compare two runs cell by cell.** This configuration is not
+  bit-reproducible across MPI decompositions or after any last-bit arithmetic
+  change — compare stratified means and medians (`KNOWN_ISSUES.md` E14).
 
 ## A rebuild is mandatory after any Registry change
 

@@ -7,6 +7,137 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-08-21 (VSC-5) — Six-run result: the bootstrap trap is real but not the lever — the deficit
+is the closure's stable-regime equilibrium; a third of production is unpaid on slopes; the strain
+cap is load-bearing; and every run blows up two hours after sunrise.**
+
+`q_sq` = twice the turbulence kinetic energy, m^2 s^-2. `l` = master length scale, the size of the
+energy-containing eddies, m. `l0` = the asymptotic scale the Blackadar blend relaxes to away from
+the wall, m. `Ri` = gradient Richardson number, buoyant suppression over shear production. `N` =
+buoyancy frequency, s^-1. `P/eps` = production over dissipation of `q_sq`. `Sk/eps` = strain rate
+times eddy turnover time, what the strain cap bounds. `sf_alpha` = the slope taper, layers a
+coordinate surface crosses per grid cell. Six 6 h runs, 2025-07-18 01:00 -> 07:00 UTC (sunrise
+~03:40), `pbl3d_opt=2`, 2 nodes x 128 ranks, backfilled 2026-08-20 20:41; archives
+`exp/X<n>/wrf_output/<jobid>/`. Measured unless marked inferred.
+
+| run | job | init | `l0` floor | cap `Sk/eps` | reached | s/step |
+|---|---|---|---|---|---|---|
+| X0 (reference = previous code) | 8477283 | floor | 0 | 6 | 05:52 (CFL, `W` = -334 m/s in one column, then SIGSEGV) | 1.50 |
+| X1 | 8477284 | equilibrium | 0 | 6 | 05:59 (SIGSEGV) | 1.47 |
+| X2 (candidate) | 8477285 | equilibrium | 8 m | 6 | 06:02 (SIGSEGV) | 1.50 |
+| X3 | 8477286 | equilibrium | 4 m | 6 | 06:14 (SIGSEGV) | 1.49 |
+| X4 | 8477287 | equilibrium | 8 m | 12 | 01:47 (SIGSEGV) | 1.33 |
+| X5 | 8477288 | equilibrium | 8 m | off (1000) | 01:43 (SIGSEGV) | 1.32 |
+
+**Predicted vs measured.** Yesterday's entry predicted a laminar fixed point: with `q` at its floor
+the asymptotic scale degenerates to 0.1 m at every level, the run cold-starts there, so starting at
+equilibrium and flooring `l0` should lift `q_sq` toward the control. **It does not.** The reference
+run, the equilibrium start and both floor values agree on the layer-mean ratio to within +-0.01 at
+every output time — 2-4 %.
+
+| ratio 3D / MYNN control (job 8320565), `q_sq` domain mean, lowest ~100 m | 02:00 | 03:00 | 04:00 | 05:00 | 05:30 |
+|---|---|---|---|---|---|
+| all four science runs, agreeing within +-0.01 | 0.27 | 0.34 | 0.33 | 0.32 | 0.51 |
+
+Absolute: the closure plateaus at 0.11 m^2 s^-2 from 02:30 to 04:00 against the control's 0.31-0.32;
+0.39 vs 0.72 at 05:30; the candidate run 0.74 vs 0.91 at 06:00 as the convective boundary layer takes
+over. **Correction to yesterday's record: "still rising after an hour" was the tail of spin-up.** The
+closure equilibrates by ~02:30 at one third of the control, so numbers taken at 02:00 measured
+spin-up, not equilibrium.
+
+**The trap was measured, and it is not rate-limiting.** At 03:00 the median `l0` is already 22.6 m in
+the reference run (10th percentile 2.5 m, which the 8 m floor lifts), yet the median `l` in the
+lowest five faces is 1.3 m without the floor, 1.4 m with it, against the control's 3.1 m: `l` is set
+by the buoyancy and strain limits, not by `l0`. The 10 m wind bias against the control at 04:00 is
+unchanged, -0.33 m s^-1 on 0-3 deg slopes and +0.60 on 22-40 deg.
+
+**Where the deficit lives: stable stratification.** At 04:00, faces 17-140 m above ground, binned by
+the 3D run's own local `Ri`:
+
+| `Ri` | <0 | 0-0.1 | 0.1-0.2 | 0.2-0.3 | >0.3 (every bin to >5) |
+|---|---|---|---|---|---|
+| `q_sq` ratio 3D / MYNN | 0.96 | 0.54 | 0.34 | 0.27 | 0.22-0.23 (flat) |
+
+The nocturnal valley air in the lowest 8 levels has median `Ri` 0.68; 69 % of cells exceed 0.25, 42 %
+exceed 1 (`N` ~ 0.017 s^-1). Median `l` there, 3D vs control: 9.4 vs 8.5 m for `Ri` < 0, 1.0 vs 3.8 m
+for `Ri` 1-2. Where the flow is neutral or unstable the two closures agree within 4 %. **The deficit
+is the stable-regime equilibrium of Mellor-Yamada level 2.5 with the 1982 constants, which loses its
+turbulence beyond `Ri` ~ 0.2, against MYNN, which holds `q_sq` at 0.15-0.3 there.** That is the
+branch named in yesterday's falsification condition, and it is now the live one.
+
+**Caveat, and the next decision turns on it: MYNN is the control, not the truth.** Whether 0.1 or
+0.3 m^2 s^-2 is right for this valley at `Ri` ~ 1 is an observational question; the TEAMx
+intensive-observation data under `$DATA/TEAMx_sEOP_IOP17` and `$DATA/TEAMx_sEOP_IOP18-20` are the
+natural reference (pointer only, not analysed).
+
+**A third of shear production is never paid for by the resolved flow (measured in-model).** The new
+diagnostics `KE_LOSS_H` (resolved kinetic-energy tendency from horizontal turbulent momentum mixing,
+m^2 s^-3) and `QSQ_SHEAR_H` (the six horizontal-pairing production terms of `q_sq`, m^2 s^-3) close
+the check the offline reconstruction could not. Mass-weighted over the lowest ~100 m,
+`KE_LOSS_H + QSQ_SHEAR_H/2` leaves a residual of **0.87-0.91 of |QSQ_SHEAR_H/2|** at every time from
+02:00 to 05:30 in every run: ~90 % of horizontal-pairing production is created from nothing. At
+04:00 that pairing is 36 % of total shear production in the lowest six mass levels, so ~33 % of
+total production is spurious domain-wide; on 22-40 deg slopes it is ~120 % of the total with 92 %
+unpaid, on 0-3 deg slopes ~0. Consistent (**inferred**) with the 1/`sf_alpha` taper applied to the
+tendency but not to the stresses entering production, median `sf_alpha` 5.2. **Note the sign:** a
+spurious *source* pushes `q_sq` up and the closure is still 3x low — a consistent closure is lower
+still, and part of the 0.5 ratio on steep slopes is this source, not physics.
+
+**The strain cap is load-bearing, and yesterday's analytic claim about it is wrong.** Loosening the
+cap to 12, or removing it, brings the nocturnal runaway back within 45 min (crashes 01:47 and 01:43
+at the known fragile column near j=54, i=37-38 in the 01:30 frame; max `q_sq` 30 and 20 m^2 s^-2 at
+j=49, i=134; 348k / 359k cells with a length-scale back-off and 163k / 199k with `P/eps` > 3 at
+01:30, against 36k with `P/eps` > 3 in the reference run at 05:30). **Correction:** the claim that
+growth saturates harmlessly once `l` reaches its geometric bound holds in the algebra and fails in
+practice — the run hits the CFL limit before the saturated state is reached. The cap stays at 6.
+
+**A new failure, pre-existing: every run blows up 2-2.5 h after sunrise.** All four science runs die
+between 05:52 and 06:14 UTC at ridge-top columns, the unchanged code included — not an artefact of
+the new switches, and a 47 h run would have failed at ~06:00 regardless. Worst column, reference run
+at 05:30: terrain 2513 m, 29 deg slope, sensible heat flux -179 W m^-2 (still downward), friction
+velocity 0.51 m s^-1, `q_sq` 8.1 / 23.1 / 34.0 m^2 s^-2 at 17 / 33 / 50 m above ground, `l` 4-7 m,
+vertical velocity -7.7 m s^-1 at 17 m, potential temperature 300.5-301.3 K through the lowest 14
+levels (neutral). Cells with `q_sq` > 5 m^2 s^-2 go 3-6k through the night, 11k at 05:30, 47k at
+06:00. **Inferred mechanism:** neutral, strongly sheared plunging flow over a ridge; the strain cap
+binds, so `l ~ q` and `P/eps` stays above 1, and growth is exponential until `l` meets the geometric
+bound, where the closure's own equilibrium `q_sq` = b1 l^2 S_m S^2 is O(100) m^2 s^-2 at a strain
+rate of 0.5 s^-1. Opened as its own issue in `branko/OPEN_ISSUES.md`.
+
+**The rebuild is bit-for-bit (measured), and reproducibility is fragile.** The reference run's 01:30
+frame is identical to job 8476273's in `U`, `V`, `W`, `T`, `Q_SQ`, `L_MASTER`, `PBL3D_T1_RATIO` —
+maximum difference exactly 0 — so every difference above is physics, not the build. It cost one
+round: a first devel-queue smoke (5 nodes) differed by up to 0.6 m s^-1 in `U` after 10 min because
+one factor of the strain-cap bound had been rewritten single -> double precision; reverted (commit
+`16fa7407b`). Two 640-rank smokes with and without that change then differed from each other as much
+as either differed from the 256-rank reference. **Consequence:** any last-bit change reaches the
+whole domain within ten minutes and is amplified locally to O(0.1-1 m s^-1) — attributed
+(**inferred**) to the closure's discrete backstops (length-scale halving on solver distress,
+realizability projections, floors). Compare runs statistically, never cell by cell; bit reproduction
+needs identical decomposition *and* identical arithmetic.
+
+**Decisions.**
+
+(a) **The decision rule is not met; neither fix becomes a default.** The candidate run was not finite
+to 07:00, did not hold `q_sq` within 0.5-2x of the control in every slope bin, and did not shrink the
+slope-wind bias. The floor on the asymptotic length scale (`pbl3d_l0_min`) and the equilibrium start
+(`pbl3d_init_opt`) **stay default-off options** — harmless, they remove a real trap, worth +2-4 %,
+and not to be called the fix. The balance limiter stays withdrawn; the cap stays at 6.
+
+(b) **Priority, in this order.** (1) **Fix the slope-factor pairing** — now justified by measurement
+rather than code reading: taper the stresses before the horizontal divergence is taken and reuse
+those same stresses in production, as WRF core applies the factor to the diffusivity. It changes the
+answer, so it must land before any tuning, or tuning rewards the compensating error. (2) **Diagnose
+and contain the morning runaway** before any run goes past 05:30. (3) **Then the stable-regime
+equilibrium**: first decide the reference (the control is not truth; the TEAMx observations are the
+candidate), and only then the closure constants, the buoyancy-limit coefficient (`pbl3d_n_tau_max`,
+0.53) or the stratification-aware strain cap (`pbl3d_limiter_opt=2`, built, never run) — one
+sensitivity run each, namelist only.
+
+(c) **All six archives are kept**, `exp/X<n>/wrf_output/<jobid>/`, ~280 GB total. Analysis:
+`branko/realcase/scripts/compare_mynn.py`, subcommand `exp`.
+
+---
+
 **2026-08-20 (VSC-5) — The closure is turbulence-starved: the asymptotic length scale
 collapses to a constant when q² sits at its floor, the run cold-starts at that floor, and the
 strain limiter throttles ignition.**

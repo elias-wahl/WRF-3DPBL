@@ -1422,9 +1422,45 @@ reintroducing whatever numerical fragility `sf_alpha` was added to suppress.
 excess this defect implies. Masked by the energy starvation of A11, not refuted;
 the in-model diagnostic (`KE_LOSS_H` vs `QSQ_SHEAR_H`, as integrals) is being built.
 
+### MEASURED IN-MODEL (2026-08-21, VSC-5, all six runs 8477283-8477288)
+
+The diagnostic was built and run. `KE_LOSS_H` = the resolved kinetic-energy
+tendency from horizontal turbulent momentum mixing, m^2 s^-3 — what the mean flow
+actually loses. `QSQ_SHEAR_H` = the six horizontal-pairing production terms of
+`q_sq`, m^2 s^-3, i.e. twice the TKE production, so the pairing check is
+`KE_LOSS_H + QSQ_SHEAR_H/2 = 0` in a consistent closure. Mass-weighted over the
+lowest ~100 m:
+
+| | |
+|---|---|
+| residual / \|`QSQ_SHEAR_H`/2\|, every hour 02:00-05:30, every run | **0.87-0.91** |
+| horizontal pairing / total shear production, lowest 6 mass levels, 04:00 | **36%** |
+| => spurious fraction of *total* production, domain-wide | **~33%** |
+| on 22-40 deg slopes: horizontal / total, and unpaid fraction of it | ~120%, **92%** |
+| on 0-3 deg slopes: horizontal / total | ~0 |
+
+So ~90% of horizontal-pairing production is created from nothing, and about a
+third of all shear production in the drainage layer is unpaid. Consistent
+(**inferred**) with the `1/sf_alpha` taper being applied to the tendency and not
+to the stresses that enter production; median `sf_alpha` 5.2.
+
+**The crude bound of "8-60%" above is superseded by 33%, and the retracted 59% is
+not resurrected** — that number came from a failed offline reconstruction and
+happens to lie near the measured horizontal-pairing share by coincidence, not by
+method.
+
+**Sign, and why this raises the priority.** The defect is a spurious *source*: it
+pushes `q_sq` up. The closure nevertheless carries ~1/3 of the control's `q_sq`
+(A11 update), so a consistent closure would carry *less*. On steep slopes part of
+the 0.5 ratio is this source rather than physics — exactly the compensating-error
+situation this issue warned about, now measured. **The pairing fix is first in the
+queue** (`DECISIONS.md`, 2026-08-21): taper the stresses before the horizontal
+divergence is taken and reuse those same tapered stresses in `Calc_q_sq_shear`,
+leaving the momentum tendency's numerical behaviour unchanged.
+
 ---
 
-## OPEN (A11): every bound on the eddy size scales with q — the closure cannot bootstrap from the floor and starts there
+## A11 — TRAP CONFIRMED, NOT THE LEVER (2026-08-21): every bound on the eddy size scales with q — the closure cannot bootstrap from the floor and starts there
 
 Raised 2026-08-20 (VSC-5) from job 8476273 measured against the MYNN-EDMF control
 job 8320565 — same grid, forcing, vertical levels, timestep and surface-layer
@@ -1513,3 +1549,153 @@ below the MYNN control at 04:00-06:00 in the lowest 100 m, then the bootstrap is
 not the limiting factor and the remaining deficit lives in the closure constants
 and stability functions, or in the Deardorff coefficient — not in the length-scale
 floor or the initial condition.
+
+### STATUS 2026-08-21 (VSC-5, six runs 8477283-8477288): falsification condition triggered
+
+The candidate run sits at **0.33x** the control at 04:00 and **0.51x** at 05:30 —
+more than 2x below — and the reference run, the equilibrium start and both floor
+values (8 m, 4 m) agree to within **+-0.01** at every output time:
+
+| ratio 3D / MYNN, `q_sq` domain mean, lowest ~100 m | 02:00 | 03:00 | 04:00 | 05:00 | 05:30 |
+|---|---|---|---|---|---|
+| X0 / X1 / X2 / X3, all within +-0.01 | 0.27 | 0.34 | 0.33 | 0.32 | 0.51 |
+
+Absolute plateau 02:30-04:00: 0.11 vs 0.31-0.32 m^2 s^-2; 05:30: 0.39 vs 0.72;
+candidate at 06:00: 0.74 vs 0.91. The 10 m wind bias at 04:00 is unchanged,
+-0.33 m s^-1 on 0-3 deg slopes and +0.60 on 22-40 deg.
+
+**The trap itself is confirmed and is simply not rate-limiting.** At 03:00 the
+median `l0` in the reference run is already **22.6 m** (10th percentile 2.5 m,
+which the floor lifts to 8 m), yet the median `l` in the lowest five faces is
+**1.3 m** without the floor, **1.4 m** with it, against MYNN's **3.1 m**. `l` is
+set by the buoyancy and strain limits, not by `l0`. Also **correction:** "still
+rising after an hour" was the tail of spin-up — the closure equilibrates by ~02:30.
+
+**Where the deficit actually lives: stable stratification.** At 04:00, faces
+17-140 m AGL, binned by the 3D run's own local gradient Richardson number `Ri`:
+
+| `Ri` | <0 | 0-0.1 | 0.1-0.2 | 0.2-0.3 | >0.3 (flat to `Ri` > 5) |
+|---|---|---|---|---|---|
+| `q_sq` ratio 3D / MYNN | 0.96 | 0.54 | 0.34 | 0.27 | 0.22-0.23 |
+| median `l`, 3D vs MYNN | 9.4 / 8.5 m | — | — | — | 1.0 / 3.8 m (`Ri` 1-2) |
+
+The nocturnal valley air in the lowest 8 levels has median `Ri` 0.68; 69% of cells
+above 0.25, 42% above 1 (`N` ~ 0.017 s^-1). Neutral and unstable cells agree within
+4%. This is the branch the falsification condition named: **Mellor-Yamada level 2.5
+with the MY82 constants loses its turbulence beyond `Ri` ~ 0.2, MYNN holds
+`q_sq` ~ 0.15-0.3 there**, and this domain is mostly on the stable side at night.
+
+**What remains open.**
+
+1. **The reference is undecided.** MYNN is the control, not the truth. Whether
+   `q_sq` of 0.1 or 0.3 m^2 s^-2 is correct for this valley at `Ri` ~ 1 needs
+   observations — TEAMx intensive-observation data under `$DATA/TEAMx_sEOP_IOP17`
+   and `$DATA/TEAMx_sEOP_IOP18-20` (pointer only; not analysed).
+2. **Not to be tuned yet.** A10 is a spurious *source* worth ~33% of production;
+   fixing it moves `q_sq` down. Tuning the stable-regime constants first would
+   reward the cancellation.
+3. Candidate knobs, one namelist-only sensitivity run each, after (1) and (2):
+   the closure constants / stability functions, the buoyancy-limit coefficient
+   `pbl3d_n_tau_max` (0.53), and the stratification-aware strain cap
+   (`pbl3d_limiter_opt=2`, built in the 2026-08-20 reconfigure, **never run**).
+4. `pbl3d_l0_min` and `pbl3d_init_opt` **stay default-off**. They are harmless,
+   they remove a real trap, they are worth +2-4%, and they are not the fix.
+5. The strain cap is **load-bearing** and stays at 6: loosening it to 12 (X4) or
+   removing it (X5) returns the nocturnal runaway within 45 min — crashes at 01:47
+   and 01:43 near j=54, i=37-38, with 163k / 199k cells at `P/eps` > 3 at 01:30
+   against 36k in the reference run at 05:30. **Correction to the 2026-08-20
+   analysis:** the claim that growth saturates harmlessly once `l` reaches its
+   geometric bound holds in the algebra and fails in practice — the run reaches the
+   CFL limit first.
+
+---
+
+## OPEN (A12): every run blows up 2-2.5 h after sunrise at ridge-top columns — including the unchanged code
+
+Raised 2026-08-21 (VSC-5) from the six 6 h runs 8477283-8477288, 2025-07-18 01:00
+-> 07:00 UTC, sunrise ~03:40. `q_sq` = twice the turbulence kinetic energy,
+m^2 s^-2; `l` = master length scale, m; `P/eps` = production over dissipation of
+`q_sq`; `Sk/eps` = strain rate times eddy turnover time, the quantity the strain
+cap bounds; `W` = vertical velocity, m s^-1.
+
+**All four runs with the strain cap at its default 6 die in the morning
+transition**, at ridge-top columns, within 22 min of each other:
+
+| run | `pbl3d_init_opt` / `l0` floor | died at | first symptom |
+|---|---|---|---|
+| X0 (**unchanged code**) | 0 / 0 | 05:52 | CFL, `W` = -334 m s^-1 in one column, then SIGSEGV |
+| X1 | 1 / 0 | 05:59 | SIGSEGV |
+| X2 | 1 / 8 m | 06:02 | SIGSEGV |
+| X3 | 1 / 4 m | 06:14 | SIGSEGV |
+
+**This is pre-existing.** The reference run carries none of the new switches, so
+the failure is not caused by the asymptotic-scale floor or the equilibrium start;
+they delay it by 7-22 min at most. A 47 h run launched from the 2026-08-20 binary
+would have failed at ~06:00 whatever was configured. It is a different failure
+from A9 — different time of day, different terrain position, different
+stratification (neutral, not stably stratified drainage).
+
+### The culprit column (reference run, 05:30 frame, j=135 i=170)
+
+| | |
+|---|---|
+| terrain height / slope | 2513 m / 29 deg |
+| sensible heat flux | **-179 W m^-2** (still downward, 2 h after sunrise) |
+| friction velocity `u*` | 0.51 m s^-1 |
+| `q_sq` at faces k=1/2/3 (17 / 33 / 50 m AGL) | **8.1 / 23.1 / 34.0** |
+| `l` at those faces | 4-7 m |
+| strain-limit ratio at k=3 | 0.48, with `Sk/eps` 12.5 and `P/eps` **2.07** |
+| `W` at 17 m AGL | **-7.7 m s^-1** |
+| potential temperature, lowest 14 levels | 300.5-301.3 K (**neutral**) |
+| cells with `q_sq` > 5 within +-5 cells | 93 |
+
+Domain-wide: cells with `q_sq` > 5 m^2 s^-2 go 3-6k through the night, **11k at
+05:30, 47k at 06:00** (candidate run); the domain maximum `q_sq` is 105-127
+m^2 s^-2 at ridge tops from 04:00 on; 278k-297k cells carry a length-scale
+back-off.
+
+### Mechanism (INFERRED — not yet diagnosed from a budget)
+
+Neutral, strongly sheared plunging flow over a ridge. The strain cap binds, so
+`l ~ q`; under any `l ~ q` bound `P/eps` is independent of `q` (measured 2.07
+here), so `q_sq` grows exponentially rather than saturating. Growth continues
+until `l` meets a *geometric* bound — `kappa z` or `l0` ~ 20 m — where the
+closure's own equilibrium is `q_sq = b1 l^2 S_m S^2`, which is O(100) m^2 s^-2 for
+a strain rate S ~ 0.5 s^-1, consistent with the observed domain maxima. The model
+reaches the CFL limit before that state is realised: `W` = -334 m s^-1.
+
+Note this is the same `l ~ q` exponential as the nocturnal runaway, but with the
+cap *in place*: at 05:30 the cap holds `P/eps` at 2.07 instead of ~3, which slows
+the growth without stopping it. Loosening the cap is therefore not an option (see
+A11, item 5).
+
+### What to measure next
+
+A 1-minute budget at the culprit column from 05:00 to the crash, lowest ~20
+levels, +-10 cells around j=135 i=170, before any attempt at a fix:
+
+- `Q_SQ`, `L_MASTER`, `L0_ASYM`, `PBL3D_T1_RATIO`, `PBL3D_P_EPS` — is `P/eps` > 1
+  sustained, and is `l` on the strain bound or on `kappa z` when growth is fastest?
+- `Q_SQ_SHEAR`, `Q_SQ_BUOY`, `Q_SQ_DISSIP`, `Q_SQ_HDIFF`, `Q_SQ_VDIFF` — which term
+  is the source, and is horizontal diffusion a sink here as it was at night?
+- `QSQ_SHEAR_H` and `KE_LOSS_H` — how much of the growth is the unpaid
+  horizontal-pairing production of A10 at 92% on this slope class.
+- `U`, `V`, `W`, `T`, `HFX`, `UST`, `PBLH` — to establish whether the trigger is
+  the ridge-top flow separation or the surface flux changing sign.
+
+Set `--qsq-diag` with a 60 s `auxhist23` interval and a restart from 05:00 (or a
+6 h run submitted with output from 05:00 only — the full 1-minute stream over an
+hour is ~42 GB). **Do not run past 05:30 expecting completion until this is
+understood.**
+
+### Candidate containments (not yet tried, listed so they are not re-invented)
+
+1. **Stratification-aware strain cap** (`pbl3d_limiter_opt=2`) — built, never run.
+   It scales the cap by the closure's own equilibrium `Sk/eps` at the local
+   Richardson number; in neutral flow that is *looser*, not tighter, so it may make
+   this worse. Cheap to test, namelist only.
+2. An absolute ceiling on `q_sq` or on `l S / q`, i.e. a hard realizability cut —
+   loud and diagnosable, but a patch, not physics.
+3. The A10 pairing fix, which removes a spurious source worth 92% of horizontal
+   production on exactly this slope class. **Test this first**: it is required
+   anyway, and it may remove the runaway as a side effect.

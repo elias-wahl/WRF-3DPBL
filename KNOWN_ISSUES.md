@@ -630,6 +630,67 @@ de-duplicated in place (9 tokens -> 3).
 
 ---
 
+## E14. WRF is not bit-reproducible here across MPI decompositions, nor after any last-bit arithmetic change
+
+**Severity:** medium — it does not break a run, it breaks the *comparison method*
+**Observed:** VSC-5, 2026-08-21, smokes 8477302 / 8477313 against job 8476273
+
+Two smoke runs of the same source at 640 ranks (5 nodes, devel QOS) were compared with the
+256-rank reference run of job 8476273. All three start from an identical 01:00 state. After
+**ten minutes of model time** they differ by up to **0.6 m s^-1 in `U`**, spread over the
+whole domain rather than confined to any one region.
+
+The trigger was found and removed — one factor of the strain-cap bound in
+`dyn_em/module_pbl3d_my.F` had been rewritten from single to double precision, reverted in
+commit `16fa7407b`. But the removal did not restore reproducibility across rank counts:
+**two 640-rank smokes with and without that change differ from each other as much as either
+differs from the 256-rank reference.** So the precision edit was not special; any change in
+the last bit does this.
+
+Amplification is fast and local. Attributed (**inferred**) to the closure's own discrete
+backstops — the length-scale halving on solver distress, the realizability projections, the
+floors — each of which is a branch, so a last-bit difference flips a cell to a different
+branch and the O(1e-16) perturbation becomes O(0.1-1 m s^-1) in a few hundred timesteps.
+This is a property of a branchy closure in a chaotic flow, not a bug.
+
+**Consequences for how runs are compared:**
+
+- Compare runs **statistically** — stratified means, medians, distributions by slope bin,
+  height bin, Richardson-number bin. Never cell by cell, never a single column, never a
+  point time series, unless both runs used the identical decomposition *and* identical
+  arithmetic.
+- A "the fix changed the answer" check must hold decomposition and rank count fixed. The
+  2026-08-21 validation did: same 2 nodes x 128 ranks as job 8476273, and the 01:30 frame
+  then matched **bit for bit** (max difference exactly 0 in `U`, `V`, `W`, `T`, `Q_SQ`,
+  `L_MASTER`, `PBL3D_T1_RATIO`).
+- A devel-QOS smoke on 5 nodes is fine for "does it run", useless for "does it reproduce".
+
+---
+
+## E15. `auxhist24_interval = 0` does not switch the WRFlux averaged stream off — it aborts the run at start
+
+**Severity:** low — fails loudly and immediately, but the message names a variable that was
+never set by hand
+**Observed:** VSC-5, 2026-08-21, while preparing the six experiment namelists
+
+Setting `auxhist24_interval = 0` looks like the natural way to disable the averaged output
+stream for a run that does not need it. WRF instead aborts in `module_check_a_mundo` at
+initialisation, because WRFlux requires
+
+```
+avg_interval <= auxhist24_interval
+```
+
+and `avg_interval` is still at its template value. The check is correct; the trap is that
+`0` reads as "off" everywhere else in a WRF namelist and here reads as an interval of zero.
+
+**Either** leave the stream enabled with an interval longer than the run (360 min was used
+for the 6 h experiments, so exactly one frame is written), **or** turn off the
+`output_*_fluxes` flags, which is what actually stops WRFlux from doing the work. The
+namelist template says so in a comment above the variable — read it before editing.
+
+---
+
 ## G1. WRF requires at least 10 grid cells per MPI patch in each direction
 
 A 120x120 domain on 128 tasks gives an 8x16 decomposition = 7 cells in y, and WRF
