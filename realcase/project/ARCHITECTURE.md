@@ -41,6 +41,14 @@ this length — trim before adding.
   stations, lidar, UAS), not model output. `proc/` = Python
   post-processing pipeline.
 
+## Companion repo: the cards
+
+`$DATA/wrf-turbulence-cards` (github.com/elias-wahl/wrf-turbulence-cards, private):
+Anki spaced-repetition cards for the project's conventions, turbulence basics, closure
+hierarchy, the 3D closure, length scales/limiters, namelist/Registry, physics, diagnostics,
+findings/traps. `cards/*.md` → `make_deck.py` (genanki) → `wrf3dpbl.apkg` on the `latest`
+release (GitHub Action). Added to at every session end (CLAUDE.md rule 5).
+
 ## The ICON→WRF forcing chain
 
 ```

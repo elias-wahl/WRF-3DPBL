@@ -45,6 +45,10 @@ Elias is an atmospheric scientist, fluent in turbulence closures; he wants the
    across decompositions or after any last-bit change (`KNOWN_ISSUES.md` E14).
 5. **Record in the same turn**: `DECISIONS.md` (newest first, why), the handover
    (state), `OPEN_ISSUES.md` (defects), `KNOWN_ISSUES.md` (traps). Sync, commit, push.
+   **And the cards**: new mechanisms, terms, variables, equations and traps of the
+   session go into `$DATA/wrf-turbulence-cards/cards/*.md` (3–10 cards, `S:` = the
+   DECISIONS/KNOWN_ISSUES entry), commit + push there — the Action rebuilds the Anki
+   deck (`releases/tag/latest`, AnkiDroid). Repo: github.com/elias-wahl/wrf-turbulence-cards.
 6. **Delegation when asked**: mechanical chores and scripts → a sonnet worker;
    writing the record → an opus worker with the numbers in the prompt; source
    edits, builds and physics judgement stay with you.
