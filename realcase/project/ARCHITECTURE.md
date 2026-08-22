@@ -73,6 +73,9 @@ it affects every fork.
   `scripts/check_job.sh` (job status + RSL log check), `scripts/check_wrfinput.py`,
   `scripts/setup_experiments_20260820.sh` (X-run matrix),
   `scripts/setup_restart_run.sh` (restart-based diagnosis runs),
+  `scripts/chain_segment.slurm` (SLURM-resident link of a restart-segmented long run:
+  builds + submits the next segment from the previous one's restart, queues itself again),
+  `scripts/gate_x7_to_x8.{slurm,py}` (report-only morning gate on a run archive),
   `scripts/compare_mynn.py` (statistical run-vs-control comparison),
   `scripts/prepare_namelist.py` (validates every `pbl3d_*`/`sfclay_*` key);
   `iofields_*.txt` (extra history fields / 1–5-min stream 23).

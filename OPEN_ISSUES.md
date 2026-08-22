@@ -1658,7 +1658,17 @@ with the MY82 constants loses its turbulence beyond `Ri` ~ 0.2, MYNN holds
 
 ---
 
-## A12 — EXPLAINED 2026-08-21 22:15: the engine was `KNOWN_ISSUES.md` U3 (an undefined land-surface albedo reaching RRTMG-SW, -80 K h^-1 of spurious short-wave cooling over shaded terrain); the unpaid-production part (A10) was real but secondary. Re-assess after X7. Originally: every run blows up 2-2.5 h after sunrise at ridge-top columns, including the unchanged code
+## A12 — CLOSED 2026-08-22 (X7 clean through the morning): the engine was `KNOWN_ISSUES.md` U3 (an undefined land-surface albedo reaching RRTMG-SW, -80 K h^-1 of spurious short-wave cooling over shaded terrain); the unpaid-production part (A10) was real but secondary.
+
+**Closed 2026-08-22.** X7 (job 8483386, guarded binary, 01:00→10:00) passed the old 07:54:30
+collapse point without incident and met every morning criterion: no negative albedo, T2 1st
+percentile 276.1 K at 07:00, 0 cells < 270 K, 0 drainage cells; at 06:00 fog 0.2 %, one cold
+cell, 2 m temperature within 0.1–0.2 K of the MYNN control in all 15 terrain × aspect classes.
+What remains in the convective morning is a subgrid q² of 0.28 of MYNN with **subgrid + resolved
+kinetic energy equal to MYNN's** (grey-zone partition, DECISIONS 2026-08-22 22:20) — not an
+issue of this list. The nocturnal stable-regime deficit (0.16) is unchanged and is not covered
+by the partition argument.
+ Originally: every run blows up 2-2.5 h after sunrise at ridge-top columns, including the unchanged code
 
 **STATUS 2026-08-21 22:15.** Everything below about the *source* of the energy in the
 terminal clusters stands as measured — the horizontal-pairing production really is 77-164 %
