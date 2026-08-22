@@ -7,6 +7,38 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-08-22 (VSC-5), 17:45 — X8 released from the X7 gate; the gate is report-only; the surface-layer bounds stay.**
+
+Elias: queue the 23 h run now, it will not start soon anyway. Two findings from X7's first hour
+forced a change to the 22:30 gate:
+
+1. **X7 is not bit-identical to X6** (02:00: max |ΔT| 3.2 K, |ΔU| 9.4 m s⁻¹, rms ΔT 0.005 K,
+   99 % of cells differ in the last bits). Binary and `wrfinput` are md5-identical; the cause is
+   the namelist: X7/X8 carry the 17:00 surface-layer bounds (`sfclay_ust_min = 0.03 m s⁻¹`, floor
+   on the friction velocity u* = surface-stress scale; `sfclay_zol_max = 10`, cap on z/L), X6 did
+   not. Measured at 02:00 over 297 582 land cells: X6 has u* < 0.03 in 19 % of them (< 0.01 in
+   3.7 %); in X7 18 % sit exactly on the floor. Footprint: domain-mean sensible heat flux
+   −31.89 → −31.88 W m⁻², mean ΔT2 in the floor cells −0.0006 K, u* median 0.102 unchanged; the
+   1.1 % of cells with |ΔT2| > 0.1 K are *not* the floor cells (chaotic spread). So the floor is
+   active over a fifth of the nocturnal land but thermodynamically inert; what it changes is the
+   surface stress (and so the lower q² boundary) in the calmest cold-pool cells — to be read in
+   the 03:30 night statistics (`compare_mynn.py exp`), not assumed. The "harmless, bit-neutral at
+   night" statement of the 17:00 entry was an inference and is retracted as *bit*-neutral;
+   *physically* harmless stands on the numbers above. Decision (Elias): no unphysical behaviour
+   seen → X8 keeps the bounds, identical to X7.
+2. Criterion (a) of `gate_x7_to_x8.py` (03:30 frame bit-identical to X6) would therefore have
+   failed and cancelled X8 at ≈ 23:00 for a wrong reason. (a) is now report-only (max and rms
+   printed); (b) the 07:00 albedo-signature checks and (c) a finite 10:00 frame remain the
+   verdict on X7's morning, but the gate no longer cancels anything unless `X8_JOB` is exported.
+   X8 (8483404) was released (`scontrol update Dependency=`); the gate job was resubmitted
+   report-only behind X7. If X7's morning fails, X8 (queued, 20 h limit) is to be cancelled by
+   hand — it will not have started by then.
+
+X7 timeline (1.43 s/step = 43 min wall per simulated hour, started 16:36): 03:30 ≈ 18:20,
+07:00 ≈ 20:50, the old 07:54:30 crash point ≈ 21:30, end 10:00 ≈ 23:00.
+
+---
+
 **2026-08-21 (VSC-5), 22:30 — The 23 h run is queued behind X7, with an automatic gate.**
 
 Agreed with the user: if X7 (job 8483386, paired configuration + albedo guard, 01:00→10:00) runs
