@@ -7,6 +7,39 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-08-22 (VSC-5), 21:25 — X7's morning is clean: the withdrawn morning results were the albedo bug; what remains is a q² deficit of 0.25–0.35 of MYNN in the young convective layer.**
+
+Measured on X7's 06:00 and 07:00 frames (`compare_mynn.py fog`, gate script), against X6 (bug) and
+the MYNN control:
+
+| 06:00, land | X6 (bug) | X7 (guard) | MYNN |
+|---|---|---|---|
+| fog fraction (cloud below level 12) | 3.1 % | 0.2 % | 0.0 % |
+| cells with T2 < 270 K | 5 199 | 1 | 2 |
+| drainage cells (> 15 m s⁻¹ at level 1) | 120 | 0 | — |
+| T2 1st percentile, 2000–2500 m N-facing | 268.5 K | 277.1 K | 277.2 K |
+| T2 median, < 1000 m flat | 288.0 K | 289.1 K | 289.1 K |
+| HFX / LH, 1000–1500 m N-facing (W m⁻²) | 138 / 49 | 109 / 53 | 89 / 57 |
+| skin − air temperature, same band | 1.7 K | 1.2 K | 0.9 K |
+| q², same band (m² s⁻²) | 0.82 | 0.30 | 1.04 |
+
+07:00 gate (b): 0 land cells with negative albedo, T2 1st percentile 276.1 K, 0 cells < 270 K,
+0 cells > 15 m s⁻¹ at level 1 — all pass with wide margin. The bug's footprint started with the
+first diffuse beam, not at 07:00: at 04:00 X6 already had 89 177 land cells (30 %) with albedo
+−9999 and 30 % of the land dark in SWDOWN; X7 none.
+
+Conclusions. (1) Every morning result retracted on 2026-08-21 is confirmed as U3: 2 m temperature
+of the closure agrees with MYNN to 0.1–0.2 K in all 15 terrain-band × aspect classes, fog, cold
+cells and drainage jets are absent. (2) The closure's own morning signature is a q² of 0.25–0.35
+of MYNN in the young convective layer (08:00 local, HFX 60–110 W m⁻²), less than the nocturnal
+deficit (0.16) but present; the weaker near-surface mixing shows as a 0.3 K warmer skin, ≈ 20 %
+more sensible and 5–10 % less latent heat flux than MYNN. Whether the ratio closes as the mixed
+layer deepens is what 08:00–10:00 of X7 and the afternoon of X8 will show. (3) X6's larger morning
+q² (0.6–0.8) was the spurious drainage shear, not a healthier closure. The old crash point
+(07:54:30) is passed at ≈ 21:45 wall; X8 stays queued on its own (Priority).
+
+---
+
 **2026-08-22 (VSC-5), 17:45 — X8 released from the X7 gate; the gate is report-only; the surface-layer bounds stay.**
 
 Elias: queue the 23 h run now, it will not start soon anyway. Two findings from X7's first hour
