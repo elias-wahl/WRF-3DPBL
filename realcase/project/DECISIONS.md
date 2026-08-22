@@ -7,6 +7,28 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-08-22 (VSC-5), 22:20 — The convective-regime q² ratio (0.28 of MYNN) is a resolved/subgrid partition, not a mixing deficit; the nocturnal 0.16 is not covered by this.**
+
+X7 08:00 (10:00 local), land cells with HFX > 50 W m⁻², medians. Surface heat flux 177 vs 158 W m⁻²
+(MYNN), mixed-layer depth by θ + 0.5 K 820 vs 631 m, w* 1.57 vs 1.36 m s⁻¹ — the 3D run's boundary
+layer is deeper and more vigorous, yet its subgrid q² in the lowest 100 m is 0.54 vs 1.95 m² s⁻²
+(q²/w*² 0.22 vs 0.97; observed lower-CBL value ≈ 1). Resolved kinetic energy (11 × 11-cell box
+variance of u, v, w; 2·TKE_res) at 43 / 96 / 177 / 315 m: X7 3.29 / 2.76 / 2.29 / 2.11, MYNN
+1.77 / 1.67 / 1.50 / 1.36; resolved σ_w² X7 0.13 → 0.22, MYNN 0.07 → 0.10. **Subgrid + resolved:
+X7 3.89 / 3.19 / 2.58 / 2.31, MYNN 3.72 / 3.62 / 3.33 / 2.88** — equal near the surface, the 3D
+total falling off faster with height. Resolved share 0.85–0.91 in X7, 0.46–0.48 in MYNN (the
+latter largely terrain mean-flow variance the 5.5 km box cannot separate; the *difference* between
+runs is the convective part). Reading: at dx = 500 m the closure lets the convection be resolved
+(grey zone), MYNN mixes it subgrid; the 0.28 subgrid ratio is partitioning, consistent with the
+deeper mixed layer and larger HFX. This does *not* apply at night — no resolved turbulence at
+500 m in stable air — so the nocturnal 0.16 remains the closure's stable-regime equilibrium
+(or MYNN over-mixing), as before. Whether the deeper 3D morning boundary layer is right needs
+profile/mixed-layer observations; 2 m fields agree with MYNN to 0.2 K in both. Also at 08:00:
+10 m wind bias −0.1…−0.25 m s⁻¹ by slope; strain cap active in 17 % of live cells (night: 56 %).
+Method caveat: box variance over complex terrain is an upper bound on resolved turbulence.
+
+---
+
 **2026-08-22 (VSC-5), 21:25 — X7's morning is clean: the withdrawn morning results were the albedo bug; what remains is a q² deficit of 0.25–0.35 of MYNN in the young convective layer.**
 
 Measured on X7's 06:00 and 07:00 frames (`compare_mynn.py fog`, gate script), against X6 (bug) and
