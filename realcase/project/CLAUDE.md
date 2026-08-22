@@ -69,7 +69,7 @@ Elias is an atmospheric scientist, fluent in turbulence closures; he wants the
 1. `DECISIONS.md` — the 2026-08-22 entries (17:45 sfclay bounds measured, 21:25 morning
    clean, 22:20 convective partition, 22:40/22:55 segmented run), then 2026-08-21 22:15.
 2. `branko/OPEN_ISSUES.md` **A10** (slope-factor pairing, fixed), **A11**
-   (bootstrap trap — real, not the lever), **A12/A13** (the morning, re-opened).
+   (bootstrap trap — real, not the lever), **A12/A13** (the morning — closed/withdrawn, U3).
 3. `branko/KNOWN_ISSUES.md` **U2, U3, E11–E19** — the traps that cost time (E19: the
    restart tool's template values).
 4. `ARCHITECTURE.md`, `branko/realcase/README.md` (build/run guide), `CHANGES.md`.
