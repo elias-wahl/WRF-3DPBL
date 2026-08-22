@@ -26,8 +26,13 @@
 #   START        start hour HH of this segment (e.g. 13)
 #   HOURS        run length in hours
 #   WTIME        SLURM time limit, e.g. 05:30:00
+#   WRFLUXMIN    WRFlux averaging interval in minutes (default 360; Elias 2026-08-22: 30
+#                for everything from here on -- 6 h means are too coarse, and with 30-min
+#                means the segment boundaries no longer need to sit on 6-h boundaries)
 #   NEXT_SEG, NEXT_RST_DATE, NEXT_START, NEXT_HOURS, NEXT_WTIME  (optional) the
 #                segment after this one; a chain job for it is queued afterok SEG.
+#   NEXT2_SEG, NEXT2_RST_DATE, NEXT2_START, NEXT2_HOURS, NEXT2_WTIME  (optional) the
+#                one after that; handed to the next link as its NEXT_*.
 #
 # The three --set overrides below are REQUIRED for a continuation of the X-run
 # configuration: setup_restart_run.sh builds from namelist.input.pbl3d, whose
@@ -41,8 +46,9 @@ RC=$DATA/branko/realcase
 RST=$PREV_RUNDIR/wrfrst_d01_$RST_DATE
 echo "chain: building $SEG from $RST at $(date)"
 [ -f "$RST" ] || { echo "!!! restart file missing: $RST"; exit 1; }
+WRFLUXMIN=${WRFLUXMIN:-360}
 out=$("$RC/scripts/setup_restart_run.sh" "$SEG" --rst "$RST" --start "$START" --hours "$HOURS" \
-        --time "$WTIME" --nodes 2 \
+        --time "$WTIME" --nodes 2 --wrflux-min "$WRFLUXMIN" \
         --set restart_interval=180 --set pbl3d_init_opt=0 --set pbl3d_l0_min=0.0 --submit 2>&1)
 rc=$?
 echo "$out" | tail -40
@@ -51,8 +57,13 @@ jid=$(echo "$out" | grep -oE "Submitted batch job [0-9]+" | awk '{print $4}')
 [ -n "$jid" ] || { echo "!!! no job id parsed"; exit 1; }
 echo "chain: $SEG submitted as job $jid"
 if [ -n "${NEXT_SEG:-}" ]; then
-  nj=$(sbatch --parsable --dependency=afterok:$jid \
-        --export=ALL,SEG=$NEXT_SEG,PREV_RUNDIR=$DATA/branko_runs/innval_pbl3d_$SEG,RST_DATE=$NEXT_RST_DATE,START=$NEXT_START,HOURS=$NEXT_HOURS,WTIME=$NEXT_WTIME \
+  EXP="ALL,SEG=$NEXT_SEG,PREV_RUNDIR=$DATA/branko_runs/innval_pbl3d_$SEG,RST_DATE=$NEXT_RST_DATE,START=$NEXT_START,HOURS=$NEXT_HOURS,WTIME=$NEXT_WTIME,WRFLUXMIN=$WRFLUXMIN"
+  if [ -n "${NEXT2_SEG:-}" ]; then
+    EXP="$EXP,NEXT_SEG=$NEXT2_SEG,NEXT_RST_DATE=$NEXT2_RST_DATE,NEXT_START=$NEXT2_START,NEXT_HOURS=$NEXT2_HOURS,NEXT_WTIME=$NEXT2_WTIME,NEXT2_SEG=,NEXT2_RST_DATE=,NEXT2_START=,NEXT2_HOURS=,NEXT2_WTIME="
+  else
+    EXP="$EXP,NEXT_SEG=,NEXT_RST_DATE=,NEXT_START=,NEXT_HOURS=,NEXT_WTIME="
+  fi
+  nj=$(sbatch --parsable --dependency=afterok:$jid --export="$EXP" \
         --chdir=$DATA/branko_runs/innval_pbl3d_$SEG "$RC/scripts/chain_segment.slurm")
   echo "chain: next link for $NEXT_SEG queued as job $nj (afterok:$jid)"
 fi

@@ -7,6 +7,27 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-08-22 (VSC-5), 22:55 — Amendment: WRFlux means at 30 min from now on; segments start at X7's end (10:00), no boundary alignment needed.**
+
+Elias: 6-h means are not interesting; 30-min means for every run from here on. With 30-min means
+the 6-h alignment argument of the 22:40 entry lapses, so the overlap with X7 is dropped: the
+07:00-based X8a (8483937) and its link were cancelled before starting; the chain is now
+**X8a 10→16, X8b 16→22, X8c 22→00** (`--wrflux-min 30`, 5:30/5:30/2:00 limits), first link
+8483940 `afterok` X7 (8483386) from X7's 10:00 restart. `chain_segment.slurm` carries
+`WRFLUXMIN` and a second look-ahead (`NEXT2_*`). X8 (18 h, 6-h means — now also the wrong
+output configuration) is cancelled once X8a runs.
+
+Disk: `/gpfs/data` at 93 %, 724 GB free; the 14 h of segments at 30-min WRFlux (10.1 GB per
+frame) + 30-min history (5.6 GB) + restarts ≈ 485 GB. Proposed to Elias: delete `exp/A12`,
+`exp/A13` (withdrawn), `exp/X0–X5` (pre-fix; night statistics recorded), `exp/smoke` ≈ 620 GB;
+keep F1 (bug documentation) pending his decision; his own `wrf_output/` archives (~700 GB each)
+untouched. Restart-fidelity check now runs X8a's 10:30 frame onward against nothing directly
+(X7 ends at 10:00) — instead it is the X8a 10:00 initial frame vs X7's 10:00 history frame
+(must be identical by construction) and the continuity of the slope × height statistics across
+10:00; recorded when available.
+
+---
+
 **2026-08-22 (VSC-5), 22:40 — The 23 h run is done as restart segments on the WRFlux boundaries, chained inside SLURM; MUSICA dropped; X8 (18 h) to be cancelled once the first segment runs.**
 
 Elias's proposal, checked against the queue record: every 2-node job of ≤ 5:30 h submitted since
