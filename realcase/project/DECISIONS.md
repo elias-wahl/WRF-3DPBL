@@ -34,6 +34,15 @@ forced a change to the 22:30 gate:
    report-only behind X7. If X7's morning fails, X8 (queued, 20 h limit) is to be cancelled by
    hand — it will not have started by then.
 
+**Measured at 03:00 and 03:30 (18:30):** the night is statistically the same run. q² in the lowest
+100 m: 0.0476 → 0.0469 m² s⁻² (−1.5 %), both 0.16 of MYNN; the 20 slope × height ratios agree to
+two decimals (largest bin change +2 %); 10 m wind bias by slope identical to 0.01 m s⁻¹;
+length-scale floor fractions and median master length scale identical at every level; strain-cap
+footprint 0.560 in both. The u* floor does not reach q² in any bin — the stable-regime deficit is
+unchanged, and X7's night stands in for X6's. (The lowest-100 m shear/KE-loss residual of
+`compare_mynn.py exp [5]` differs more, 0.87 vs 1.01, but that number moves by 0.15 between X6's
+own 03:00 and 03:30 frames — a transport-limited diagnostic, not evidence.)
+
 X7 timeline (1.43 s/step = 43 min wall per simulated hour, started 16:36): 03:30 ≈ 18:20,
 07:00 ≈ 20:50, the old 07:54:30 crash point ≈ 21:30, end 10:00 ≈ 23:00.
 
