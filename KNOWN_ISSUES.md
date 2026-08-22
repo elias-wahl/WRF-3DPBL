@@ -1017,3 +1017,21 @@ Guard any scripted build with a lock file, and confirm
   `--- NOTE: bl_pbl_physics /= 4, implies mfshconv must be 0, resetting`,
   `Need MYNN PBL for icloud_bl = 1, resetting to 0`,
   `--- NOTE: RRTMG radiation is not used, setting: o3input=0`.
+
+## E19. A continuation built with `setup_restart_run.sh` silently carries the template's `pbl3d_init_opt=1` / `pbl3d_l0_min=8.0` and `restart_interval=0`
+
+**Symptom.** A restart segment meant to continue an X-run (`pbl3d_init_opt=0`, `pbl3d_l0_min=0.0`,
+restarts every 180 min) comes out with the asymptotic-length floor **on** (8 m — a physics change
+in the stable regime) and writes **no** restart file, so the next segment cannot start.
+Found 2026-08-22 on the first segment of the 23 h run, before it started.
+
+**Cause.** `setup_restart_run.sh` builds from `realcase/namelist.input.pbl3d`, whose template
+values since 2026-08-20 are `pbl3d_init_opt=1`, `pbl3d_l0_min=8.0`; the X runs override them to
+0 / 0.0 in `setup_experiments_20260820.sh`. The restart tool's own default `restart_interval`
+is 0 (diagnosis runs do not need restarts) and it overwrites the template's 180.
+
+**Rule.** For any continuation of the X configuration pass
+`--set restart_interval=180 --set pbl3d_init_opt=0 --set pbl3d_l0_min=0.0` (done in
+`chain_segment.slurm`), and diff the segment's namelist against the parent run's before
+submitting — everything except dates, `run_hours`, `restart*` and the output paths must be
+identical. `pbl3d_init_opt` is inert on a restart (q² comes from the file); `pbl3d_l0_min` is not.

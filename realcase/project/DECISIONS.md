@@ -7,6 +7,40 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-08-22 (VSC-5), 22:40 — The 23 h run is done as restart segments on the WRFlux boundaries, chained inside SLURM; MUSICA dropped; X8 (18 h) to be cancelled once the first segment runs.**
+
+Elias's proposal, checked against the queue record: every 2-node job of ≤ 5:30 h submitted since
+2026-08-20 started within 20 min (A12/A13/F1/X6r in seconds, X6 at 5:30 in 19 min); 7:00–8:00 h
+waited 1–18 h; the 18 h X8 is estimated for Tuesday. `--test-only` gives "30 Aug" for *every*
+limit — it models priority, not backfill, and is useless for this. MUSICA (connection works via
+the live master socket; tree pulled to HEAD and rebuilt; 12 h estimate Sun 17:49) is not needed
+at that rate and is dropped — nothing was submitted there.
+
+Design. X7 (01→10) *is* the first 9 h of the X8 configuration (identical namelist). Continuation
+segments start from restart files and **must sit on the WRFlux 6-h averaging boundaries**
+(07, 13, 19, 01): the mean fields are `h{24}` only, not restart-carried, so a restart inside a
+window truncates that window's budgets. Segments: **X8a 07→13** (from X7's 07:00 restart, job
+8483937, 5:30 limit; redoes 3 h of X7 = 2 h wall, the price of clean budgets), **X8b 13→19**,
+**X8c 19→00** (5:00 limit). X8b/X8c are built and submitted by `chain_segment.slurm`
+(devel QOS, `afterok` the previous segment; link for X8b = job 8483938, which queues the X8c link
+itself). Output roots `exp/X8a`, `exp/X8b`, `exp/X8c`; night and 07–10 from X7.
+
+Restart fidelity (asked): the closure's prognostic state — `q_sq`, `tsq`/`qsq`/`cov`,
+`l_master`, `l0_asym`, `el_pbl`, the pairing accumulators `ke_loss_h`/`qsq_shear_h` — is in the
+restart stream (`r` in the Registry); only the per-step limiter diagnostics are not, and they are
+recomputed every step. Noah-MP, RRTMG and Thompson carry their state in the restart. On the same
+2 × 128 layout a WRF restart is designed to be exact; the 2026-08-21 continuations reproduced
+X6's 07:54 collapse from the 07:00 file. The direct test is free: X8a's 07:30–10:00 frames
+against X7's — if the restart is exact they are bit-identical; if not, the statistics say how
+far apart. To be run when X8a's 08:00 frame lands; result goes here.
+
+Trap found on the way: the restart tool's namelist came out with `pbl3d_l0_min = 8.0`,
+`pbl3d_init_opt = 1` (template values) and `restart_interval = 0` — fixed in X8a's namelist
+before it started, passed as `--set` in the chain, recorded as KNOWN_ISSUES E19. The diff of
+X8a's namelist against X8's is now empty apart from dates, length and paths.
+
+---
+
 **2026-08-22 (VSC-5), 22:20 — The convective-regime q² ratio (0.28 of MYNN) is a resolved/subgrid partition, not a mixing deficit; the nocturnal 0.16 is not covered by this.**
 
 X7 08:00 (10:00 local), land cells with HFX > 50 W m⁻², medians. Surface heat flux 177 vs 158 W m⁻²
