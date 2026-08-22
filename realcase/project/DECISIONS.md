@@ -21,7 +21,7 @@ Disk: `/gpfs/data` at 93 %, 724 GB free; the 14 h of segments at 30-min WRFlux (
 frame) + 30-min history (5.6 GB) + restarts ≈ 485 GB. Proposed to Elias: delete `exp/A12`,
 `exp/A13` (withdrawn), `exp/X0–X5` (pre-fix; night statistics recorded), `exp/smoke` ≈ 620 GB;
 keep F1 (bug documentation) pending his decision; his own `wrf_output/` archives (~700 GB each)
-untouched. Restart-fidelity check now runs X8a's 10:30 frame onward against nothing directly
+untouched. **Elias: delete A12, A13, X0–X5, smoke — done 23:00** (≈ 620 GB freed). Restart-fidelity check now runs X8a's 10:30 frame onward against nothing directly
 (X7 ends at 10:00) — instead it is the X8a 10:00 initial frame vs X7's 10:00 history frame
 (must be identical by construction) and the continuity of the slope × height statistics across
 10:00; recorded when available.
