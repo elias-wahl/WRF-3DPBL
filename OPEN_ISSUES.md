@@ -1,5 +1,39 @@
 # Open issues / questions — 3D PBL rebase (WRF v4.4 -> v4.8.0)
 
+## A14 — OPEN (2026-08-23): the algebraic flux solve returns an unbounded scalar-flux solution at an unstable-side neutral crossing; all three acceptance gates pass
+
+**Event** (X8a 8483962 and four bit-identical reproductions on 2x128): between 10:17:58 and
+10:18:00 at (i=467, j=107) — a slope cell at 1502 m, convective, HFX ~ 288 W/m^2 — a single
+call of `Diagnose_fluxes` returned `wqv` ~ 2 kg/kg m/s and the matching `wthv` at the k=1/2
+face (10^3-10^4 x physical). The 2-s explicit tendency put qv(k=1) to 0 (positivity clamp;
+non-conservative from here), qv(k=2) to 240.9 g/kg, theta' to +224/-111 K; |W| > 160 m/s two
+steps later; sfclay NaN at (467,102); MPI abort. Everything else at the cell was frozen:
+q^2 1.35, stresses sane (w'2 ~ 0.5), L_MASTER 16 m, condA ~100, T2=1 chronic, no q^2-budget
+response. The theta gradient at the igniting face crossed zero at exactly that step
+(2-s frames in `exp/X8aS3FR`, `exp/X8aS3F`).
+
+**Why the gates pass** (`module_pbl3d_my.F`, solve block ~1690-1800):
+1. Acceptance = PSD of the stress tensor only; the divergent direction lives in the
+   scalar-flux block, stresses stay realizable.
+2. `dgesvx FACT='E'`: the returned rcond describes the *equilibrated* matrix; the
+   buoyancy-degenerate coupling (the code's own comment: negative N tau "is where the
+   buoyancy coupling degenerates the matrix") is scaled away. condA ~100 at the killer call.
+3. `Calc_qv_variance` diagnoses qv'^2 *from the fluxes*, then `Enforce_realizability_moist`
+   bounds the fluxes by that variance — circular; the heat side's t2v is part of the same
+   solution. The header comment already concedes: necessary but not sufficient.
+
+**Excluded, with data**: memory corruption and uninitialized locals (bounds-checked + snan
+build `branko_dbg`, clean over 10:17->10:19); restart artifacts (write/read cycles proven
+bit-transparent); output-side effects (X8a with no stream 23 == S3 with a 1-min stream,
+bit-identical crash); non-determinism (the one "survivor" ran on 8 nodes, E20).
+
+**Status**: 23 h chain halted. Next: (a) offline single-cell replay of
+`Solve_turb_system(_moist)` with the exact 10:17:58 inputs, scanning the stability across
+the crossing — confirms the pole and gives the critical parameter; (b) fix design for
+review: an *absolute* realizability bound for scalar fluxes (e.g. |w'phi'| <= C q sigma_phi
+with sigma_phi from resolved gradients, not from the solution), default-off switch.
+
+
 ## A9 — FIXED (2026-08-20, VSC-5 job 8476273)
 
 `pbl3d_opt=2` now **completes**. Job 8476273: `COMPLETED 0:0`, 1800 steps,

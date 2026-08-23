@@ -7,6 +7,45 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-08-23 (VSC-5) — X8a crashed at 10:18; 23 h chain halted; the blow-up is the moist/heat flux solve returning an unbounded solution at an unstable-side neutral crossing (OPEN_ISSUES A14). Diagnosis campaign, all on the devel QOS.**
+
+X8a (8483962) backfilled at 16:46 and died 18 simulated minutes in: at (i=467, j=107), a
+1500 m slope cell, between 10:17:58 and 10:18:00 one closure call returned a vertical
+moisture flux ~10^4 x physical at the k=1/2 face (qv: 7.47 g/kg -> 0 clamped at k=1,
+240.9 g/kg at k=2) with the matching virtual-heat flux; theta' +224 / -111 K on the two
+levels, |W| > 160 m/s two steps later, sfclay NaN, MPI abort. q^2, the stresses, L, and
+all q^2 budget terms stayed frozen through the event; the theta gradient at that face was
+crossing zero at exactly that step.
+
+Established today, each point measured:
+- **Deterministic**: five bit-identical reproductions on 2x128 (X8a, R2 8487343, S3 8487735,
+  S3R 8488056, S3FR 8488057 — identical CFL prints to the last digit). A 5-node (8487342)
+  and an 8-node (8487817) run pass the window but were observed only 60-80 s beyond it —
+  decomposition shifts where/when the critical crossing lands (E14), it does not remove it.
+- **Not a restart artifact**: write/read cycles are bit-transparent — R2 (continuous from
+  10:00) equals the S1->S2 chain (seams at 10:06/10:12) exactly, field by field, at 10:12.
+  Devel-queue segment chaining (6-min segments, restart each end) is now a validated
+  instrument; 10:17 re-entry restart exists (`innval_pbl3d_X8aT17/wrfrst_..._10:17:00`).
+- **Not memory**: a bounds-checked + snan-initialized build (`branko_dbg`, production tree
+  untouched) ran 10:17->10:19 with zero out-of-bounds and no uninitialized-local traps.
+- **Why every gate passes** (code, `module_pbl3d_my.F`): acceptance tests PSD of the
+  *stresses* only (they stay sane); `dgesvx` `FACT='E'` returns the *equilibrated* rcond, so
+  the near-critical buoyancy coupling is scaled away (condA ~100 at the killer cell); the
+  moisture variance that should bound `wqv` by Cauchy-Schwarz is *diagnosed from the same
+  fluxes* — the bound inflates with the violation.
+
+Retraction: a non-determinism scare (one "surviving" repeat) was my submission error — the
+run was on 8 nodes via the template SBATCH header (KNOWN_ISSUES E20). Retracted same session.
+
+Consequences: X8b/X8c stay down (X8b link 8483963 cancelled by hand); any convective segment
+would hit its own crossing within minutes. Next: offline single-cell replay of
+`Solve_turb_system_moist` with the exact 10:17:58 frame inputs to confirm the critical-point
+divergence, then a fix proposal (an absolute, gradient-based bound on the scalar fluxes,
+default-off) for soundness review. Runs kept: `exp/X8aR2` (1-min budget 10:00->10:18),
+`exp/X8aS3FR` + `exp/X8aS3F` (2-s frames around ignition), `exp/X8aR5` (5-node control).
+
+---
+
 **2026-08-22 (VSC-5), 22:55 — Amendment: WRFlux means at 30 min from now on; segments start at X7's end (10:00), no boundary alignment needed.**
 
 Elias: 6-h means are not interesting; 30-min means for every run from here on. With 30-min means

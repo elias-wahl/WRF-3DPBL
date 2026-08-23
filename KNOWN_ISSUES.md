@@ -1035,3 +1035,16 @@ is 0 (diagnosis runs do not need restarts) and it overwrites the template's 180.
 `chain_segment.slurm`), and diff the segment's namelist against the parent run's before
 submitting — everything except dates, `run_hours`, `restart*` and the output paths must be
 identical. `pbl3d_init_opt` is inert on a restart (q² comes from the file); `pbl3d_l0_min` is not.
+
+## E20. `setup_restart_run.sh` aborts on an unknown `--set` key *after* writing the namelist but *before* patching the SBATCH header — a manual `sbatch` then runs the template layout
+
+Observed 2026-08-23: `--set auxhist23_begin_m=5` (key not in the template) made the script
+exit at "!!! namelist key not found" with the namelist half-configured and
+`submit_wrf.slurm` still carrying the template's **8 nodes** and QOS. Submitting that by
+hand produced a run on 8x128 that "survived" a crash five 2x128 runs reproduce
+bit-identically — a day-grade non-determinism scare that was actually E14
+(decomposition sensitivity). Rule: after any script abort, do not `sbatch` by hand until
+`grep -E "nodes|qos|time" submit_wrf.slurm` matches the intent; the script only patches the
+header in its final phase (look for its "=== SBATCH header" section in the output).
+Missing begin keys are inserted into the namelist manually (`auxhist23_begin_m/_s` are
+valid WRF keys; the script simply cannot `--set` keys absent from its template).
