@@ -7,6 +7,24 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-08-24, 01:15 — A14 fix implemented, validated bit-for-bit, and the first 6 h segments queued with it enabled (Elias approved).**
+
+`pbl3d_moist_cond_max` (Registry default 0 = off): moist-solve acceptance gains a raw
+condition-number test feeding the existing length-scale back-off; exhausted escalation now
+terminates in no organised moisture transport; new PBL3D_COND_M history field. Rebuild
+`--reconfigure` clean (ldd clean). Validation on devel from the 10:17 re-entry restart:
+**switch off = FAILED at 10:18:00 with the exact old fingerprint (25 pts, (467,107,3),
+W -22.07 / -161.94) — bit-for-bit equivalence of the default proven; switch = 1e4 =
+COMPLETED through 10:19, zero CFL, killer column physical (theta' 2.42 K, qv 7.5/6.7 g/kg,
+q^2 unchanged).** Queued: **X9a** 8489332 (10->16 from X7's 10:00 restart, 2x128, 5:30,
+WRFlux 30 min, switch 1e4, exp/X9a) and chain link 8489333 (afterok) building **X9b**
+16->22 the same way (chain_segment.slurm now forwards EXTRA_SETS). Gate for interpreting
+X9a/X9b: check PBL3D_COND_M and the T2 back-off statistics before trusting the fluxes;
+compare against MYNN 8320565 statistically. X8a/X8b/X8c naming retired; X9* is the
+fixed-binary series.
+
+---
+
 **2026-08-23, late — A14 mechanism confirmed and closed to a pole of the moist flux system; fix proposed, not implemented.**
 
 Print-only instrumented rerun (bit-identical) caught the killer call: wqv = +2.0167 kg/kg m/s
