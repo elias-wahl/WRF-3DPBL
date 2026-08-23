@@ -149,6 +149,7 @@
  pbl3d_constants        = 'MY82',
  pbl3d_sk_eps_max       = 6.0,         ! Durbin (1996) strain limit   [Tier 1]
  pbl3d_n_tau_max        = 0.53,        ! Deardorff (1980) buoyancy limit  [group G]
+ pbl3d_moist_cond_max   = 0.,          ! acceptance threshold on the moist-solve condition number; 0 = off (pre-A14). 1e4 recommended when enabled. See OPEN_ISSUES A14
  pbl3d_init_opt         = 1,           ! start q^2 at level-2 equilibrium (as MYNN does); 0 = floor everywhere (pre-2026-08-20)
  pbl3d_l0_min           = 8.0,         ! floor on the asymptotic length scale l0, m; 0 = off (pre-2026-08-20). See DECISIONS 2026-08-20
  pbl3d_limiter_opt      = 1,           ! 1 fixed S k/eps cap; 2 cap scaled by the level-2 equilibrium value at local Ri (default-off option)

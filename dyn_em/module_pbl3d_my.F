@@ -115,6 +115,19 @@
       ! says they should. MYNN bounds its equivalent to [8, 400] m. Default 0 keeps the
       ! previous behaviour bit for bit.
     real,    public    :: L0_MIN
+      ! Acceptance threshold on the raw condition number of the moist 4x4 flux system
+      ! (pbl3d_moist_cond_max; 0 disables = previous behaviour bit for bit). Why it is
+      ! needed: the moist system has a determinant pole on the unstable side (N tau ~ 0.27
+      ! at the 2026-08-23 blow-up cell); dgesvx equilibrates (FACT = 'E'), so its rcond
+      ! describes the equilibrated matrix and stays moderate across the pole, and the
+      ! Cauchy-Schwarz bounds below diagnose <qv'^2> from the same solution, so both
+      ! existing gates pass while the accepted fluxes reach 10^3-10^4 x physical
+      ! (OPEN_ISSUES A14). Rejecting on the raw condition number feeds the existing
+      ! length-scale escalation: shorter l lowers gh, which moves the system back inside
+      ! its validity range -- the same argument Tier 1 and the heat-side back-off rest on.
+      ! Measured distribution (345.7M solves): 97.9 %% below 1e2; every flux >= 500 x
+      ! physical sat above 8e4. Recommended value when enabled: 1e4.
+    real,    public    :: MOIST_COND_MAX
       ! Strain limiter flavour (pbl3d_limiter_opt): 1 = fixed cap S k / eps <= SK_EPS_MAX;
       ! 2 = the cap is scaled by the closure's own level-2 equilibrium S k / eps at the
       ! local Richardson number, Sqrt (Sm_neutral / Sm_l2 (Ri)), so that SK_EPS_MAX keeps
@@ -156,7 +169,7 @@
               turb_flux_wqnc, turb_flux_uqnr, turb_flux_vqnr, turb_flux_wqnr, turb_flux_uqni, turb_flux_vqni, turb_flux_wqni, &
               turb_flux_uqnwfa, turb_flux_vqnwfa, turb_flux_wqnwfa, turb_flux_uqnifa, turb_flux_vqnifa, turb_flux_wqnifa, &
               msfux, msfuy, msfvx, msfvy, msftx, msfty, xland, pblh, &
-              pbl3d_t1_ratio, pbl3d_t2_steps, pbl3d_t3_flags, pbl3d_sk_eps, pbl3d_n_tau, pbl3d_cond_a, pbl3d_qv2, pbl3d_p_eps, &
+              pbl3d_t1_ratio, pbl3d_t2_steps, pbl3d_t3_flags, pbl3d_sk_eps, pbl3d_n_tau, pbl3d_cond_a, pbl3d_cond_m, pbl3d_qv2, pbl3d_p_eps, &
               dx, dy, rdx, rdy, dn, dnw, rdz, dt, id, rdzw, fnm, fnp, cf1, cf2, cf3, zx, zy, mut, c1h, c2h, ids, ide, jds, jde, kds, kde, &
               ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
@@ -180,7 +193,7 @@
       real, dimension (ims:ime, kms:kme, jms:jme), intent (inout) :: q_sq, q_sq_prog
       real, dimension (ims:ime, kms:kme, jms:jme), intent (out)   :: pbl3d_t1_ratio, pbl3d_t2_steps, &
                                                                      pbl3d_t3_flags, pbl3d_sk_eps,   &
-                                                                     pbl3d_n_tau, pbl3d_cond_a, pbl3d_qv2, &
+                                                                     pbl3d_n_tau, pbl3d_cond_a, pbl3d_cond_m, pbl3d_qv2, &
                                                                      pbl3d_p_eps
       real, dimension (its:ite, kts:kte, jts:jte), intent (in)   :: du_dx, du_dy, du_dz, dv_dx, dv_dy, dv_dz, &
           dw_dx, dw_dy, dw_dz, dthetav_dx, dthetav_dy, dthetav_dz, dqv_dx, dqv_dy, dqv_dz, dqc_dz, dqr_dz,    &
@@ -242,7 +255,7 @@
             turb_flux_vw, turb_flux_utheta_v, turb_flux_vtheta_v, turb_flux_wtheta_v,        &
             turb_flux_theta2_v, turb_flux_utheta, turb_flux_vtheta, turb_flux_wtheta,        &
             turb_flux_uqv, turb_flux_vqv, turb_flux_wqv, th2, thetav, qv, rho, hfx, qfx, rmol, u, v, ust,  &
-            pbl3d_t1_ratio, pbl3d_t2_steps, pbl3d_t3_flags, pbl3d_sk_eps, pbl3d_n_tau, pbl3d_cond_a, pbl3d_qv2, pbl3d_p_eps, &
+            pbl3d_t1_ratio, pbl3d_t2_steps, pbl3d_t3_flags, pbl3d_sk_eps, pbl3d_n_tau, pbl3d_cond_a, pbl3d_cond_m, pbl3d_qv2, pbl3d_p_eps, &
             dz, rdzw, z_at_w, fnm, fnp, cf1, cf2, cf3, dn, dnw, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme,  &
             its, ite, jts, jte, kts, kte)
       end if
@@ -1037,7 +1050,7 @@
         turb_flux_vw, turb_flux_utheta_v, turb_flux_vtheta_v, turb_flux_wtheta_v,       &
         turb_flux_theta2_v, turb_flux_utheta, turb_flux_vtheta, turb_flux_wtheta,       &
         turb_flux_uqv, turb_flux_vqv, turb_flux_wqv, t, thetav, qv, rho, hfx, qfx, rmol, u, v, ust, &
-        pbl3d_t1_ratio, pbl3d_t2_steps, pbl3d_t3_flags, pbl3d_sk_eps, pbl3d_n_tau, pbl3d_cond_a, pbl3d_qv2, pbl3d_p_eps, &
+        pbl3d_t1_ratio, pbl3d_t2_steps, pbl3d_t3_flags, pbl3d_sk_eps, pbl3d_n_tau, pbl3d_cond_a, pbl3d_cond_m, pbl3d_qv2, pbl3d_p_eps, &
         dz, rdzw, z_at_w, fnm, fnp, cf1, cf2, cf3, dn, dnw, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, &
         its, ite, jts, jte, kts, kte)
 
@@ -1077,7 +1090,7 @@
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: q_sq_prog
       real, dimension (ims:ime, kms:kme, jms:jme), intent (out)   :: pbl3d_t1_ratio, pbl3d_t2_steps, &
                                                                      pbl3d_t3_flags, pbl3d_sk_eps,   &
-                                                                     pbl3d_n_tau, pbl3d_cond_a, pbl3d_qv2, &
+                                                                     pbl3d_n_tau, pbl3d_cond_a, pbl3d_cond_m, pbl3d_qv2, &
                                                                      pbl3d_p_eps
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: u, v, rho, t, thetav, qv
       real, dimension (ims:ime, jms:jme),          intent (in)    :: ust, hfx, qfx, rmol
@@ -1199,6 +1212,7 @@
       pbl3d_sk_eps  (its:ite, kts:kte, jts:jte) = 0.0
       pbl3d_n_tau   (its:ite, kts:kte, jts:jte) = 0.0
       pbl3d_cond_a  (its:ite, kts:kte, jts:jte) = 0.0
+      pbl3d_cond_m  (its:ite, kts:kte, jts:jte) = 0.0
       pbl3d_qv2     (its:ite, kts:kte, jts:jte) = 0.0
       pbl3d_p_eps   (its:ite, kts:kte, jts:jte) = 0.0
 
@@ -1243,6 +1257,7 @@
               pbl3d_sk_eps  (i, k, j) = dg_sk_eps
               pbl3d_n_tau   (i, k, j) = dg_n_tau
               pbl3d_cond_a  (i, k, j) = mat_cond_heat(i, k, j)
+              pbl3d_cond_m  (i, k, j) = mat_cond_moist(i, k, j)
               pbl3d_qv2     (i, k, j) = dg_qv2
               pbl3d_p_eps   (i, k, j) = dg_p_eps
 
@@ -1754,12 +1769,31 @@
             dthetav_dy_tmp, dthetav_dz_tmp, dqv_dx_tmp, dqv_dy_tmp, dqv_dz_tmp, tf_u2, tf_v2, tf_w2, tf_uv, tf_uw, tf_vw, tf_utv, tf_vtv, tf_wtv, &
             tf_uqv, tf_vqv, tf_wqv, tf_qvtv, mat_cond_moist, solve_ok)
 
-        if (solve_ok) exit attempts_moist
+        if (solve_ok) then
+            ! dgesvx's rcond refers to the equilibrated matrix and stays moderate at the
+            ! moist system's determinant pole; the raw condition number does not (A14).
+            ! Reject a near-singular solve and let the escalation shorten l.
+            ! MOIST_COND_MAX = 0 restores the previous acceptance exactly.
+          if (MOIST_COND_MAX <= 0.0 .or. mat_cond_moist < MOIST_COND_MAX) exit attempts_moist
+        end if
 
         l_use = Real (L_BACKOFF, kind = SOLVER_PREC) * l_use
         n_backoff = n_backoff + 1
 
       end do attempts_moist
+
+        ! Terminal state of the moist escalation (only reachable with the condition-number
+        ! acceptance armed): an exhausted escalation must not hand the dynamics the last
+        ! (near-singular) solution -- no organised moisture transport is the admissible
+        ! answer. The heat side has had the analogous terminal state all along.
+      if (MOIST_COND_MAX > 0.0) then
+        if ((.not. solve_ok) .or. mat_cond_moist >= MOIST_COND_MAX) then
+          tf_uqv  = Real (TURB_FLUX_MIN, kind = SOLVER_PREC)
+          tf_vqv  = Real (TURB_FLUX_MIN, kind = SOLVER_PREC)
+          tf_wqv  = Real (TURB_FLUX_MIN, kind = SOLVER_PREC)
+          tf_qvtv = Real (TURB_FLUX_MIN, kind = SOLVER_PREC)
+        end if
+      end if
 
         ! ---------------------------------------------------------------------------
         ! Tier 3, moisture side. Diagnose <qv'^2> from the moisture fluxes on the length
@@ -4306,7 +4340,7 @@
     subroutine Set_init_turb_state_my (restart, pbl3d_constants,                &
               pbl3d_nsteps, pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt,  &
               pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt,                  &
-              pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min,                  &
+              pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_moist_cond_max,                  &
               ids, ide, jds, jde, kds, kde,                                     &
               ims, ime, jms, jme, kms, kme,                                     &
               its, ite, jts, jte, kts, kte,                                     &
@@ -4339,7 +4373,7 @@
       logical, intent(in) :: restart
       integer, intent(in) :: pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt, pbl3d_nsteps
       integer, intent(in) :: pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt
-      real,    intent(in) :: pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min
+      real,    intent(in) :: pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_moist_cond_max
       character (len = *), intent(in) :: pbl3d_constants
       integer, intent(in) :: ids, ide, jds, jde, kds, kde, &
                              ims, ime, jms, jme, kms, kme, &
@@ -4411,6 +4445,9 @@
         ! Floor on the asymptotic length scale (see L0_MIN at the top of the module).
         ! Zero or negative disables it, which is the pre-2026-08-20 behaviour.
       L0_MIN = Max (pbl3d_l0_min, 0.0)
+
+        ! 0 (the default) disables the moist condition-number acceptance entirely.
+      MOIST_COND_MAX = Max (pbl3d_moist_cond_max, 0.0)
 
         ! Strain limiter flavour (see LIMITER_OPT at the top of the module).
       if (pbl3d_limiter_opt == 1 .or. pbl3d_limiter_opt == 2) then

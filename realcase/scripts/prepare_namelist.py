@@ -450,6 +450,12 @@ def check(nl):
                        "total production never paid by the resolved flow (OPEN_ISSUES A10)")
         if g("pbl3d_limiter_opt", int, 1) not in (1, 2):
             note(FATAL, "pbl3d_limiter_opt must be 1 (fixed S k/eps cap) or 2 (Ri-aware cap)")
+        mcm = g("pbl3d_moist_cond_max", float, 0.0)
+        if mcm < 0:
+            note(FATAL, "pbl3d_moist_cond_max must be >= 0 (0 disables the moist condition-number acceptance)")
+        elif 0 < mcm < 1.0e3:
+            note(WARN, "pbl3d_moist_cond_max < 1e3 rejects far into the healthy population (97.9%% of solves sit below 1e2 but 1.8%% in 1e2-1e3; A14 measured 1e4 as the natural gap)")
+
         l0min = g("pbl3d_l0_min", float, 0.0)
         if l0min < 0:
             note(FATAL, "pbl3d_l0_min must be >= 0 (m; 0 disables the floor on l0)")
