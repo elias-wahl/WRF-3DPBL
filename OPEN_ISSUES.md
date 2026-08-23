@@ -48,6 +48,14 @@ used (heat side falls back to isotropic).
 validity; same escalation philosophy as the heat side); default 0 = off = bit-for-bit.
 (2) moist terminal state -> TURB_FLUX_MIN, same switch. (3) new PBL3D_COND_M output field.
 Threshold from the cond_moist distribution (catches: 8e4-6e7); ~1e4 conservative.
+**Threshold measurement (run 8488994, 2026-08-24, 345.7M moist solves over the 30 steps to
+the crash, bit-identical trajectory)**: cond_moist distribution 97.9% < 1e2, then 1.8% in
+1e2-1e3, 2.7e-3 in 1e3-1e4, 3.4e-4 in 1e4-1e5, tail to 9.6e7. |wqv| > 10x physical in
+105,348 calls, > 100x in 2,137, > 1000x in 23, > 1e4x in 1 (the killer). Every
+pathological call of the catch run had cond >= 8e4. Recommendation: `pbl3d_moist_cond_max
+= 1e4` when enabled — 8x margin below the weakest observed garbage, rejects 0.04% of calls
+(~4,300 cells/step) into the existing back-off. Switch default remains off (bit-for-bit).
+
 Replay tooling: scratchpad `replay/` (module scratch copy + drivers; rebuildable in minutes).
 
 **Status**: 23 h chain halted. Next: (a) offline single-cell replay of
