@@ -43,13 +43,14 @@ set -u
 DATA=/gpfs/data/fs72996/ewahl
 RC=$DATA/branko/realcase
 : "${SEG:?}" "${PREV_RUNDIR:?}" "${RST_DATE:?}" "${START:?}" "${HOURS:?}" "${WTIME:?}"
+EXTRA_SETS=${EXTRA_SETS:-}    # extra "--set key=val" pairs appended to the build (e.g. the A14 switch); forwarded to further links
 RST=$PREV_RUNDIR/wrfrst_d01_$RST_DATE
 echo "chain: building $SEG from $RST at $(date)"
 [ -f "$RST" ] || { echo "!!! restart file missing: $RST"; exit 1; }
 WRFLUXMIN=${WRFLUXMIN:-360}
 out=$("$RC/scripts/setup_restart_run.sh" "$SEG" --rst "$RST" --start "$START" --hours "$HOURS" \
         --time "$WTIME" --nodes 2 --wrflux-min "$WRFLUXMIN" \
-        --set restart_interval=180 --set pbl3d_init_opt=0 --set pbl3d_l0_min=0.0 --submit 2>&1)
+        --set restart_interval=180 --set pbl3d_init_opt=0 --set pbl3d_l0_min=0.0 $EXTRA_SETS --submit 2>&1)
 rc=$?
 echo "$out" | tail -40
 [ $rc -eq 0 ] || { echo "!!! setup_restart_run.sh failed (rc=$rc)"; exit 1; }
@@ -58,6 +59,7 @@ jid=$(echo "$out" | grep -oE "Submitted batch job [0-9]+" | awk '{print $4}')
 echo "chain: $SEG submitted as job $jid"
 if [ -n "${NEXT_SEG:-}" ]; then
   EXP="ALL,SEG=$NEXT_SEG,PREV_RUNDIR=$DATA/branko_runs/innval_pbl3d_$SEG,RST_DATE=$NEXT_RST_DATE,START=$NEXT_START,HOURS=$NEXT_HOURS,WTIME=$NEXT_WTIME,WRFLUXMIN=$WRFLUXMIN"
+  [ -n "$EXTRA_SETS" ] && EXP="$EXP,EXTRA_SETS=$EXTRA_SETS"
   if [ -n "${NEXT2_SEG:-}" ]; then
     EXP="$EXP,NEXT_SEG=$NEXT2_SEG,NEXT_RST_DATE=$NEXT2_RST_DATE,NEXT_START=$NEXT2_START,NEXT_HOURS=$NEXT2_HOURS,NEXT_WTIME=$NEXT2_WTIME,NEXT2_SEG=,NEXT2_RST_DATE=,NEXT2_START=,NEXT2_HOURS=,NEXT2_WTIME="
   else
