@@ -27,6 +27,29 @@ build `branko_dbg`, clean over 10:17->10:19); restart artifacts (write/read cycl
 bit-transparent); output-side effects (X8a with no stream 23 == S3 with a 1-min stream,
 bit-identical crash); non-determinism (the one "survivor" ran on 8 nodes, E20).
 
+**CONFIRMED 2026-08-23 late (catch run 8488751 + standalone replay).** A print-only
+instrumented binary (original flags, bit-identical trajectory) dumped the killer call's 17
+inputs at (467,3,107): q^2 1.3497, l 11.428, dthetav_dz = -0.023129 K/m. Outputs:
+wthetav = 0 (Tier-3 zeroed), **wqv = +2.0167 kg/kg m/s, mat_cond_moist = 5.97e7** while
+mat_cond_heat = 100 — PBL3D_COND_A carries only the heat side, so the sickness was
+invisible. The dry heat flux is *reconstructed* from wqv (wth = (wthv - 0.61 theta wqv)/
+(1+0.61 qv) ~ -342 K m/s), so one sick moist solve poisons both scalars with exactly the
+observed signs. A standalone replay of `Diagnose_fluxes` (scratch build against the module,
+LAPACK-linked) reproduces wqv = 2.016682 / cond 5.967e7 from those inputs exactly, and a
+scan shows a simple pole of the moist 4x4 determinant at dthetav_dz = -0.02313 (unstable-side
+N tau ~ 0.27); within +-0.005 K/m of it, accepted wqv is 10-50x physical. Prevalence: 90
+calls with |wqv| > 0.05 (>= 500x physical) in ~45 steps, domain-wide, routine. Two more
+defects: the moist acceptance rejects only on dgesvx failure (rcond below DP eps), and the
+moist back-off loop has **no terminal state** — on exhaustion the last garbage solution is
+used (heat side falls back to isotropic).
+
+**Fix proposal (awaiting soundness review, not implemented)**: (1) moist acceptance gains
+`mat_cond_moist > pbl3d_moist_cond_max` -> existing back-off (shorter l lowers gh, inside
+validity; same escalation philosophy as the heat side); default 0 = off = bit-for-bit.
+(2) moist terminal state -> TURB_FLUX_MIN, same switch. (3) new PBL3D_COND_M output field.
+Threshold from the cond_moist distribution (catches: 8e4-6e7); ~1e4 conservative.
+Replay tooling: scratchpad `replay/` (module scratch copy + drivers; rebuildable in minutes).
+
 **Status**: 23 h chain halted. Next: (a) offline single-cell replay of
 `Solve_turb_system(_moist)` with the exact 10:17:58 inputs, scanning the stability across
 the crossing — confirms the pole and gives the critical parameter; (b) fix design for

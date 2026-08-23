@@ -7,6 +7,20 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-08-23, late — A14 mechanism confirmed and closed to a pole of the moist flux system; fix proposed, not implemented.**
+
+Print-only instrumented rerun (bit-identical) caught the killer call: wqv = +2.0167 kg/kg m/s
+accepted with mat_cond_moist = 5.97e7 (heat-side condA 100 — the only one ever output);
+standalone replay reproduces it exactly and maps a simple pole of the moist 4x4 determinant
+at dthetav_dz = -0.02313 K/m (unstable-side N tau ~ 0.27) for the killer cell's l, q^2.
+Routine background: 90 accepted calls with wqv >= 500x physical in 45 steps. The dry-theta
+flux is reconstructed from wqv, so the moist pole poisons theta too. Proposed (review
+pending): cond-number acceptance for the moist solve feeding the existing l back-off +
+moist terminal state, one default-off switch `pbl3d_moist_cond_max`; PBL3D_COND_M output.
+No source changed; production binary untouched.
+
+---
+
 **2026-08-23 (VSC-5) — X8a crashed at 10:18; 23 h chain halted; the blow-up is the moist/heat flux solve returning an unbounded solution at an unstable-side neutral crossing (OPEN_ISSUES A14). Diagnosis campaign, all on the devel QOS.**
 
 X8a (8483962) backfilled at 16:46 and died 18 simulated minutes in: at (i=467, j=107), a
