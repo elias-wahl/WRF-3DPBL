@@ -7,6 +7,24 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-08-24, ~11:00 — X9n (the night under the fix) queued; the segmented day stitched into pseudo-job `wrf_output/9999999` for post-processing.**
+
+**X9n** (8492417, 01→10, 7:45 wall): the X7 run dir replicated symlink for symlink, X7's
+namelist bit for bit plus only `pbl3d_moist_cond_max = 1e4` (diff verified: one line), same
+binary, same 2×128 layout, output root `exp/X9n`. X7's night frames stay untouched — X9n vs
+X7 is the statistical answer to whether the moist acceptance shifts the stable-regime
+equilibrium (expectation: no — cond ≥ 1e3 was 0.25 % of solves even in convective air).
+**Pseudo-job 9999999**: `realcase/scripts/synthesize_day.sh` symlinks the segmented day
+(X7 01→10, X9a 10→16, X9b/X9c as they archive) into `$DATA/wrf_output/9999999/` next to the
+MYNN control, first segment wins at seams, provenance in its `job_info.txt`; idempotent —
+re-run it after each segment archives (16 of 47 half-hour frames pending X9b/X9c as of
+11:00). Smoke-tested through `compare_mynn.py`: 04:00 gives the known nocturnal ratio 0.17,
+13:00 the daytime partition 0.32. Caveat carried in the script header: 01→10 is the pre-A14
+binary, 10→24 the fixed one — the composite is for post-processing convenience, not a claim
+of one continuous integration.
+
+---
+
 **2026-08-24, ~10:15 — X9a passed the A14 crash window in production; gate footprint measured and small; the chain completed with X9c; interpretation gate for the daytime fluxes considered met.**
 
 X9a (8489332, 10→16 from X7's 10:00 restart, switch 1e4) COMPLETED through the window
