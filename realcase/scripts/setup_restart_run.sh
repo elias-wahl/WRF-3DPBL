@@ -111,6 +111,12 @@ if [ -n "$IOFIELDS" ]; then
   [ -f "$IOFIELDS" ] || { echo "no such iofields file: $IOFIELDS" >&2; exit 1; }
   IOF_BASENAME=$(basename "$IOFIELDS")
   ln -sfn "$IOFIELDS" "$RUNDIR/$IOF_BASENAME"
+else
+  # The namelist below points at the default file, so it must be in the run
+  # dir; without this link WRF emits "Problem opening iofields_lscale.txt"
+  # per rank and the file's -: removals silently never apply (X9a/X9b ran
+  # with full-width frames that way).
+  ln -sfn "$RC/iofields_lscale.txt" "$RUNDIR/$IOF_BASENAME"
 fi
 
 NL=$RUNDIR/namelist.input

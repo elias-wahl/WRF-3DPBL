@@ -1048,3 +1048,15 @@ bit-identically — a day-grade non-determinism scare that was actually E14
 header in its final phase (look for its "=== SBATCH header" section in the output).
 Missing begin keys are inserted into the namelist manually (`auxhist23_begin_m/_s` are
 valid WRF keys; the script simply cannot `--set` keys absent from its template).
+
+## E21. `setup_restart_run.sh` pointed the namelist at the default `iofields_lscale.txt` without linking it into the run dir — per-rank "Problem opening" warnings, and the file's `-:` removals silently never apply
+
+Observed 2026-08-24 on X9a/X9b (both built by `chain_segment.slurm`, which passes no
+`--iofields`): 62 `W A R N I N G : Problem opening iofields_lscale.txt` lines in
+`rsl.out.0000`, run otherwise healthy. Science impact none — every field the file *adds*
+is already a Registry history field — but the `A*TEN` accumulated-tendency removals did
+not apply, so the wrfout frames are ~10 % fatter than budgeted (7 GB vs 6.4 GB) on a
+filesystem at 95 %. The symlink was only created in the explicit `--iofields` branch;
+fixed 2026-08-24 (the default file is now linked too). Rule: any "Problem opening" for an
+iofields file means the *whole* file was inert, removals included — check frame sizes,
+not just field presence.

@@ -7,6 +7,34 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-08-24, ~10:15 — X9a passed the A14 crash window in production; gate footprint measured and small; the chain completed with X9c; interpretation gate for the daytime fluxes considered met.**
+
+X9a (8489332, 10→16 from X7's 10:00 restart, switch 1e4) COMPLETED through the window
+that killed X8a five times; X9b (8492003, 16→22) running; the missing last segment
+**X9c 22→00 queued this session as chain link 8492402** (afterok X9b, same EXTRA_SETS) —
+the 23 h day is now SLURM-resident end to end. Gate measurements (wrfout 10:30/12:00/16:00):
+`PBL3D_COND_M` — the condition number of the *accepted* moist solve — maxes at 9 998–9 999,
+i.e. pinned just under the 1e4 threshold: the acceptance fires and the length-scale back-off
+always lands the solve back inside validity; **zero faces ever reached the terminal
+no-transport state in 6 h**. Accepted solves with cond ≥ 1e3 are 0.25 % of ~12 M solves per
+frame; ~600–800 faces/frame sit within 10 % of the threshold. Total back-off activity
+(`PBL3D_T2_STEPS` > 0): 1.42–1.53 M faces vs 1.35 M in X7's pre-fix 10:00 frame — the moist
+gate adds a few percent on top of the heat-side gates, mean escalation depth unchanged
+(1.22 steps). Verdict: the fix is a small-population length-scale nudge, not a regime change;
+the daytime fluxes are interpretable. **Afternoon energy partition confirms the 08-22
+convective result**: at ~43 m, resolved+subgrid TKE (10.5 km box-mean perturbations) is
+4.13 vs MYNN 3.65 m² s⁻² at 12:00 and 3.14 vs 2.64 at 16:00, 86–87 % resolved — the
+subgrid ratio 0.36 (lowest 100 m) is grey-zone partition all afternoon. 10 m wind bias
+−0.2…−0.4 m/s, flat across slope bins. Also this session: `setup_restart_run.sh` never
+linked the *default* `iofields_lscale.txt` into the run dir (E21) — X9a/X9b ran with 62
+"Problem opening" warnings; harmless to the science (every addition is already a Registry
+history field) but the `A*TEN` removals didn't apply, so their frames are ~10 % fatter;
+fixed in the script, X9c gets the file. Open: whether the night statistics shift under the
+fix needs an X9 night segment (01→10) — not queued; disk 516 GB free at 95 %, X9b+X9c need
+~270 GB.
+
+---
+
 **2026-08-24, 01:15 — A14 fix implemented, validated bit-for-bit, and the first 6 h segments queued with it enabled (Elias approved).**
 
 `pbl3d_moist_cond_max` (Registry default 0 = off): moist-solve acceptance gains a raw

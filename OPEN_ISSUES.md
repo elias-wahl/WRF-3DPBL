@@ -1,6 +1,13 @@
 # Open issues / questions — 3D PBL rebase (WRF v4.4 -> v4.8.0)
 
-## A14 — OPEN (2026-08-23): the algebraic flux solve returns an unbounded scalar-flux solution at an unstable-side neutral crossing; all three acceptance gates pass
+## A14 — FIXED, validated in production (2026-08-24): the algebraic flux solve returns an unbounded scalar-flux solution at an unstable-side neutral crossing; all three acceptance gates pass
+
+**Production validation (2026-08-24, X9a 8489332)**: the fixed binary with
+`pbl3d_moist_cond_max = 1e4` ran 10→16 through the crash window that killed X8a five times
+bit-identically. `PBL3D_COND_M` (the accepted solve's condition number) maxes at 9 998–9 999
+— the gate fires and the back-off always succeeds; the terminal no-transport state never
+engaged in 6 h. Footprint: cond ≥ 1e3 in 0.25 % of solves, back-off activity up a few
+percent over the pre-fix baseline, escalation depth unchanged. DECISIONS 2026-08-24 ~10:15.
 
 **Event** (X8a 8483962 and four bit-identical reproductions on 2x128): between 10:17:58 and
 10:18:00 at (i=467, j=107) — a slope cell at 1502 m, convective, HFX ~ 288 W/m^2 — a single
