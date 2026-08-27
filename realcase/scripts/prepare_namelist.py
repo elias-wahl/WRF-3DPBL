@@ -462,6 +462,15 @@ def check(nl):
         elif l0min > 50:
             note(WARN, "pbl3d_l0_min=%g m exceeds the asymptotic length of a typical stable "
                        "boundary layer; the floor would set l0 almost everywhere" % l0min)
+        sq = g("pbl3d_sq", float, 0.2)
+        if sq <= 0:
+            note(FATAL, "pbl3d_sq must be > 0 (0.2 = MY82; it is the coefficient of the q^2 vertical diffusivity)")
+        elif sq > 1.5:
+            note(WARN, "pbl3d_sq=%g is above MYNN's effective 3 K_m / (l q) range (about 0.6-1.4 in a convective layer)" % sq)
+        if g("pbl3d_sfc_qsq_bc", int, 0) not in (0, 1, 2):
+            note(FATAL, "pbl3d_sfc_qsq_bc must be 0 (none), 1 (q^2 >= B1^(2/3) u*^2 at the lowest level) or 2 (plus l >= kappa z)")
+        if g("pbl3d_sfc_qsq_zmax", float, 100.0) < 0:
+            note(FATAL, "pbl3d_sfc_qsq_zmax must be >= 0 (m AGL)")
         if g("pbl3d_init_opt", int, 0) == 0 and p3 == 2:
             note(WARN, "pbl3d_init_opt=0 starts q^2 at its floor everywhere; the 3D closure "
                        "then needs >1 h to spin up (DECISIONS 2026-08-20) -- intended only "

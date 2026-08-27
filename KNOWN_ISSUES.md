@@ -1074,3 +1074,32 @@ station comparison uses no TKE and stands. Fixed in `proc/util/wrf.py`
 any turbulence panel from a 3D run, check `max(field) > 0`; `compare_mynn.py` reads
 `Q_SQ`/`L_MASTER` directly and was never affected. The same applies to `EL_PBL`
 (use `L_MASTER`) and to the MYNN budget names (`Q_SQ_SHEAR` etc., rates of q²).
+
+## E23. Inside the 3D closure, `q_sq_prog` is a temporary copy — writing a value into it is silently inert
+
+**Symptom.** A lower boundary condition on q² written as a clamp on `q_sq_prog(i, kts, j)` in the
+closure driver (or in `Fill_q_sq_with_q_sq_prog`) compiles, runs, and changes nothing.
+
+**Cause.** `module_first_rk_step_part2.F:1263` hands `Calc_turb_fluxes_driver` `q_sq_prog = grid%q_sq_tmp`,
+a per-step copy of `q_sq_prog_2` made by `Update_wrf_tends_temp_state_and_zero_tends`; the copy is
+discarded. Only `q_sq_tend` (μ-coupled, `(c1 μ + c2) · S / pbl3d_nsteps` for a kinematic source `S`)
+reaches `rk_scalar_tend`. The MYNN analogue (`qke` set in place) does not carry over because `qke`
+is a physics state, not an RK-advected dyn_em variable.
+
+**Rule.** Any condition on q² that must survive the step is a tendency in `Calc_q_sq_rhs` (the
+2026-08-27 surface condition `pbl3d_sfc_qsq_bc` is written that way, after the dissipation term,
+before the tendency bound). A Dirichlet value on the *face* array `q_sq(kts)` is inert too: the
+ground flux in `Calc_q_sq_vertical_diffusion` is hard zero.
+
+## E24. `setup_restart_run.sh --set key=val` only patches keys that already exist in `namelist.input.pbl3d`
+
+**Symptom.** `--set pbl3d_sq=0.6` for a freshly added Registry key aborts with `namelist key not
+found: pbl3d_sq` (E20's failure point), although the binary knows the key.
+
+**Cause.** `sedset` edits the generated namelist in place and refuses unknown keys by design (a
+typo must not pass silently). The template is the whitelist.
+
+**Rule.** Every new `rconfig` key gets a line in `realcase/namelist.input.pbl3d` (and `.mynn`
+where it applies) with its default and a one-line comment, in the same commit as the Registry
+change; `prepare_namelist.py` gets its range check in the same commit. Done for `pbl3d_sq`,
+`pbl3d_sfc_qsq_bc`, `pbl3d_sfc_qsq_zmax`, `output_tke_moments` (2026-08-27).
