@@ -35,21 +35,46 @@ for seg in X9b X9c; do
     [ -e "${d}namelist.input" ] && SOURCES+=("${d%/}")
   done
 done
+# Live output of still-running segments, lowest priority: frames land in
+# temp/branko/ while the job runs and are only archived at job end. A frame
+# younger than 3 min may still be mid-write and is skipped (LIVE_MIN_AGE_S).
+for seg in X9a X9b X9c; do
+  d=$DATA/exp/$seg/temp/branko
+  [ -d "$d" ] && ls "$d"/wrfout_d01_* >/dev/null 2>&1 && SOURCES+=("$d")
+done
+LIVE_MIN_AGE_S=180
 
 mkdir -p "$DST"
+# Refresh pass: drop dangling links (a live source was archived away) and any
+# link still pointing into a temp/branko dir -- the loop below re-links those
+# from the archive if it exists by now, else from the live dir again.
+find "$DST" -maxdepth 1 -xtype l -delete
+find "$DST" -maxdepth 1 -type l -lname '*/temp/branko/*' -delete
 linked=0; kept=0
 for src in "${SOURCES[@]}"; do
   [ -d "$src" ] || { echo "!!! missing source: $src"; continue; }
   for f in "$src"/wrfout_d01_* "$src"/meanout_d01_*; do
     [ -e "$f" ] || continue
+    case "$src" in */temp/branko)
+      age=$(( $(date +%s) - $(stat -c %Y "$f") ))
+      [ "$age" -lt "$LIVE_MIN_AGE_S" ] && continue ;;
+    esac
     b=$(basename "$f")
     if [ -e "$DST/$b" ]; then kept=$((kept+1)); else ln -s "$f" "$DST/$b"; linked=$((linked+1)); fi
   done
 done
 
+# job_info.txt in the format submit_wrf.slurm writes: the proc package
+# (proc/util/wrf.py, get_wrf_version_from_inpath) parses the "WRF run path:"
+# line and uses its second-to-last path component as the run's legend/color
+# key -- the path below is fictional and exists only to yield "3dpbl"
+# (config.yaml needs a matching entry under colors:).
 {
-  echo "Pseudo-job $FAKE -- segmented 23 h day 2025-07-18 01:00 -> 07-19 00:00, stitched $(date)"
-  echo "Not a real SLURM job. Sources, in priority order:"
+  echo "Job ID: $FAKE (pseudo-job -- stitched, not a real SLURM job)"
+  echo "Start time: $(date)"
+  echo "WRF run path: /gpfs/data/fs72996/ewahl/3dpbl/run"
+  echo "Namelist used: segmented -- see sources below"
+  echo "Segmented 23 h day 2025-07-18 01:00 -> 07-19 00:00. Sources, in priority order:"
   for src in "${SOURCES[@]}"; do echo "  $src"; done
   echo "See DECISIONS 2026-08-24 and the note in synthesize_day.sh: 01->10 is the"
   echo "pre-A14 binary (X7), 10->24 the fixed binary with pbl3d_moist_cond_max=1e4."

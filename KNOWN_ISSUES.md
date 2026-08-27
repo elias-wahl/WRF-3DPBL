@@ -1060,3 +1060,17 @@ filesystem at 95 %. The symlink was only created in the explicit `--iofields` br
 fixed 2026-08-24 (the default file is now linked too). Rule: any "Problem opening" for an
 iofields file means the *whole* file was inert, removals included — check frame sizes,
 not just field presence.
+
+## E22. A 3D-PBL run carries MYNN's `QKE`, `TKE_PBL`, `EL_PBL` as all-zero fields — any name-based reader that asks for `QKE` gets a valid, silent zero
+
+Observed 2026-08-27 on the stitched day `wrf_output/9999999`: `QKE` max 0 at 04:00 and
+13:00 while `Q_SQ` (q², twice the TKE, face levels) is 13.8 / 16.1 m² s⁻². The Registry
+still allocates the MYNN arrays under `pbl3d_used`, so they exist with the right name,
+dimensions and units and are never touched. `$DATA/proc` (`wrf-proc`) read subgrid TKE
+only via `QKE` and drops unknown names silently — every `3dpbl` TKE figure it produced
+before 08-27 (the 08-24 Kolsass TKE-lidar comparison) is a zero curve; withdrawn. The
+station comparison uses no TKE and stands. Fixed in `proc/util/wrf.py`
+(`"qke": ["Q_SQ", "QKE"]`) and `proc/vars.py` (budget names, 0.5 factor). Rule: before
+any turbulence panel from a 3D run, check `max(field) > 0`; `compare_mynn.py` reads
+`Q_SQ`/`L_MASTER` directly and was never affected. The same applies to `EL_PBL`
+(use `L_MASTER`) and to the MYNN budget names (`Q_SQ_SHEAR` etc., rates of q²).

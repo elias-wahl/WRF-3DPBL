@@ -7,6 +7,80 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-08-27, ~10:00 — the `proc` package could not see the 3D closure's turbulence: every `3dpbl` TKE figure before today is zero. Fixed; first valid Kolsass TKE-lidar comparison running. Diagnosis scripts collected into their own repo.**
+
+Measured on the stitched day `wrf_output/9999999`: the 3D-PBL binary writes MYNN's `QKE`,
+`TKE_PBL`, `EL_PBL` as **all zeros** (max 0 at 04:00 and 13:00) while `Q_SQ` (q², twice the
+TKE, m² s⁻², face levels) is 13.8 / 16.1. `proc` reads subgrid TKE only through `QKE`
+(`tke = 0.5·qke`) and drops unknown names silently, so the 08-24 Kolsass TKE-lidar figure
+(`plot_output/lidar/obs_VL_kol_250718_tke_obs.png`, 14:47) shows a zero curve for the 3D
+closure and is **withdrawn**; the 08-24 *station* hold (T2, Q2, 10 m wind) uses no TKE and
+stands. Fix (`util/wrf.py`): `"qke": ["Q_SQ", "QKE"]` — MYNN has no `Q_SQ` and falls through;
+the sampler's η-linear `z_stag→z` interpolation is exactly the `0.5·(q[k]+q[k+1])`
+face-to-mass average `compare_mynn.py` uses. Second fix (`proc/vars.py`): MYNN's budget names
+derived from the closure's q² budget, `QSHEAR/QBUOY/QDISS = 0.5·Q_SQ_{SHEAR,BUOYANCY,DISSIP}`,
+`QWT = 0.5·(Q_SQ_VDIFF+Q_SQ_HDIFF)` — factor verified in `module_bl_mynnedmf.F` (the transport
+term is built from `tke_up = 0.5·qke`; Registry: "TKE production"), both schemes store
+dissipation as a positive magnitude; no counterpart for `QHSP` (horizontal shear is inside
+`Q_SQ_SHEAR`; `QHSP` exists only in the Goger runs) or `DTKE` — the budget plot enters them as
+zero and says so. **Not fixed, by design**: `Vars.res_*` (resolved TKE/fluxes) assume
+`UX_MEAN = ⟨uu⟩` etc.; WRFlux's `{U,V,W}{X,Y,Z}_MEAN` are *positional* time means (a component
+moved to the flux-staggering point; there is no `W_MEAN`, no velocity variances), so resolved
+TKE for the lidar needs a decision: box variance of instantaneous fields (matches a 30-min lidar
+window only under Taylor's hypothesis at ≥ 5 m/s — not at night) or WRFlux's `F*_ADV_MEAN`
+decomposition for fluxes. First re-run (obs + MYNN `og` + `3dpbl` + goger-19; **g18 dropped
+from the overview** per Elias, login node, 8 dask workers × 6 GB): per-curve sanity numbers,
+24 h × column up to ~2 km, TKE m² s⁻² — lidar mean 0.70 (max 37.5, gate outliers), MYNN 0.098,
+3D closure **0.086** (no longer zero; 43 of 49 half-hours present before X9c was stitched),
+goger-19 0.338. Figure pending (the first attempt was killed with the session). Housekeeping:
+`synthesize_day.sh` re-run — X9c (8502167) is now in the stitched day, **47/47 half-hour frames**;
+X9n (8492417, night under the fix) completed 08-24 21:57, not yet compared with X7. New repo
+**`$DATA/wrf3dpbl-diag`** (github.com/elias-wahl/wrf3dpbl-diag, private): `compare_mynn.py`,
+`qsq_budget.py`, `compare_lfix.py`, `gate_x7_to_x8.py`, `check_wrfinput.py`,
+`synthesize_day.sh`, `run_tke_lidar.py`, README with question/usage/reference numbers;
+edit there, `sync_to_branko.sh` copies the SLURM-referenced ones back. `proc/README.md`
+written (package map, traps T1–T9); conda env is `proc`, not `wrf`.
+
+---
+
+**2026-08-24, ~14:30 — first hold against station observations: the 3D closure captures the daytime up-valley wind that MYNN under-forecasts. Station data ARE on disk.**
+
+Correction to a standing note: **i-Box/TAWES station observations for 18 July are on disk**
+(`data/stations/kol`, `data/stations/rad`) and the `proc` package reads them — the "ask for
+observations" item was wrong for stations (soundings/lidar also present: `data/lidar/kol`).
+Ground-station comparison (`meta_station.plot_kol_station_comparison` / `_rad_`, obs vs
+ICON-MYNN control 8320565 "og", the stitched 3D day 9999999 "3dpbl", goger 18/19), 2 m
+temperature, 2 m mixing ratio, 10 m wind, 15-min running mean, day 01:00 → 20:30 (evening
+pending X9c):
+
+| 10 m wind, daytime maximum | Kolsass | Radfeld |
+|---|---|---|
+| observed | 7.2 m s⁻¹ (15:00) | 5.2 m s⁻¹ (15:00) |
+| **3D closure (9999999)** | **6.4** | **5.4** |
+| MYNN control (og) | 4.4 | 4.2 |
+| goger 18 / 19 | 4.3 / 5.3 | 3.5 / 3.5 |
+
+**This is the observational hold the standing rule required before touching constants**: the
+valley-wind deficit is MYNN's, not the closure's — the 3D run is within 0.8 m s⁻¹ of the
+observed maximum at Kolsass where MYNN is 2.8 m s⁻¹ low, and it reproduces the 12:00–16:00
+plateau shape at both stations. Moisture: 3dpbl is the moistest model and the closest to
+observations all day (Kolsass 8.5–10.3 vs obs 10–12 g kg⁻¹; MYNN 6.9–9.6). Temperature:
+daytime maximum best of the four at Kolsass (25.0 vs obs 25.8; goger 19 27.4), but **all
+four models share the nocturnal and evening warm bias** (obs 9–10 °C at 02:00, models
+12–15; after 18:00 obs cools to 12.5, models hold 16–20) — not a closure signature.
+**Two failures to chase**: (1) at Radfeld every model, the 3D run worst (~0.2 m s⁻¹),
+misses an observed 3.5–4 m s⁻¹ wind between 06:00 and 09:00; (2) a single-frame spike in
+3dpbl 2 m mixing ratio at Kolsass at **10:30** to 13.1 g kg⁻¹ (neighbours 8–10) — the frame
+right after the X7→X9a seam and inside the old A14 window; check `PBL3D_COND_M` and the
+seam before reading anything into it. Figures:
+`plot_output/stations/obs_og_3dpbl_g18_g19_obs_07-18_01_{Kolsass_i-Box,Radfeld}_24h_…png`.
+Package changes: `pre/setup.py` skips missing frames instead of aborting the whole
+comparison (a partial day used to kill it); `config.yaml` carries `9999999` + the ICON run
+with `3dpbl` colour; login-node runs must throttle the dask cluster (48 workers × 4.5 GB in
+the config is a compute-node setting).
+
+---
+
 **2026-08-24, ~11:00 — X9n (the night under the fix) queued; the segmented day stitched into pseudo-job `wrf_output/9999999` for post-processing.**
 
 **X9n** (8492417, 01→10, 7:45 wall): the X7 run dir replicated symlink for symlink, X7's
