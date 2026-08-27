@@ -41,6 +41,27 @@ i-Box and the lidar are one site; the lidar's first gate is 57 m, so the 12→57
 model levels only; `U10` is the surface-layer scheme's diagnostic and follows k₀ (9 m) closely in every
 run.
 
+**Addendum (windowed, 14:45) — the excess is the onset, not the regime.** Kolsass, obs 12 m / 100 m (ratio):
+onset 10:30–13 UTC 2.6 / 2.5 (0.99); afternoon 14–17 UTC 6.4 / 10.0 (1.56); evening 17:30–20 UTC 3.3 / 6.1
+(1.84). 3D closure: 3.2 / **6.0 (1.91)**; **6.0 / 9.4 (1.58)**; **3.5 / 6.0 (1.75)**. ICON-MYNN: 1.8 / 2.1;
+4.3 / 6.4; 4.2 / 6.6. First half hour with 100 m wind > 4 m s⁻¹: observed 13:00, 3D closure **11:00**,
+ICON-MYNN 13:00, goger-18/ECMWF 14:30, goger-19 15:00; at 10 m (> 3 m s⁻¹): observed 12:00, 3D 11:30, ICON-MYNN
+13:00. In the established afternoon and evening regimes the 3D closure's profile is right at both levels
+(within 0.5 m s⁻¹, ratio 1.58 vs 1.56 and 1.75 vs 1.84) — the best of the five by far (MYNN family 2–4 m s⁻¹
+low aloft). The day-class excess comes from the onset window, where the 3D run accelerates the wind **aloft
+two hours early** (6 m s⁻¹ at 100 m at 11 UTC against 1.6 observed) while the surface is only 30 min early;
+the observed layer is then still coupled and calm (ratio 0.99), the 3D run's is sheared (1.91). This ties D2
+to D1: the same morning in which the 3D layer is too shallow (D1) is the one in which its 100 m wind runs
+away from the surface — a thin, strongly heated layer (largest HFX of the five) builds the along-valley
+pressure gradient earlier, and the under-mixed surface layer (q²(k₀) = 0.17 of equilibrium, L = 0.6 κz) does
+not couple the accelerating flow aloft to the ground. The near-wall deficit is persistent all day; its
+observable footprint is confined to the onset because in the afternoon the resolved eddies do the coupling.
+Consequence for the fix plan: the D2 test segment should be **09→13 UTC** (the onset), not 12→16; D1(1) and
+D2 are judged together on that segment, with the up-valley onset time at 100 m (lidar) as the second
+criterion next to the mixed-layer depth. Radfeld: the 3D run is the only one to reach the observed afternoon
+10 m wind (4.5 vs 3.8; MYNN family 2.4–3.7) and the closest in the evening collapse (2.3 vs 1.0; others
+3.0–3.4); no run has the observed 06–08 UTC outflow peak (3.8 m s⁻¹) — shared, hence forcing/surface.
+
 ---
 
 **2026-08-27, ~14:00 — D1 soundness check done from the archive: the slow morning growth of the 3D closure is transport-limited. Its vertical turbulent transport of TKE at the inversion is 50× weaker than MYNN's; TKE at the interface is not at the floor; from 11 UTC every interface cell has its length scale at the buoyancy cap.**
