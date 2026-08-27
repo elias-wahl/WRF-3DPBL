@@ -188,6 +188,9 @@ cd /gpfs/data/fs72996/ewahl/branko
 realcase/scripts/build_em_real.sh realcase/env/vsc5.sh --reconfigure   # 30-40 min
 ```
 
+**Always build serially on the login node with `nohup … &` (Elias, 2026-08-27) — never submit
+`build_em_real.slurm`: the compute-node job waited 5+ h in the queue while the login node builds
+in 40–60 min.** Record the PID (`.build_login.pid`) and wait on it.
 Only `./clean -a` (which `--reconfigure` triggers) regenerates the Registry and
 `inc/*.inc`; a stale registry builds and runs with new fields **silently missing**.
 Keep `WRF_BUILD_JOBS=1` — `-j N` races (E12). Trust the script's verdict, then
