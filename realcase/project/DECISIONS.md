@@ -32,7 +32,20 @@ decomposition for fluxes. First re-run (obs + MYNN `og` + `3dpbl` + goger-19; **
 from the overview** per Elias, login node, 8 dask workers × 6 GB): per-curve sanity numbers,
 24 h × column up to ~2 km, TKE m² s⁻² — lidar mean 0.70 (max 37.5, gate outliers), MYNN 0.098,
 3D closure **0.086** (no longer zero; 43 of 49 half-hours present before X9c was stitched),
-goger-19 0.338. Figure pending (the first attempt was killed with the session). Housekeeping:
+goger-19 0.338. **Figure done** (`plot_output/lidar/obs_VL_kol_250718_tke_obs.png`, 09:55,
+all 47 frames; 3D column mean 0.080). Reading, **subgrid only for the 3D run** (rule: judge
+the grey zone by subgrid + resolved; the resolved half is not in `proc` yet, T3): the lidar
+has its TKE maximum **near the ground, 17–19 UTC** (> 2.7 m² s⁻² below 300 m — the
+up-valley jet's shear layer after the 15:00 wind maximum) with a mixed layer reaching
+1.5–2 km by 15–19 UTC; MYNN puts its maximum in a 11–16 UTC convective column
+(0.5–1.6, to 1.6 km) and has nothing in the evening shear layer; the 3D closure's *subgrid*
+TKE is weak (≤ 1.1), sits in elevated plumes 600–1800 m at 12–17 UTC, and shows a faint
+near-surface band 15–18 UTC where the lidar maximum is — timing right, amplitude a fraction,
+as the partition predicts; goger-19 over-predicts the whole 10–17 UTC column (> 2.7).
+At night all three models are near zero while the lidar shows 0.5–1 pockets at 200–800 m
+(01–06 UTC) — consistent with the nocturnal deficit being real in the closure *and* MYNN
+being no better here. Next: add the resolved part to the virtual lidar before reading
+amplitudes. Housekeeping:
 `synthesize_day.sh` re-run — X9c (8502167) is now in the stitched day, **47/47 half-hour frames**;
 X9n (8492417, night under the fix) completed 08-24 21:57, not yet compared with X7. New repo
 **`$DATA/wrf3dpbl-diag`** (github.com/elias-wahl/wrf3dpbl-diag, private): `compare_mynn.py`,
