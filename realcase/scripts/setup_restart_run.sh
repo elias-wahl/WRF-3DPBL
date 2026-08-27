@@ -192,7 +192,7 @@ SB=$RUNDIR/submit_wrf.slurm
 sed -i -E "s/^#SBATCH --job-name=.*/#SBATCH --job-name=wrf_$NAME/" "$SB"
 sed -i -E "s/^#SBATCH --nodes=.*/#SBATCH --nodes=$NODES/" "$SB"
 sed -i -E "s/^#SBATCH --time=.*/#SBATCH --time=$WTIME/" "$SB"
-grep -q -- '--hint=nomultithread' "$SB" || sed -i "/^#SBATCH --ntasks-per-node=/a #SBATCH --hint=nomultithread" "$SB"
+grep -q -E '^#SBATCH --hint=nomultithread' "$SB" || sed -i "/^#SBATCH --ntasks-per-node=/a #SBATCH --hint=nomultithread" "$SB"   # anchored: the template's MUSICA comment also contains the string (KNOWN_ISSUES E25)
 if [ "$QOS" = "devel" ]; then
   sed -i -E "s/^#SBATCH --qos=.*/#SBATCH --qos=zen3_0512_devel/" "$SB"
   sed -i -E "s/^#SBATCH --time=.*/#SBATCH --time=00:10:00/" "$SB"

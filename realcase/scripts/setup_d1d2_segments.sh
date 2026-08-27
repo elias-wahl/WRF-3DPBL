@@ -25,6 +25,8 @@
 #   setup_d1d2_segments.sh one NAME key=val ... [--submit]
 #   setup_d1d2_segments.sh check NAME ...       namelist diff vs X7 only
 # Two waves because the filesystem had 345 GB free at 97 % on 2026-08-27.
+# 2026-08-27 evening: the four switch runs were re-queued on ONE node (10:30 h) by
+# resubmit_d_1node.sh; only Dctl keeps the 2 x 128 layout (bit-for-bit vs X7, E14).
 set -u -o pipefail
 DATA=/gpfs/data/fs72996/ewahl
 HERE=$(cd "$(dirname "$0")" && pwd)

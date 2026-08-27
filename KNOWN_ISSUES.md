@@ -1103,3 +1103,12 @@ typo must not pass silently). The template is the whitelist.
 where it applies) with its default and a one-line comment, in the same commit as the Registry
 change; `prepare_namelist.py` gets its range check in the same commit. Done for `pbl3d_sq`,
 `pbl3d_sfc_qsq_bc`, `pbl3d_sfc_qsq_zmax`, `output_tke_moments` (2026-08-27).
+
+## E25. `setup_restart_run.sh` never wrote `#SBATCH --hint=nomultithread` — its grep matched a comment
+
+**Symptom (2026-08-27):** no run directory made by `setup_restart_run.sh` (X7, X8*, D*) has the `--hint=nomultithread` line, although the script "adds it if missing". `sacct` shows 512 CPUs allocated for the 256 ranks of X7 — both hyperthreads, binding left to SLURM's default. No effect on results or, measurably, on speed (1.5 s/step as sized), but the run headers did not say what the project rules claim.
+
+**Cause:** `grep -q -- '--hint=nomultithread' "$SB"` is unanchored; the template's MUSICA note on line 18 (`#           --hint=nomultithread and set --ntasks-per-node=190 …`) contains the string, so the check always "passed".
+
+**Fix:** anchored to `^#SBATCH --hint=nomultithread` (same commit as `resubmit_d_1node.sh`). Rule: a grep that gates an edit of a SLURM header must anchor on `^#SBATCH`. `Dctl` was deliberately left as X7 (no hint) — same allocation as the reference for the bit-for-bit check; the 1-node D runs carry the hint.
+
