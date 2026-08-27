@@ -7,6 +7,55 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-08-27, ~12:00 — observation side complete for all five runs; two new diagnostics: the 3D closure is the best of the five against the radiosondes (θ RMSE 1.05 K vs 1.4–1.8; it halves the low-level warm bias), matches the lidar wind where every MYNN variant under-forecasts the afternoon up-valley wind by 2–4 m s⁻¹, but grows its morning mixed layer too slowly *as a response, not for lack of forcing*, and lets nocturnal TKE collapse with Ri faster than any MYNN variant because its length scale sits at the buoyancy cap.**
+
+Runs: `og` ICON-MYNN 8320565, `3dpbl` stitched 9999999, `g18` 7992604, `g19` 8011253, `ecmwf`
+7703194. Diagnostics extended (`wrf-proc` fb36122…da138c9): total TKE and at-cap cubes, night and
+low-total masked in the fraction panels, PBLH (MYNN only — the 3D run's PBLH is a dead constant)
+and radiosonde parcel depths on the BL-depth plot, closure's own N τ on the length plot, two-panel
+slope wind, 50 m sounding layers, time-of-day split of the sounding biases, w-based resolved TKE in
+the lidar comparison; **new**: `bl_growth` (BL depth vs cumulative kinematic heat input, by class)
+and `tke_vs_ri` (median subgrid TKE per Ri_g bin, day/night). Stages run on compute nodes; the
+stitched day's frames are classic 64-bit-offset netCDF and abort under the threaded scheduler
+(`load_vertical_profiles` now computes single-threaded).
+
+**Radiosondes** (9 launches, layer means, lowest 1.5 km; |bias| / RMSE):
+
+| | 3D closure | ICON-MYNN | g18 | g19 | ECMWF-MYNN |
+|---|---|---|---|---|---|
+| θ (K) | **0.72 / 1.05** | 1.20 / 1.38 | 1.40 / 1.54 | 1.62 / 1.76 | 1.39 / 1.53 |
+| q (g kg⁻¹) | 0.40 / 0.77 | **0.36 / 0.79** | 0.91 / 1.13 | 1.01 / 1.25 | 0.87 / 1.10 |
+| wind vector RMSE (m s⁻¹) | **2.34** | **2.34** | 3.08 | 3.54 | 3.13 |
+
+Mechanisms: the 3D run's θ bias at 50 m is +0.3 K where the others are +1.7…+2.5 K, and by day it
+is −0.8 K at 50 m / +1 K at 250–750 m against +2.3…+2.9 K — weaker subgrid mixing keeps the surface
+layer cooler and the residual layer less warmed; moisture follows the forcing (ICON runs −0.5 g kg⁻¹
+at 100–500 m, ECMWF runs −1.5). Per-launch scalars: the 3D run's parcel mixed layer is the only one
+*shallower* than observed at 10–11 UTC (330–550 m vs 900–950; the others 1100–2300 m) and matches at
+13 UTC (600 vs 550); its 50–500 m stability at 08–11 UTC is 3–4.4 K against observed 0.7–1.7 K —
+**the nocturnal inversion is eroded too slowly**. **`bl_growth`** shows why it is not the forcing:
+the 3D run's floor sensible heat flux peaks at 175 W m⁻² (ICON-MYNN 115, goger/ECMWF 215; on slopes
+315 vs 250–285), yet at equal cumulative heat input its TKE-defined layer is the shallowest of the
+five (2000 K m → 1100 m vs 1400 ICON-MYNN, 1800 goger) — a closure response (weak subgrid
+entrainment while the resolved eddies are still spinning up). **Lidar** (Kolsass, 100–1500 m, all
+half hours): wind-speed bias 3D +0.20 m s⁻¹ (RMSE 1.6), ICON-MYNN −0.06 (1.9), goger/ECMWF −0.5
+(2.1–2.4); in the afternoon the MYNN family is 2–4.7 m s⁻¹ too weak (up-valley wind), the 3D run
++1…+1.5 at 12–14 UTC and 6 m s⁻¹ at 100 m by day against 4 observed (too strong near the ground);
+the evening jet (obs 9.3 m s⁻¹ at 400 m) is 8 in the 3D run, 6.5–7.5 elsewhere; at night every run
+has a 3–4.5 m s⁻¹ down-valley jet at 500 m where the lidar has 2 (3D closest). TKE, log₁₀(model/obs):
+3D subgrid −1.5 (day −1.1); + u,v,w box ±5 km **+0.87** (factor 7 high — the mesoscale contamination
+in numbers); + 1.5 σ_w² box ±2 km **−0.39 day / −0.41 evening** (factor 2.5 low), −1.4 at night;
+goger runs +0.5…+0.9 by day, ICON-MYNN −0.5→+0.3. The lidar TKE is preliminary (readme) and its
+night values (0.1–1 m² s⁻² column-wide) are suspect — night TKE ratios are not to be read.
+**`tke_vs_ri`**: by day the MYNN family's TKE is Ri-independent (1–2.5 m² s⁻²) out to Ri_g ≈ 2, the
+3D run's 0.4–0.8; at night from Ri_g 0 to 1.5 the TKE falls by a factor 2 (ICON-MYNN), 5 (goger,
+ECMWF) and **20 (3D closure, 0.28 → 0.013)** — the most Ri-sensitive scheme, and `capped` shows 80–100 %
+of its live stable floor cells at the buoyancy cap through the lowest 2 km at night. Standing rule
+unchanged: the cap coefficient is the lever, and it stays untouched until Elias decides on this
+evidence. Figures: `plot_output/diagnostics/{turbulence,soundings,lidar}/`.
+
+---
+
 **2026-08-27, ~11:00 — boundary-layer diagnostics built into `proc` in three levels; first model-only survey of five runs: the 3D closure resolves 50–80 % of the daytime TKE, its nocturnal length scale sits *at* the buoyancy cap, its slope winds are the strongest and longest-lived; the sounding statistics put the ICON-forced control closest to the radiosondes.**
 
 Elias asked for grey-zone diagnostics in the package's three-level structure (extraction →
