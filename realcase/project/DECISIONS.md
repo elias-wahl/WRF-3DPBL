@@ -7,6 +7,36 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-08-27, ~15:30 — Correction: the resolved (temporal, 30-min) TKE IS in the existing WRFlux stream. No rebuild is needed for it; the plan's Part 1 shrinks to the subgrid time means.**
+
+Elias asked for a recheck of goger18/19. goger19 adds nothing beyond goger18's `QHSP_MEAN` either.
+But the 10:00 statement "no velocity variances in the meanout" was wrong in substance: WRFlux writes
+the time-mean advective momentum fluxes `F{U,V,W}{X,Y,Z}_ADV_MEAN` (kinematic, m² s⁻², the product
+the advection scheme transported, Hesselberg-weighted) and its own post-processing (`wrflux/tools.py`,
+`adv_tend`) forms the mean part as `UX_MEAN·U_MEAN` etc. and the resolved turbulent flux as the
+residual — for the diagonal terms that residual is the resolved variance:
+var_u = FUX_ADV_MEAN − UX_MEAN·⟨U⟩, var_v = FVY_ADV_MEAN − VY_MEAN·⟨V⟩, var_w = FWZ_ADV_MEAN − WZ_MEAN·⟨W⟩,
+tke_res_t = ½(var_u+var_v+var_w). Verified on the 13:00 frames (lowest 30 levels): 97–99 % of cells
+non-negative (residual noise of order 0.05 m² s⁻²), floor-class medians at 150–350 m:
+
+| 13 UTC, floor 150–350 m | temporal resolved TKE | w-box ±2 km (1.5 σ_w²) | u,v,w box ±5 km | subgrid |
+|---|---|---|---|---|
+| 3D closure | **0.36** | 0.38 | 1.12 | 0.20 |
+| ICON-MYNN | **0.07** | 0.18 | 0.65 | 1.25 |
+
+So the 3D closure resolves 64 % of the daytime floor TKE and MYNN 5 % — the temporal answer to the
+partition question; the ±2 km w-based proxy was right on the floor (2× high on slopes), the ±5 km
+u,v,w box 3× high (mesoscale). The 3D closure's total (0.56) is 40 % of ICON-MYNN's (1.32), as the
+w-proxy said. At a single column (Kolsass) the temporal value is noisy (0.04–0.1 at 120 m by day,
+1.8 in the 11 UTC onset burst) — class medians are the robust use. Level-1 reader written:
+`proc/pre/wrflux_loader.py` + `df/meanframe.py` (`tke_res_t`, `var_*_t`, `ua_t`…; classic netCDF ⇒ no
+dask). Still missing from the stream: the *subgrid* time mean (`QSQ_MEAN`, `W2_SGS_MEAN`) — a third
+of the planned Fortran, to be bundled with the D1/D2 switches; until then the two bracketing wrfout
+frames give it to 30-min sampling accuracy. The X7 10:00 meanout reads zero (6-h WRFlux setting of
+that segment) — use the 30-min frames from 10:30 on.
+
+---
+
 **2026-08-27, ~14:30 — D2 soundness check done with the i-Box, the lidar and Radfeld: the 3D closure's excess wind sits between 10 and 100 m (shear ratio 1.68 vs 1.21 observed), its q² at the lowest level is 0.17 of the surface-layer value B₁^{2/3}u*², and its master length in the lowest 60 m is 0.6 κz. Both halves of the D2 hypothesis hold.**
 
 `proc/meta/meta_surface_wind.py` (devel-node job 8527188, 24 workers, ~1 min): the Kolsass i-Box wind at
