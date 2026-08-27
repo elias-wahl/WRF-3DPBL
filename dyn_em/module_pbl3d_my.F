@@ -144,7 +144,7 @@
       ! Surface q^2 condition (pbl3d_sfc_qsq_bc): 0 = none (previous behaviour; the only
       ! lower condition is the Q_SQ_MIN floor on the ground face). 1 = the lowest
       ! prognostic level is held at or above the neutral surface-layer equilibrium
-      ! q^2 = B1^(2/3) u*^2 (MY82 Eq. 47b; 8.3 u*^2 for B1 = 24), the condition the MYNN
+      ! q^2 = B1^(2/3) u*^2 (MY82 Eq. 47b; 6.5 u*^2 for the MY82 set, B1 = 16.6; 8.3 u*^2 for MYNN, B1 = 24), the condition the MYNN
       ! family imposes at its lowest level (applied in Calc_q_sq_rhs, module_pbl3d).
       ! 2 = as 1, plus l >= kappa z below SFC_QSQ_ZMAX in unstable air (Eq. 71 gives
       ! l < kappa z whenever l0 is not >> kappa z; measured 2026-08-27: l = 0.6 kappa z in

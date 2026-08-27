@@ -5890,8 +5890,9 @@
         ! ground face at Q_SQ_MIN, so q^2 next to the wall is whatever local production
         ! leaves there (measured 2026-08-27: 0.17 of the surface-layer value by day,
         ! DECISIONS 14:30). The MYNN family holds its lowest level at the neutral
-        ! surface-layer equilibrium q^2 = B1^(2/3) u*^2 (MY82 Eq. 47b; 8.3 u*^2 for
-        ! B1 = 24). Here that value is a floor on the lowest prognostic level, delivered as
+        ! surface-layer equilibrium q^2 = B1^(2/3) u*^2 (MY82 Eq. 47b; 6.5 u*^2 for the
+        ! MY82 constant set, B1 = 16.6; MYNN's B1 = 24 gives 8.3 u*^2). Here that value is
+        ! a floor on the lowest prognostic level, delivered as
         ! a source that closes the gap within one model step: q_sq_prog is the temporary
         ! copy q_sq_tmp, so only the tendency reaches the dynamics. Not divided by
         ! N_PBL3D on purpose: the first sub-step closes the gap, later sub-steps see none.
