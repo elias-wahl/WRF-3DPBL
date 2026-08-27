@@ -7,6 +7,16 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-08-27, ~17:25 — Rebuilt binary validated through the smoke; the five D1/D2 segments are queued (8531824–28); bit-for-bit check armed in SLURM.**
+
+Build on the login node 16:24→16:57 (serial, `BUILD OK`, `ldd` clean; G4 gate: `pbl3d_sq`, `qsq_mean`, `output_tke_moments` all in the generated `inc/`). Smoke 8531803 (07:00→07:12 from X7's restart, 5 nodes, `pbl3d_sq = 0.6`, `pbl3d_sfc_qsq_bc = 2`, `output_tke_moments = 1`, flux switches off): SUCCESS; both init messages in `rsl.error.0000`; the only history warning is the harmless `athcuten` reset. `check_tke_moments.py`: **PASS** — `QSQ_MEAN`, `W2/UW/VW_SGS_MEAN` (80 faces), `QKE_MEAN` (79, all zero as it must be in a pbl3d run), `RHOD_MEAN`, `Z_MEAN`, `MUT_MEAN` present at full shape with every `output_*_fluxes = 0` (the package carries them — the stub trap is closed); all finite; `w'² ≤ q²` on 100 % of cells; `QSQ_MEAN` / end-point mean q² over the 6-min window median 0.997 (10–90 % 0.90–1.08, n = 4.0 M cells). Footprint of the surface condition after 12 min: q² at face level 1 over land, in units of B1^(2/3) u*² (8.3 u*²), median 0.37 in X7 at 07:00 → **0.65** (p10 0.49, p90 1.49) — the floor sits on the lowest mass level, face 1 is the interpolation above it, so < 1 there is expected.
+
+*Correction to the disk estimate:* a subgrid-means meanout is **2.1 GB**, not < 1 GB (the packaged `rhod_mean, mut_mean, z_mean` plus five 3D fields at 0.1–0.3 GB each); a segment is ≈ 47 GB history + 25 GB WRFlux ≈ 72 GB, five ≈ 360 GB — fine after Elias freed the July `WRF/run` restarts and `wrf_output/7995376` (1.2 TB free).
+
+*Queued:* `Dctl` 8531824, `Dsq06` 8531825, `Dbc1` 8531826, `Dsq10` 8531827, `Dsq06bc1` 8531828 (2 × 128, 5:30 h each, one wave). A devel-QOS job with `--dependency=afterok:8531824` runs `bitcompare.py` on `Dctl` vs X7 (07:30–10:00, six frames) and writes `exp/Dctl/bitcompare_vs_X7.<job>.out`; its last line must read *bit-for-bit identical on every compared variable* before any physics from the other four is read (meanout not compared: `QQ_MEAN` differs by design, and X7's WRFlux means are 6-hourly). Two sessions were active at once this afternoon; the segments were submitted from the other one — the run dirs and namelists are the ones checked here (only the expected keys differ from X7).
+
+---
+
 **2026-08-27, ~15:20 — D1/D2 test switches implemented (commit `8e92feaaf`, build job 8529206) and how they act; five 07→13 UTC restart segments from X7's 07:00 restart.**
 
 Both switches default to the previous behaviour bit for bit (`pbl3d_sq = 0.2`, `pbl3d_sfc_qsq_bc = 0`); the WRFlux switch `output_tke_moments = 0` likewise. The only intentional change to a default output is `QQ_MEAN` in the meanout, which accumulated onto `Q_MEAN` instead of itself (WRFlux bug, `module_avgflx_em.F`).
