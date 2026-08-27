@@ -5259,7 +5259,8 @@ BENCH_END(bc_2d_tim)
                  &   grid%w_tend_pg_mean,grid%w_tend_cor_curv_mean,                                         &
                  &   grid%t_tend_damp_mean,grid%q_tend_damp_mean,                                           &
                  &   grid%u_tend_damp_mean,grid%v_tend_damp_mean,grid%w_tend_damp_mean,                     &
-                 &   grid%rhod_mean,grid%mut_mean,grid%z_mean,grid%dph_x_mean,grid%dph_y_mean                )
+                 &   grid%rhod_mean,grid%mut_mean,grid%z_mean,grid%dph_x_mean,grid%dph_y_mean,               &
+              &   grid%qsq_mean,grid%w2_sgs_mean,grid%uw_sgs_mean,grid%vw_sgs_mean,grid%qke_mean            )
             CALL wrf_debug(200,'In solve_em, after zero_avgflx call')
          ENDDO
    !$OMP END PARALLEL DO
@@ -5354,7 +5355,9 @@ BENCH_END(bc_2d_tim)
               &   grid%fnm, grid%fnp, grid%mut, grid%c1h, grid%c2h,                                      &
               &   grid%c1f, grid%c2f, grid%cf1, grid%cf2, grid%cf3, grid%cfn, grid%cfn1,                 &
               &   grid%msfuy, grid%msfvx, grid%msfvy, grid%msftx, grid%msfty,                            &
-              &   last_timestep, grid%dt                                                                 )
+              &   last_timestep, grid%dt,                                                                &
+              &   grid%qke, grid%q_sq, grid%turb_flux_w2, grid%turb_flux_uw, grid%turb_flux_vw,          &
+              &   grid%qsq_mean, grid%w2_sgs_mean, grid%uw_sgs_mean, grid%vw_sgs_mean, grid%qke_mean      )
 
          CALL wrf_debug(200,'In solve_em, after upd_avgflx call')
 

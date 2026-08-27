@@ -92,6 +92,13 @@ state   real    th_save              ikj      dyn_em         1               -  
 state   real    tt_mean              ikj      dyn_em         1               -           h{24} "TT_MEAN"           "second moment of dry/moist potential temperature perturbation (from T0=300 K)"  "K2"
 state   real    qq_mean              ikj      dyn_em         1               -           h{24} "QQ_MEAN"           "second moment of water vapor mixing ratio"  ""
 
+#subgrid time means (output_tke_moments = 1): plain means, no density weighting
+state   real    qsq_mean             ikj      dyn_em         1               Z           h{24} "QSQ_MEAN"          "time mean of twice the subgrid TKE q_sq of the 3D closure (face levels)"  "m2 s-2"
+state   real    w2_sgs_mean          ikj      dyn_em         1               Z           h{24} "W2_SGS_MEAN"       "time mean of the subgrid w variance of the 3D closure"  "m2 s-2"
+state   real    uw_sgs_mean          ikj      dyn_em         1               Z           h{24} "UW_SGS_MEAN"       "time mean of the subgrid u w covariance of the 3D closure"  "m2 s-2"
+state   real    vw_sgs_mean          ikj      dyn_em         1               Z           h{24} "VW_SGS_MEAN"       "time mean of the subgrid v w covariance of the 3D closure"  "m2 s-2"
+state   real    qke_mean             ikj      dyn_em         1               -           h{24} "QKE_MEAN"          "time mean of twice the subgrid TKE qke of MYNN (mass levels)"  "m2 s-2"
+
 #instantaneous resolved fluxes
 
 state   real    ftx_adv              ikj      dyn_em         1               X               - "FTX_ADV"            "inst. mu-coupled advective dry/moist theta (T-300 K) flux in x direction"   "Pa K m s-1"
@@ -226,6 +233,7 @@ rconfig  integer  output_q_fluxes          namelist,diag    max_domains    0    
 rconfig  integer  output_u_fluxes          namelist,diag    max_domains    0          - "output_u_fluxes"   "Output u-fluxes (0: no, 1: resolved and SGS, 2: resolved, 3: SGS)"
 rconfig  integer  output_v_fluxes          namelist,diag    max_domains    0          - "output_v_fluxes"   "Output v-fluxes (0: no, 1: resolved and SGS, 2: resolved, 3: SGS)"
 rconfig  integer  output_w_fluxes          namelist,diag    max_domains    0          - "output_w_fluxes"   "Output w-fluxes (0: no, 1: resolved and SGS, 2: resolved, 3: SGS)"
+rconfig  integer  output_tke_moments       namelist,diag    max_domains    0          - "output_tke_moments" "Output time means of the subgrid TKE and w-fluxes (0: no, 1: q_sq and turb_flux_w2/uw/vw of the 3D closure, qke of MYNN)"
 rconfig  logical  hesselberg_avg           namelist,diag    max_domains    .true.     h "hesselberg_avg"    "Use density-weighted (hesselberg) averaging"
 rconfig  logical  output_dry_theta_fluxes  namelist,diag    max_domains    .true.     h "output_dry_theta_fluxes" "Output fluxes based on dry theta even when the model uses moist theta internally"
 
@@ -266,3 +274,5 @@ package  mean_v_3       output_v_fluxes==3        -  state:rhod_mean,mut_mean,z_
 package  mean_w_1       output_w_fluxes==1        -  state:w_diag,dph_x,dph_y,dph_x_mean,dph_y_mean,rhod_mean,mut_mean,u_mean,v_mean,zwind_mean,wd_mean,ww_mean,z_mean,wx_mean,wy_mean,wz_mean,fwx_adv,fwy_adv,fwz_adv,fwz_imp,fwx_adv_mean,fwy_adv_mean,fwz_adv_mean,fwx_corr,fwy_corr,corr_dwdt,fwx_sgs,fwy_sgs,fwz_sgs,fwx_sgs_mean,fwy_sgs_mean,fwz_sgs_mean,w_tend_pg,w_tend_pg_mean,w_tend_cor_curv,w_tend_cor_curv_mean,w_tend_damp,w_tend_damp_mean
 package  mean_w_2       output_w_fluxes==2        -  state:w_diag,dph_x,dph_y,dph_x_mean,dph_y_mean,rhod_mean,mut_mean,u_mean,v_mean,zwind_mean,wd_mean,ww_mean,z_mean,wx_mean,wy_mean,wz_mean,fwx_adv,fwy_adv,fwz_adv,fwz_imp,fwx_adv_mean,fwy_adv_mean,fwz_adv_mean,fwx_corr,fwy_corr,corr_dwdt
 package  mean_w_3       output_w_fluxes==3        -  state:rhod_mean,mut_mean,z_mean,fwx_sgs,fwy_sgs,fwz_sgs,fwx_sgs_mean,fwy_sgs_mean,fwz_sgs_mean
+
+package  mean_tke_1     output_tke_moments==1     -  state:rhod_mean,mut_mean,z_mean,qsq_mean,w2_sgs_mean,uw_sgs_mean,vw_sgs_mean,qke_mean

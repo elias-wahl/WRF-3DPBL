@@ -134,6 +134,23 @@
       ! its neutral meaning ("twice the equilibrium value") in stable shear, where
       ! equilibrium S k / eps rises as Sm falls. Default 1.
     integer, public    :: LIMITER_OPT
+      ! Coefficient S_q of the q^2 vertical diffusivity K_q = S_q l q (MY82 Eq. 24;
+      ! pbl3d_sq, default 0.2 = MY82, previous behaviour bit for bit). Why it is a switch:
+      ! the morning transition is transport-limited (DECISIONS 2026-08-27 14:00: q^2
+      ! transport into the interface 50 x smaller than MYNN's, whose q^2 diffusivity is
+      ! 3 K_m, i.e. 1.5-7 x this one in a convective layer). Pure transport: it moves q^2,
+      ! it does not create it.
+    real,    public    :: SQ_DIFF
+      ! Surface q^2 condition (pbl3d_sfc_qsq_bc): 0 = none (previous behaviour; the only
+      ! lower condition is the Q_SQ_MIN floor on the ground face). 1 = the lowest
+      ! prognostic level is held at or above the neutral surface-layer equilibrium
+      ! q^2 = B1^(2/3) u*^2 (MY82 Eq. 47b; 8.3 u*^2 for B1 = 24), the condition the MYNN
+      ! family imposes at its lowest level (applied in Calc_q_sq_rhs, module_pbl3d).
+      ! 2 = as 1, plus l >= kappa z below SFC_QSQ_ZMAX in unstable air (Eq. 71 gives
+      ! l < kappa z whenever l0 is not >> kappa z; measured 2026-08-27: l = 0.6 kappa z in
+      ! the lowest levels by day, DECISIONS 14:30).
+    integer, public    :: SFC_QSQ_BC
+    real,    public    :: SFC_QSQ_ZMAX
     real,    parameter :: STRAIN_MIN = 1.0E-10   ! avoids 0/0 in the strain limiter
     real,    parameter :: COND_MAX   = 1.0E8     ! largest admitted condition number of A
     real,    parameter :: L_BACKOFF  = 0.5       ! l reduction factor per escalation step
@@ -488,6 +505,14 @@
                 N = Sqrt (G_OVER_TREF * dthetav_dz(i, k, j))
                 l_master(i, k, j) = Min (l_master(i, k, j),                                  &
                                          N_TAU_MAX * Sqrt (q_sq(i, k, j)) / N)
+              end if
+               ! Surface-layer floor l >= kappa z in unstable air below SFC_QSQ_ZMAX
+               ! (pbl3d_sfc_qsq_bc = 2; see the SFC_QSQ_BC block at the top of the module).
+               ! Off by default: the block above is then unchanged bit for bit.
+              if (SFC_QSQ_BC >= 2) then
+                if (rmol(i, j) <= 0.0 .and. z_at_walls_1d(k) <= SFC_QSQ_ZMAX) then
+                  l_master(i, k, j) = Max (l_master(i, k, j), KARMAN * z_at_walls_1d(k))
+                end if
               end if
                ! l_boulac is intent(out) and is read again below and by
                ! Fill_dissip_length_scale, so it must be defined on every branch. MY74 makes no
@@ -4341,6 +4366,7 @@
               pbl3d_nsteps, pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt,  &
               pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt,                  &
               pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_moist_cond_max,                  &
+              pbl3d_sq, pbl3d_sfc_qsq_bc, pbl3d_sfc_qsq_zmax,                                       &
               ids, ide, jds, jde, kds, kde,                                     &
               ims, ime, jms, jme, kms, kme,                                     &
               its, ite, jts, jte, kts, kte,                                     &
@@ -4374,6 +4400,9 @@
       integer, intent(in) :: pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt, pbl3d_nsteps
       integer, intent(in) :: pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt
       real,    intent(in) :: pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_moist_cond_max
+      real,    intent(in) :: pbl3d_sq, pbl3d_sfc_qsq_zmax
+      integer, intent(in) :: pbl3d_sfc_qsq_bc
+      character (len = 160) :: msg
       character (len = *), intent(in) :: pbl3d_constants
       integer, intent(in) :: ids, ide, jds, jde, kds, kde, &
                              ims, ime, jms, jme, kms, kme, &
@@ -4455,6 +4484,33 @@
       else
         LIMITER_OPT = 1
         call wrf_message ('--- WARNING: pbl3d_limiter_opt must be 1 or 2; using 1')
+      end if
+
+        ! q^2 diffusivity coefficient (see SQ_DIFF at the top of the module). Zero or
+        ! negative would switch vertical q^2 transport off, which is a silent failure.
+      if (pbl3d_sq > 0.0) then
+        SQ_DIFF = pbl3d_sq
+      else
+        SQ_DIFF = 0.2
+        call wrf_message ('--- WARNING: pbl3d_sq must be > 0; using 0.2')
+      end if
+      if (Abs (SQ_DIFF - 0.2) > 1.0E-6) then
+        write (msg, '(a, f6.3)') 'PBL3D: q^2 vertical diffusivity coefficient S_q = ', SQ_DIFF
+        call wrf_message (msg)
+      end if
+
+        ! Surface q^2 condition (see SFC_QSQ_BC at the top of the module).
+      if (pbl3d_sfc_qsq_bc >= 0 .and. pbl3d_sfc_qsq_bc <= 2) then
+        SFC_QSQ_BC = pbl3d_sfc_qsq_bc
+      else
+        SFC_QSQ_BC = 0
+        call wrf_message ('--- WARNING: pbl3d_sfc_qsq_bc must be 0, 1 or 2; using 0')
+      end if
+      SFC_QSQ_ZMAX = Max (pbl3d_sfc_qsq_zmax, 0.0)
+      if (SFC_QSQ_BC >= 1) then
+        write (msg, '(a, i2, a, f7.1, a)') 'PBL3D: surface q^2 condition pbl3d_sfc_qsq_bc = ', &
+              SFC_QSQ_BC, ' (zmax ', SFC_QSQ_ZMAX, ' m)'
+        call wrf_message (msg)
       end if
 
       if (restart) return

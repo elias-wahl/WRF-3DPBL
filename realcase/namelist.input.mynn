@@ -172,4 +172,5 @@
  output_u_fluxes        = 1,
  output_v_fluxes        = 1,
  output_w_fluxes        = 1,
+ output_tke_moments     = 0,           ! 1: time mean of qke (QKE_MEAN) into the WRFlux stream
  /

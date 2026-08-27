@@ -46,7 +46,7 @@
     use module_comm_dm, only: halo_em_phys_hdiff_pbl3d_sub, period_bdy_em_hdiff_pbl3d_sub
     use module_bc, only: set_physical_bc3d
     use module_pbl3d_my, only: Set_init_turb_state_my, Calc_turb_fluxes_my
-    use module_pbl3d_my, only: Q_SQ_MIN, TURB_FLUX_MIN, a_2, b_1
+    use module_pbl3d_my, only: Q_SQ_MIN, TURB_FLUX_MIN, a_2, b_1, SQ_DIFF, SFC_QSQ_BC
 
     implicit none
 
@@ -5821,6 +5821,7 @@
       real, dimension (its-1:ite, kts:kte, jts-1:jte) :: sf_alpha_pair
       logical, parameter :: DEBUG = .false.
       real (kind = kind(q_sq_tend)) :: N_PBL3D
+      real :: q_sq_sfc, q_sq_sfc_fac
 
       N_PBL3D = config_flags%pbl3d_nsteps
 
@@ -5883,6 +5884,33 @@
       call Calc_q_sq_dissip (N_PBL3D, q_sq_dissip_tend, q_sq_tend, l_master_at_mass, l_dissip, q_sq_prog, mut, c1, c2, &
           ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, i_start, i_end, j_start, j_end, ktf)
 
+        ! Surface q^2 condition (pbl3d_sfc_qsq_bc >= 1; SFC_QSQ_BC in module_pbl3d_my). The
+        ! closure has no lower boundary condition on q^2: the ground flux in
+        ! Calc_q_sq_vertical_diffusion is zero and Fill_q_sq_with_q_sq_prog only floors the
+        ! ground face at Q_SQ_MIN, so q^2 next to the wall is whatever local production
+        ! leaves there (measured 2026-08-27: 0.17 of the surface-layer value by day,
+        ! DECISIONS 14:30). The MYNN family holds its lowest level at the neutral
+        ! surface-layer equilibrium q^2 = B1^(2/3) u*^2 (MY82 Eq. 47b; 8.3 u*^2 for
+        ! B1 = 24). Here that value is a floor on the lowest prognostic level, delivered as
+        ! a source that closes the gap within one model step: q_sq_prog is the temporary
+        ! copy q_sq_tmp, so only the tendency reaches the dynamics. Not divided by
+        ! N_PBL3D on purpose: the first sub-step closes the gap, later sub-steps see none.
+        ! Never reduces q^2. The energy it adds is not paid by the resolved flow (it is
+        ! the surface-layer source MYNN has as well) and shows in the energy-closure
+        ! residual diagnostic.
+      if (SFC_QSQ_BC >= 1) then
+        q_sq_sfc_fac = b_1 ** (2.0 / 3.0)
+        do j = j_start, j_end
+          do i = i_start, i_end
+            q_sq_sfc = q_sq_sfc_fac * grid%ust(i, j) ** 2
+            if (q_sq_prog(i, kts, j) < q_sq_sfc) then
+              q_sq_tend(i, kts, j) = q_sq_tend(i, kts, j) + (c1(kts) * mut(i, j) + c2(kts)) *  &
+                                     (q_sq_sfc - q_sq_prog(i, kts, j)) / dt
+            end if
+          end do
+        end do
+      end if
+
         !!! Bound tendency !!!
       do j = j_start, j_end
         do k = kts, ktf
@@ -5936,10 +5964,13 @@
 
         ! Local vars
       integer :: i, j, k
-      real, parameter :: Sq = 0.20
+      real :: Sq
       real :: q_sq_vdiff_tend_tmp
       real, dimension (its:ite, kts:kte, jts:jte) :: q_sq_vdiff_hold
       logical, parameter :: DEBUG = .false.
+
+        ! S_q = 0.2 (MY82) unless pbl3d_sq says otherwise; see SQ_DIFF in module_pbl3d_my.
+      Sq = SQ_DIFF
 
       do j = j_start, j_end
         do k = kts + 1, ktf
@@ -6552,7 +6583,8 @@
 
     subroutine Init_pbl3d (restart, pbl3d_opt, pbl3d_sfc_opt, pbl3d_l_opt, pbl3d_prog, pbl3d_constants, &
               pbl3d_nsteps, pbl3d_sk_eps_max, pbl3d_n_tau_max,                                                        &
-              pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt, pbl3d_l0_min, pbl3d_moist_cond_max, l0_asym,                                &
+              pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt, pbl3d_l0_min, pbl3d_moist_cond_max,          &
+              pbl3d_sq, pbl3d_sfc_qsq_bc, pbl3d_sfc_qsq_zmax, l0_asym,                                &
               fnm, fnp, dnw, ph, phb, t_2, qv, thetav, alt, u, v, ust, hfx, qfx, rmol, &
               q_sq, q_sq_prog, q_sq_vdiff, q_sq_hdiff, q_sq_shear, q_sq_buoyancy, q_sq_dissip,                       &
               ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme,               &
@@ -6579,6 +6611,8 @@
       integer, intent(in) :: pbl3d_opt, pbl3d_sfc_opt, pbl3d_l_opt, pbl3d_prog, pbl3d_nsteps
       integer, intent(in) :: pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt
       real,    intent(in) :: pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_moist_cond_max
+      real,    intent(in) :: pbl3d_sq, pbl3d_sfc_qsq_zmax
+      integer, intent(in) :: pbl3d_sfc_qsq_bc
       real, dimension(ims:ime, jms:jme),          intent(inout) :: l0_asym
       character (len = *), intent(in) :: pbl3d_constants
 
@@ -6609,6 +6643,7 @@
           pbl3d_nsteps, pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt,  &
           pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt,                  &
           pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_moist_cond_max,                  &
+          pbl3d_sq, pbl3d_sfc_qsq_bc, pbl3d_sfc_qsq_zmax,                                       &
           ids, ide, jds, jde, kds, kde,                                     &
           ims, ime, jms, jme, kms, kme,                                     &
           its, ite, jts, jte, kts, kte,                                     &
@@ -6630,6 +6665,7 @@
               pbl3d_nsteps, pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt,  &
               pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt,                  &
               pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_moist_cond_max,                  &
+              pbl3d_sq, pbl3d_sfc_qsq_bc, pbl3d_sfc_qsq_zmax,                                       &
               ids, ide, jds, jde, kds, kde,                                     &
               ims, ime, jms, jme, kms, kme,                                     &
               its, ite, jts, jte, kts, kte,                                     &
@@ -6660,6 +6696,8 @@
       integer, intent(in) :: pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt, pbl3d_nsteps
       integer, intent(in) :: pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt
       real,    intent(in) :: pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_moist_cond_max
+      real,    intent(in) :: pbl3d_sq, pbl3d_sfc_qsq_zmax
+      integer, intent(in) :: pbl3d_sfc_qsq_bc
       real, dimension(ims:ime, jms:jme),          intent(inout) :: l0_asym
       character (len = *), intent(in) :: pbl3d_constants
       integer :: i, j, k, itf, jtf, ktf
@@ -6721,7 +6759,8 @@
 
         ! Call MY model to set initial state
       call Set_init_turb_state_my (restart, pbl3d_constants, pbl3d_nsteps, pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt, &
-          pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt, pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_moist_cond_max, ids, ide, &
+          pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt, pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_moist_cond_max, &
+          pbl3d_sq, pbl3d_sfc_qsq_bc, pbl3d_sfc_qsq_zmax, ids, ide, &
           jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, itf, jtf, ktf, i_start, i_end, j_start, j_end, &
           fnm, fnp, dnw, ph, phb, rdzw, z_at_mass, dz, t_2, qv, alt, u, v, ust, hfx, qfx, rmol, rho, du_dz, dv_dz, dthetav_dz, dqv_dz, &
           q_sq, q_sq_prog, q_sq_vdiff, q_sq_hdiff, q_sq_shear, q_sq_buoyancy, q_sq_dissip, l_master, l_master_at_mass, l0_asym, turb_flux_u2, turb_flux_v2, &

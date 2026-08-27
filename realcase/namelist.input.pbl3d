@@ -203,4 +203,5 @@
  output_u_fluxes        = 1,
  output_v_fluxes        = 1,
  output_w_fluxes        = 1,
+ output_tke_moments     = 0,           ! 1: time means of subgrid q^2, w'2, u'w', v'w' (QSQ_MEAN, *_SGS_MEAN) into the WRFlux stream
  /

@@ -3838,7 +3838,8 @@
             model_config_rec%m_opt(i) = 1
          ENDIF
 
-         IF (model_config_rec%output_sgs_fluxes(i) .or. model_config_rec%output_res_fluxes(i)) THEN
+         IF (model_config_rec%output_sgs_fluxes(i) .or. model_config_rec%output_res_fluxes(i) .or. &
+             model_config_rec%output_tke_moments(i) .eq. 1) THEN
             model_config_rec%output_avgfluxes(i) = .true.
          ENDIF
 

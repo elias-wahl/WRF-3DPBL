@@ -39,7 +39,8 @@ CONTAINS
        & v_tend_pg_mean,v_tend_cor_curv_mean,                                                         &
        & w_tend_pg_mean,w_tend_cor_curv_mean,                                                         &
        & t_tend_damp_mean,q_tend_damp_mean,u_tend_damp_mean,v_tend_damp_mean,w_tend_damp_mean,        &
-       & rhod_mean,mut_mean,z_mean,dph_x_mean,dph_y_mean                                              )
+       & rhod_mean,mut_mean,z_mean,dph_x_mean,dph_y_mean,                                             &
+       & qsq_mean,w2_sgs_mean,uw_sgs_mean,vw_sgs_mean,qke_mean                                      )
 
     IMPLICIT NONE
 
@@ -78,7 +79,8 @@ CONTAINS
        v_tend_pg_mean,v_tend_cor_curv_mean,                                                         &
        w_tend_pg_mean,w_tend_cor_curv_mean,                                                         &
        t_tend_damp_mean,q_tend_damp_mean,u_tend_damp_mean,v_tend_damp_mean,w_tend_damp_mean,        &
-       rhod_mean,z_mean,dph_x_mean,dph_y_mean
+       rhod_mean,z_mean,dph_x_mean,dph_y_mean,                                                    &
+       qsq_mean,w2_sgs_mean,uw_sgs_mean,vw_sgs_mean,qke_mean
 
     REAL, DIMENSION( ims:ime , jms:jme ) , INTENT(OUT) :: mut_mean
 
@@ -256,6 +258,13 @@ CONTAINS
           dph_x_mean(i,k,j) = 0.
           dph_y_mean(i,k,j) = 0.
         ENDIF
+        IF (config_flags%output_tke_moments .eq. 1) THEN
+          qsq_mean(i,k,j) = 0.
+          w2_sgs_mean(i,k,j) = 0.
+          uw_sgs_mean(i,k,j) = 0.
+          vw_sgs_mean(i,k,j) = 0.
+          qke_mean(i,k,j) = 0.
+        ENDIF
       end DO
       end DO
       end DO
@@ -312,7 +321,9 @@ CONTAINS
        & ph_1, ph_2, phb, zx, zy, alt, dph_x, dph_y,                                             &
        & fnm, fnp, mut, c1h, c2h, c1f, c2f, cf1, cf2, cf3, cfn, cfn1,                            &
        & msfuy, msfvx, msfvy, msftx, msfty,                                                      &
-       & last_timestep, dt                                                                       )
+       & last_timestep, dt,                                                                      &
+       & qke, q_sq, turb_flux_w2, turb_flux_uw, turb_flux_vw,                                    &
+       & QSQ_MEAN, W2_SGS_MEAN, UW_SGS_MEAN, VW_SGS_MEAN, QKE_MEAN                                )
 
     IMPLICIT NONE
 
@@ -361,11 +372,14 @@ CONTAINS
        V_TEND_PG_MEAN,V_TEND_COR_CURV_MEAN,                                                    &
        W_TEND_PG_MEAN,W_TEND_COR_CURV_MEAN,                                                    &
        T_TEND_DAMP_MEAN,Q_TEND_DAMP_MEAN,U_TEND_DAMP_MEAN,V_TEND_DAMP_MEAN,W_TEND_DAMP_MEAN,   &
-       RHOD_MEAN,Z_MEAN,DPH_X_MEAN,DPH_Y_MEAN
+       RHOD_MEAN,Z_MEAN,DPH_X_MEAN,DPH_Y_MEAN,                                                    &
+       QSQ_MEAN,W2_SGS_MEAN,UW_SGS_MEAN,VW_SGS_MEAN,QKE_MEAN
 
     REAL, DIMENSION( ims:ime , jms:jme ) , INTENT(OUT) :: MUT_MEAN
 
     REAL, DIMENSION(ims:ime, kms:kme, jms:jme) , INTENT(OUT) :: w_diag
+
+    REAL, DIMENSION(ims:ime, kms:kme, jms:jme) , INTENT(IN) :: qke, q_sq, turb_flux_w2, turb_flux_uw, turb_flux_vw
 
     REAL, DIMENSION(ims:ime, kms:kme, jms:jme) , INTENT(IN) :: &
          u_save, v_save, w_2, w_save, ru, rv, ww,              &
@@ -744,7 +758,7 @@ CONTAINS
                 Q_MEAN(i,k,j) = (local_count*Q_MEAN(i,k,j) + Q(i,k,j)*rhom )/count_p1/rho_mean
                 QX_MEAN(i,k,j) = (local_count*QX_MEAN(i,k,j) + qx*rhox )/count_p1/rhox_mean
                 QY_MEAN(i,k,j) = (local_count*QY_MEAN(i,k,j) + qy*rhoy )/count_p1/rhoy_mean
-                QQ_MEAN(i,k,j) = (local_count*Q_MEAN(i,k,j) + Q(i,k,j)**2 )/count_p1
+                QQ_MEAN(i,k,j) = (local_count*QQ_MEAN(i,k,j) + Q(i,k,j)**2 )/count_p1
                 FQX_ADV_MEAN(i,k,j)  = (local_count*FQX_ADV_MEAN(i,k,j) + fqx_adv(i,k,j) )/count_p1*fqx_dfac
                 FQY_ADV_MEAN(i,k,j)  = (local_count*FQY_ADV_MEAN(i,k,j) + fqy_adv(i,k,j) )/count_p1*fqy_dfac
               ENDIF
@@ -874,6 +888,23 @@ CONTAINS
             WD_MEAN(i,k,j) = (local_count*WD_MEAN(i,k,j) + w_diag(i,k,j)*rhoz )/count_p1/rhoz_mean
             DPH_X_MEAN(i,k,j) = (local_count*DPH_X_MEAN(i,k,j) + dph_x(i,k,j)*rhoz )/count_p1/rhoz_mean
             DPH_Y_MEAN(i,k,j) = (local_count*DPH_Y_MEAN(i,k,j) + dph_y(i,k,j)*rhoz )/count_p1/rhoz_mean
+          ENDIF
+
+          ! Subgrid second moments of the turbulence scheme: plain time means (the closure
+          ! variables are kinematic already; no density weighting, no last-step correction).
+          ! Branch on the physics switch, not on the data: the pbl3d arrays are allocated
+          ! only under pbl3d_used, qke is filled only by MYNN. Face levels for the 3D closure
+          ! (no k < kde guard, as ZWIND_MEAN); mass levels for qke.
+          IF (config_flags%output_tke_moments .eq. 1) THEN
+            IF (config_flags%pbl3d_used .eq. 1) THEN
+              QSQ_MEAN(i,k,j)    = (local_count*QSQ_MEAN(i,k,j)    + q_sq(i,k,j)         )/count_p1
+              W2_SGS_MEAN(i,k,j) = (local_count*W2_SGS_MEAN(i,k,j) + turb_flux_w2(i,k,j) )/count_p1
+              UW_SGS_MEAN(i,k,j) = (local_count*UW_SGS_MEAN(i,k,j) + turb_flux_uw(i,k,j) )/count_p1
+              VW_SGS_MEAN(i,k,j) = (local_count*VW_SGS_MEAN(i,k,j) + turb_flux_vw(i,k,j) )/count_p1
+            ENDIF
+            IF (config_flags%bl_pbl_physics .eq. MYNNPBLSCHEME .and. k .lt. kde) THEN
+              QKE_MEAN(i,k,j) = (local_count*QKE_MEAN(i,k,j) + qke(i,k,j) )/count_p1
+            ENDIF
           ENDIF
 
           IF (config_flags%output_sgs_fluxes) THEN
