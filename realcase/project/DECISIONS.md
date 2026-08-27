@@ -35,6 +35,17 @@ of the planned Fortran, to be bundled with the D1/D2 switches; until then the tw
 frames give it to 30-min sampling accuracy. The X7 10:00 meanout reads zero (6-h WRFlux setting of
 that segment) — use the 30-min frames from 10:30 on.
 
+**Addendum (16:00) — the temporal partition through the day and against the lidar.** Survey with
+`tke_res_t` (floor, 150–400 m; temporal / w-box fraction): 3D closure **0.64 / 0.66** at 13 UTC,
+**0.57 / 0.56** at 16 UTC; ICON-MYNN 0.05 / 0.15 and 0.05 / 0.11; goger-18 0.11 / 0.17, goger-19 0.05 / 0.09,
+ECMWF-MYNN 0.09 / 0.16 — the ±2 km w-box proxy is calibrated to ±0.02 on the floor by day (on slopes it
+runs 0.2 high: 0.50 vs 0.68). Lidar, Kolsass 100–1500 m, log₁₀(model/obs) with the temporal resolved part
+(`tke_total_t`): 3D closure **−0.20 by day** (factor 1.6 low), −0.40 evening, −0.56 all; against −0.39 /
+−0.41 / −0.83 with the w-box proxy and +0.84 / +0.97 with the ±5 km u,v,w box. D3 (A17) weakens
+accordingly: the daytime shortfall is a factor 1.6, the evening one 2.5, the night unreadable. Trap: the X7
+segment's meanouts are 6-h means (07, 10 UTC; the 10 UTC one all zero) — `MeanFrame.avg_interval_s`
+guards them; the 3D run's temporal partition therefore starts at 10:30.
+
 ---
 
 **2026-08-27, ~14:30 — D2 soundness check done with the i-Box, the lidar and Radfeld: the 3D closure's excess wind sits between 10 and 100 m (shear ratio 1.68 vs 1.21 observed), its q² at the lowest level is 0.17 of the surface-layer value B₁^{2/3}u*², and its master length in the lowest 60 m is 0.6 κz. Both halves of the D2 hypothesis hold.**
