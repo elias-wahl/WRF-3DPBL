@@ -7,6 +7,70 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-08-27, ~11:00 — boundary-layer diagnostics built into `proc` in three levels; first model-only survey of five runs: the 3D closure resolves 50–80 % of the daytime TKE, its nocturnal length scale sits *at* the buoyancy cap, its slope winds are the strongest and longest-lived; the sounding statistics put the ICON-forced control closest to the radiosondes.**
+
+Elias asked for grey-zone diagnostics in the package's three-level structure (extraction →
+calculation → output) and for a run over the latest g18 (7992604), g19 (8011253), ICON-MYNN
+(8320565, `og`), the 3D closure (stitched day 9999999) and the latest unmodified ECMWF-MYNN run
+(**7703194**, `ecmwf`; 8306272 is the `scf=5` variant and was left out). Built and committed
+(`wrf-proc` 782fb45…4341982, design in `proc/docs/DIAGNOSTICS.md`): level 1 `DomainFrame` /
+`DomainLoader` (full-domain fields on the mass grid, face/mass read from the array — MYNN's
+`EL_PBL`/`TKE_PBL` are face fields, contrary to `compare_mynn.py`'s header; `tke` from `Q_SQ` or
+`QKE`), level 2 `proc/turbulence.py` + `proc/stats.py`, level 3 `meta_sounding_stats`,
+`meta_lidar_stats`, `meta_turbulence` with their plot modules. Validation: the loader reproduces
+`compare_mynn`'s 04:00 / 13:00 lowest-100 m subgrid ratios (0.17 / 0.318 vs 0.17 / 0.32). Long
+stages run on a compute node (`wrf3dpbl-diag/diag.slurm`; the frame loop is a process pool — 120
+frames in 71 s on 24 workers; login-node dask clusters collided on the process limit).
+`compare_mynn`'s `slope/spinup/lscale/exp[1–3]` are now level-2 functions; `t1/cap/exp[4–5]/fog`
+stay in `wrf3dpbl-diag` (they interrogate the limiter machinery, not the boundary layer).
+
+**Model-only survey, 18 July, hourly, lowest 2 km, terrain classes by 5 km local relief (floor
+31 %, slope 62 %, ridge 3 %):**
+
+| quantity (floor class unless noted) | 3D closure | ICON-MYNN | g18 | g19 | ECMWF-MYNN |
+|---|---|---|---|---|---|
+| subgrid TKE 150–350 m, 13 UTC (m² s⁻²) | **0.21** | 1.25 | 1.86 | 2.58 | 1.90 |
+| resolved TKE from w (1.5 σ_w², ±2 km box), same | **0.41** | 0.22 | 0.38 | 0.26 | 0.37 |
+| resolved fraction (w), 13 UTC | **0.66** | 0.15 | 0.17 | 0.09 | 0.16 |
+| BL depth from TKE, 07 / 10 / 13 UTC (m) | 231 / 949 / 1536 | 474 / 1106 / 1529 | 577 / 1703 / 2002 | 633 / 1840 / 2159 | 527 / 1578 / 1885 |
+| median upslope wind < 50 m on slopes, 13 / 16 UTC (m s⁻¹) | **1.24 / 0.73** | 0.98 / 0.60 | 0.80 / 0.44 | 0.65 / 0.34 | 0.77 / 0.43 |
+| downslope at 04 / 19 UTC | −0.64 / −0.77 | −0.57 / −0.78 | −0.68 / −1.00 | −0.70 / −1.08 | −0.71 / −1.04 |
+| L·N/q median, live stable cells, 04 UTC (resolved-gradient N) | **0.50** | 0.33 | 0.34 | 0.33 | 0.55 |
+
+Mechanisms: (1) **Partition.** With the isotropic w-based estimate the 3D closure resolves two
+thirds of the daytime floor TKE and MYNN 10–17 %; the 3D run's *total* by this measure (0.62) is
+40 % of ICON-MYNN's (1.47), whereas the ±5 km u,v,w box used on 08-22/24 gave parity — the
+difference is the mesoscale u,v structure inside a 10 km box. Both are stored; the w-based one is
+the turbulence measure, the full one the lidar's counterpart. At night every "resolved fraction"
+reads ~1 in every run: the box variance of w at night (σ_w ≈ 0.1 m s⁻¹) is gravity-wave/drainage
+vertical motion over terrain, not turbulence — the night columns of the fraction panels are
+uninformative by construction. (2) **BL depth.** The 3D run's TKE-defined layer grows latest and
+shallowest in the morning (231 m at 07 UTC vs 470–630 m; 949 m at 10 vs 1100–1840) and peaks at
+the same 1.5 km as ICON-MYNN; the goger runs and ECMWF-MYNN reach 1.9–2.3 km. The Innsbruck 10 UTC
+radiosonde's parcel mixed layer is 900 m — closest to the 3D run's 949 m (different definitions,
+same order). (3) **Length scale.** In the 3D run the closure's own `PBL3D_N_TAU` has p99 = max =
+0.53 exactly (the cap holds) and a nocturnal median of 0.50: **at night the master length is
+buoyancy-limited in at least half of the live stable cells** — the nocturnal deficit is tied to
+`pbl3d_n_tau_max`, which the standing rule keeps untouched until the observations are held.
+MYNN's blended length sits at 0.33 q/N at night (its α₂ = 1 cap is inert) and rises to 0.8–0.9 in
+the morning transition. (4) **Slope winds** are physically ordered in every run (up by day, down
+by night, 60–73 % of slope cells upslope at 10–13 UTC); the 3D closure's daytime upslope flow is
+the strongest and persists two hours longer — consistent with its stronger up-valley wind at the
+stations (08-24). (5) **Ri–TKE**: by day all runs keep TKE 0.1–1 m² s⁻² beyond Ri_g = 0.25 (resolved
+gradients on a 500 m grid smooth thin shear layers — Ri_g is biased high); at night the 3D
+closure's TKE at Ri_g > 1 spans 10⁻⁴–10⁻¹ with its bulk at 10⁻³–10⁻², MYNN's sits at its floor.
+**Sounding statistics** (9 launches, layer means; the 3D run's virtual soundings are on the
+compute-node job): all four MYNN-family runs are +2.4 K too warm below 500 m, fading to 0 by
+1.5 km (the station warm bias, not a closure signature); the ICON-forced control is 1 g kg⁻¹
+moister than the three ECMWF-forced runs below 1 km and closest to the soundings (θ RMSE 1.5 K,
+wind-vector RMSE 2.3 m s⁻¹ vs 1.7–1.9 K and 3.1–3.5 m s⁻¹); the 500–50 m θ difference is captured
+by all; parcel mixed-layer depths are over-deepened by all at midday. The "valley-wind layer
+depth" scalar (first reversal of the along-valley component) is too noisy and will be replaced
+by the height and strength of the along-valley wind maximum. Figures and CSVs under
+`plot_output/diagnostics/{turbulence,soundings,lidar}/`.
+
+---
+
 **2026-08-27, ~10:00 — the `proc` package could not see the 3D closure's turbulence: every `3dpbl` TKE figure before today is zero. Fixed; first valid Kolsass TKE-lidar comparison running. Diagnosis scripts collected into their own repo.**
 
 Measured on the stitched day `wrf_output/9999999`: the 3D-PBL binary writes MYNN's `QKE`,
@@ -45,7 +109,37 @@ as the partition predicts; goger-19 over-predicts the whole 10–17 UTC column (
 At night all three models are near zero while the lidar shows 0.5–1 pockets at 200–800 m
 (01–06 UTC) — consistent with the nocturnal deficit being real in the closure *and* MYNN
 being no better here. Next: add the resolved part to the virtual lidar before reading
-amplitudes. Housekeeping:
+amplitudes.
+**Numbers (10:05, `wrf3dpbl-diag/tke_lidar_bands.py`)** — Kolsass column (nearest cell),
+layer-mean TKE per frame, median over the frames of each time band, m² s⁻²; models = subgrid
+only, ( ) = model/lidar:
+
+| UTC band | height | lidar | MYNN | 3D closure | goger-19 |
+|---|---|---|---|---|---|
+| night 01–05 | 50–200 m | 0.28 | 0.0005 (0.00) | 0.0000 (0.00) | 0.009 (0.03) |
+| night 01–05 | 200–500 m | 0.19 | 0.0005 (0.00) | 0.0000 (0.00) | 0.007 (0.04) |
+| morning 07–10 | 50–200 m | 0.71 | 0.37 (0.52) | 0.0005 (0.00) | 0.54 (0.77) |
+| morning 07–10 | 200–500 m | 0.35 | 0.11 (0.33) | 0.0004 (0.00) | 0.33 (0.95) |
+| afternoon 12–17 | 50–200 m | 1.10 | 0.69 (0.63) | 0.46 (0.42) | 1.33 (1.21) |
+| afternoon 12–17 | 200–500 m | 0.48 | 0.75 (1.57) | 0.22 (0.45) | 1.62 (3.39) |
+| afternoon 12–17 | 500–1000 m | 0.45 | 0.65 (1.44) | 0.35 (0.77) | 2.08 (4.62) |
+| evening 18–21 | 50–200 m | 0.94 | 0.09 (0.09) | 0.31 (0.32) | 0.26 (0.28) |
+| evening 18–21 | 200–500 m | 0.85 | 0.02 (0.03) | 0.18 (0.22) | 0.16 (0.18) |
+
+Three things the figure only hinted at. (1) **At the valley floor both closures are
+laminar at night**: MYNN's subgrid TKE at Kolsass is 5·10⁻⁴, three orders below the
+lidar's 0.2–0.3 — the domain-wide "3D = 0.17 of MYNN" nocturnal ratio is a slope/ridge
+statistic, and "MYNN over-mixes at night" is not what this column shows; whether the
+lidar's 0.2–0.3 is turbulence or the VAD product's noise floor (EDR is in the same files)
+must be settled before it becomes a target. (2) **The 3D closure's subgrid TKE stays at
+the floor through the morning transition (07–10 UTC, 5·10⁻⁴) while MYNN carries half the
+lidar's** — the 08-22 partition result (subgrid 0.28 of MYNN, 85–91 % resolved) was at
+08:00 domain-wide; at this column the subgrid part is 10⁻³ of MYNN's, so either the
+resolved motions carry it all here or the morning onset at the valley floor is late.
+Decidable from a Kolsass box variance at 08:00–10:00 — not yet run. (3) **Evening**:
+after the 15:00 wind maximum the lidar holds 0.9 m² s⁻² below 500 m until 21 UTC; MYNN
+collapses to 0.03–0.09 of it, the 3D closure keeps 0.2–0.3 — 3–7× MYNN, the same
+direction as its better daytime up-valley wind at the stations. Housekeeping:
 `synthesize_day.sh` re-run — X9c (8502167) is now in the stitched day, **47/47 half-hour frames**;
 X9n (8492417, night under the fix) completed 08-24 21:57, not yet compared with X7. New repo
 **`$DATA/wrf3dpbl-diag`** (github.com/elias-wahl/wrf3dpbl-diag, private): `compare_mynn.py`,
