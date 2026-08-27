@@ -1915,3 +1915,39 @@ the follow-up fog runs of that plan were dropped, their premise being gone.
 forecasts (GRIB), not station observations**. Any earlier text in this repository calling
 them "TEAMx observations" is wrong; station data for the IOPs is not on disk and has to be
 asked for.
+
+## A15 — OPEN (2026-08-27): the morning transition is too slow — transport-limited entrainment at the inversion
+
+Observed: parcel mixed-layer depth 330–550 m at 10–11 UTC vs 900–950 m (Innsbruck 10, Kolsass 11 UTC);
+50–500 m θ difference 3–4.4 K at 08–11 UTC vs 0.7–1.7 K. Model-only: largest sensible heat flux of the
+five runs (175 vs 115 W m⁻² floor) yet the shallowest layer per unit of heat input (`bl_growth`).
+Soundness check done from the archive (`proc/meta/meta_entrainment.py`; DECISIONS 2026-08-27 ~14:00):
+in the interface layer 0.8 < z/h < 1.2 the closure's turbulent transport of TKE is +1.5e-6 m² s⁻³ against
+MYNN's +9e-5 (50× weaker; transport/|buoyancy destruction| 0.1–0.2 vs 3.4), TKE at the interface is 0.15
+of the column maximum (not at the floor), the interface length is at the buoyancy cap in half the cells
+at 08–10 UTC and all of them from 11 UTC. Fix candidates (plan of 2026-08-27, all default-off):
+(1) `pbl3d_sq` — the hard-coded `Sq = 0.20` of `Calc_q_sq_vertical_diffusion` (module_pbl3d.F:5911)
+as a namelist value, test 0.6 / 1.0; expected to close a fraction of the deficit only (MYNN's transport
+carries the EDMF mass-flux part); (2) `pbl3d_l_opt = 2` (Nakanishi convective length; loosens the
+nocturnal cap — night judged separately); (3) Ri-dependent cap relaxation, last. Test: 09→13 UTC
+restart segment together with A16, judged by the 11 UTC sounding depth and the 100 m onset time.
+
+## A16 — OPEN (2026-08-27): daytime wind aloft runs away from an under-mixed surface layer — up-valley onset at 100 m two hours early
+
+Observed (i-Box 2–12 m, lidar, Radfeld; `proc/meta/meta_surface_wind.py`; DECISIONS ~14:30/14:45):
+onset window 10:30–13 UTC Kolsass 100 m wind 6.0 m s⁻¹ vs 2.5 observed (100 m / 10 m ratio 1.91 vs 0.99),
+first half hour above 4 m s⁻¹ at 100 m 11:00 vs 13:00 observed; in the established afternoon/evening the
+profile is right at both levels (6.0/9.4 vs 6.4/10.0; 3.5/6.0 vs 3.3/6.1) — the best of the five. Near-wall
+checks (floor, 12–16 UTC): q²(k₀) = 0.17 of B₁^{2/3}u*² (MYNN imposes it: 1.2–1.6); `L_MASTER` = 0.6 κz at
+k₀…k₃ (MYNN 1.15–1.35) — K_m ≈ ¼ of the surface-layer equilibrium. The closure only floors q² at the
+surface (module_pbl3d_my.F:306). Tied to A15 (same morning). Fix candidate: `pbl3d_sfc_qsq_bc` (default 0):
+q²(k_ts) ≥ B₁^{2/3}u*² **and** a κz blend of `L_MASTER` in the lowest levels — the check says both.
+
+## A17 — OPEN, weakest (2026-08-27): TKE in the daytime/evening shear layers ≈ 2.5× too weak against the (preliminary) lidar product
+
+log₁₀(model/obs) of subgrid + resolved-w TKE −0.39 (day) / −0.41 (evening) in 100–1500 m; the evening
+near-surface maximum (17–19 UTC) has the right timing at a fraction of the amplitude. Hypothesis: the strain
+cap `pbl3d_sk_eps_max = 6` (load-bearing at night) clips shear production where Ri_g < 0.25. Soundness
+check not yet done: fraction of `PBL3D_T1_RATIO < 0.999` cells by Ri_g and time of day from a 1-min
+stream-23 segment 16→20 UTC. Fix candidate: `pbl3d_limiter_opt = 2` (exists, never run), night check
+repeated. Depends on the WRFlux second moments (plan Part 1) for a temporal resolved TKE.
