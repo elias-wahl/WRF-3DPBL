@@ -7,6 +7,47 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-08-27, ~14:00 — D1 soundness check done from the archive: the slow morning growth of the 3D closure is transport-limited. Its vertical turbulent transport of TKE at the inversion is 50× weaker than MYNN's; TKE at the interface is not at the floor; from 11 UTC every interface cell has its length scale at the buoyancy cap.**
+
+Check as planned (plan of 2026-08-27, D1), but no restart segment was needed: the budget terms are
+instantaneous fields in the half-hourly `wrfout`. `proc/meta/meta_entrainment.py`
+(`entrainment_check`, 74 s on the login node): valley-floor columns with a TKE-defined layer
+h ≥ 150 m, composites in normalised height z/h at 06–12 UTC of subgrid TKE, resolved w-variance
+(1.5 σ_w², ±2 km), the TKE budget terms (3D: 0.5·`Q_SQ_*`; MYNN: `QSHEAR/QBUOY/QWT/QDISS`) and
+the at-cap fraction (`PBL3D_N_TAU` ≥ 0.52); interface layer 0.8 < z/h < 1.2. Figure and CSV:
+`plot_output/diagnostics/entrainment/entrainment_18.{png,csv}`.
+
+| interface layer, floor class | 3D closure 09 / 10 / 11 UTC | ICON-MYNN 09 / 10 / 11 UTC |
+|---|---|---|
+| turbulent transport of TKE (m² s⁻³) | +2.1e-6 / +1.6e-6 / +1.4e-6 | +8.2e-5 / +9.4e-5 / +9.1e-5 |
+| buoyancy destruction | −1.2e-5 / −0.9e-5 / −1.3e-5 | −2.4e-5 / −2.7e-5 / −3.2e-5 |
+| shear production | +5.2e-5 / +4.2e-5 / +4.0e-5 | +3.9e-5 / +3.1e-5 / +3.9e-5 |
+| transport / |buoyancy destruction| | **0.17 / 0.18 / 0.11** | **3.4 / 3.5 / 2.9** |
+| TKE(h) / TKE_max | 0.17 / 0.16 / 0.14 (TKE(h) ≈ 0.05 m² s⁻²) | 0.09 / 0.09 / 0.09 (0.09–0.12) |
+| resolved 1.5 σ_w² at h (m² s⁻²) | 0.088 / 0.091 / 0.092 | 0.010 / 0.019 / 0.025 |
+| fraction of interface cells at the cap | 0.5 / 0.5 / **1.0** | — |
+| h (median, m) | 759 / 1054 / 1244 | 879 / 1106 / 1303 |
+
+Verdict: **transport-limited, not production-limited.** TKE at the interface is 3× the floor-class
+median floor and relatively larger than MYNN's; what is missing is the flux of TKE into the
+interface: in MYNN the transport term is the largest positive term there (3.4× the buoyancy
+destruction it feeds — the composite shows transport removing 10⁻³ m² s⁻³ from z/h 0.2–0.4 and
+depositing it at 0.5–1.1), in the 3D closure it is 50× smaller at the interface and ≥ 10× smaller
+throughout the column. The interface is fed by local shear production alone and the layer grows
+only as fast as the resolved eddies allow — which by 09 UTC already carry 0.09 m² s⁻² at h, twice
+the subgrid TKE there. Two mechanisms, both real: (i) the q² diffusivity K_q = S_q l q with the
+hard-coded S_q = 0.20 against MYNN's 3 K_m; (ii) the length scale at the interface is at the
+buoyancy cap in half the cells at 08–10 UTC and in all of them from 11 UTC, which shrinks the same
+K_q. Consequence for the fix order of the plan: (1) `pbl3d_sq` stays first, **but a factor 3–5 on
+S_q cannot close a factor-50 gap on its own** — MYNN's transport term carries the EDMF mass-flux
+(non-local) part, which no local diffusivity reproduces; expect (1) to move the 10–11 UTC depth by
+a fraction of the 400 m deficit, and read the remainder as the case for (2)/(3) or a non-local
+term. Also measured: the 3D closure's interface buoyancy destruction is 2–3× weaker than MYNN's —
+less warm air is being entrained, consistent with the over-stable 50–500 m layer at 08–11 UTC in
+the soundings.
+
+---
+
 **2026-08-27, ~12:00 — observation side complete for all five runs; two new diagnostics: the 3D closure is the best of the five against the radiosondes (θ RMSE 1.05 K vs 1.4–1.8; it halves the low-level warm bias), matches the lidar wind where every MYNN variant under-forecasts the afternoon up-valley wind by 2–4 m s⁻¹, but grows its morning mixed layer too slowly *as a response, not for lack of forcing*, and lets nocturnal TKE collapse with Ri faster than any MYNN variant because its length scale sits at the buoyancy cap.**
 
 Runs: `og` ICON-MYNN 8320565, `3dpbl` stitched 9999999, `g18` 7992604, `g19` 8011253, `ecmwf`
