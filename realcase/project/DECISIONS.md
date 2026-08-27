@@ -7,6 +7,42 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-08-27, ~14:30 — D2 soundness check done with the i-Box, the lidar and Radfeld: the 3D closure's excess wind sits between 10 and 100 m (shear ratio 1.68 vs 1.21 observed), its q² at the lowest level is 0.17 of the surface-layer value B₁^{2/3}u*², and its master length in the lowest 60 m is 0.6 κz. Both halves of the D2 hypothesis hold.**
+
+`proc/meta/meta_surface_wind.py` (devel-node job 8527188, 24 workers, ~1 min): the Kolsass i-Box wind at
+2/4/6/12 m (1-min → 30-min means), the lidar from its first gate (57 m), the Radfeld TAWES 10 m wind,
+against every run's diagnosed 10 m wind `U10/V10` and the level winds at the sites (3×3 mean, 47 half
+hours); plus, hourly over the valley floor, q²(k₀)/(B₁^{2/3}u*²) with B₁ = 24 (the Mellor–Yamada
+surface-layer equilibrium MYNN imposes as its lower boundary condition) and `L_MASTER`/(κz) at k₀…k₃.
+Figures/CSVs: `plot_output/diagnostics/surface_wind/`.
+
+| Kolsass, day class (local solar 09–16), mean | obs | 3D closure | ICON-MYNN | g18 | g19 | ECMWF-MYNN |
+|---|---|---|---|---|---|---|
+| 12 m (i-Box) / 10 m (`U10`) wind (m s⁻¹) | 3.30 | 3.62 | 2.11 | 1.39 | 1.01 | 1.53 |
+| 100 m wind (lidar / model level) | 4.00 | **6.06** | 2.64 | 1.61 | 1.21 | 1.80 |
+| shear ratio 100 m / 10 m | **1.21** | **1.68** | 1.25 | 1.16 | 1.20 | 1.18 |
+| Radfeld 10 m, day class | 3.23 | 3.60 | 2.96 | 2.19 | 2.04 | 2.28 |
+| floor, 12–16 UTC: q²(k₀)/(8.3 u*²) median (fraction < 0.5) | (1 by construction in MYNN) | **0.17 (0.91)** | 1.21 (0.00) | 1.31 (0.01) | 1.60 (0.01) | 1.28 (0.00) |
+| floor, 12–16 UTC: L/(κz) at k₀ (9–11 m) … k₃ (60–75 m) | — | **0.61 … 0.70** | 1.16 … 1.36 | 1.15 … 1.35 | 1.14 … 1.35 | 1.14 … 1.35 |
+
+Reading. At 10 m the 3D closure is the best of the five and slightly *fast* (+0.3 m s⁻¹ at Kolsass,
++0.4 at Radfeld — the earlier "6.4 vs 7.2" was the 15:00 maximum, not the day mean); at 100 m it is
+2.1 m s⁻¹ too fast; the observed profile between 12 and 100 m is nearly logarithmic-flat (ratio 1.21) and
+the MYNN family reproduces that shape at half the amplitude. The 3D run's error is therefore *shear in the
+lowest 100 m*, not the wind aloft — the signature of momentum not being extracted from 30–150 m to the
+ground. The two closure quantities that set the near-wall eddy viscosity K_m = l q S_M are both short:
+q² at the lowest level is a factor 6 below the surface-layer equilibrium (the closure only floors q²,
+`module_pbl3d_my.F:306`; MYNN imposes q² = B₁^{2/3}u*² and sits at 1.2–1.6 of it), and the master length
+is 40 % below the wall scaling κz through the lowest four levels (MYNN's blended length is 15–35 % above
+it). K_m ∝ l·q is thus roughly (0.6 × √0.17 ≈ 0.25) a quarter of what a surface layer in equilibrium
+would give. This is the D2 fix as planned — `pbl3d_sfc_qsq_bc` (q²(k_ts) ≥ B₁^{2/3}u*²) plus a κz blend
+of `L_MASTER` in the lowest levels — and the check now says both are needed, not either. Caveats: the
+i-Box and the lidar are one site; the lidar's first gate is 57 m, so the 12→57 m gap is bridged by the
+model levels only; `U10` is the surface-layer scheme's diagnostic and follows k₀ (9 m) closely in every
+run.
+
+---
+
 **2026-08-27, ~14:00 — D1 soundness check done from the archive: the slow morning growth of the 3D closure is transport-limited. Its vertical turbulent transport of TKE at the inversion is 50× weaker than MYNN's; TKE at the interface is not at the floor; from 11 UTC every interface cell has its length scale at the buoyancy cap.**
 
 Check as planned (plan of 2026-08-27, D1), but no restart segment was needed: the budget terms are
