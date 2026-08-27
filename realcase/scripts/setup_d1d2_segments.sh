@@ -23,6 +23,7 @@
 #   setup_d1d2_segments.sh wave1 [--submit]   Dctl Dsq06 Dbc1        (~170 GB)
 #   setup_d1d2_segments.sh wave2 [--submit]   Dsq10 Dsq06bc1         (~115 GB)
 #   setup_d1d2_segments.sh one NAME key=val ... [--submit]
+#   setup_d1d2_segments.sh check NAME ...       namelist diff vs X7 only
 # Two waves because the filesystem had 345 GB free at 97 % on 2026-08-27.
 set -u -o pipefail
 DATA=/gpfs/data/fs72996/ewahl
@@ -38,14 +39,20 @@ COMMON=(--rst "$RST" --start 07 --iofields "$RC/iofields_d1d2.txt"
         --set pbl3d_init_opt=0 --set pbl3d_l0_min=0.0
         --set output_t_fluxes=0 --set output_q_fluxes=0 --set output_u_fluxes=0
         --set output_v_fluxes=0 --set output_w_fluxes=0 --set output_tke_moments=1)
-EXPECTED='restart|start_hour|run_days|run_hours|run_minutes|end_day|end_hour|end_minute|restart_interval|override_restart_timers|iofields_filename|history_interval|auxhist24_interval_m|auxhist24_outname|history_outname|avg_interval|output_._fluxes|output_tke_moments|pbl3d_sq|pbl3d_sfc_qsq_bc|pbl3d_sfc_qsq_zmax'
+EXPECTED='restart|start_hour|run_days|run_hours|run_minutes|end_day|end_hour|end_minute|restart_interval|override_restart_timers|iofields_filename|history_interval|auxhist24_interval_m|auxhist24_outname|history_outname|avg_interval|output_._fluxes|output_tke_moments|pbl3d_sq|pbl3d_sfc_qsq_bc|pbl3d_sfc_qsq_zmax|pbl3d_moist_cond_max'
+# pbl3d_moist_cond_max = 0. is the off default; X7's namelist predates the key (A14), same behaviour.
 
 nl_diff() {   # differences against the parent run's namelist, key by key
   local nl=$1
   echo "=== namelist keys differing from X7 (KNOWN_ISSUES E19); expected: time/output keys + the switch under test"
   diff <(grep -E '^ [a-z0-9_]+ *=' "$PARENT_NL" | sed -E 's/!.*//; s/ +/ /g; s/ *$//' | sort) \
        <(grep -E '^ [a-z0-9_]+ *=' "$nl"        | sed -E 's/!.*//; s/ +/ /g; s/ *$//' | sort) \
-    | grep '^[<>]' | grep -v -E "^[<>] ($EXPECTED) " && echo "!!! UNEXPECTED differences above" || echo "    only expected keys differ"
+    | grep '^[<>]' | grep -v -E "^[<>] +($EXPECTED) " > "$nl.diff_vs_X7" || true   # (pipefail: diff exits 1 on any difference)
+  if [ -s "$nl.diff_vs_X7" ]; then
+    cat "$nl.diff_vs_X7"; echo "!!! UNEXPECTED differences above"
+  else
+    echo "    only expected keys differ"
+  fi
 }
 
 one() {
@@ -74,10 +81,13 @@ case "$MODE" in
     [ "${1:-}" = "--submit" ] && SUBMIT=--submit
     one Dsq10 pbl3d_sq=1.0 && one Dsq06bc1 pbl3d_sq=0.6 pbl3d_sfc_qsq_bc=1
     ;;
+  check)   # namelist diff only, for existing run dirs
+    for n in "$@"; do echo "################ $n"; nl_diff "$DATA/branko_runs/innval_pbl3d_$n/namelist.input"; done
+    ;;
   one)
     NAME=$1; shift
     ARGS=(); for a in "$@"; do [ "$a" = "--submit" ] && SUBMIT=--submit || ARGS+=("$a"); done
     one "$NAME" "${ARGS[@]}"
     ;;
-  *) sed -n '2,27p' "$0"; exit 1 ;;
+  *) sed -n '2,28p' "$0"; exit 1 ;;
 esac
