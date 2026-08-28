@@ -203,9 +203,16 @@ keyed on the script's PID (not on `pgrep -f "compile em_real"`, E2).
 
 ## This cluster
 
-- Account `p72996`; partition `zen3_0512`, QOS `zen3_0512` (MaxWall 3 days);
-  devel QOS `zen3_0512_devel` (10 min, 5 nodes). `zen3_1024`/`zen3_2048` are also
-  allowed but no less loaded. 128 physical cores/node; use `--hint=nomultithread`.
+- Account `p72996`; three allowed Zen3 lanes that differ **only in RAM** (same CPUs, same
+  core-hour cost): `zen3_0512` (512 GB, 638 nodes, the crowded default), `zen3_1024`
+  (1 TB, 136 nodes), `zen3_2048` (2 TB, 20 nodes); QOS name = partition name, MaxWall 3 days;
+  devel QOS `zen3_0512_devel` (10 min, 5 nodes). **Check all three before submitting**
+  (`squeue -p <p> -h -t PD | wc -l; sinfo -p <p> -h -o "%D %T"`) and take the empty lane —
+  on 2026-08-28 the D segments waited 18 h on `zen3_0512` (2249 jobs ahead) while
+  `zen3_1024` had 27 idle nodes. Backfill is gated by the wall-time window, not the node
+  count: 2 × 128 at 5 h beats 1 × 128 at 9:30 when nodes are free; split a segment in halves
+  (`chain_segment.slurm`) when a lane is loaded. 128 physical cores/node; use
+  `--hint=nomultithread`.
 - Toolchain: Spack gcc 12.2.0 + OpenMPI 4.1 via `realcase/env/vsc5.sh` (`module
   purge` is fine here); python + netCDF4 + `ncdump` come with it. Two OpenMPI
   versions land on `PATH`; 4.1.4 wins; left alone deliberately.
