@@ -1112,3 +1112,44 @@ change; `prepare_namelist.py` gets its range check in the same commit. Done for 
 
 **Fix:** anchored to `^#SBATCH --hint=nomultithread` (same commit as `resubmit_d_1node.sh`). Rule: a grep that gates an edit of a SLURM header must anchor on `^#SBATCH`. `Dctl` was deliberately left as X7 (no hint) — same allocation as the reference for the bit-for-bit check; the 1-node D runs carry the hint.
 
+
+## E26. WRFlux's flux-output mode is not bit-neutral: `output_*_fluxes = 1` vs `0` changes the model trajectory
+
+**Symptom (2026-08-28):** the control segment `Dctl` (new binary, all switches off, WRFlux flux outputs OFF,
+`output_tke_moments = 1`) was not bit-identical to X7 (flux outputs ON) from its first frame: 99 % of
+cells differ at 07:30, max |ΔU| 8 m s⁻¹, ΔT2 up to 6 K, growing to ΔMU 131 Pa by 10:00.
+
+**Attribution (six-minute 2×128 devel runs from X7's 07:00 restart, `exp/BB*`, per-variable
+`bitcompare.py`):** flux outputs off vs on with everything else equal (BBT2 vs BBB) → NOT identical from
+step 90; `output_tke_moments` 1 vs 0 with flux outputs on (BBT1 vs BBB) → identical; the same with flux
+outputs off (BBA vs BBT2) → identical; restart at 07:03 vs continuous (BBA2 vs BBA) → identical.
+So the seed is upstream WRFlux, not the added averaging code and not the restart path. The only solver-side
+code that runs exclusively in flux mode is the halo exchange `HALO_EM_WRFLUX` of `u_save, v_save, w_save,
+dph_x, dph_y` inside the Runge–Kutta loop (`Registry.EM_COMMON:3660`, `solve_em.F:1754`); `u/v/w_save`
+are the solver's own working arrays, so halo cells read afterwards differ. Whether that is the whole
+mechanism is not proven; that flux mode changes bits is measured.
+
+**Consequence:** a run with the flux outputs off is never bit-comparable with one that has them on; the
+difference is a last-bit seed that grows chaotically in the convective boundary layer (E14 class), so
+statistics are unaffected. **Rules:** (1) a bit-for-bit gate must hold the WRFlux stream settings fixed
+between the two runs; (2) the control of an experiment set is a run with the *same* stream settings
+(`Dctl`), never X7/X9 from the archive; (3) the six-minute devel-run design of 2026-08-28 (same restart,
+same layout, one namelist key changed) is the cheap way to attribute any future bit difference.
+
+## E27. Restart segments that cross 10:18 need the A14 gate — the template default `pbl3d_moist_cond_max = 0.` is the pre-fix behaviour
+
+**Symptom (2026-08-28):** `Dctl` (07→13 from X7's 07:00 restart, `pbl3d_moist_cond_max = 0.`) blew up at
+11:04:10 at (i=419, j=292, k=8), a 1255 m slope cell, sensible heat flux 332 W m⁻², 11:00 state
+unremarkable (|W| ≤ 2.8 m s⁻¹, q² ≤ 2.9 m² s⁻²): W +13 → −77 m s⁻¹ in one 2-s step, w-CFL 7.2, sfclay NaN
+two cells away — the A14 signature (X8a, 10:18, same run window). The four switch segments carried the
+same 0 and were held before they started.
+
+**Cause:** `setup_d1d2_segments.sh` set the gate to 0 on purpose, to keep the bit-for-bit match with X7
+(pre-A14) — forgetting that the segments run through the A14 window. The template
+`namelist.input.pbl3d` still carries `0.` ("1e4 recommended when enabled"), so any run built from it
+without `--set pbl3d_moist_cond_max=10000.0` is a pre-fix run.
+
+**Fix:** the five D namelists set to 10000.0 before launch; `setup_d1d2_segments.sh` writes the gate. The
+bit-for-bit question is answered by the six-minute devel runs (E26), not by a segment. Rule: any run that
+enters convective daytime (anything past ~10:00) carries `pbl3d_moist_cond_max = 10000.0`, the production
+value since X9a (DECISIONS 2026-08-24 10:15).

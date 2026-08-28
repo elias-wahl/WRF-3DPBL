@@ -7,6 +7,26 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-08-28, ~15:30 — `Dctl` blew up at 11:04 (A14 gate off — my setup error); the bit-for-bit gate against X7 failed for a different reason: WRFlux's flux-output mode itself is not bit-neutral (E26). The added code is bit-neutral; the binary check against a reference build is the last open item.**
+
+*What happened.* `Dctl` (8531824, 2 × 128) crashed at simulation time 11:04:10 with the A14 signature (W +13 → −77 m s⁻¹ in one step at a 1255 m slope cell under 332 W m⁻² of heating; E27). All five D namelists had `pbl3d_moist_cond_max = 0.` — set deliberately on 08-27 to match X7 bit for bit, forgetting that the 07→13 segments cross the window that killed X8a at 10:18. Fixed in the four pending namelists (10000.0, the X9 production value) before they started; `setup_d1d2_segments.sh` now writes it.
+
+*The bit-for-bit gate.* `Dctl` archived 07:30–11:00, so the check ran: NOT identical from the first frame, domain-wide (99 % of cells, max |ΔU| 8 m s⁻¹ at 07:30, ΔMU 131 Pa at 10:00) — a trajectory divergence seeded at the restart. Attribution with six-minute 2 × 128 devel runs from the same restart (`exp/BB*`, ≈8 min each, per-variable `bitcompare.py`):
+
+| pair | differs by | verdict |
+|---|---|---|
+| BBT2 vs BBB | WRFlux flux outputs off vs on (new binary, moments off) | NOT identical |
+| BBT1 vs BBB | `output_tke_moments` 1 vs 0 (flux outputs on) | identical |
+| BBA vs BBT2 | `output_tke_moments` 1 vs 0 (flux outputs off) | identical |
+| BBA2 vs BBA | restart at 07:03 vs continuous | identical |
+| BBC vs BBB | reference build `cf08b0463` vs new binary, X7 settings | PENDING_BBC |
+
+The seed is WRFlux's flux mode (its `u/v/w_save` halo exchange is the only flux-only solver code; mechanism plausible, not proven), an upstream property; the added averaging code and the restart path are bit-neutral. Hence the D runs (flux outputs off, to keep the 30-min WRFlux frame at 1.7 GB instead of 9.5 GB) can never be bit-compared with X7; their control is `Dctl` with the same stream settings, X7/X9 remain the statistical references only — which is how the comparisons were planned anyway.
+
+*Queue.* The four switch jobs (8533211–14) are held until BBC passes; `Dctl` resubmitted as 8539159 (1 node, 9:30, gate on, held). Reference build: worktree `branko_ref` at `cf08b0463` (parent of the switch commit; includes the A14 fix), serial login-node build, `branko/main/wrf.exe` untouched. Disk: BB* archives ≈ 8 GB each (six-minute runs), `exp/Dctl/wrf_output/8531824` (48 GB, 07:30–11:00 of the crashed run) kept until the rerun archives.
+
+---
+
 **2026-08-28, ~09:00 — `Dctl` running (started 07:37, 1.34 s/step, finish ≈12:00); the four 1-node jobs trimmed to 9:30 h and un-handicapped.**
 
 `Dctl` (8531824) started on the 2-node reference layout; the bitcompare job fires on its completion. The four 1-node switch jobs had not backfilled — their 10:30 request was the obstacle, not the node count (a node free for < 10.5 h before the forming reservation can take a 5:30 2-node job but not a 10:30 1-node one). Elias: trim the time, drop the `--nice` handicap. Done by `realcase/scripts/requeue_tune_d_1node.sh` (`scontrol update TimeLimit=9:30:00 Nice=0` on the four pending jobs). Why 9:30: 1.34 s/step measured on 256 ranks; ranks-per-node is 128 either way, so per-rank memory bandwidth is unchanged and the step time scales ≈ linearly with subdomain size → 2.7–2.9 s/step on 128 ranks, 8.1–8.7 h + ~15 min restart read; 9:30 keeps ≈45 min margin (9:00 would not, and running out of wall late in the segment wastes it all). With nice gone all four sit at the same priority (109532); SLURM breaks the tie by job ID, so submission order still ranks **Dsq06bc1 > Dsq06 > Dbc1 > Dsq10** — the candidate keeps first claim.
