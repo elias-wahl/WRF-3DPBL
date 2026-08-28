@@ -7,7 +7,7 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
-**2026-08-28, ~15:30 — `Dctl` blew up at 11:04 (A14 gate off — my setup error); the bit-for-bit gate against X7 failed for a different reason: WRFlux's flux-output mode itself is not bit-neutral (E26). The added code is bit-neutral; the binary check against a reference build is the last open item.**
+**2026-08-28, ~14:00 — `Dctl` blew up at 11:04 (A14 gate off — my setup error); the bit-for-bit gate against X7 failed for a different reason: WRFlux's flux-output mode itself is not bit-neutral (E26). The added code is bit-neutral; the binary check against a reference build is the last open item.**
 
 *What happened.* `Dctl` (8531824, 2 × 128) crashed at simulation time 11:04:10 with the A14 signature (W +13 → −77 m s⁻¹ in one step at a 1255 m slope cell under 332 W m⁻² of heating; E27). All five D namelists had `pbl3d_moist_cond_max = 0.` — set deliberately on 08-27 to match X7 bit for bit, forgetting that the 07→13 segments cross the window that killed X8a at 10:18. Fixed in the four pending namelists (10000.0, the X9 production value) before they started; `setup_d1d2_segments.sh` now writes it.
 
@@ -19,11 +19,13 @@ lessons file) and not things `branko/realcase/README.md`,
 | BBT1 vs BBB | `output_tke_moments` 1 vs 0 (flux outputs on) | identical |
 | BBA vs BBT2 | `output_tke_moments` 1 vs 0 (flux outputs off) | identical |
 | BBA2 vs BBA | restart at 07:03 vs continuous | identical |
-| BBC vs BBB | reference build `cf08b0463` vs new binary, X7 settings | PENDING_BBC |
+| BBC vs BBB | reference build `cf08b0463` vs new binary, X7 settings | **identical** (14:22) |
 
 The seed is WRFlux's flux mode (its `u/v/w_save` halo exchange is the only flux-only solver code; mechanism plausible, not proven), an upstream property; the added averaging code and the restart path are bit-neutral. Hence the D runs (flux outputs off, to keep the 30-min WRFlux frame at 1.7 GB instead of 9.5 GB) can never be bit-compared with X7; their control is `Dctl` with the same stream settings, X7/X9 remain the statistical references only — which is how the comparisons were planned anyway.
 
-*Queue.* The four switch jobs (8533211–14) are held until BBC passes; `Dctl` resubmitted as 8539159 (1 node, 9:30, gate on, held). Reference build: worktree `branko_ref` at `cf08b0463` (parent of the switch commit; includes the A14 fix), serial login-node build, `branko/main/wrf.exe` untouched. Disk: BB* archives ≈ 8 GB each (six-minute runs), `exp/Dctl/wrf_output/8531824` (48 GB, 07:30–11:00 of the crashed run) kept until the rerun archives.
+*Verdict (14:22).* BBC (reference binary, X7 settings) vs BBB (new binary, same settings): bit-for-bit identical on every variable at 07:03 and 07:06 — the rebuilt binary reproduces the last good binary exactly with the switches off; rule 2 of the working method is satisfied. The whole non-reproducibility of `Dctl` against X7 is WRFlux's flux mode (E26) plus the A14 gate after 10:00.
+
+*Queue.* The four switch jobs (8533211–14) were held until 14:10, then released on Elias's call before the BBC verdict (the new code paths were already proven bit-neutral); `Dctl` resubmitted as 8539159 (1 node, 9:30, gate on, held). Reference build: worktree `branko_ref` at `cf08b0463` (parent of the switch commit; includes the A14 fix), serial login-node build, `branko/main/wrf.exe` untouched. Disk: BB* archives ≈ 8 GB each (six-minute runs), `exp/Dctl/wrf_output/8531824` (48 GB, 07:30–11:00 of the crashed run) kept until the rerun archives.
 
 ---
 
