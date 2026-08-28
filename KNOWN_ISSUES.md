@@ -1150,6 +1150,8 @@ same 0 and were held before they started.
 without `--set pbl3d_moist_cond_max=10000.0` is a pre-fix run.
 
 **Fix:** the five D namelists set to 10000.0 before launch; `setup_d1d2_segments.sh` writes the gate. The
-bit-for-bit question is answered by the six-minute devel runs (E26), not by a segment. Rule: any run that
+bit-for-bit question is answered by the six-minute devel runs (E26), not by a segment. **Measured 2026-08-29:**
+the gate fires from 07:30 on (2–4 × 10⁻⁴ of live faces per frame have cond > 10⁴ in the ungated run;
+DECISIONS 2026-08-29 00:30), so a gated run is not bit-comparable with X7 at any hour. Rule: any run that
 enters convective daytime (anything past ~10:00) carries `pbl3d_moist_cond_max = 10000.0`, the production
 value since X9a (DECISIONS 2026-08-24 10:15).
