@@ -29,6 +29,8 @@
 #   WRFLUXMIN    WRFlux averaging interval in minutes (default 360; Elias 2026-08-22: 30
 #                for everything from here on -- 6 h means are too coarse, and with 30-min
 #                means the segment boundaries no longer need to sit on 6-h boundaries)
+#   NODES, PARTITION, IOFIELDS  (optional) layout, lane and iofields file of the segment
+#                (defaults 2, the template lane, none = previous behaviour); inherited by later links.
 #   NEXT_SEG, NEXT_RST_DATE, NEXT_START, NEXT_HOURS, NEXT_WTIME  (optional) the
 #                segment after this one; a chain job for it is queued afterok SEG.
 #   NEXT2_SEG, NEXT2_RST_DATE, NEXT2_START, NEXT2_HOURS, NEXT2_WTIME  (optional) the
@@ -48,8 +50,10 @@ RST=$PREV_RUNDIR/wrfrst_d01_$RST_DATE
 echo "chain: building $SEG from $RST at $(date)"
 [ -f "$RST" ] || { echo "!!! restart file missing: $RST"; exit 1; }
 WRFLUXMIN=${WRFLUXMIN:-360}
+NODES=${NODES:-2}; PARTITION=${PARTITION:-}; IOFIELDS=${IOFIELDS:-}   # 2026-08-28: lane/layout/iofields of the segment; defaults = previous behaviour
+xtra=(); [ -n "$PARTITION" ] && xtra+=(--partition "$PARTITION"); [ -n "$IOFIELDS" ] && xtra+=(--iofields "$IOFIELDS")
 out=$("$RC/scripts/setup_restart_run.sh" "$SEG" --rst "$RST" --start "$START" --hours "$HOURS" \
-        --time "$WTIME" --nodes 2 --wrflux-min "$WRFLUXMIN" \
+        --time "$WTIME" --nodes "$NODES" ${xtra[@]+"${xtra[@]}"} --wrflux-min "$WRFLUXMIN" \
         --set restart_interval=180 --set pbl3d_init_opt=0 --set pbl3d_l0_min=0.0 $EXTRA_SETS --submit 2>&1)
 rc=$?
 echo "$out" | tail -40

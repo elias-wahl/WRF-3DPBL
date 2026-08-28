@@ -16,7 +16,7 @@
 #   setup_restart_run.sh <NAME> --rst <wrfrst file> --start HH[:MM] --hours H \
 #       [--minutes M] [--stream23-min N] [--stream23-begin-min N] \
 #       [--iofields FILE] [--history-min N] [--wrflux-min N] \
-#       [--set key=value ...] [--nodes N] [--time HH:MM:SS] [--qos devel] \
+#       [--set key=value ...] [--nodes N] [--time HH:MM:SS] [--qos devel] [--partition P] \
 #       [--submit]
 #
 # Examples:
@@ -44,7 +44,7 @@ NAME=$1; shift
 [[ "$NAME" =~ ^[A-Za-z0-9_]+$ ]] || { echo "NAME must be alnum/underscore: $NAME" >&2; exit 1; }
 
 RST=""; START=""; HOURS=""; MINUTES=0; S23MIN=""; S23BEGIN=""
-IOFIELDS=""; HISTMIN=30; WRFLUXMIN=360; NODES=2; WTIME="03:00:00"; QOS=""
+IOFIELDS=""; HISTMIN=30; WRFLUXMIN=360; NODES=2; WTIME="03:00:00"; QOS=""; PART=""
 SUBMIT=0
 declare -a SETS=()
 while [ $# -gt 0 ]; do
@@ -62,6 +62,7 @@ while [ $# -gt 0 ]; do
     --nodes) NODES=$2; shift 2 ;;
     --time) WTIME=$2; shift 2 ;;
     --qos) QOS=$2; shift 2 ;;
+    --partition) PART=$2; shift 2 ;;   # lane (zen3_0512|zen3_1024|zen3_2048); QOS follows unless --qos devel (2026-08-28)
     --submit) SUBMIT=1; shift ;;
     -h|--help) usage ;;
     *) echo "unknown argument: $1" >&2; usage ;;
@@ -196,6 +197,10 @@ grep -q -E '^#SBATCH --hint=nomultithread' "$SB" || sed -i "/^#SBATCH --ntasks-p
 if [ "$QOS" = "devel" ]; then
   sed -i -E "s/^#SBATCH --qos=.*/#SBATCH --qos=zen3_0512_devel/" "$SB"
   sed -i -E "s/^#SBATCH --time=.*/#SBATCH --time=00:10:00/" "$SB"
+fi
+if [ -n "$PART" ]; then
+  sed -i -E "s/^#SBATCH --partition=.*/#SBATCH --partition=$PART/" "$SB"
+  [ "$QOS" = "devel" ] || sed -i -E "s/^#SBATCH --qos=.*/#SBATCH --qos=$PART/" "$SB"
 fi
 
 # --- report ------------------------------------------------------------------
