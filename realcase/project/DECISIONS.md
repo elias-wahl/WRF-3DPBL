@@ -7,6 +7,12 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-08-28, ~16:15 — The five D segments moved to `zen3_1024` on 2 × 128, 5:00 h (8539492–96); not split.**
+
+After 18 h without a start on `zen3_0512` (3429 pending, 2249 ahead of us, 264 nodes drained, 178 earmarked for large jobs), the lanes were compared: `zen3_1024` had 27 idle nodes and 224 jobs ahead, `zen3_2048` 14 pending. The lanes differ only in RAM (same Zen3 CPUs, same cost). Elias: move to the fast lane; consider 2 nodes and halving the runs. Done by `realcase/scripts/resubmit_d_zen3_1024.sh` (cancel 8539159/8533211–14, headers → `--nodes=2 --time=05:00:00 --partition=zen3_1024 --qos=zen3_1024`, A14 gate verified in every namelist, submitted control first: Dctl 8539492, Dsq06bc1 8539493, Dsq06 8539494, Dbc1 8539495, Dsq10 8539496). Why 2 nodes: with idle nodes the constraint is the backfill *time* window; 1.34–1.5 s/step on 256 ranks → 4.0–4.5 h + restart read, request 5:00 (was 9:30 on one node). Why not split: restart transparency is proven bit-exact (BBA vs BBA2), so halving would not change results, but it adds a second queue wait and a 10:00 restart cycle for little gain once the jobs are 5 h on an idle lane — the fallback if they have not started within ~1 h (`chain_segment.slurm`, 07→10 and 10→13). Layout note: 2 × 128 on `zen3_1024` is the reference decomposition again, but the D runs remain not bit-comparable with X7 (E26); nothing changes in how they are judged. Recorded as a standing rule in CLAUDE.md ("This cluster") and the assistant's memory.
+
+---
+
 **2026-08-28, ~14:00 — `Dctl` blew up at 11:04 (A14 gate off — my setup error); the bit-for-bit gate against X7 failed for a different reason: WRFlux's flux-output mode itself is not bit-neutral (E26). The added code is bit-neutral; the reference-build check passed: the new binary is bit-identical to `cf08b0463` with every switch off (rule 2 satisfied).**
 
 *What happened.* `Dctl` (8531824, 2 × 128) crashed at simulation time 11:04:10 with the A14 signature (W +13 → −77 m s⁻¹ in one step at a 1255 m slope cell under 332 W m⁻² of heating; E27). All five D namelists had `pbl3d_moist_cond_max = 0.` — set deliberately on 08-27 to match X7 bit for bit, forgetting that the 07→13 segments cross the window that killed X8a at 10:18. Fixed in the four pending namelists (10000.0, the X9 production value) before they started; `setup_d1d2_segments.sh` now writes it.
