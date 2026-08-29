@@ -7,6 +7,12 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-08-29, ~11:40 — Precision to the 07:40 judgement (Elias asked whether the observed soundings were in it): they were, at three launches; against them every variant is still far too stable at 11 UTC, and the mixed-layer-depth row is withdrawn as evidence.**
+
+Launches inside 07–13: Kolsass 08:01, Innsbruck 10:57, Kolsass 11:01 (θ profile → RMSE/bias row; Δθ(500−50 m); parcel ML depth; valley-wind depth). Δθ(500−50 m), obs / `Dctl` / `Dsq06` / `Dbc1` / `Dsq06bc1` / MYNN (K): Kolsass 08:01 1.68 / 3.78 / 3.87 / 3.61 / 3.34 / 1.64; Innsbruck 10:57 0.09 / 4.59 / 4.20 / 4.10 / 2.91 / −0.24; Kolsass 11:01 0.69 / 3.30 / 2.71 / 3.58 / 3.19 / 0.33. The best variant closes a third of the stability gap at Innsbruck and a tenth at Kolsass; MYNN sits on the observation. The × 4–7 transport gain is therefore a small step against a large deficit. **Withdrawn:** the "ML depth + 100 m, deeper than MYNN" reading. Parcel ML depths at the sites are incoherent (`Dctl` 2133 m at Kolsass 11:01 with a 3.3 K stable lowest 500 m; `Dbc1` 191 m at Innsbruck and 2617 m at Kolsass four minutes apart; obs 892 / 955): the parcel is launched from a surface that carries the +0.5–1 K warm bias and punches through a layer the θ profile shows is stable — the diagnostic is biased by the near-surface error, not merely noisy, and the domain-wide median inherits it. The entrainment fluxes and transport terms (computed from the fields) stand; depth statements need a stability-based definition (θ-gradient maximum or Δθ threshold) before they are used again. Pseudo-job order for the record: 9999101 `Dctl`, 9999102 `Dsq06bc1`, 9999103 `Dsq06`, 9999104 `Dbc1`.
+
+---
+
 **2026-08-29, ~07:40 — D1/D2 ladder judged (07→13 UTC, `Dctl` / `Dsq06` / `Dbc1` / `Dsq06bc1`, 1 × 128, gate 1e4): S_q × 3 raises the interface TKE transport × 4–5 and the surface q² condition adds × 1.4 in mixed-layer TKE; together × 6–7 in transport and × 1.6 in entrainment flux — real, and still × 9 below MYNN. The 100 m wind excess is untouched. Verdict: D1 is transport-limited as diagnosed; the explicit q² diffusion (E28) is the wall; D2's q²-only condition does not reach the 100 m wind.**
 
 Numbers (`proc` stages `soundings entrainment surface`, job 8542178; pseudo-jobs 9999101–04; valley-floor interface 0.8 < z/h < 1.2, m² s⁻³ unless stated):
