@@ -46,7 +46,7 @@
     use module_comm_dm, only: halo_em_phys_hdiff_pbl3d_sub, period_bdy_em_hdiff_pbl3d_sub
     use module_bc, only: set_physical_bc3d
     use module_pbl3d_my, only: Set_init_turb_state_my, Calc_turb_fluxes_my
-    use module_pbl3d_my, only: Q_SQ_MIN, TURB_FLUX_MIN, a_2, b_1, SQ_DIFF, SFC_QSQ_BC
+    use module_pbl3d_my, only: Q_SQ_MIN, TURB_FLUX_MIN, a_2, b_1, SQ_DIFF, SFC_QSQ_BC, SQ_IMPLICIT
 
     implicit none
 
@@ -5842,7 +5842,7 @@
 
         !!! Diffusion !!!
       call Calc_q_sq_vertical_diffusion (N_PBL3D, q_sq_vdiff_tend, q_sq_tend, l_master_at_face, q_sq_prog, q_sq, &
-          fnm, fnp, dnw, rdz, rdzw, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, i_start, i_end, j_start, j_end, ktf)
+          fnm, fnp, dnw, rdz, rdzw, dt, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, i_start, i_end, j_start, j_end, ktf)
 
       if ( config_flags%pbl3d_opt .gt. 1 ) then
           ! Update halo for q_sq and l_master if using full 3D model
@@ -5938,7 +5938,7 @@
 
 
     subroutine Calc_q_sq_vertical_diffusion (N_PBL3D, q_sq_vdiff_tend, q_sq_tend, l_master, &
-              q_sq_mass, q_sq_face, fnm, fnp, dnw, rdz, rdzw, ims, ime, jms, jme, kms, kme,     &
+              q_sq_mass, q_sq_face, fnm, fnp, dnw, rdz, rdzw, dt, ims, ime, jms, jme, kms, kme, &
               its, ite, jts, jte, kts, kte, i_start, i_end, j_start, j_end, ktf             )
 
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -5959,6 +5959,7 @@
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: l_master
       real, dimension (kms:kme),                   intent (in)  :: dnw, fnm, fnp
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: rdz, rdzw
+      real,                                        intent (in)  :: dt
       integer, intent (in) :: ims, ime, jms, jme, kms, kme,        &
                               its, ite, jts, jte, kts, kte,        &
                               i_start, i_end, j_start, j_end, ktf
@@ -5968,10 +5969,57 @@
       real :: Sq
       real :: q_sq_vdiff_tend_tmp
       real, dimension (its:ite, kts:kte, jts:jte) :: q_sq_vdiff_hold
+      real, dimension (kms:kme) :: kq, alo, aup, bb, rr, cp, dp, qs   ! implicit branch, one column
+      real :: den
       logical, parameter :: DEBUG = .false.
 
         ! S_q = 0.2 (MY82) unless pbl3d_sq says otherwise; see SQ_DIFF in module_pbl3d_my.
       Sq = SQ_DIFF
+
+      if (SQ_IMPLICIT == 1) then
+          ! Implicit (backward-Euler) vertical q^2 diffusion, pbl3d_sq_implicit = 1 (2026-08-29).
+          ! Same face diffusivity K = S_q l q and the same zero-flux ground and top conditions
+          ! as the explicit branch below (K(kts) = K(ktf+1) = 0); q^2 at the mass levels is
+          ! advanced to q* with the fluxes evaluated at q*:
+          !   (q*_k - q_k)/dt = rdzw_k [ K_{k+1} rdz_{k+1} (q*_{k+1} - q*_k) - K_k rdz_k (q*_k - q*_{k-1}) ]
+          ! (the explicit expression with q* on the right), a diagonally dominant tridiagonal
+          ! system solved per column by the Thomas algorithm. The dynamics receives
+          ! (q* - q^2)/dt as the tendency (as MYNN hands over its implicit QKE step), in the
+          ! same mass-coupled form as the explicit branch. Unconditionally stable and
+          ! monotone; the explicit step needs S_q l q dt/dz^2 < 1/2 (KNOWN_ISSUES E28).
+        do j = j_start, j_end
+          do i = i_start, i_end
+            do k = kts + 1, ktf
+              kq(k) = Sq * l_master(i, k, j) * Sqrt(q_sq_face(i, k, j))
+            end do
+            kq(kts) = 0.0
+            kq(ktf + 1) = 0.0
+            do k = kts, ktf
+              alo(k) = dt * rdzw(i, k, j) * kq(k) * rdz(i, k, j)
+              aup(k) = dt * rdzw(i, k, j) * kq(k + 1) * rdz(i, k + 1, j)
+              bb(k) = 1.0 + alo(k) + aup(k)
+              rr(k) = q_sq_mass(i, k, j)
+            end do
+            cp(kts) = - aup(kts) / bb(kts)
+            dp(kts) = rr(kts) / bb(kts)
+            do k = kts + 1, ktf
+              den = bb(k) + alo(k) * cp(k - 1)
+              cp(k) = - aup(k) / den
+              dp(k) = ( rr(k) + alo(k) * dp(k - 1) ) / den
+            end do
+            qs(ktf) = dp(ktf)
+            do k = ktf - 1, kts, -1
+              qs(k) = dp(k) - cp(k) * qs(k + 1)
+            end do
+            do k = kts, ktf
+              q_sq_vdiff_tend(i, k, j) = ( qs(k) - q_sq_mass(i, k, j) ) / dt
+              q_sq_vdiff_tend_tmp = - ( G / ( dnw(k) * rdzw(i, k, j) ) ) * q_sq_vdiff_tend(i, k, j)
+              q_sq_tend(i, k, j) = q_sq_tend(i, k, j) + ( q_sq_vdiff_tend_tmp / N_PBL3D )
+            end do
+          end do
+        end do
+        return
+      end if
 
       do j = j_start, j_end
         do k = kts + 1, ktf
@@ -6585,7 +6633,7 @@
     subroutine Init_pbl3d (restart, pbl3d_opt, pbl3d_sfc_opt, pbl3d_l_opt, pbl3d_prog, pbl3d_constants, &
               pbl3d_nsteps, pbl3d_sk_eps_max, pbl3d_n_tau_max,                                                        &
               pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt, pbl3d_l0_min, pbl3d_moist_cond_max,          &
-              pbl3d_sq, pbl3d_sfc_qsq_bc, pbl3d_sfc_qsq_zmax, l0_asym,                                &
+              pbl3d_sq, pbl3d_sfc_qsq_bc, pbl3d_sq_implicit, pbl3d_sfc_qsq_zmax, l0_asym,                                &
               fnm, fnp, dnw, ph, phb, t_2, qv, thetav, alt, u, v, ust, hfx, qfx, rmol, &
               q_sq, q_sq_prog, q_sq_vdiff, q_sq_hdiff, q_sq_shear, q_sq_buoyancy, q_sq_dissip,                       &
               ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme,               &
@@ -6613,7 +6661,7 @@
       integer, intent(in) :: pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt
       real,    intent(in) :: pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_moist_cond_max
       real,    intent(in) :: pbl3d_sq, pbl3d_sfc_qsq_zmax
-      integer, intent(in) :: pbl3d_sfc_qsq_bc
+      integer, intent(in) :: pbl3d_sfc_qsq_bc, pbl3d_sq_implicit
       real, dimension(ims:ime, jms:jme),          intent(inout) :: l0_asym
       character (len = *), intent(in) :: pbl3d_constants
 
@@ -6644,7 +6692,7 @@
           pbl3d_nsteps, pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt,  &
           pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt,                  &
           pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_moist_cond_max,                  &
-          pbl3d_sq, pbl3d_sfc_qsq_bc, pbl3d_sfc_qsq_zmax,                                       &
+          pbl3d_sq, pbl3d_sfc_qsq_bc, pbl3d_sq_implicit, pbl3d_sfc_qsq_zmax,                                       &
           ids, ide, jds, jde, kds, kde,                                     &
           ims, ime, jms, jme, kms, kme,                                     &
           its, ite, jts, jte, kts, kte,                                     &
@@ -6666,7 +6714,7 @@
               pbl3d_nsteps, pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt,  &
               pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt,                  &
               pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_moist_cond_max,                  &
-              pbl3d_sq, pbl3d_sfc_qsq_bc, pbl3d_sfc_qsq_zmax,                                       &
+              pbl3d_sq, pbl3d_sfc_qsq_bc, pbl3d_sq_implicit, pbl3d_sfc_qsq_zmax,                                       &
               ids, ide, jds, jde, kds, kde,                                     &
               ims, ime, jms, jme, kms, kme,                                     &
               its, ite, jts, jte, kts, kte,                                     &
@@ -6698,7 +6746,7 @@
       integer, intent(in) :: pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt
       real,    intent(in) :: pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_moist_cond_max
       real,    intent(in) :: pbl3d_sq, pbl3d_sfc_qsq_zmax
-      integer, intent(in) :: pbl3d_sfc_qsq_bc
+      integer, intent(in) :: pbl3d_sfc_qsq_bc, pbl3d_sq_implicit
       real, dimension(ims:ime, jms:jme),          intent(inout) :: l0_asym
       character (len = *), intent(in) :: pbl3d_constants
       integer :: i, j, k, itf, jtf, ktf
@@ -6761,7 +6809,7 @@
         ! Call MY model to set initial state
       call Set_init_turb_state_my (restart, pbl3d_constants, pbl3d_nsteps, pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt, &
           pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt, pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_moist_cond_max, &
-          pbl3d_sq, pbl3d_sfc_qsq_bc, pbl3d_sfc_qsq_zmax, ids, ide, &
+          pbl3d_sq, pbl3d_sfc_qsq_bc, pbl3d_sq_implicit, pbl3d_sfc_qsq_zmax, ids, ide, &
           jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, itf, jtf, ktf, i_start, i_end, j_start, j_end, &
           fnm, fnp, dnw, ph, phb, rdzw, z_at_mass, dz, t_2, qv, alt, u, v, ust, hfx, qfx, rmol, rho, du_dz, dv_dz, dthetav_dz, dqv_dz, &
           q_sq, q_sq_prog, q_sq_vdiff, q_sq_hdiff, q_sq_shear, q_sq_buoyancy, q_sq_dissip, l_master, l_master_at_mass, l0_asym, turb_flux_u2, turb_flux_v2, &

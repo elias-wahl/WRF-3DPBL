@@ -2295,7 +2295,7 @@ DEALLOCATE(dz8w)
        call Init_pbl3d (config_flags%restart, config_flags%pbl3d_opt, &
            config_flags%pbl3d_sfc_opt, config_flags%pbl3d_l_opt, config_flags%pbl3d_prog, config_flags%pbl3d_constants, config_flags%pbl3d_nsteps, config_flags%pbl3d_sk_eps_max, config_flags%pbl3d_n_tau_max,    &
            config_flags%pbl3d_l0_opt, config_flags%pbl3d_init_opt, config_flags%pbl3d_limiter_opt, config_flags%pbl3d_l0_min, config_flags%pbl3d_moist_cond_max, &
-           config_flags%pbl3d_sq, config_flags%pbl3d_sfc_qsq_bc, config_flags%pbl3d_sfc_qsq_zmax, grid%l0_asym, &
+           config_flags%pbl3d_sq, config_flags%pbl3d_sfc_qsq_bc, config_flags%pbl3d_sq_implicit, config_flags%pbl3d_sfc_qsq_zmax, grid%l0_asym, &
            grid%fnm, grid%fnp, grid%dnw, grid%ph_2, grid%phb, &
            grid%t_2, moist(:,:,:,P_QV), grid%thetav, grid%alt, grid%u_2, grid%v_2, grid%ust, grid%hfx, grid%qfx, &
            grid%rmol, grid%q_sq, grid%q_sq_prog_2, grid%q_sq_vdiff, grid%q_sq_hdiff, grid%q_sq_shear, grid%q_sq_buoyancy, grid%q_sq_dissip, &

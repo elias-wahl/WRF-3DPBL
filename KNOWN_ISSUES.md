@@ -1174,3 +1174,39 @@ The horizontal q² diffusion is explicit too but harmless at Δx = 500 m.
 explicit scheme (r_max ≈ 0.25 in the convective morning); S_q ≥ 1 needs an implicit vertical q² diffusion
 (tridiagonal, as MYNN does for QKE) or a substep — both are code changes, default-off (DECISIONS
 2026-08-29 03:30). Any q² NaN with no CFL warning and a clean last frame: compute r first.
+
+## E29. The first WRFlux mean written after a restart is all zeros; X7's WRFlux stream was 6-hourly, so the 3D control has no 30-min flux means before 10:00
+
+**Symptom (2026-08-29):** `exp/X9a/wrf_output/8489332/meanout_d01_2025-07-18_10:00:00.nc` (the first
+`auxhist24` frame of the 10:00 restart segment) has `TZ_MEAN`, `ZWIND_MEAN`, `FTZ_ADV_MEAN`, `FTZ_SGS_MEAN`,
+`Z_MEAN` identically zero: the accumulators are reset at the restart start and the frame is written
+before any accumulation (zero-length averaging window). Any diagnostic that reads it silently gets zeros
+(the grey-zone partition of 2026-08-29 produced an all-NaN row; a sum would have produced a plausible
+number). Second symptom: X7 (01→10) wrote WRFlux means at 01:00 and 07:00 only (`auxhist24_interval_m = 360`,
+DECISIONS 2026-08-22: "30-min from now on" applies from X8a/X9a), so the stitched control day
+`wrf_output/9999999` has no 30-min flux means for 07:30–09:30 — the hours where h < 1 km and the partition
+between resolved and subgrid transport matters most.
+
+**Rule:** skip the frame stamped at a segment's start time when reading WRFlux means of a restart
+segment (or test that `Z_MEAN` is non-zero); a restart chain's mean frames are those stamped strictly
+after the restart time. The 07:30–09:30 window of the control needs a dedicated 07→10 run with the flux
+outputs on (the D runs have them off, E26).
+
+## E30. The "valley floor" terrain class is 83 % Alpine foreland — every valley-floor statistic before 2026-08-29 is a foreland statistic
+
+**Symptom (2026-08-29):** the grey-zone partition gave a valley-floor median mixed-layer depth of
+1.1 km at 11 UTC in the 3D control while the two Inn-valley radiosonde sites showed 3–4 K of stability
+between 50 and 500 m in the same run. `terrain_classes(hgt, dx) == 0` (`proc/proc/turbulence.py`:
+within 150 m of the 5-km-box minimum and slope < 5°) is true for every cell of flat terrain: of
+91 560 "floor" cells, 75 607 (83 %) have a 20-km relief ≤ 800 m (the foreland north of the Alps and the
+low-relief margins, HGT median 541 m), 15 953 are in-mountain valley floors, and the Inn valley proper
+(HGT < 800 m, 47.1–47.6 °N, 10.8–12.5 °E) is ≈ 1 060 cells — 1 %.
+
+**Affected:** the D1 soundness check (DECISIONS 2026-08-27 14:00), the D-ladder entrainment table
+(2026-08-29 07:40), the first grey-zone partition (11:50) — all "valley-floor interface" numbers
+describe the flat foreland, where a 500-m grid resolves the convection early and the closure's
+subgrid transport matters least. The sounding comparisons (site-based) are unaffected.
+
+**Rule:** split floor statistics by 20-km relief — foreland (≤ 800 m), mountain valley floors
+(> 800 m), Inn valley (the lat/lon box above) — and judge the valley physics on the last two. A
+diagnostic that reports one "valley-floor" number must say which mask it used.

@@ -1,5 +1,36 @@
 # Open issues / questions — 3D PBL rebase (WRF v4.4 -> v4.8.0)
 
+## A17 — OPEN (2026-08-29): over heated flat terrain the closure's heat flux vanishes at the first interior face — θ_v′² ≤ 0 from the 10×10 solve passes the acceptance test, Tier 3 clips it to zero and the Cauchy–Schwarz bound zeroes the heat flux; the surface heat goes into an 18-m skin
+
+**Measured** (instantaneous `TURB_FLUX_WTHETA_V`, heated columns HFX > 50 W m⁻², medians; masks of E30): in the
+Inn valley 89 % of columns at 08:00 and 83 % at 11:00 carry less than 10 % of the surface heat flux at the
+first interior face (18 m AGL) — median profile at 11 UTC: 0.120 K m s⁻¹ at the ground (= HFX/ρc_p), **0.000**
+at 18 m, −0.0002 … −0.0009 above; θ = 301.2 K at 9 m, **298.8 K at 27 m**, then stable upward (MYNN: 301.8 →
+301.2, mixed). Mountain valley floors 77–79 %, foreland 24 % at 08:00 rising to 79–82 % from 11:00, slopes
+24–33 %. `PBL3D_T3_FLAGS` > 0 at that face in 71–84 % of the affected columns, `PBL3D_T2_STEPS` > 0 in only
+31–45 % — most zero-flux states come from an *accepted* first solve. Consequences, all measured before this
+was found: T2 warm bias (T2 is the 9-m level; +0.5–1 K), the 3–4 K "stable" Δθ(500−50 m) at 11 UTC against
+0.1–0.7 K observed, h_θ = 423 m in the Inn valley against 892–955 m, weak entrainment, TSK − T2 = 3.6 K
+(MYNN 1.4 K), HFX 134 W m⁻² (MYNN 101: the hot ground pushes harder into air that is not mixed away). On the
+foreland resolved convection (h/Δx > 2) drains the skin; in the valley (h/Δx < 1) nothing does.
+
+**Mechanism** (`module_pbl3d_my.F`): the Tier-2 escalation accepts a solve when the *stress tensor* is
+positive semi-definite (`Is_realizable`, momentum block only; l. 1749); the θ_v variance `tf_t2v` = x(10) of
+the same solve is not tested. Under the strongly unstable near-wall gradient (−∂θ/∂z ≈ 0.13 K m⁻¹, Gh far
+outside the level-2.5 validity range) the solve returns θ_v′² ≤ 0 with a realizable stress tensor; Tier 3
+step 5 (l. 2046) clips θ_v′² to 0 and bounds |w′θ_v′| ≤ √(w′² θ_v′²) = 0. The next step diagnoses the same
+gradient, larger — a self-locking state. It is the heat-side twin of A14 (divergent direction in the
+unchecked scalar block). The wall flux itself is correct (`Diagnose_fluxes_surface` sets face 0 to HFX/ρc_p).
+
+**Fix candidates (soundness review pending, nothing implemented):** (1) extend the Tier-2 acceptance to the
+scalar block — require θ_v′² > 0 and |w′θ_v′| ≤ √(w′² θ_v′²) before accepting, so the escalation shortens l
+until the heat solve is realizable too (the closure's own logic, as A14's fix; default-off switch
+`pbl3d_t2_scalar`); expected: a positive downgradient flux at a shorter l — whether it carries the surface
+flux is the test. (2) A wall condition on the heat flux at face 1 from surface-layer similarity (MYNN-like),
+default-off. (3) A Gh cap on the unstable side (Nakanishi/MYNN practice). Judge on a six-minute devel run:
+fraction of valley columns with w′θ′(18 m) < 0.1 HFX/ρc_p (0.89 now) and the 9→27 m θ jump (2.8 K now), then
+a 07→12 pair by the E30 masks and the three soundings.
+
 ## A14 — FIXED, validated in production (2026-08-24): the algebraic flux solve returns an unbounded scalar-flux solution at an unstable-side neutral crossing; all three acceptance gates pass
 
 **Production validation (2026-08-24, X9a 8489332)**: the fixed binary with

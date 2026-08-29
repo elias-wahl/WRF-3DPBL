@@ -471,6 +471,13 @@ def check(nl):
             note(FATAL, "pbl3d_sfc_qsq_bc must be 0 (none), 1 (q^2 >= B1^(2/3) u*^2 at the lowest level) or 2 (plus l >= kappa z)")
         if g("pbl3d_sfc_qsq_zmax", float, 100.0) < 0:
             note(FATAL, "pbl3d_sfc_qsq_zmax must be >= 0 (m AGL)")
+        sqi = g("pbl3d_sq_implicit", int, 0)
+        if sqi not in (0, 1):
+            note(FATAL, "pbl3d_sq_implicit must be 0 (explicit, previous behaviour) or 1 (implicit tridiagonal)")
+        if sqi == 0 and sq > 0.6:
+            note(WARN, "pbl3d_sq=%g with the explicit vertical q^2 diffusion: stable only while "
+                       "S_q l q dt/dz^2 < 1/2 -- S_q = 1.0 blew up at 08:48 in the convective morning "
+                       "(KNOWN_ISSUES E28); set pbl3d_sq_implicit = 1" % sq)
         if g("pbl3d_init_opt", int, 0) == 0 and p3 == 2:
             note(WARN, "pbl3d_init_opt=0 starts q^2 at its floor everywhere; the 3D closure "
                        "then needs >1 h to spin up (DECISIONS 2026-08-20) -- intended only "

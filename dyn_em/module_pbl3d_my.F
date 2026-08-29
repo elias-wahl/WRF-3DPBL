@@ -150,6 +150,12 @@
       ! l < kappa z whenever l0 is not >> kappa z; measured 2026-08-27: l = 0.6 kappa z in
       ! the lowest levels by day, DECISIONS 14:30).
     integer, public    :: SFC_QSQ_BC
+      ! Time integration of the vertical q^2 diffusion (pbl3d_sq_implicit): 0 = explicit
+      ! forward step (previous behaviour; stable only while S_q l q dt/dz^2 < 1/2, which
+      ! S_q = 1.0 violates in the convective morning -- KNOWN_ISSUES E28); 1 = backward-Euler
+      ! tridiagonal solve with the same face diffusivity and boundary conditions, handed to
+      ! the dynamics as the tendency (q* - q^2)/dt, as MYNN does for QKE. 2026-08-29.
+    integer, public    :: SQ_IMPLICIT
     real,    public    :: SFC_QSQ_ZMAX
     real,    parameter :: STRAIN_MIN = 1.0E-10   ! avoids 0/0 in the strain limiter
     real,    parameter :: COND_MAX   = 1.0E8     ! largest admitted condition number of A
@@ -4366,7 +4372,7 @@
               pbl3d_nsteps, pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt,  &
               pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt,                  &
               pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_moist_cond_max,                  &
-              pbl3d_sq, pbl3d_sfc_qsq_bc, pbl3d_sfc_qsq_zmax,                                       &
+              pbl3d_sq, pbl3d_sfc_qsq_bc, pbl3d_sq_implicit, pbl3d_sfc_qsq_zmax,                    &
               ids, ide, jds, jde, kds, kde,                                     &
               ims, ime, jms, jme, kms, kme,                                     &
               its, ite, jts, jte, kts, kte,                                     &
@@ -4401,7 +4407,7 @@
       integer, intent(in) :: pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt
       real,    intent(in) :: pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_moist_cond_max
       real,    intent(in) :: pbl3d_sq, pbl3d_sfc_qsq_zmax
-      integer, intent(in) :: pbl3d_sfc_qsq_bc
+      integer, intent(in) :: pbl3d_sfc_qsq_bc, pbl3d_sq_implicit
       character (len = 160) :: msg
       character (len = *), intent(in) :: pbl3d_constants
       integer, intent(in) :: ids, ide, jds, jde, kds, kde, &
@@ -4497,6 +4503,15 @@
       if (Abs (SQ_DIFF - 0.2) > 1.0E-6) then
         write (msg, '(a, f6.3)') 'PBL3D: q^2 vertical diffusivity coefficient S_q = ', SQ_DIFF
         call wrf_message (msg)
+      end if
+
+        ! Explicit or implicit vertical q^2 diffusion (see SQ_IMPLICIT at the top of the module).
+      SQ_IMPLICIT = 0
+      if (pbl3d_sq_implicit == 1) then
+        SQ_IMPLICIT = 1
+        call wrf_message ('PBL3D: vertical q^2 diffusion integrated implicitly (pbl3d_sq_implicit = 1)')
+      else if (pbl3d_sq_implicit /= 0) then
+        call wrf_message ('--- WARNING: pbl3d_sq_implicit must be 0 or 1; using 0 (explicit)')
       end if
 
         ! Surface q^2 condition (see SFC_QSQ_BC at the top of the module).

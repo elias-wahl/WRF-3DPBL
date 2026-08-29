@@ -156,6 +156,7 @@
  pbl3d_sq               = 0.2,         ! S_q of the q^2 vertical diffusivity K_q = S_q l q (MY82 Eq. 24); 0.2 = MY82. D1 test: 0.6, 1.0 (DECISIONS 2026-08-27)
  pbl3d_sfc_qsq_bc       = 0,           ! surface q^2 condition: 0 none; 1 lowest level q^2 >= B1^(2/3) u*^2 (MYNN wall value); 2 as 1 + l >= kappa z below pbl3d_sfc_qsq_zmax in unstable air. D2 test
  pbl3d_sfc_qsq_zmax     = 100.0,       ! m AGL; only read for pbl3d_sfc_qsq_bc = 2
+ pbl3d_sq_implicit      = 0,           ! 1: implicit (tridiagonal) vertical q^2 diffusion, needed for pbl3d_sq > 0.6 (E28); 0 = explicit, previous behaviour
  pbl3d_sf_pair          = 1,           ! credit q^2 only with the horizontal production the slope-tapered tendency actually extracts (A10). Validated 2026-08-21 (run X6: energy residual 0.3 %, first run through 07:00); 0 = pre-2026-08-21 form
  diff_6th_opt           = 2,           ! stays active with diff_opt=0 -- numerical noise control
  diff_6th_factor        = 0.12,
