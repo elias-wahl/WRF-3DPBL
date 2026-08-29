@@ -7,6 +7,21 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-08-29, ~19:55 — First look at `T2S` (A18 fix alone, 07→09:30) against `Dctl`: the 18-m skin is gone and half of the excess stratification with it; the Inn-valley boundary layer is still too shallow — a transport deficit on top of A18, which tonight's `T2Ssq10i` pair tests.**
+
+Measured on the 08:00 and 09:00 frames (`wrf3dpbl-diag/quick_t2s.py`, cells with HFX > 50 W m⁻²; obs = Kolsass radiosonde 08:01: h_θ 448 m, Δθ(500−50 m) 1.68 K). f₀ = HFX/(ρ c_p), the kinematic surface heat flux (K m s⁻¹); "wall flux" = the closure's `TURB_FLUX_WTHETA_V` at the first interior face (18 m).
+
+| 09:00 | wall flux / f₀ (median) | cells with wall flux < 0.1 f₀ | θ jump 9→27 m | Δθ(500−50 m) | h_θ | Tier-3 clip at the wall |
+|---|---|---|---|---|---|---|
+| Dctl, Inn valley | 0.00 | 92 % | 2.99 K | 2.70 K | 166 m | 85 % |
+| T2S, Inn valley | 0.93 | 0 % | 0.62 K | 1.52 K | 389 m | 0 % |
+| Dctl, Kolsass column | 0.00 | — | 5.09 K | 2.53 K | 152 m | — |
+| T2S, Kolsass column | 0.80 | — | 0.99 K | 1.67 K | 316 m | — |
+| Dctl, foreland | 0.13 | 50 % | 0.96 K | 0.35 K | 823 m | 46 % |
+| T2S, foreland | 0.99 | 2 % | 0.22 K | −0.09 K | 925 m | 0 % |
+
+At 08:00, Kolsass column: Δθ 3.26 → 2.66 K (obs 1.68), h_θ 129 → 184 m (obs 448). *Reading:* the wall now passes 77–99 % of the surface heat flux into the column (0 over the valley floor before); Tier 3 never clips. Over the foreland the mixed layer is complete by 09:00 (superadiabatic through 500 m). In the Inn valley the excess stratification is halved, but T2S reaches the *08:01 observed* Δθ only at 09:00, and h_θ at 09:00 (316 m) is still below the 08:01 observation. T2: foreland −1.0 K at 09:00, Inn valley unchanged (+0.1 K) — the fix alone does not remove the valley T2 warm bias. Judgement proper (11 UTC soundings, entrainment by mask) once the second halves are archived.
+
 **2026-08-29, ~13:25 — Fix 1 (`pbl3d_t2_scalar = 1`) opens the wall within three minutes: in the Inn valley the fraction of heated columns with no heat flux at 18 m falls from 0.86 to 0.05, the 18-m flux rises from 0 to 0.86 of the surface flux, the 9 → 27 m θ jump from 2.7 to 0.7 K; Tier-3 clipping at the wall face goes to zero. Night footprint check and the 07→12 pairs (fix alone; fix + S_q 1.0 implicit) submitted.**
 
 BBK0/BBK1 (switch 0/1), six minutes from `Dctl`'s 10:00 restart, heated columns (HFX > 50 W m⁻²), medians, at 10:06 (10:03 in brackets):
