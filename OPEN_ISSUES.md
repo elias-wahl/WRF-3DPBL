@@ -1,6 +1,6 @@
 # Open issues / questions — 3D PBL rebase (WRF v4.4 -> v4.8.0)
 
-## A17 — OPEN (2026-08-29): over heated flat terrain the closure's heat flux vanishes at the first interior face — θ_v′² ≤ 0 from the 10×10 solve passes the acceptance test, Tier 3 clips it to zero and the Cauchy–Schwarz bound zeroes the heat flux; the surface heat goes into an 18-m skin
+## A18 — OPEN (2026-08-29): over heated flat terrain the closure's heat flux vanishes at the first interior face — θ_v′² ≤ 0 from the 10×10 solve passes the acceptance test, Tier 3 clips it to zero and the Cauchy–Schwarz bound zeroes the heat flux; the surface heat goes into an 18-m skin
 
 **Measured** (instantaneous `TURB_FLUX_WTHETA_V`, heated columns HFX > 50 W m⁻², medians; masks of E30): in the
 Inn valley 89 % of columns at 08:00 and 83 % at 11:00 carry less than 10 % of the surface heat flux at the
