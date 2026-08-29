@@ -1918,6 +1918,8 @@ asked for.
 
 ## A15 — OPEN (2026-08-27): the morning transition is too slow — transport-limited entrainment at the inversion
 
+**Status 2026-08-29:** `Dsq06` (S_q = 0.6) completed 07→10 and runs 10→13; `Dsq10` (S_q = 1.0) crashed at 08:48 — the explicit vertical q² diffusion exceeds its stability limit (E28); S_q ≥ 1 needs an implicit solve before it can be tested. Judge D1 from `Dsq06` vs `Dctl`.
+
 Observed: parcel mixed-layer depth 330–550 m at 10–11 UTC vs 900–950 m (Innsbruck 10, Kolsass 11 UTC);
 50–500 m θ difference 3–4.4 K at 08–11 UTC vs 0.7–1.7 K. Model-only: largest sensible heat flux of the
 five runs (175 vs 115 W m⁻² floor) yet the shallowest layer per unit of heat input (`bl_growth`).

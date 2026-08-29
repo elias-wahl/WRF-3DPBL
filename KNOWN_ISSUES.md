@@ -1155,3 +1155,22 @@ the gate fires from 07:30 on (2–4 × 10⁻⁴ of live faces per frame have con
 DECISIONS 2026-08-29 00:30), so a gated run is not bit-comparable with X7 at any hour. Rule: any run that
 enters convective daytime (anything past ~10:00) carries `pbl3d_moist_cond_max = 10000.0`, the production
 value since X9a (DECISIONS 2026-08-24 10:15).
+
+## E28. The q² vertical diffusion is explicit: S_q·l·q·Δt/Δz² must stay below ½ — S_q = 1.0 blows up in the convective morning
+
+**Symptom (2026-08-29):** `Dsq10`-a (S_q = 1.0, 07→10 from X7's 07:00 restart, 1 × 128) died at 08:48:20 with
+`SFCLAYREV produced NaN` at (547,179) and (537,189) — ridge cells at 2167/2302 m — with **no CFL warning** on
+any rank and no A14 signature (`PBL3D_COND_M` gated at 10⁴). The 08:30 frame is clean everywhere.
+
+**Cause:** `Calc_q_sq_vertical_diffusion` (`dyn_em/module_pbl3d.F:5940`) forms the face flux
+−S_q·l·q·∂q²/∂z and adds its divergence to the tendency; q² is then advanced with the full model step
+(`module_pbl3d.F:603`, `pbl3d_nsteps = 1`) — a forward-Euler diffusion with stability number
+r = S_q·l·q·Δt/(Δz_face·Δz_layer) ≤ ½. Per-face r from the archived frames: `Dctl` (0.2) max 0.10, `Dsq06`
+(0.6) max 0.24 at 08:30; `Dsq10` (1.0) max 0.37 → 0.39 → 0.45 at 07:30/08:00/08:30 with 931 → 7345 faces
+above 0.25 (l ≈ 30 m, q ≈ 3 m s⁻¹, Δz = 20 m) — convective growth crosses ½ within the next half hour.
+The horizontal q² diffusion is explicit too but harmless at Δx = 500 m.
+
+**Rule:** with Δt = 2 s and Δz = 16–20 m in the lowest 200 m, S_q ≤ 0.6 is the usable range of the
+explicit scheme (r_max ≈ 0.25 in the convective morning); S_q ≥ 1 needs an implicit vertical q² diffusion
+(tridiagonal, as MYNN does for QKE) or a substep — both are code changes, default-off (DECISIONS
+2026-08-29 03:30). Any q² NaN with no CFL warning and a clean last frame: compute r first.
