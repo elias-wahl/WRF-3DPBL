@@ -471,6 +471,8 @@ def check(nl):
             note(FATAL, "pbl3d_sfc_qsq_bc must be 0 (none), 1 (q^2 >= B1^(2/3) u*^2 at the lowest level) or 2 (plus l >= kappa z)")
         if g("pbl3d_sfc_qsq_zmax", float, 100.0) < 0:
             note(FATAL, "pbl3d_sfc_qsq_zmax must be >= 0 (m AGL)")
+        if g("pbl3d_t2_scalar", int, 0) not in (0, 1):
+            note(FATAL, "pbl3d_t2_scalar must be 0 (stress-tensor acceptance, previous behaviour) or 1 (scalar block realizable too, A18)")
         sqi = g("pbl3d_sq_implicit", int, 0)
         if sqi not in (0, 1):
             note(FATAL, "pbl3d_sq_implicit must be 0 (explicit, previous behaviour) or 1 (implicit tridiagonal)")

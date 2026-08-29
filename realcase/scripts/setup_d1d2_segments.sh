@@ -42,7 +42,7 @@ COMMON=(--rst "$RST" --start 07 --iofields "$RC/iofields_d1d2.txt"
         --set output_t_fluxes=0 --set output_q_fluxes=0 --set output_u_fluxes=0
         --set output_v_fluxes=0 --set output_w_fluxes=0 --set output_tke_moments=1
         --set pbl3d_moist_cond_max=10000.0)
-EXPECTED='restart|start_hour|run_days|run_hours|run_minutes|end_day|end_hour|end_minute|restart_interval|override_restart_timers|iofields_filename|history_interval|auxhist24_interval_m|auxhist24_outname|history_outname|avg_interval|output_._fluxes|output_tke_moments|pbl3d_sq|pbl3d_sfc_qsq_bc|pbl3d_sfc_qsq_zmax|pbl3d_sq_implicit|pbl3d_moist_cond_max'
+EXPECTED='restart|start_hour|run_days|run_hours|run_minutes|end_day|end_hour|end_minute|restart_interval|override_restart_timers|iofields_filename|history_interval|auxhist24_interval_m|auxhist24_outname|history_outname|avg_interval|output_._fluxes|output_tke_moments|pbl3d_sq|pbl3d_sfc_qsq_bc|pbl3d_sfc_qsq_zmax|pbl3d_sq_implicit|pbl3d_t2_scalar|pbl3d_moist_cond_max'
 # pbl3d_moist_cond_max = 10000.0: the A14 gate (DECISIONS 2026-08-24). The segments run 07->13 THROUGH the
 # A14 window; with the gate off Dctl (8531824) blew up at 11:04 like X8a at 10:18 (2026-08-28). The
 # Whether the gate fires before 10:00 is NOT measured (X9a started at 10:00), so a segment with the gate on is

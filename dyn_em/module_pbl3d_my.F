@@ -156,6 +156,16 @@
       ! tridiagonal solve with the same face diffusivity and boundary conditions, handed to
       ! the dynamics as the tendency (q* - q^2)/dt, as MYNN does for QKE. 2026-08-29.
     integer, public    :: SQ_IMPLICIT
+      ! Tier-2 acceptance (pbl3d_t2_scalar): 0 = a solve is accepted when the stress tensor is
+      ! positive semi-definite (previous behaviour); 1 = the scalar block must be realizable
+      ! too -- theta_v'^2 > 0 and the three heat-flux Cauchy-Schwarz bounds -- otherwise the
+      ! escalation shortens l as it does for an impossible stress state. Why: over heated
+      ! flat terrain the solve at the first interior face returns theta_v'^2 <= 0 with a
+      ! realizable stress tensor; Tier 3 then clips the variance to zero and the
+      ! Cauchy-Schwarz bound zeroes the heat flux, so the surface heat stays in an 18-m skin
+      ! (OPEN_ISSUES A18, 2026-08-29: 83-90 % of heated Inn-valley columns). The heat-side
+      ! twin of A14 (the divergent direction lives in the unchecked scalar block).
+    integer, public    :: T2_SCALAR
     real,    public    :: SFC_QSQ_ZMAX
     real,    parameter :: STRAIN_MIN = 1.0E-10   ! avoids 0/0 in the strain limiter
     real,    parameter :: COND_MAX   = 1.0E8     ! largest admitted condition number of A
@@ -1752,7 +1762,12 @@
             mat_cond_heat, solve_ok)
 
         if (solve_ok) then
-          if (Is_realizable (tf_u2, tf_v2, tf_w2, tf_uv, tf_uw, tf_vw)) exit attempts_mom
+          if (Is_realizable (tf_u2, tf_v2, tf_w2, tf_uv, tf_uw, tf_vw)) then
+              ! pbl3d_t2_scalar = 1: the scalar block must be realizable as well (A18);
+              ! with the switch off the control flow is exactly the previous one.
+            if (T2_SCALAR == 0) exit attempts_mom
+            if (Is_realizable_scalar (tf_u2, tf_v2, tf_w2, tf_utv, tf_vtv, tf_wtv, tf_t2v)) exit attempts_mom
+          end if
         end if
 
           ! Only shorten l if another attempt follows, so that on exhaustion l_use still
@@ -1905,6 +1920,26 @@
                         + 2.0_SOLVER_PREC * tf_uv * tf_uw * tf_vw >= 0.0_SOLVER_PREC )
 
     end function Is_realizable
+
+    pure logical function Is_realizable_scalar (tf_u2, tf_v2, tf_w2, tf_utv, tf_vtv, tf_wtv, tf_t2v)
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !                                                                          !
+      ! Purpose: True when the scalar block of the solve is a possible state:    !
+      !          a positive theta_v variance and heat fluxes inside their         !
+      !          Cauchy-Schwarz bounds (the 2x2 minors of the 4x4 covariance      !
+      !          matrix of (u, v, w, theta_v)). Necessary, not sufficient, for    !
+      !          the full 4x4 matrix -- the same level of check Tier 3 step 5     !
+      !          enforces by projection. Used by the Tier-2 acceptance when       !
+      !          pbl3d_t2_scalar = 1 (OPEN_ISSUES A18).                           !
+      !                                                                          !
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      implicit none
+      real (kind = SOLVER_PREC), intent (in) :: tf_u2, tf_v2, tf_w2, tf_utv, tf_vtv, tf_wtv, tf_t2v
+      Is_realizable_scalar = ( tf_t2v > 0.0_SOLVER_PREC )                                &
+                       .and. ( tf_u2 * tf_t2v - tf_utv ** 2 >= 0.0_SOLVER_PREC )         &
+                       .and. ( tf_v2 * tf_t2v - tf_vtv ** 2 >= 0.0_SOLVER_PREC )         &
+                       .and. ( tf_w2 * tf_t2v - tf_wtv ** 2 >= 0.0_SOLVER_PREC )
+    end function Is_realizable_scalar
 
 
     pure subroutine Enforce_realizability (q, q_sq, l, div_u, tf_u2, tf_v2, tf_w2, tf_uv, tf_uw, tf_vw, &
@@ -4372,7 +4407,7 @@
               pbl3d_nsteps, pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt,  &
               pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt,                  &
               pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_moist_cond_max,                  &
-              pbl3d_sq, pbl3d_sfc_qsq_bc, pbl3d_sq_implicit, pbl3d_sfc_qsq_zmax,                    &
+              pbl3d_sq, pbl3d_sfc_qsq_bc, pbl3d_sq_implicit, pbl3d_t2_scalar, pbl3d_sfc_qsq_zmax,   &
               ids, ide, jds, jde, kds, kde,                                     &
               ims, ime, jms, jme, kms, kme,                                     &
               its, ite, jts, jte, kts, kte,                                     &
@@ -4407,7 +4442,7 @@
       integer, intent(in) :: pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt
       real,    intent(in) :: pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_moist_cond_max
       real,    intent(in) :: pbl3d_sq, pbl3d_sfc_qsq_zmax
-      integer, intent(in) :: pbl3d_sfc_qsq_bc, pbl3d_sq_implicit
+      integer, intent(in) :: pbl3d_sfc_qsq_bc, pbl3d_sq_implicit, pbl3d_t2_scalar
       character (len = 160) :: msg
       character (len = *), intent(in) :: pbl3d_constants
       integer, intent(in) :: ids, ide, jds, jde, kds, kde, &
@@ -4512,6 +4547,15 @@
         call wrf_message ('PBL3D: vertical q^2 diffusion integrated implicitly (pbl3d_sq_implicit = 1)')
       else if (pbl3d_sq_implicit /= 0) then
         call wrf_message ('--- WARNING: pbl3d_sq_implicit must be 0 or 1; using 0 (explicit)')
+      end if
+
+        ! Scalar-block realizability in the Tier-2 acceptance (see T2_SCALAR at the top).
+      T2_SCALAR = 0
+      if (pbl3d_t2_scalar == 1) then
+        T2_SCALAR = 1
+        call wrf_message ('PBL3D: Tier-2 acceptance requires a realizable scalar block (pbl3d_t2_scalar = 1)')
+      else if (pbl3d_t2_scalar /= 0) then
+        call wrf_message ('--- WARNING: pbl3d_t2_scalar must be 0 or 1; using 0')
       end if
 
         ! Surface q^2 condition (see SFC_QSQ_BC at the top of the module).
