@@ -7,6 +7,34 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-08-29, ~07:40 — D1/D2 ladder judged (07→13 UTC, `Dctl` / `Dsq06` / `Dbc1` / `Dsq06bc1`, 1 × 128, gate 1e4): S_q × 3 raises the interface TKE transport × 4–5 and the surface q² condition adds × 1.4 in mixed-layer TKE; together × 6–7 in transport and × 1.6 in entrainment flux — real, and still × 9 below MYNN. The 100 m wind excess is untouched. Verdict: D1 is transport-limited as diagnosed; the explicit q² diffusion (E28) is the wall; D2's q²-only condition does not reach the 100 m wind.**
+
+Numbers (`proc` stages `soundings entrainment surface`, job 8542178; pseudo-jobs 9999101–04; valley-floor interface 0.8 < z/h < 1.2, m² s⁻³ unless stated):
+
+| | `Dctl` | `Dsq06` (S_q 0.6) | `Dbc1` (q² wall) | `Dsq06bc1` | MYNN |
+|---|---|---|---|---|---|
+| TKE transport at the interface, 10 / 11 UTC | 1.8e-6 / 1.5e-6 | 6.9e-6 / 7.2e-6 | 2.4e-6 / 2.0e-6 | 9.9e-6 / 1.0e-5 | 9.4e-5 / 9.1e-5 |
+| transport / \|buoyancy destruction\| | 0.21 / 0.12 | 0.64 / 0.46 | 0.22 / 0.11 | 0.74 / 0.48 | 3.5 / 2.9 |
+| entrainment buoyancy destruction, 11 UTC | −1.26e-5 | −1.56e-5 | −1.77e-5 | −2.07e-5 | −3.19e-5 |
+| mixed-layer TKE maximum, 11 UTC (m² s⁻²) | 0.36 | 0.35 | 0.52 | 0.51 | 1.30 |
+| valley-floor median ML depth, 11 / 12 UTC (m) | 1242 / 1439 | 1320 / 1443 | 1336 / 1534 | 1339 / 1546 | 1303 / 1420 |
+| Δθ(500−50 m), Innsbruck 10:57 (obs 0.09 K) | 4.59 | 4.20 | 4.10 | 2.91 | −0.24 |
+| Δθ(500−50 m), Kolsass 11:01 (obs 0.69 K) | 3.30 | 2.71 | 3.58 | 3.19 | 0.33 |
+| θ RMSE / bias below 1 km, day launches (K) | 1.07 / +0.47 | 1.02 / +0.49 | 1.29 / +1.04 | 1.18 / +1.04 | 1.85 / +1.79 |
+| q²(face 1) / 8.3 u*², land median (diagnostic × 2, see below) | 0.33 | 0.35 | 0.63 | 0.64 | 1.2 (mass level) |
+| l / κz at 9 and 26 m | 0.57 / 0.49 | 0.57 / 0.51 | 0.86 / 0.70 | 0.86 / 0.72 | 1.2 / 1.3 |
+| Kolsass 10:30–13:00: u10 / u100 (obs 2.56 / 2.52 m s⁻¹) | 3.40 / 6.10 | 3.14 / 5.96 | 3.49 / 6.17 | 3.54 / 6.10 | 1.80 / 2.05 |
+
+*Mechanism.* S_q acts where it was aimed: the vertical q² transport at the inversion scales more than linearly with S_q (× 3 → × 4–5, the q² gradient steepens with the flux) and the transport-to-destruction ratio rises from 0.2 to 0.6; alone it neither adds mixed-layer TKE nor deepens the layer much (+80 m median). The surface condition feeds TKE in from the wall (mixed-layer maximum + 40 %, l/κz 0.57 → 0.86 in the lowest 30 m) but transports none of it upward; combined, the two multiply (more TKE × a larger transport coefficient): × 6–7 in transport, entrainment flux at 65 % of MYNN's, ML depth + 100 m. Still an order of magnitude short of MYNN's interface transport — MYNN's carries the EDMF mass flux, a non-local term this closure lacks. The sounding scalars at single sites are noisy (control vs stitched X9a day differ by 1.6 K at Innsbruck 10:57 — convective onset at the site), so the domain-wide entrainment table is the judge; both agree in sign.
+
+*D2.* The q²-only wall condition (`pbl3d_sfc_qsq_bc = 1`) doubles the near-wall q² and lengthens l toward κz but leaves the 100 m wind at 6.1 m s⁻¹ against 2.5 observed (shear ratio 100 m/10 m 1.79 → 1.72, obs 0.99) and warms the lowest km by 0.5 K (bias +0.47 → +1.04). Near-wall q² is not what sets the 100 m wind; the momentum mixing in 30–100 m is, and `bc = 2` (l ≥ κz below 100 m) was not in the ladder. A16 stays open with that as the next test.
+
+*Diagnostic caveat.* `sfc_tke_check` samples the first mass level; the closure's q² lives on faces with face 0 at the floor, so the printed ratio is half the face-1 value (0.16 ↔ the smoke's 0.37; 0.32 ↔ 0.65). Table above already doubled.
+
+*Next (recommendation, not done).* (1) Implement implicit vertical q² diffusion (default-off `pbl3d_sq_implicit`) so S_q = 1–2 can be tested — the trend says transport is the lever and E28 is the wall; (2) test `pbl3d_sfc_qsq_bc = 2` on a 07→13 pair; (3) the remaining × 9 argues for a non-local (mass-flux-like) q² transport term, to be designed after (1). Nothing changes in production: all switches stay default-off; the candidate configuration is `pbl3d_sq = 0.6, pbl3d_sfc_qsq_bc = 1` only if the 0.5 K warm bias is accepted — not yet.
+
+---
+
 **2026-08-29, ~03:30 — `Dsq10` (S_q = 1.0) crashed at 08:48: the explicit vertical q² diffusion crossed its stability limit (E28). The S_q ladder stops at 0.6 unless the diffusion is made implicit; D1 is judged from `Dsq06`.**
 
 Mechanism: `Calc_q_sq_vertical_diffusion` is forward-Euler with the full Δt = 2 s; stability number r = S_q·l·q·Δt/(Δz_face·Δz_layer) ≤ ½. Measured per face from the archives at 08:30: r_max 0.10 (`Dctl`, 0.2), 0.24 (`Dsq06`, 0.6), 0.45 (`Dsq10`, 1.0; 7345 faces above 0.25, rising 931 → 2806 → 7345 over 07:30–08:30 as the convective layer grows: l ≈ 30 m, q ≈ 3 m s⁻¹ at Δz = 20 m). No CFL warning, no A14 signature, clean 08:30 frame, NaN at 08:48 on two ridge cells — the explicit limit is the only candidate; the ignition face is not pinned (no 1-min stream). Physics reading: the diffusivity a 5× S_q asks for, K_q ≈ 100 m² s⁻¹ over 20 m layers, is exactly the transport the D1 hypothesis wants at the inversion, and the scheme cannot carry it at this Δt/Δz. Options, not yet chosen: (1) implicit vertical q² diffusion (tridiagonal like MYNN's QKE), a default-off switch `pbl3d_sq_implicit`; (2) sub-stepping the diffusion (`pbl3d_nsteps` exists but sub-steps the whole closure); (3) a stability clip K_q ≤ Δz²/(2Δt) — rejected: it clips where the transport matters. Recommendation: judge D1 from `Dsq06` (3× MY82, r_max 0.24) first; implement (1) only if 0.6 shows a real but insufficient effect on the 11 UTC mixed-layer depth. `Dsq10`'s 07:30–08:30 frames remain usable for the early-morning footprint of S_q = 1; its chain link 8539592 cancelled; no rerun.

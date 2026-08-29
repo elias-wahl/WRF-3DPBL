@@ -1919,6 +1919,7 @@ asked for.
 ## A15 — OPEN (2026-08-27): the morning transition is too slow — transport-limited entrainment at the inversion
 
 **Status 2026-08-29:** `Dsq06` (S_q = 0.6) completed 07→10 and runs 10→13; `Dsq10` (S_q = 1.0) crashed at 08:48 — the explicit vertical q² diffusion exceeds its stability limit (E28); S_q ≥ 1 needs an implicit solve before it can be tested. Judge D1 from `Dsq06` vs `Dctl`.
+**Result 2026-08-29 07:40 (DECISIONS):** S_q 0.6 raises the interface TKE transport × 4–5 (transport/destruction 0.2 → 0.6), with the surface condition × 6–7 and entrainment flux × 1.6 (65 % of MYNN's); ML depth + 100 m; still × 9 below MYNN's transport. Transport-limited confirmed; next lever is S_q ≥ 1 behind an implicit q² diffusion (E28), then a non-local term.
 
 Observed: parcel mixed-layer depth 330–550 m at 10–11 UTC vs 900–950 m (Innsbruck 10, Kolsass 11 UTC);
 50–500 m θ difference 3–4.4 K at 08–11 UTC vs 0.7–1.7 K. Model-only: largest sensible heat flux of the
@@ -1935,6 +1936,8 @@ nocturnal cap — night judged separately); (3) Ri-dependent cap relaxation, las
 restart segment together with A16, judged by the 11 UTC sounding depth and the 100 m onset time.
 
 ## A16 — OPEN (2026-08-27): daytime wind aloft runs away from an under-mixed surface layer — up-valley onset at 100 m two hours early
+
+**Status 2026-08-29:** `Dbc1` (`pbl3d_sfc_qsq_bc = 1`, q² wall value only) doubles q² at face 1 (0.33 → 0.63 of 8.3 u*²) and raises l/κz from 0.57 to 0.86 in the lowest 30 m, but the Kolsass 100 m wind stays 6.1 m s⁻¹ (obs 2.5) and the lowest km warms by 0.5 K. The q² half of the hypothesis is not the lever; `bc = 2` (l ≥ κz below 100 m) is untested. OPEN.
 
 Observed (i-Box 2–12 m, lidar, Radfeld; `proc/meta/meta_surface_wind.py`; DECISIONS ~14:30/14:45):
 onset window 10:30–13 UTC Kolsass 100 m wind 6.0 m s⁻¹ vs 2.5 observed (100 m / 10 m ratio 1.91 vs 0.99),
