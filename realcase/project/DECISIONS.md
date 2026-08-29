@@ -7,6 +7,21 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-08-29, ~13:25 — Fix 1 (`pbl3d_t2_scalar = 1`) opens the wall within three minutes: in the Inn valley the fraction of heated columns with no heat flux at 18 m falls from 0.86 to 0.05, the 18-m flux rises from 0 to 0.86 of the surface flux, the 9 → 27 m θ jump from 2.7 to 0.7 K; Tier-3 clipping at the wall face goes to zero. Night footprint check and the 07→12 pairs (fix alone; fix + S_q 1.0 implicit) submitted.**
+
+BBK0/BBK1 (switch 0/1), six minutes from `Dctl`'s 10:00 restart, heated columns (HFX > 50 W m⁻²), medians, at 10:06 (10:03 in brackets):
+
+| mask | zero-flux fraction off → on | w′θ_v′(18 m)/(HFX/ρc_p) off → on | θ(9) − θ(27 m) off → on (K) | θ_v′²(face 1) on (K²) | T3 clip off → on | escalation off → on | T2 off → on (K) |
+|---|---|---|---|---|---|---|---|
+| Inn valley | 0.86 → **0.05** (0.10) | 0.00 → **0.86** (0.96) | 2.70 → **0.73** (1.03) | 0.17 | 0.81 → 0.00 | 0.45 → 0.95 | 295.6 → 295.0 |
+| mountain valley floors | 0.79 → 0.04 | 0.00 → 0.89 | 2.93 → 0.81 | 0.23 | 0.74 → 0.00 | 0.39 → 0.84 | 296.7 → 295.4 |
+| foreland | 0.78 → 0.02 | 0.00 → 0.92 | 3.63 → 1.06 | 0.28 | 0.75 → 0.00 | 0.40 → 0.83 | 297.0 → 295.5 |
+| slopes | 0.30 → 0.06 | 0.62 → 0.76 | 0.84 → 0.68 | 0.33 | 0.24 → 0.00 | 0.39 → 0.58 | 291.2 → 290.9 |
+
+Inn-valley flux profile with the fix (faces 0–6, K m s⁻¹): 0.130, 0.122, 0.068, 0.025, 0.000, 0, 0 — a decreasing profile eroding the skin, confined to the lowest 60 m after six minutes as it should be; without: 0.123, 0.000, −0.0002, … The mechanism is confirmed by its removal: once the acceptance sees the scalar block, Tier 3 never has to clip at the wall (0 %), the escalation does the work at 83–95 % of the heated flat columns, and the variance is positive. Wall-clock cost: none measurable (6:39 vs 6:38 for 180 steps). BBZ2 vs BBB: the binary with both new switches off is bit-identical to the previous one. Not yet known: the night footprint (BBN0/BBN1 from X7's 04:00 restart, devel, 8544203/04 — the scalar-block test should be inert in stable air; a q²/flux/T2 comparison at 04:06 is the check) and whether the layer deepens to the observed 900 m by 11 UTC — the 07→12 pairs `T2S` (fix alone, 8544205 → chain 8544206) and `T2Ssq10i` (fix + S_q 1.0 implicit, 8544207 → 8544208), halves at 09:30, `zen3_2048`, 1 × 128, 3:45 h each (first nodes 16:16 / 17:17), archives `exp/T2S`, `exp/T2Sb`, `exp/T2Ssq10i`, `exp/T2Ssq10ib`. Judged against `Dctl`/`Dctlb` and the three soundings; the grey-zone partition needs the flux outputs, which these runs do not carry (E26) — the θ-threshold h and Δθ(500−50 m) at the sites are the depth judges. Production defaults unchanged: both switches are off.
+
+---
+
 **2026-08-29, ~12:35 — `pbl3d_sq_implicit` validated (bit-identical off; 0.1 % agreement with the explicit step at S_q 0.6; finite at S_q 2.0). Fix 1 for A18 implemented as `pbl3d_t2_scalar` (default 0) on Elias's decision; rebuilt; its six-minute test runs from `Dctl`'s 10:00 restart.**
 
 *Validation of the implicit q² diffusion* (devel QOS, 2 × 128, six minutes from X7's 07:00 restart): BBZ (new binary, switch off, X7 settings) vs BBB — bit-for-bit identical on every variable; BBE06 vs BBI06 (explicit vs implicit, S_q = 0.6, D settings) — domain-median q² at faces 1–8 agree to 0.1 % (ratios 0.999–1.001, median |Δq²| 4–10 × 10⁻⁴ m² s⁻²: the operator-splitting error), T2 median difference 0.000 K (99th percentile 0.11 K, the chaotic spread of E14); BBI20 (implicit, S_q = 2.0) — finite, no NaN, no CFL warning, q² maximum 6.5 vs 7.9 (stronger diffusion smooths the maximum). The switch is usable; S_q ≥ 1 is now testable.
