@@ -44,7 +44,7 @@ RUNDIR=$DATA/branko_runs/innval_pbl3d_X10$IDX
 ln -sfn $DATA/branko_runs/innval_pbl3d_X10a/wrfinput_d01 $RUNDIR/wrfinput_d01
 ln -sfn $DATA/branko_runs/innval_pbl3d_X10a/wrfbdy_d01   $RUNDIR/wrfbdy_d01
 grep -E '^ (start_day|end_day|start_hour|run_hours|pbl3d_t2_scalar)' $RUNDIR/namelist.input | tr -s ' '
-jid=$(sbatch --parsable --chdir="$RUNDIR" "$RUNDIR/submit_wrf.slurm") || { echo "!!! sbatch failed"; exit 1; }
+jid=$(cd "$RUNDIR" && sbatch --parsable submit_wrf.slurm) || { echo "!!! sbatch failed"; exit 1; }   # MUST sbatch from the rundir: the submit scripts cd to SLURM_SUBMIT_DIR, which --chdir does not set
 echo "X10$IDX submitted as $jid"
 sbatch --parsable --dependency=afternotok:$jid --export=ALL,STAGE=X10$IDX,FAILED_JOB=$jid "$RC/scripts/notify_x10.slurm" >/dev/null && echo "ping armed afternotok:$jid"
 if [ -n "$NEXT" ]; then

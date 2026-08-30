@@ -1,5 +1,5 @@
 #!/bin/bash
-# One-shot launcher for X10 (evening-start, ICON 17_12 forcing, A18 fix on).
+# One-shot launcher (submit scripts cd to SLURM_SUBMIT_DIR -> always sbatch from inside the rundir) for X10 (evening-start, ICON 17_12 forcing, A18 fix on).
 # Builds X10a (17_13->19) + a 1 h smoke, submits with dependency gating:
 #   smoke_real -> smoke_wrf ;  x10a_real -> wrfinput check ;  X10a wrf
 #   afterok:(smoke_wrf, check) ; chain links b..f self-propagate afterok.
@@ -52,12 +52,12 @@ done
 grep -E '^ (start_day|start_hour|end_day|end_hour|run_hours|pbl3d_t2_scalar|output_tke_moments|iofields_filename)' \
   "$DATA/branko_runs/innval_pbl3d_X10a/namelist.input" | tr -s ' '
 echo "=== submitting"
-sr=$(sbatch --parsable --chdir="$DATA/branko_runs/innval_pbl3d_X10smoke" "$DATA/branko_runs/innval_pbl3d_X10smoke/submit_real.slurm")
-sw=$(sbatch --parsable --dependency=afterok:$sr --chdir="$DATA/branko_runs/innval_pbl3d_X10smoke" "$DATA/branko_runs/innval_pbl3d_X10smoke/submit_wrf.slurm")
-ar=$(sbatch --parsable --chdir="$DATA/branko_runs/innval_pbl3d_X10a" "$DATA/branko_runs/innval_pbl3d_X10a/submit_real.slurm")
+sr=$(cd "$DATA/branko_runs/innval_pbl3d_X10smoke" && sbatch --parsable submit_real.slurm)
+sw=$(cd "$DATA/branko_runs/innval_pbl3d_X10smoke" && sbatch --parsable --dependency=afterok:$sr submit_wrf.slurm)
+ar=$(cd "$DATA/branko_runs/innval_pbl3d_X10a" && sbatch --parsable submit_real.slurm)
 ck=$(sbatch --parsable --dependency=afterok:$ar -A p72996 -p zen3_0512 -q zen3_0512_devel -N1 -t 00:05:00 -J x10_chk \
      -o "$DATA/branko_runs/innval_pbl3d_X10a/check_wrfinput.%j.out" \
      --wrap="set +u; . $RC/env/vsc5.sh; set -u; python3 $RC/scripts/check_wrfinput.py $DATA/branko_runs/innval_pbl3d_X10a/wrfinput_d01")
-aw=$(sbatch --parsable --dependency=afterok:$sw:$ck --chdir="$DATA/branko_runs/innval_pbl3d_X10a" "$DATA/branko_runs/innval_pbl3d_X10a/submit_wrf.slurm")
+aw=$(cd "$DATA/branko_runs/innval_pbl3d_X10a" && sbatch --parsable --dependency=afterok:$sw:$ck submit_wrf.slurm)
 lb=$(sbatch --parsable --dependency=afterok:$aw --export=ALL,IDX=b --chdir="$DATA/branko_runs/innval_pbl3d_X10a" "$RC/scripts/chain_x10.slurm")
 echo "smoke_real=$sr smoke_wrf=$sw x10a_real=$ar check=$ck X10a=$aw link_b=$lb"
