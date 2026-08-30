@@ -46,6 +46,7 @@ ln -sfn $DATA/branko_runs/innval_pbl3d_X10a/wrfbdy_d01   $RUNDIR/wrfbdy_d01
 grep -E '^ (start_day|end_day|start_hour|run_hours|pbl3d_t2_scalar)' $RUNDIR/namelist.input | tr -s ' '
 jid=$(sbatch --parsable --chdir="$RUNDIR" "$RUNDIR/submit_wrf.slurm") || { echo "!!! sbatch failed"; exit 1; }
 echo "X10$IDX submitted as $jid"
+sbatch --parsable --dependency=afternotok:$jid --export=ALL,STAGE=X10$IDX,FAILED_JOB=$jid "$RC/scripts/notify_x10.slurm" >/dev/null && echo "ping armed afternotok:$jid"
 if [ -n "$NEXT" ]; then
   nj=$(sbatch --parsable --dependency=afterok:$jid --export=ALL,IDX=$NEXT --chdir="$RUNDIR" "$RC/scripts/chain_x10.slurm")
   echo "next link ($NEXT) queued as $nj afterok:$jid"
