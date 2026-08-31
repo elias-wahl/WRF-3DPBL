@@ -41,8 +41,8 @@ RST=$DATA/branko_runs/innval_pbl3d_X10$PREV/wrfrst_d01_$RSTD
   --set output_v_fluxes=0 --set output_w_fluxes=0 --set output_tke_moments=1 \
   --set start_day="$SDAY" --set end_day="$EDAY" || { echo "!!! build failed"; exit 1; }
 RUNDIR=$DATA/branko_runs/innval_pbl3d_X10$IDX
-ln -sfn $DATA/branko_runs/innval_pbl3d_X10a/wrfinput_d01 $RUNDIR/wrfinput_d01
-ln -sfn $DATA/branko_runs/innval_pbl3d_X10a/wrfbdy_d01   $RUNDIR/wrfbdy_d01
+ln -sfn $DATA/branko_runs/innval_pbl3d_X10bdy/wrfinput_d01 $RUNDIR/wrfinput_d01   # X10bdy = full-window real (13->23); X10a's wrfbdy ends 19:00 (its real ran --hours 6) and starved X10b (job 8549830)
+ln -sfn $DATA/branko_runs/innval_pbl3d_X10bdy/wrfbdy_d01   $RUNDIR/wrfbdy_d01
 grep -E '^ (start_day|end_day|start_hour|run_hours|pbl3d_t2_scalar)' $RUNDIR/namelist.input | tr -s ' '
 jid=$(cd "$RUNDIR" && sbatch --parsable submit_wrf.slurm) || { echo "!!! sbatch failed"; exit 1; }   # MUST sbatch from the rundir: the submit scripts cd to SLURM_SUBMIT_DIR, which --chdir does not set
 echo "X10$IDX submitted as $jid"
