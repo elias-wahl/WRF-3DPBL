@@ -1,0 +1,23 @@
+# History stream (wrfout, ":h:0:") for the D1/D2 restart segments of 2026-08-27:
+# the length-scale/limiter additions of iofields_lscale.txt, minus the 3D fields
+# none of the diagnostics reads (proc/, wrf3dpbl-diag/, compare_mynn.py, checked
+# 2026-08-27 against the variable names they open). Motive: disk. A full X7 frame
+# is 5.6 GB (56 3D fields at 0.1 GB each); the lines below take ~2 GB off every
+# 30-min frame, which is what makes five 6-h segments fit into the ~340 GB left.
+# Parser quirks (they bite silently):
+#   * a blank line ENDS parsing -- there are NONE in this file, keep it that way
+#   * '#' anywhere on a line comments the whole line out
+#   * an unknown or absent variable name is a WARNING in rsl.error, not an abort --
+#     grep rsl.error.0000 for "W A R N I N G" the first time this file is used
+# Kept on purpose although zero in a 3D run: QKE, EL_PBL, TKE_PBL (the proc loader
+# falls through them before Q_SQ / L_MASTER; 0.3 GB per frame). Kept: QICE, QCLOUD,
+# CLDFRA (fog/cloud checks), ATHRATENSW/LW removed (the U3 radiation check reads SWDOWN).
++:h:0:L_MASTER,L0_ASYM,PBL3D_T1_RATIO,PBL3D_SK_EPS,PBL3D_P_EPS
++:h:0:KE_LOSS_H,QSQ_SHEAR_H
+-:h:0:ATHCUTEN,AQVCUTEN,AUCUTEN,AVCUTEN
+-:h:0:ATHSHTEN,AQVSHTEN,AUSHTEN,AVSHTEN
+-:h:0:ATHBLTEN,AQVBLTEN,AUBLTEN,AVBLTEN
+-:h:0:AVGFLX_WWM,AVGFLX_RVM,AVGFLX_RUM,TSQ,COV,SH3D
+-:h:0:QSNOW,QGRAUP,QRAIN,QNRAIN,QNICE,P_HYD
+-:h:0:ATHMPTEN,AQVMPTEN
+-:h:0:TURB_FLUX_WQV,TURB_FLUX_THETA2_V,PBL3D_QV2,PBL3D_COND_A
