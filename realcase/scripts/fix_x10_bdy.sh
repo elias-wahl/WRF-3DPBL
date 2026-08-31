@@ -7,6 +7,11 @@
 set -eu -o pipefail
 DATA=/gpfs/data/fs72996/ewahl
 RC=$DATA/branko/realcase
+# Guard (2026-08-31 22:15): if the chain already recovered (X10c archived), a second
+# re-arm duplicates segments and re-runs real under the live chain's wrfbdy. Abort.
+if ls $DATA/exp/X10c/wrf_output/* >/dev/null 2>&1; then
+  echo "X10c already archived -- chain recovered; refusing to re-arm (check sacct/git log first)"; exit 1
+fi
 ENV=$RC/env/vsc5_X10bdy.sh
 [ -f "$ENV" ] || printf '#!/bin/bash\n# X10bdy: full-window real for the X10 chain boundary file\nsource "$(dirname "${BASH_SOURCE[0]}")/vsc5.sh"\nexport WRF_OUTPUT_ROOT=%s/exp/X10bdy\n' "$DATA" > "$ENV"
 RUN=$DATA/branko_runs/innval_pbl3d_X10bdy
