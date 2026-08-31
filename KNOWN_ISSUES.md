@@ -1210,3 +1210,35 @@ subgrid transport matters least. The sounding comparisons (site-based) are unaff
 **Rule:** split floor statistics by 20-km relief — foreland (≤ 800 m), mountain valley floors
 (> 800 m), Inn valley (the lat/lon box above) — and judge the valley physics on the last two. A
 diagnostic that reports one "valley-floor" number must say which mask it used.
+
+## E31. `scontrol update Partition=` breaks a pending job on VSC-5 — the lane GRES is stamped at submit time
+
+**Symptom:** a pending job moved between Zen3 lanes with `scontrol update JobId=… Partition=zen3_2048
+QOS=zen3_2048` goes to `Reason=BadConstraints, Priority=0` and never starts (X10c, job 8550557,
+2026-08-31).
+
+**Cause:** VSC-5's job-submit plugin stamps every job with a partition-specific GRES
+(`gres/cpu_zen3_1024=…`). `scontrol update` changes Partition/QOS but does not re-stamp the GRES,
+so the moved job requests a resource the new lane's nodes do not advertise. Patching the GRES by
+hand (`scontrol update … Gres=cpu_zen3_2048:256`) leaves both tags in the job's TRES accounting
+and the scheduler flips it back to BadConstraints.
+
+**Rule — moving a chain job to an emptier lane:** (1) `scontrol hold` the old job (so two copies
+can never write the same output root), (2) `cd <rundir> && sbatch --partition=<lane> --qos=<lane>
+submit_wrf.slurm` (the plugin stamps the right GRES; sbatch from the rundir, E32), (3) retarget
+every dependent job — `scontrol update JobId=<link> Dependency=afterok:<new>` and the afternotok
+ping likewise — (4) `scancel` the held job. Verified: 8550557 → 8551230 started in seconds on
+zen3_2048 with links d and the failure ping following the new ID.
+
+## E32. The submit scripts `cd "$SLURM_SUBMIT_DIR"` — `sbatch --chdir` does not change it, so always `cd <rundir> && sbatch`
+
+**Symptom:** `real.exe`/`wrf.exe` fail instantly with `execve …/./real.exe: No such file or
+directory` when submitted via `sbatch --chdir=<rundir> submit_real.slurm` from elsewhere
+(both X10 real jobs, 8549398/8549400, 2026-08-31).
+
+**Cause:** `SLURM_SUBMIT_DIR` is the directory `sbatch` was *invoked* from, not what `--chdir`
+sets; the submit scripts' first action is `cd "$SLURM_SUBMIT_DIR"`, which silently undoes
+`--chdir` and leaves the job in the invocation directory, where `./real.exe` does not exist.
+
+**Rule:** every scripted submission is `jid=$(cd "$RUNDIR" && sbatch --parsable …)` — never
+`sbatch --chdir`. `chain_x10.slurm` and `launch_x10.sh` do this; any new driver must too.
