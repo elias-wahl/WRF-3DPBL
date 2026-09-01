@@ -1230,6 +1230,9 @@ every dependent job — `scontrol update JobId=<link> Dependency=afterok:<new>` 
 ping likewise — (4) `scancel` the held job. Verified: 8550557 → 8551230 started in seconds on
 zen3_2048 with links d and the failure ping following the new ID.
 
+## E34 — an `afternotok` failure-ping fires when YOU cancel the job: CANCELLED satisfies "not ok" (2026-09-01)
+`scancel` on a job that carries an armed `--dependency=afternotok:<job>` ping releases that ping, which then writes a wake-up flag and starts a headless session to diagnose a failure that never happened (here: 8551893/8552124 cancelled at 08:30 while rebuilding the CPB twins; both pings fired at once with identical timestamps, and the run dirs contained no `rsl.error.0000` and no archive — the tell that the job never ran). **Rule: cancel the ping together with its job.** Find them with `squeue -u $USER -h -o "%i %j %E" | grep afternotok:<jobid>`; a cleanup script that cancels jobs must cancel their dependants in the same pass.
+
 ## E33 — `ATHRATEN{LW,SW}` are per-output-bucket accumulations in KELVIN, not cumulative K s-1: differencing consecutive frames gives ~zero radiative cooling (2026-09-01)
 With `acc_phy_tend = 1` WRF accumulates the physics tendencies into a bucket that is **reset at every history write**, and the field's unit is K (the temperature change over that bucket), not a rate. The natural-looking `(A[t2]-A[t1])/dt` therefore returns the difference of two nearly equal bucket totals: 0.001 K/h of longwave cooling on a clear night, which is impossible and would have been read as "the radiation scheme is broken". Correct rate = `A[t] / history_interval`. Check: on a quasi-steady night consecutive frames hold nearly the SAME value (-0.1362, -0.1384 K here); a cumulative accumulator would double. Same applies to the other `A*` physics accumulators. Cross-check any budget term against a physical magnitude before interpreting (E18).
 
