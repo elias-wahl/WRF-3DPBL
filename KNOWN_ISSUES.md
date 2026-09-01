@@ -1230,6 +1230,9 @@ every dependent job — `scontrol update JobId=<link> Dependency=afterok:<new>` 
 ping likewise — (4) `scancel` the held job. Verified: 8550557 → 8551230 started in seconds on
 zen3_2048 with links d and the failure ping following the new ID.
 
+## E33 — `ATHRATEN{LW,SW}` are per-output-bucket accumulations in KELVIN, not cumulative K s-1: differencing consecutive frames gives ~zero radiative cooling (2026-09-01)
+With `acc_phy_tend = 1` WRF accumulates the physics tendencies into a bucket that is **reset at every history write**, and the field's unit is K (the temperature change over that bucket), not a rate. The natural-looking `(A[t2]-A[t1])/dt` therefore returns the difference of two nearly equal bucket totals: 0.001 K/h of longwave cooling on a clear night, which is impossible and would have been read as "the radiation scheme is broken". Correct rate = `A[t] / history_interval`. Check: on a quasi-steady night consecutive frames hold nearly the SAME value (-0.1362, -0.1384 K here); a cumulative accumulator would double. Same applies to the other `A*` physics accumulators. Cross-check any budget term against a physical magnitude before interpreting (E18).
+
 ## E32. The submit scripts `cd "$SLURM_SUBMIT_DIR"` — `sbatch --chdir` does not change it, so always `cd <rundir> && sbatch`
 
 **Symptom:** `real.exe`/`wrf.exe` fail instantly with `execve …/./real.exe: No such file or
