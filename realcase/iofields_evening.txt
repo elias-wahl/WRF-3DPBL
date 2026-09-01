@@ -1,0 +1,11 @@
+# Evening-transition surface stream (formation-deficit hunt, DECISIONS 2026-09-01 ~19:45).
+# Stream 23 at 5 min, 2-D SURFACE fields only (the 30-min history carries the profiles;
+# a 5-min 3-D stream would cost ~70 GB over 6 h for nothing this question needs).
+# Targets hypothesis C2: the surface flux reversal time and skin-cooling onset --
+# TSK/HFX/GRDFLX/UST against the vf0 eddy flux, met_rad radiation and trh_prof tower.
+# Parser rules (bite silently): NO blank lines anywhere; '#' comments the whole line;
+# unknown names are only a WARNING -- grep rsl.error.0000 for "W A R N I N G" on first use.
++:h:23:TSK,HFX,LH,GRDFLX,UST,T2,Q2,TH2,U10,V10,PSFC,GLW,SWDOWN
+-:h:0:ATHCUTEN,AQVCUTEN,AUCUTEN,AVCUTEN
+-:h:0:ATHSHTEN,AQVSHTEN,AUSHTEN,AVSHTEN
+-:h:0:ATHBLTEN,AQVBLTEN,AUBLTEN,AVBLTEN
