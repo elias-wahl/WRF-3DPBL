@@ -11,6 +11,13 @@
 # --export=ALL,STAGE=<name>,FAILED_JOB=<jobid>. Writes a status flag file that
 # the monitoring layer (claude_watch.sh crontab / session watchdog) picks up.
 DATA=/gpfs/data/fs72996/ewahl
+# Guard (2026-09-01): afternotok also fires on CANCELLED. Deliberate cancellations
+# (self-cancelling twins, a session replacing a queued job) are NOT failures and must
+# not burn a headless wake-up. Job 8552124 (CPB1a) woke a session this way.
+if [ -n "${FAILED_JOB:-}" ]; then
+  st=$(sacct -j "$FAILED_JOB" -n -o State 2>/dev/null | head -1 | tr -d ' ')
+  case "$st" in CANCELLED*) echo "job $FAILED_JOB was CANCELLED, not a failure -- no flag written"; exit 0 ;; esac
+fi
 cat > $DATA/.claude_wake/x10_${STAGE:-unknown}_$(date +%s).txt <<MSG
 X10 chain failure: stage ${STAGE:-unknown} (job ${FAILED_JOB:-unknown}) did not complete cleanly.
 Diagnose: sacct -j ${FAILED_JOB:-}; read rsl.error.0000 in branko_runs/innval_pbl3d_${STAGE:-X10a} (grep FATAL/SIGSEGV/cfl).
