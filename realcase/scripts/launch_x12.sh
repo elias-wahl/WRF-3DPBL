@@ -11,7 +11,13 @@ DATA=/gpfs/data/fs72996/ewahl
 RC=$DATA/branko/realcase
 # usage: launch_x12.sh m|p [--submit]   (Elias 2026-09-03: twin chains, m = native 65 ICON levels, p = 36-level ln-p ladder)
 V=${1:?usage: launch_x12.sh m|p [--submit]}; shift
-case $V in m) MET=$DATA/WPS/metgrid_output_1712nat ;; p) MET=$DATA/WPS/metgrid_output_1712ml ;; *) echo "bad variant $V (m|p)"; exit 1 ;; esac
+SMOKE=0
+case $V in
+  m)  MET=$DATA/WPS/metgrid_output_1712nat ;;                       # native 65 ICON levels, WRF (smoothed geogrid) terrain
+  p)  MET=$DATA/WPS/metgrid_output_1712ml ;;                        # 36-level ln-p ladder, WRF terrain
+  mt) MET=$DATA/WPS/metgrid_output_1712nat_icontopo; SMOKE=1 ;;     # native levels on ICON's own terrain (geogrid_icontopo); 1 h daytime smoke gates the chain
+  *) echo "bad variant $V (m|p|mt)"; exit 1 ;;
+esac
 TAG=X12$V
 n=$(ls $MET/met_em.d01.2025-07-1[78]_*.nc 2>/dev/null | wc -l)
 [ "$n" -ge 35 ] || { echo "!!! only $n met_em files in $MET (need 35: 17_13 .. 18_23)"; exit 1; }
@@ -37,7 +43,7 @@ sets() { # the X10 physics/output settings (unchanged for X12 -- the forcing is 
   done
   sed -i -E "s/^( iofields_filename[[:space:]]*=[[:space:]]*)\"[^\"]*\"/\1\"iofields_d1d2.txt\"/" "$NL"
 }
-for x in ${TAG}bdy ${TAG}a; do
+for x in ${TAG}bdy ${TAG}a ${TAG}smoke; do
   [ -f "$RC/env/vsc5_$x.sh" ] || printf '#!/bin/bash\n# %s: X12 twin (m=native levels, p=36-level ladder) = X10 window/physics with model-level ICON forcing (A21), 2026-09-03\nsource "$(dirname "${BASH_SOURCE[0]}")/vsc5.sh"\nexport WRF_OUTPUT_ROOT=%s/exp/%s\n' "$x" "$DATA" "$x" > "$RC/env/vsc5_$x.sh"
 done
 BDY=$DATA/branko_runs/innval_pbl3d_${TAG}bdy; RUN=$DATA/branko_runs/innval_pbl3d_${TAG}a
@@ -47,6 +53,14 @@ echo "=== building ${TAG}a (17_13 -> 19)"
 "$RC/scripts/setup_rundir.sh" "$RC/env/vsc5_${TAG}a.sh" "$RUN" pbl3d --met-dir "$MET" --hours 6 | tail -3
 for d in "$BDY" "$RUN"; do sets "$d/namelist.input"; ln -sfn "$RC/iofields_d1d2.txt" "$d/iofields_d1d2.txt"; done
 ln -sfn "$BDY/wrfinput_d01" "$RUN/wrfinput_d01"; ln -sfn "$BDY/wrfbdy_d01" "$RUN/wrfbdy_d01"
+if [ "$SMOKE" = 1 ]; then
+  SMK=$DATA/branko_runs/innval_pbl3d_${TAG}smoke
+  echo "=== building ${TAG}smoke (1 h from 13 UT, 10-min output; ICON terrain slopes up to 44.6 deg)"
+  "$RC/scripts/setup_rundir.sh" "$RC/env/vsc5_${TAG}smoke.sh" "$SMK" pbl3d --met-dir "$MET" --smoke | tail -2
+  sets "$SMK/namelist.input"; ln -sfn "$RC/iofields_d1d2.txt" "$SMK/iofields_d1d2.txt"
+  ln -sfn "$BDY/wrfinput_d01" "$SMK/wrfinput_d01"; ln -sfn "$BDY/wrfbdy_d01" "$SMK/wrfbdy_d01"
+  hdr "$SMK" wrf_${TAG}smoke zen3_1024 zen3_1024 2 01:15:00
+fi
 hdr "$BDY" real_${TAG}bdy zen3_0512 zen3_0512_devel 2 00:10:00
 hdr "$RUN" wrf_${TAG}a    zen3_1024 zen3_1024       2 05:15:00
 grep -E '^ (start_day|start_hour|end_day|end_hour|run_hours|pbl3d_t2_scalar|diff_6th_opt|iofields_filename)' "$RUN/namelist.input" | tr -s ' '
@@ -58,7 +72,14 @@ br=$(cd "$BDY" && sbatch --parsable submit_real.slurm)
 ck=$(sbatch --parsable --dependency=afterok:$br -A p72996 -p zen3_0512 -q zen3_0512_devel -N1 -t 00:05:00 -J ${TAG}_chk \
      -o "$BDY/check_wrfinput.%j.out" \
      --wrap="set +u; . $RC/env/vsc5.sh; set -u; python3 $RC/scripts/check_wrfinput.py $BDY/wrfinput_d01")
-aw=$(cd "$RUN" && sbatch --parsable --dependency=afterok:$ck submit_wrf.slurm)
+if [ "$SMOKE" = 1 ]; then
+  sw=$(cd "$SMK" && sbatch --parsable --dependency=afterok:$ck submit_wrf.slurm)
+  aw=$(cd "$RUN" && sbatch --parsable --dependency=afterok:$sw submit_wrf.slurm)
+  sbatch --parsable --dependency=afternotok:$sw --export=ALL,STAGE=${TAG}smoke,FAILED_JOB=$sw "$RC/scripts/notify_x12.slurm" >/dev/null
+  echo "smoke gate: wrf_${TAG}smoke=$sw (a-segment afterok)"
+else
+  aw=$(cd "$RUN" && sbatch --parsable --dependency=afterok:$ck submit_wrf.slurm)
+fi
 lb=$(sbatch --parsable --dependency=afterok:$aw --export=ALL,IDX=b,TAG=$TAG --chdir="$RUN" "$RC/scripts/chain_x12.slurm")
 jg=$(sbatch --parsable --dependency=afterok:$aw --export=ALL,TAG=$TAG,IDX=a "$RC/scripts/judge_x12.slurm")
 for j in "$br ${TAG}bdy-real" "$ck ${TAG}-check" "$aw ${TAG}a" "$lb ${TAG}-chain-b"; do set -- $j
