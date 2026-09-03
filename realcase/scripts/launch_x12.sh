@@ -1,5 +1,5 @@
 #!/bin/bash
-# launch_x12.sh (2026-09-03): X12 = X10 physics, X10 window (17_13 -> 18_22), but forced by the
+# launch_x12.sh (2026-09-03): X12 = X10 physics, X10 window (17_13 -> 18_22), but forced by the NATIVE 65-level (default) or
 # MODEL-LEVEL-derived ICON product (icon2wrf --ml-plevs, 36 pressure levels; WPS/metgrid_output_1712ml).
 # Tests OPEN_ISSUES A21: the 11-level product handed WRF a 0.5-2.5 m/s ramp where the lidar had a
 # 6 m/s valley jet at 100-300 m; the ML product carries the jet (3.8 m/s nose at 940-930 hPa at Kolsass).
@@ -9,7 +9,7 @@
 set -u -o pipefail
 DATA=/gpfs/data/fs72996/ewahl
 RC=$DATA/branko/realcase
-MET=$DATA/WPS/metgrid_output_1712ml
+MET=${X12_MET:-$DATA/WPS/metgrid_output_1712nat}   # native 65-level product (default); X12_MET=.../metgrid_output_1712ml for the 36-level ladder
 n=$(ls $MET/met_em.d01.2025-07-1[78]_*.nc 2>/dev/null | wc -l)
 [ "$n" -ge 35 ] || { echo "!!! only $n met_em files in $MET (need 35: 17_13 .. 18_23)"; exit 1; }
 hdr() { # hdr <rundir> <jobname> <partition> <qos> <nodes> <time>
