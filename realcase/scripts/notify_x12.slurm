@@ -1,0 +1,28 @@
+#!/bin/bash
+#SBATCH --job-name=x12_ping
+#SBATCH --account=p72996
+#SBATCH --partition=zen3_0512
+#SBATCH --qos=zen3_0512_devel
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --time=00:02:00
+#SBATCH --output=/gpfs/data/fs72996/ewahl/.claude_wake/ping_%j.out
+# Failure hook for the X12 chain: submit with --dependency=afternotok:<job> and
+# --export=ALL,STAGE=<name>,FAILED_JOB=<jobid>. Writes a status flag file that
+# the monitoring layer (claude_watch.sh crontab / session watchdog) picks up.
+DATA=/gpfs/data/fs72996/ewahl
+# Guard (2026-09-01): afternotok also fires on CANCELLED. Deliberate cancellations
+# (self-cancelling twins, a session replacing a queued job) are NOT failures and must
+# not burn a headless wake-up. Job 8552124 (CPB1a) woke a session this way.
+if [ -n "${FAILED_JOB:-}" ]; then
+  st=$(sacct -j "$FAILED_JOB" -n -o State 2>/dev/null | head -1 | tr -d ' ')
+  case "$st" in CANCELLED*) echo "job $FAILED_JOB was CANCELLED, not a failure -- no flag written"; exit 0 ;; esac
+fi
+cat > $DATA/.claude_wake/x12_${STAGE:-unknown}_$(date +%s).txt <<MSG
+X12 chain failure: stage ${STAGE:-unknown} (job ${FAILED_JOB:-unknown}) did not complete cleanly.
+Diagnose: sacct -j ${FAILED_JOB:-}; read rsl.error.0000 in branko_runs/innval_pbl3d_${STAGE:-X12a} (grep FATAL/SIGSEGV/cfl).
+If TIMEOUT: rebuild the segment with a longer wall (realcase/scripts/setup_restart_run.sh) and re-arm the rest of the chain per realcase/scripts/chain_x12.slurm. If a physics crash: do not retune; record in OPEN_ISSUES and the handover, hold the chain, flag it for Elias.
+Context: X12 = evening-start run, ICON 17_12 forcing from MODEL LEVELS (icon2wrf --ml-plevs, WPS/metgrid_output_1712ml; A21), pbl3d_t2_scalar=1; segments a 17_13-19, b 19-01, c 01-07, d 07-13, e 13-19, f 19-22; records DECISIONS.md 2026-09-03.
+Before ending this auto-session (Elias 2026-08-31): record what happened and what you found/did in HANDOVER_2026-08-20.md (and DECISIONS.md if a verdict or decision was made), sync both to branko/realcase/project/, commit and push.
+MSG
+echo "flag written for ${STAGE:-unknown}"
