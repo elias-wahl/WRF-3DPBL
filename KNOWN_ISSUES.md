@@ -1270,3 +1270,9 @@ sets; the submit scripts' first action is `cd "$SLURM_SUBMIT_DIR"`, which silent
 **Fix.** (a) icon2wrf commit `9069aee`: `z` no longer enters the surface product. (b) For surface files made before 2026-09-03, ungrib the SFC and ICON_INIT steps with `Vtable.ICONsfc` (= `Vtable.ICONp` without the level-100 rows; `RUN_WPS_1712ML.sh` does this). The 3-D step keeps `Vtable.ICONp` (ladder) or `Vtable.ICONm` (native, level type 150).
 
 **Observation to check (not yet a defect).** The surface level (200100) of TT/UU/VV/RH in *every* met_em so far, old and new, is fill (±1e30): the ICON surface product has no 2 m/10 m fields (they are `heightAboveGround`, the extractor filters `typeOfLevel = surface`). real.exe has always run on this; how it fills the surface level should be verified before trusting the lowest wrfinput level.
+
+## E40 — two WPS runs in one `WPS/` directory clobber each other: the `RUN_WPS_*.sh` scripts start with `rm -f FILE:* SFC:* ICON_INIT:*` and ungrib/metgrid read those shared intermediate files (2026-09-03)
+
+**Symptom.** A metgrid run that had been writing met_em files for 20 hours stops with `WARNING: Couldn't open file FILE:2025-07-18_12` … `ERROR: The mandatory field TT was not found in any input data` — no error in its own ungrib logs. Cause: a second `RUN_WPS_*.sh` (the native-level pipeline) was started in the same `WPS/` while the first (36-level ladder) was in metgrid; its `rm -f` removed the first run's intermediate files mid-read. The 23 met_em files written before that point are valid; the rest are missing.
+
+**Rule.** One WPS run per directory at a time, or give each product its own scratch WPS directory (symlinks to `ungrib.exe`, `metgrid.exe`, `link_grib.csh`, `geogrid_smoothed_output`, and `metgrid/METGRID.TBL` — metgrid looks for `./metgrid/METGRID.TBL`, not `./METGRID.TBL`; needs the WRF env sourced for `libnetcdff`), as `WPS_nat_test/` does. `pipeline_1712nat.sh` should have waited on the ladder run's PID.
