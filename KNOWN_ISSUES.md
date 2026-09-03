@@ -1260,3 +1260,13 @@ sets; the submit scripts' first action is `cd "$SLURM_SUBMIT_DIR"`, which silent
 
 **Rule:** every scripted submission is `jid=$(cd "$RUNDIR" && sbatch --parsable …)` — never
 `sbatch --chdir`. `chain_x10.slurm` and `launch_x10.sh` do this; any new driver must too.
+
+## E39 — the icon2wrf *surface* product carried geopotential on the 11 isobaric levels; any 3-D product on other levels made metgrid abort with "Error in ext_pkg_write_field" (2026-09-03)
+
+**Symptom.** `metgrid.exe` stops at the first 3-D field of the first time with only `ERROR: Error in ext_pkg_write_field`; the met_em file is a 239-byte empty header. ungrib reports success for every file. Old (11-level) products were unaffected — the failure appeared the moment the 3-D product changed to the 36-level ladder or the 65 native levels (`icon2wrf --vertical plevs|native`).
+
+**Cause.** `extract_surface` merged `z` into the surface dataset ("HSURF fallback"), so every `*_sfc.grib2` also carried ICON's geopotential on the 11 isobaric levels. `Vtable.ICONp` turns that into GHT at those levels in the SFC intermediate file, and metgrid takes the union of GHT levels over FILE and SFC. With the old product the sets were identical and merged silently; with the ladder the foreign 975 hPa level gave GHT 38 levels against 37 for TT/UU/VV/RH (native: 65 + 11). The WRF-IO layer then refuses to redefine `num_metgrid_levels` — visible only at `debug_level = 1000` as `WRF_DEBUG: Warning DIM 4, NAME num_metgrid_levels REDEFINED by var GHT 37 38 in wrf_io.F90`. Found with gdb on `ext_ncd_write_field_` (GHT arrived with 38 levels); disk space, level count, netCDF libraries and shell environment were all ruled out first.
+
+**Fix.** (a) icon2wrf commit `9069aee`: `z` no longer enters the surface product. (b) For surface files made before 2026-09-03, ungrib the SFC and ICON_INIT steps with `Vtable.ICONsfc` (= `Vtable.ICONp` without the level-100 rows; `RUN_WPS_1712ML.sh` does this). The 3-D step keeps `Vtable.ICONp` (ladder) or `Vtable.ICONm` (native, level type 150).
+
+**Observation to check (not yet a defect).** The surface level (200100) of TT/UU/VV/RH in *every* met_em so far, old and new, is fill (±1e30): the ICON surface product has no 2 m/10 m fields (they are `heightAboveGround`, the extractor filters `typeOfLevel = surface`). real.exe has always run on this; how it fills the surface level should be verified before trusting the lowest wrfinput level.
