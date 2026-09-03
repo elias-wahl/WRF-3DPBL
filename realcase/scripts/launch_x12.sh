@@ -9,7 +9,10 @@
 set -u -o pipefail
 DATA=/gpfs/data/fs72996/ewahl
 RC=$DATA/branko/realcase
-MET=${X12_MET:-$DATA/WPS/metgrid_output_1712nat}   # native 65-level product (default); X12_MET=.../metgrid_output_1712ml for the 36-level ladder
+# usage: launch_x12.sh m|p [--submit]   (Elias 2026-09-03: twin chains, m = native 65 ICON levels, p = 36-level ln-p ladder)
+V=${1:?usage: launch_x12.sh m|p [--submit]}; shift
+case $V in m) MET=$DATA/WPS/metgrid_output_1712nat ;; p) MET=$DATA/WPS/metgrid_output_1712ml ;; *) echo "bad variant $V (m|p)"; exit 1 ;; esac
+TAG=X12$V
 n=$(ls $MET/met_em.d01.2025-07-1[78]_*.nc 2>/dev/null | wc -l)
 [ "$n" -ge 35 ] || { echo "!!! only $n met_em files in $MET (need 35: 17_13 .. 18_23)"; exit 1; }
 hdr() { # hdr <rundir> <jobname> <partition> <qos> <nodes> <time>
@@ -34,30 +37,31 @@ sets() { # the X10 physics/output settings (unchanged for X12 -- the forcing is 
   done
   sed -i -E "s/^( iofields_filename[[:space:]]*=[[:space:]]*)\"[^\"]*\"/\1\"iofields_d1d2.txt\"/" "$NL"
 }
-for x in X12bdy X12a; do
-  [ -f "$RC/env/vsc5_$x.sh" ] || printf '#!/bin/bash\n# %s: X12 = X10 window/physics with model-level ICON forcing (A21), 2026-09-03\nsource "$(dirname "${BASH_SOURCE[0]}")/vsc5.sh"\nexport WRF_OUTPUT_ROOT=%s/exp/%s\n' "$x" "$DATA" "$x" > "$RC/env/vsc5_$x.sh"
+for x in ${TAG}bdy ${TAG}a; do
+  [ -f "$RC/env/vsc5_$x.sh" ] || printf '#!/bin/bash\n# %s: X12 twin (m=native levels, p=36-level ladder) = X10 window/physics with model-level ICON forcing (A21), 2026-09-03\nsource "$(dirname "${BASH_SOURCE[0]}")/vsc5.sh"\nexport WRF_OUTPUT_ROOT=%s/exp/%s\n' "$x" "$DATA" "$x" > "$RC/env/vsc5_$x.sh"
 done
-BDY=$DATA/branko_runs/innval_pbl3d_X12bdy; RUN=$DATA/branko_runs/innval_pbl3d_X12a
-echo "=== building X12bdy (full-window real, no --hours)"
-"$RC/scripts/setup_rundir.sh" "$RC/env/vsc5_X12bdy.sh" "$BDY" pbl3d --met-dir "$MET" | tail -3
-echo "=== building X12a (17_13 -> 19)"
-"$RC/scripts/setup_rundir.sh" "$RC/env/vsc5_X12a.sh" "$RUN" pbl3d --met-dir "$MET" --hours 6 | tail -3
+BDY=$DATA/branko_runs/innval_pbl3d_${TAG}bdy; RUN=$DATA/branko_runs/innval_pbl3d_${TAG}a
+echo "=== building ${TAG}bdy (full-window real, no --hours) from $MET"
+"$RC/scripts/setup_rundir.sh" "$RC/env/vsc5_${TAG}bdy.sh" "$BDY" pbl3d --met-dir "$MET" | tail -3
+echo "=== building ${TAG}a (17_13 -> 19)"
+"$RC/scripts/setup_rundir.sh" "$RC/env/vsc5_${TAG}a.sh" "$RUN" pbl3d --met-dir "$MET" --hours 6 | tail -3
 for d in "$BDY" "$RUN"; do sets "$d/namelist.input"; ln -sfn "$RC/iofields_d1d2.txt" "$d/iofields_d1d2.txt"; done
 ln -sfn "$BDY/wrfinput_d01" "$RUN/wrfinput_d01"; ln -sfn "$BDY/wrfbdy_d01" "$RUN/wrfbdy_d01"
-hdr "$BDY" real_X12bdy zen3_0512 zen3_0512_devel 2 00:10:00
-hdr "$RUN" wrf_X12a    zen3_1024 zen3_1024       2 05:15:00
+hdr "$BDY" real_${TAG}bdy zen3_0512 zen3_0512_devel 2 00:10:00
+hdr "$RUN" wrf_${TAG}a    zen3_1024 zen3_1024       2 05:15:00
 grep -E '^ (start_day|start_hour|end_day|end_hour|run_hours|pbl3d_t2_scalar|diff_6th_opt|iofields_filename)' "$RUN/namelist.input" | tr -s ' '
-echo "=== namelist diff X12a vs X10a (expect only output paths)"
-diff <(grep -vE 'outname' "$DATA/branko_runs/innval_pbl3d_X10a/namelist.input") <(grep -vE 'outname' "$RUN/namelist.input") && echo "identical apart from output paths"
+echo "=== namelist diff ${TAG}a vs X10a (expect only output paths and num_metgrid_levels)"
+diff <(grep -vE 'outname|num_metgrid_levels' "$DATA/branko_runs/innval_pbl3d_X10a/namelist.input") <(grep -vE 'outname|num_metgrid_levels' "$RUN/namelist.input") && echo "identical apart from output paths / num_metgrid_levels"
 [ "${1:-}" = "--submit" ] || { echo "(dry build; rerun with --submit)"; exit 0; }
 echo "=== submitting"
 br=$(cd "$BDY" && sbatch --parsable submit_real.slurm)
-ck=$(sbatch --parsable --dependency=afterok:$br -A p72996 -p zen3_0512 -q zen3_0512_devel -N1 -t 00:05:00 -J x12_chk \
+ck=$(sbatch --parsable --dependency=afterok:$br -A p72996 -p zen3_0512 -q zen3_0512_devel -N1 -t 00:05:00 -J ${TAG}_chk \
      -o "$BDY/check_wrfinput.%j.out" \
      --wrap="set +u; . $RC/env/vsc5.sh; set -u; python3 $RC/scripts/check_wrfinput.py $BDY/wrfinput_d01")
 aw=$(cd "$RUN" && sbatch --parsable --dependency=afterok:$ck submit_wrf.slurm)
-lb=$(sbatch --parsable --dependency=afterok:$aw --export=ALL,IDX=b --chdir="$RUN" "$RC/scripts/chain_x12.slurm")
-for j in "$br X12bdy-real" "$ck X12-check" "$aw X12a" "$lb chain-b"; do set -- $j
+lb=$(sbatch --parsable --dependency=afterok:$aw --export=ALL,IDX=b,TAG=$TAG --chdir="$RUN" "$RC/scripts/chain_x12.slurm")
+jg=$(sbatch --parsable --dependency=afterok:$aw --export=ALL,TAG=$TAG,IDX=a "$RC/scripts/judge_x12.slurm")
+for j in "$br ${TAG}bdy-real" "$ck ${TAG}-check" "$aw ${TAG}a" "$lb ${TAG}-chain-b"; do set -- $j
   sbatch --parsable --dependency=afternotok:$1 --export=ALL,STAGE=$2,FAILED_JOB=$1 "$RC/scripts/notify_x12.slurm" >/dev/null
 done
-echo "x12bdy_real=$br check=$ck X12a=$aw link_b=$lb  (pings armed)"
+echo "${TAG}: bdy_real=$br check=$ck a=$aw link_b=$lb judge_a=$jg (pings armed)"
