@@ -31,10 +31,12 @@ case $IDX in
   *) echo "bad IDX $IDX"; exit 1 ;;
 esac
 PREV=${T[0]}; RSTD=${T[1]}; START=${T[2]}; SDAY=${T[3]}; EDAY=${T[4]}; HOURS=${T[5]}; WTIME=${T[6]}
+# lane/size overrides handed down the chain (2026-09-04): NODES=4 halves the wall (measured 1.5 s/step on 2 nodes, ~0.8 on 4)
+NODES=${NODES:-2}; if [ "$NODES" -ge 4 ]; then WTIME=$( [ "$HOURS" -ge 6 ] && echo 03:00:00 || echo 01:35:00 ); fi
 RST=$DATA/branko_runs/innval_pbl3d_$TAG$PREV/wrfrst_d01_$RSTD
 [ -f "$RST" ] || { echo "!!! restart missing: $RST"; exit 1; }
 "$RC/scripts/setup_restart_run.sh" $TAG$IDX --rst "$RST" --start "$START" --hours "$HOURS" \
-  --time "$WTIME" --nodes 2 --partition zen3_1024 --iofields "$RC/iofields_d1d2.txt" --wrflux-min 30 \
+  --time "$WTIME" --nodes "$NODES" --partition "${LANE:-zen3_1024}" --iofields "$RC/iofields_d1d2.txt" --wrflux-min 30 \
   --set restart_interval=180 --set pbl3d_init_opt=0 --set pbl3d_l0_min=0.0 \
   --set pbl3d_moist_cond_max=10000.0 --set pbl3d_t2_scalar=1 \
   --set output_t_fluxes=0 --set output_q_fluxes=0 --set output_u_fluxes=0 \
@@ -49,6 +51,6 @@ echo "$TAG$IDX submitted as $jid"
 sbatch --parsable --dependency=afterok:$jid --export=ALL,TAG=$TAG,IDX=$IDX "$RC/scripts/judge_x12.slurm" >/dev/null && echo "judge armed afterok:$jid"
 sbatch --parsable --dependency=afternotok:$jid --export=ALL,STAGE=$TAG$IDX,FAILED_JOB=$jid "$RC/scripts/notify_x12.slurm" >/dev/null && echo "ping armed afternotok:$jid"
 if [ -n "$NEXT" ]; then
-  nj=$(sbatch --parsable --dependency=afterok:$jid --export=ALL,IDX=$NEXT,TAG=$TAG --chdir="$RUNDIR" "$RC/scripts/chain_x12.slurm")
+  nj=$(sbatch --parsable --dependency=afterok:$jid --export=ALL,IDX=$NEXT,TAG=$TAG,LANE=${LANE:-zen3_1024},NODES=$NODES --chdir="$RUNDIR" "$RC/scripts/chain_x12.slurm")
   echo "next link ($NEXT) queued as $nj afterok:$jid"
 fi
