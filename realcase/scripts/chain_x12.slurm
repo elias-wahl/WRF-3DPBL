@@ -32,7 +32,9 @@ case $IDX in
 esac
 PREV=${T[0]}; RSTD=${T[1]}; START=${T[2]}; SDAY=${T[3]}; EDAY=${T[4]}; HOURS=${T[5]}; WTIME=${T[6]}
 # lane/size overrides handed down the chain (2026-09-04): NODES=4 halves the wall (measured 1.5 s/step on 2 nodes, ~0.8 on 4)
-NODES=${NODES:-2}; if [ "$NODES" -ge 4 ]; then WTIME=$( [ "$HOURS" -ge 6 ] && echo 03:00:00 || echo 01:35:00 ); fi
+NODES=${NODES:-2}
+if   [ "$NODES" -ge 5 ]; then WTIME=$( [ "$HOURS" -ge 6 ] && echo 02:15:00 || echo 01:10:00 )   # 0.65 s/step measured on 5 nodes
+elif [ "$NODES" -ge 4 ]; then WTIME=$( [ "$HOURS" -ge 6 ] && echo 03:00:00 || echo 01:35:00 ); fi
 RST=$DATA/branko_runs/innval_pbl3d_$TAG$PREV/wrfrst_d01_$RSTD
 [ -f "$RST" ] || { echo "!!! restart missing: $RST"; exit 1; }
 "$RC/scripts/setup_restart_run.sh" $TAG$IDX --rst "$RST" --start "$START" --hours "$HOURS" \

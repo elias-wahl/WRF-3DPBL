@@ -1284,3 +1284,30 @@ sets; the submit scripts' first action is `cd "$SLURM_SUBMIT_DIR"`, which silent
 **Check before choosing a lane** (add to the three-lane check of `vsc5-queues`): `squeue -p <lane> -h -t PD -o %q | sort | uniq -c` — a long list under a `p<project>_<lane>` QOS means the lane's idle nodes are not for us; and `sacct -a -r <lane> -S now-12hours -s R,CD -X -o QOS,Start` to see which QOS actually starts. `zen3_2048` has no owners (public jobs at 101–108 k started 2026-09-03) but only 9 usable nodes, all under 3-day jobs on 2026-09-04. `zen3_0512` has owner QOS too (`p70623_0512`, `p70695_0512`, `fast_vsc5`) but 3 300 public jobs and ~290 starts per hour; public 2–4-node jobs do start there by backfill.
 
 **Lever.** `scripts/move_x12_lane.sh <TAG> <lane> [nodes] [wall] [smoke wall]` cancels and resubmits a chain's pending first jobs (E31 forbids `scontrol update Partition`) and hands `LANE`/`NODES` down the chain links; 4 nodes × 3:00 wall replaces 2 nodes × 5:15 at equal core-hours and halves the backfill gap needed.
+
+## E42 — idle nodes in an owned lane are unreachable: `assoc_limit_stop` freezes a partition for ALL lower-priority jobs while the owner's top job is blocked at its group cap (2026-09-05)
+
+**Symptom.** `zen3_1024` showed 17→22 idle nodes (reason "none") while 677 jobs
+were pending; our 5-node × 2:15 heads sat 55 min untouched, and `sacct -a -r
+zen3_1024 -S now-4hours -s R` showed **zero public-QOS starts in 4 h** — every
+start was the owner's. The owner (`p71334_1024`, 412 × 1-node × 24 h queued) sat
+at its group CPU cap (~43 nodes, reason `QOSGrpCpuLimit`/`Resources` on its top
+jobs).
+
+**Mechanism.** The cluster sets `assoc_limit_stop` (SchedulerParameters): when the
+highest-priority pending job of a partition is blocked by an association/QOS group
+limit, SLURM schedules *no* lower-priority job in that partition. The freed nodes
+idle up and nobody can take them. So a binding owner cap does not open the lane to
+public backfill — it padlocks the whole lane until the owner's backlog drains.
+
+**Second gate — backfill try-depth.** `sdiag` (`Depth Mean (try depth): 500`): the
+backfill scheduler only *attempts* the top ~500 pending jobs cluster-wide by
+priority. With 3 399 jobs above our ~109 k (313 at ≥ 1e6), our jobs are never
+examined in any big lane, and job shape (nodes/wall) is irrelevant until the queue
+above us drains. Age adds only ~640 priority/day and the same-band jobs age too.
+
+**Check.** Before moving into a lane on the strength of idle nodes:
+`sacct -a -r <lane> -S now-4hours -s R -X -o Start,QOS,NNodes` — no recent
+public-QOS start ⇒ frozen; and count who outranks you:
+`squeue -h -t PD -o '%Q' | awk '$1>OURS' | wc -l` vs the try-depth of 500.
+Skill: `.claude/skills/vsc5-queue/SKILL.md`.
