@@ -222,4 +222,39 @@
   \end{enumerate}
 \end{frame}
 
+% ---------------------------------------------------------------- DKRZ Antrag
+\begin{frame}{For the DKRZ proposal --- the numbers and the case}
+  \textbf{The ask:} \alert{50\,000 node-hours} on Levante (CPU) +
+  $\approx$60\,TB work / 15\,TB archive, for a 20\,m WRF-LES of the Radfeld
+  transect --- production only, no method development.
+  \vspace{0.5ex}
+  \begin{columns}[T]
+    \column{0.52\textwidth}
+    \textbf{Why it is fundable:}
+    \begin{itemize}
+      \item serves the \textbf{DFG-funded} UAS project at Tübingen (Platis):
+        virtual UAS flights $\to$ correction functions for measured TKE;
+        applicant FWF-funded; research stay spring 2027;
+      \item feasibility is demonstrated, throughput \textbf{measured}: the
+        500\,m driving setup is validated and in continuous research use;
+        a 100\,m LES of the same valley exists in the group (Freddi 2026);
+      \item one dataset, three uses: UAS correction, grey-zone reference for
+        the 3D closure, first LES-resolved nocturnal cold-pool budget.
+    \end{itemize}
+    \column{0.46\textwidth}
+    \textbf{The arithmetic (conservative):}
+    \begin{itemize}
+      \item measured base: 500\,m run $\approx$190 core-h per simulated hour;
+      \item chain 500\,$\to$\,100\,$\to$\,20\,m
+        ($\approx$130$\times$10$^6$ points, $\Delta t \approx 0.1$\,s):
+        $\approx$160 node-h per simulated hour;
+      \item 6 full diurnal cycles (nights included --- that is where the
+        deficits sit) $\approx$ 25\,k; 3-member sensitivity $\approx$ 12\,k;
+        $\times$1.33 restart/I-O margin $\to$ \textbf{50\,k node-h};
+      \item honest floor 42\,k (2 sensitivity members); full table in
+        \texttt{dkrz\_levante\_antrag\_} \texttt{bullets.md} (\texttt{concept/}).
+    \end{itemize}
+  \end{columns}
+\end{frame}
+
 \end{document}
