@@ -24,47 +24,39 @@
 \end{frame}
 
 % ---------------------------------------------------------------- scheme (ONE slide)
-\begin{frame}{The scheme's core (\texttt{pbl3d\_opt}=2), and how it differs from 1D}
-  Mellor--Yamada level 2.5: one prognostic variable,
-  $q^2 = \langle u^2\rangle + \langle v^2\rangle + \langle w^2\rangle$ (twice
-  the TKE), a master length scale $l$; all other second moments algebraic.
-  \vspace{0.5ex}
-
-  \textbf{A 1D scheme} assumes horizontal homogeneity: the algebra decouples,
-  collapses to closed-form stability functions, and returns three fluxes
-  ($\langle uw\rangle, \langle vw\rangle, \langle w\theta\rangle$) acting
-  through their vertical derivative only --- driven by
-  $\partial U/\partial z$, $\partial V/\partial z$, $\partial\Theta/\partial z$
-  alone.
-  \vspace{0.5ex}
-
-  \textbf{The full 3D closure} keeps all nine velocity gradients and all three
-  of $\nabla\Theta_v$: nothing decouples, and at every grid point, every time
-  step, a dense $10\times10$ system is solved,
-  \[
-    \mathsf{A}\,\mathbf{x} = \mathbf{b},
-    \quad
-    \mathbf{x} = \big(\langle u^2\rangle,\langle v^2\rangle,\langle w^2\rangle,\
-    \langle uv\rangle,\langle uw\rangle,\langle vw\rangle,\
-    \langle u\theta_v\rangle,\langle v\theta_v\rangle,\langle w\theta_v\rangle,\
-    \langle\theta_v^2\rangle\big)^{\!\top}
-  \]
-  \[
-    \mathsf{A} = \tau^{-1}\mathsf{I} + \mathsf{S}:
-    \quad
-    \mathsf{A}_{11} = \tfrac{q}{2A_1 l} + 2\tfrac{\partial U}{\partial x},
-    \quad
-    \mathsf{A}_{55} = \tfrac{q}{3A_1 l} + \tfrac{\partial W}{\partial z} + \tfrac{\partial U}{\partial x},
-    \quad
-    \mathsf{A}_{1,9} = \beta g,
-    \quad
-    \mathsf{A}_{3,9} = -2\beta g
-  \]
-  --- return-to-isotropy on the diagonal, mean strain off it, buoyancy coupling
-  the blocks; only the six stress rows of $\mathbf{b}$ are non-zero, so scalar
-  fluxes exist only because stresses act on scalar gradients. The full 3D flux
-  divergences replace both the 1D mixing \emph{and} the horizontal diffusion
-  --- there is no eddy-viscosity backstop behind the solve.
+\begin{frame}{The 3D closure: familiar physics, without the homogeneity shortcut}
+  Every level-2.5 scheme (MYNN included) carries a prognostic
+  $q^2 = 2\,$TKE and a length scale $l$, and diagnoses the fluxes from
+  algebraic second-moment relations. Those relations are usually simplified
+  \emph{twice} --- once by the closure level, once by assuming horizontal
+  homogeneity. \textbf{This scheme keeps the first simplification and drops
+  the second.}
+  \vspace{1ex}
+  \begin{center}
+  \begin{tabular}{@{}lll@{}}
+    \toprule
+     & 1D scheme & full 3D closure \\
+    \midrule
+    driven by & $\partial U/\partial z$, $\partial V/\partial z$,
+      $\partial\Theta/\partial z$ & all of $\nabla\mathbf{U}$, $\nabla\Theta_v$,
+      $\nabla Q_v$ \\
+    delivers & $\langle uw\rangle$, $\langle vw\rangle$,
+      $\langle w\theta\rangle$ & all 6 stresses + 3 components of each flux \\
+    obtained by & closed-form stability functions & one linear solve per grid
+      point: \\
+     & & $\ \mathsf{A}\,\mathbf{x}=\mathbf{b}$,\ \ $\mathbf{x} =$ the 10 second
+      moments \\
+    acts through & $\partial(\text{flux})/\partial z$ & the full divergence
+      $\nabla\!\cdot(\text{flux})$, \\
+     & (+ separate horizontal diffusion) & replacing the horizontal diffusion too \\
+    \bottomrule
+  \end{tabular}
+  \end{center}
+  \vspace{1ex}
+  Why it matters here: at $\Delta x = 500$\,m in the grey zone, and on
+  $30^\circ$ slopes where a downslope jet shears across every strain
+  component, \textbf{the gradients a 1D scheme discards carry most of the
+  turbulence production}.
 \end{frame}
 
 % ---------------------------------------------------------------- changes (ONE slide)
