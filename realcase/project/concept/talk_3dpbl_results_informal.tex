@@ -1,0 +1,144 @@
+% Informal-meeting version of talk_3dpbl_results: minimal text, big figures.
+% Build: tectonic talk_3dpbl_results_informal.tex
+\documentclass[11pt,aspectratio=169]{beamer}
+\usetheme{default}
+\usecolortheme{seahorse}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+\setbeamerfont{frametitle}{series=\bfseries,size=\large}
+\setbeamertemplate{itemize items}[circle]
+\usepackage{amsmath,booktabs}
+\graphicspath{{/gpfs/data/fs72996/ewahl/plot_output/diagnostics/}}
+
+\title{Simulating valley turbulence in three dimensions}
+\subtitle{First results from the Inn Valley}
+\author{Elias Wahl}
+\institute{University of Innsbruck}
+\date{September 2026}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+% ---------------------------------------------------------------- scheme
+\begin{frame}{The 3D closure: familiar physics, without the homogeneity shortcut}
+  Level 2.5 as in MYNN --- prognostic $q^2$, length scale $l$ --- but the
+  second-moment algebra is kept in full:
+  \vspace{1.5ex}
+  \begin{center}
+  \begin{tabular}{@{}lll@{}}
+    \toprule
+     & 1D scheme & full 3D closure \\
+    \midrule
+    driven by & $\partial U/\partial z$, $\partial\Theta/\partial z$ &
+      all of $\nabla\mathbf{U}$, $\nabla\Theta_v$, $\nabla Q_v$ \\
+    delivers & $\langle uw\rangle$, $\langle vw\rangle$, $\langle w\theta\rangle$ &
+      all 6 stresses + 3 components per flux \\
+    obtained by & stability functions &
+      $\mathsf{A}\,\mathbf{x}=\mathbf{b}$, $\mathbf{x}=$ the 10 moments, per point \\
+    acts through & $\partial(\text{flux})/\partial z$ &
+      $\nabla\!\cdot(\text{flux})$, incl.\ the horizontal diffusion \\
+    \bottomrule
+  \end{tabular}
+  \end{center}
+  \vspace{1.5ex}
+  In the grey zone and on $30^\circ$ slopes, the discarded gradients carry
+  most of the production.
+\end{frame}
+
+% ---------------------------------------------------------------- changes
+\begin{frame}{What we changed since the fork}
+  \begin{enumerate}
+    \item \textbf{A physically possible answer at every grid point} ---
+      no impossible turbulence states, no crashes.
+    \item \textbf{Eddy size set by the turbulence itself} --- ended a
+      nocturnal runaway.
+    \item \textbf{Closed energy bookkeeping} --- slope production is now paid
+      by the resolved wind.
+    \item \textbf{Host-model bugs separated from scheme physics} --- e.g.\
+      radiation cooling shaded ground at 80\,K/h.
+  \end{enumerate}
+\end{frame}
+
+% ---------------------------------------------------------------- result 1
+\begin{frame}{The daytime valley wind}
+  \begin{columns}[c]
+    \column{0.72\textwidth}
+    \includegraphics[width=\textwidth]{surface_wind/wind_kolsass_base_vs_3d.png}
+    \column{0.26\textwidth}
+    Observed maximum $\sim$7\,m/s (10\,m), 10.6 (100\,m).
+    \vspace{1ex}
+
+    3D: 6.4 / 10.2.
+    \vspace{1ex}
+
+    MYNN: 4.5 / 7--8.
+  \end{columns}
+\end{frame}
+
+% ---------------------------------------------------------------- result 2
+\begin{frame}{One day, every metric (18 July)}
+  \begin{center}
+  \begin{tabular}{@{}lrr@{}}
+    \toprule
+    & MYNN & 3D closure \\
+    \midrule
+    $\theta$ bias, all launches [K] & 1.63 & \textbf{0.82} \\
+    $\theta$ bias, day [K] & 2.10 & \textbf{0.29} \\
+    $\theta$ bias, evening [K] & 0.77 & \textbf{0.17} \\
+    wind-vector RMSE, soundings [m/s] & 2.20 & \textbf{2.08} \\
+    wind-speed RMSE, lidar [m/s] & 2.09 & \textbf{1.68} \\
+    wind-speed bias, lidar [m/s] & $-0.56$ & $\mathbf{-0.02}$ \\
+    direction RMSE, lidar [deg] & \textbf{29.7} & 33.2 \\
+    TKE, $\log_{10}$(model/lidar), day & $-1.15$ & $\mathbf{-0.83}$ \\
+    mixed-layer depth error [m] & 207 & \textbf{172} \\
+    \bottomrule
+  \end{tabular}
+  \end{center}
+\end{frame}
+
+% ---------------------------------------------------------------- result 3
+\begin{frame}{The model resolves its own convection}
+  \begin{columns}[c]
+    \column{0.70\textwidth}
+    \includegraphics[width=\textwidth]{gz_partition/gz_partition_18.png}
+    \column{0.28\textwidth}
+    Total turbulence energy equal to MYNN's ---
+    \vspace{1ex}
+
+    but 85--91\,\% of it resolved (MYNN: under half).
+  \end{columns}
+\end{frame}
+
+% ---------------------------------------------------------------- result 4
+\begin{frame}{The night-time cold pool: not the scheme's bias}
+  \begin{columns}[c]
+    \column{0.46\textwidth}
+    \includegraphics[width=\textwidth]{x10_fig1_theta_kolsass_05.png}
+    \column{0.50\textwidth}
+    Pre-dawn pool $\sim$3.5\,K too warm --- \textbf{identically} for both
+    schemes, any start time, any forcing resolution.
+    \vspace{1ex}
+
+    The measured ingredients: a numerical smoothing term, missing evening
+    cold-air transport, a surface layer that will not go calm.
+  \end{columns}
+\end{frame}
+
+% ---------------------------------------------------------------- outlook
+\begin{frame}{Next}
+  \begin{itemize}
+    \item Twin chains on the driving data (vertical resolution, ICON terrain)
+      are running --- the remaining daytime wind deficit is inherited from
+      the forcing.
+    \item Cold-pool fixes exist per ingredient, all default-off until judged
+      against the full observation set.
+    \item 20\,m LES of the same transect: DKRZ proposal (with the DFG-funded
+      Tübingen UAS group) --- \textbf{50\,000 node-hours}, arithmetic in
+      \texttt{concept/dkrz\_levante\_antrag\_bullets.md}.
+  \end{itemize}
+\end{frame}
+
+\end{document}
