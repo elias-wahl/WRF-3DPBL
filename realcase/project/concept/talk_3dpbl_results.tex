@@ -23,48 +23,48 @@
   \titlepage
 \end{frame}
 
-% ---------------------------------------------------------------- setting
-\begin{frame}{The setting}
-  \begin{itemize}
-    \item \textbf{Where:} the Inn Valley around Kolsass, during the TEAMx
-      measurement campaign --- one of the densest mountain-weather datasets
-      ever collected: radiosondes, wind lidars, a microwave temperature
-      profiler, turbulence towers across the valley.
-    \item \textbf{What:} WRF simulations at 500\,m grid spacing, driven by the
-      ICON weather model, of full summer days --- morning heating, the
-      afternoon valley wind, the evening calm-down, the night-time cold pool.
-    \item \textbf{The candidate:} a new scheme that computes turbulent mixing
-      in all three directions (``3D PBL''), run head-to-head against the
-      standard scheme (MYNN) on the identical grid, physics and forcing.
-    \item \textbf{The question:} does representing turbulence
-      three-dimensionally improve the simulated valley weather --- and where
-      it doesn't, is the scheme actually the problem?
-  \end{itemize}
-\end{frame}
-
 % ---------------------------------------------------------------- scheme (ONE slide)
-\begin{frame}{How the 3D scheme is different --- in one slide}
-  A conventional boundary-layer scheme assumes every grid column is flat and
-  horizontally uniform. It then mixes heat, moisture and momentum
-  \textbf{only up and down}, and feels only vertical wind shear.
-  \vspace{1ex}
+\begin{frame}{The scheme's core (\texttt{pbl3d\_opt}=2), and how it differs from 1D}
+  Mellor--Yamada level 2.5: one prognostic variable,
+  $q^2 = \langle u^2\rangle + \langle v^2\rangle + \langle w^2\rangle$ (twice
+  the TKE), a master length scale $l$; all other second moments algebraic.
+  \vspace{0.5ex}
 
-  At 500\,m over Alpine terrain that assumption breaks:
-  \begin{itemize}
-    \item the grid cell is about as large as the boundary layer is deep, so
-      the biggest eddies are \emph{half resolved, half not} --- and their
-      horizontal structure matters as much as their vertical one;
-    \item on a $30^\circ$ slope, ``horizontal'' and ``vertical'' are no longer
-      distinct directions of the flow: a downslope jet creates shear a 1D
-      scheme literally cannot see.
-  \end{itemize}
-  \vspace{1ex}
-  The 3D scheme (Kosovi\'c et al.\ 2020, Juliano et al.\ 2022) computes the
-  \textbf{complete set of turbulent transports} --- all directions, for wind,
-  heat and moisture --- from the full 3D structure of the resolved flow, and
-  replaces both the 1D scheme and the model's ad-hoc horizontal smoothing.
-  It is the model's \emph{only} source of subgrid mixing: there is no safety
-  net behind it. That is what makes it powerful --- and demanding.
+  \textbf{A 1D scheme} assumes horizontal homogeneity: the algebra decouples,
+  collapses to closed-form stability functions, and returns three fluxes
+  ($\langle uw\rangle, \langle vw\rangle, \langle w\theta\rangle$) acting
+  through their vertical derivative only --- driven by
+  $\partial U/\partial z$, $\partial V/\partial z$, $\partial\Theta/\partial z$
+  alone.
+  \vspace{0.5ex}
+
+  \textbf{The full 3D closure} keeps all nine velocity gradients and all three
+  of $\nabla\Theta_v$: nothing decouples, and at every grid point, every time
+  step, a dense $10\times10$ system is solved,
+  \[
+    \mathsf{A}\,\mathbf{x} = \mathbf{b},
+    \quad
+    \mathbf{x} = \big(\langle u^2\rangle,\langle v^2\rangle,\langle w^2\rangle,\
+    \langle uv\rangle,\langle uw\rangle,\langle vw\rangle,\
+    \langle u\theta_v\rangle,\langle v\theta_v\rangle,\langle w\theta_v\rangle,\
+    \langle\theta_v^2\rangle\big)^{\!\top}
+  \]
+  \[
+    \mathsf{A} = \tau^{-1}\mathsf{I} + \mathsf{S}:
+    \quad
+    \mathsf{A}_{11} = \tfrac{q}{2A_1 l} + 2\tfrac{\partial U}{\partial x},
+    \quad
+    \mathsf{A}_{55} = \tfrac{q}{3A_1 l} + \tfrac{\partial W}{\partial z} + \tfrac{\partial U}{\partial x},
+    \quad
+    \mathsf{A}_{1,9} = \beta g,
+    \quad
+    \mathsf{A}_{3,9} = -2\beta g
+  \]
+  --- return-to-isotropy on the diagonal, mean strain off it, buoyancy coupling
+  the blocks; only the six stress rows of $\mathbf{b}$ are non-zero, so scalar
+  fluxes exist only because stresses act on scalar gradients. The full 3D flux
+  divergences replace both the 1D mixing \emph{and} the horizontal diffusion
+  --- there is no eddy-viscosity backstop behind the solve.
 \end{frame}
 
 % ---------------------------------------------------------------- changes (ONE slide)
@@ -88,8 +88,8 @@
       balanced.
     \item \textbf{Host-model bugs separated from scheme physics.} Two WRF
       bugs were unmasked --- one made the radiation \emph{cool} shaded ground
-      at 80\,K per hour every morning. Weeks of apparent ``scheme failures''
-      were withdrawn.
+      at 80\,K per hour every morning; the morning failures downstream of it
+      trace to the host model, not the scheme.
   \end{enumerate}
 \end{frame}
 
@@ -97,16 +97,15 @@
 \begin{frame}{Result 1 --- the daytime valley wind, the closure's signature}
   \begin{columns}[c]
     \column{0.56\textwidth}
-    \includegraphics[width=\textwidth]{surface_wind/wind_10_100_18.png}
+    \includegraphics[width=\textwidth]{surface_wind/wind_kolsass_base_vs_3d.png}
     \column{0.42\textwidth}
     Kolsass, 18 July: observed wind (black) at 10\,m and 100\,m against the
-    3D scheme (purple) and the standard-scheme family (greens/reds).
+    base scheme (MYNN, green) and the 3D closure (purple).
     \vspace{1ex}
     \begin{itemize}
       \item Afternoon up-valley wind maximum: observed
-        $\sim$7\,m/s at 10\,m --- the 3D run reaches 6.4, the standard
-        runs 4.2--4.6.
-      \item At 100\,m: observed $\sim$10.6, 3D run 10.2, standard runs
+        $\sim$7\,m/s at 10\,m --- the 3D run reaches 6.4, MYNN 4.5.
+      \item At 100\,m: observed $\sim$10.6, 3D run 10.2, MYNN
         7--8\,m/s.
       \item Wind-lidar column comparison: the 3D run stays within
         $\pm$1.5\,m/s through the day where the standard scheme is
