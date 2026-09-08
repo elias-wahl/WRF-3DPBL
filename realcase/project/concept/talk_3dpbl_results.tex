@@ -1,0 +1,226 @@
+% Non-technical ~10 min talk: best results of the 3D-PBL Inn Valley work.
+% One slide on how the scheme differs, one on what changed since the fork.
+% Build: tectonic talk_3dpbl_results.tex
+\documentclass[10pt,aspectratio=169]{beamer}
+\usetheme{default}
+\usecolortheme{seahorse}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+\setbeamerfont{frametitle}{series=\bfseries,size=\large}
+\setbeamertemplate{itemize items}[circle]
+\usepackage{amsmath,booktabs}
+\graphicspath{{/gpfs/data/fs72996/ewahl/plot_output/diagnostics/}}
+
+\title{Simulating valley turbulence in three dimensions}
+\subtitle{First results of a 3D boundary-layer scheme in the Inn Valley}
+\author{Elias Wahl}
+\institute{University of Innsbruck}
+\date{September 2026}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+% ---------------------------------------------------------------- setting
+\begin{frame}{The setting}
+  \begin{itemize}
+    \item \textbf{Where:} the Inn Valley around Kolsass, during the TEAMx
+      measurement campaign --- one of the densest mountain-weather datasets
+      ever collected: radiosondes, wind lidars, a microwave temperature
+      profiler, turbulence towers across the valley.
+    \item \textbf{What:} WRF simulations at 500\,m grid spacing, driven by the
+      ICON weather model, of full summer days --- morning heating, the
+      afternoon valley wind, the evening calm-down, the night-time cold pool.
+    \item \textbf{The candidate:} a new scheme that computes turbulent mixing
+      in all three directions (``3D PBL''), run head-to-head against the
+      standard scheme (MYNN) on the identical grid, physics and forcing.
+    \item \textbf{The question:} does representing turbulence
+      three-dimensionally improve the simulated valley weather --- and where
+      it doesn't, is the scheme actually the problem?
+  \end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------- scheme (ONE slide)
+\begin{frame}{How the 3D scheme is different --- in one slide}
+  A conventional boundary-layer scheme assumes every grid column is flat and
+  horizontally uniform. It then mixes heat, moisture and momentum
+  \textbf{only up and down}, and feels only vertical wind shear.
+  \vspace{1ex}
+
+  At 500\,m over Alpine terrain that assumption breaks:
+  \begin{itemize}
+    \item the grid cell is about as large as the boundary layer is deep, so
+      the biggest eddies are \emph{half resolved, half not} --- and their
+      horizontal structure matters as much as their vertical one;
+    \item on a $30^\circ$ slope, ``horizontal'' and ``vertical'' are no longer
+      distinct directions of the flow: a downslope jet creates shear a 1D
+      scheme literally cannot see.
+  \end{itemize}
+  \vspace{1ex}
+  The 3D scheme (Kosovi\'c et al.\ 2020, Juliano et al.\ 2022) computes the
+  \textbf{complete set of turbulent transports} --- all directions, for wind,
+  heat and moisture --- from the full 3D structure of the resolved flow, and
+  replaces both the 1D scheme and the model's ad-hoc horizontal smoothing.
+  It is the model's \emph{only} source of subgrid mixing: there is no safety
+  net behind it. That is what makes it powerful --- and demanding.
+\end{frame}
+
+% ---------------------------------------------------------------- changes (ONE slide)
+\begin{frame}{What we changed since forking the scheme --- the essentials}
+  The scheme, as forked, did not survive real mountains. Four changes made
+  the difference; none alters results where the original worked:
+  \vspace{1ex}
+  \begin{enumerate}
+    \item \textbf{A physically possible answer, everywhere.} Over steep
+      terrain the scheme could produce mathematically valid but physically
+      impossible turbulence states (or crash). It now always returns a
+      possible state --- verified on 200\,000 stress-test cases.
+    \item \textbf{Eddy size is set by the turbulence itself.} Parts of the
+      assumed eddy size were inherited from model-setup artifacts (even the
+      height of the model top). At night this fed a runaway feedback ---
+      turbulence energy growing without bound over slopes. Fixed at the root.
+    \item \textbf{Closed energy bookkeeping.} Turbulence energy generated on
+      slopes is now actually taken from the resolved wind. Before, up to a
+      third of the production was ``free'' energy from an accounting
+      mismatch --- it looked exactly like physics until the books were
+      balanced.
+    \item \textbf{Host-model bugs separated from scheme physics.} Two WRF
+      bugs were unmasked --- one made the radiation \emph{cool} shaded ground
+      at 80\,K per hour every morning. Weeks of apparent ``scheme failures''
+      were withdrawn.
+  \end{enumerate}
+\end{frame}
+
+% ---------------------------------------------------------------- result 1: wind
+\begin{frame}{Result 1 --- the daytime valley wind, the closure's signature}
+  \begin{columns}[c]
+    \column{0.56\textwidth}
+    \includegraphics[width=\textwidth]{surface_wind/wind_10_100_18.png}
+    \column{0.42\textwidth}
+    Kolsass, 18 July: observed wind (black) at 10\,m and 100\,m against the
+    3D scheme (purple) and the standard-scheme family (greens/reds).
+    \vspace{1ex}
+    \begin{itemize}
+      \item Afternoon up-valley wind maximum: observed
+        $\sim$7\,m/s at 10\,m --- the 3D run reaches 6.4, the standard
+        runs 4.2--4.6.
+      \item At 100\,m: observed $\sim$10.6, 3D run 10.2, standard runs
+        7--8\,m/s.
+      \item Wind-lidar column comparison: the 3D run stays within
+        $\pm$1.5\,m/s through the day where the standard scheme is
+        2--4.7\,m/s too slow.
+    \end{itemize}
+    \vspace{1ex}
+    \textbf{The valley wind is where three-dimensionality pays.}
+  \end{columns}
+\end{frame}
+
+% ---------------------------------------------------------------- result 2: BL growth
+\begin{frame}{Result 2 --- the valley boundary layer now grows to observed depth}
+  \begin{columns}[c]
+    \column{0.54\textwidth}
+    \includegraphics[width=\textwidth]{t2s_sounding_11utc.png}
+    \column{0.44\textwidth}
+    Late-morning temperature profiles against the radiosondes at two valley
+    sites.
+    \vspace{1ex}
+    \begin{itemize}
+      \item An early version (red) kept the heat locked at the valley walls:
+        the mixed layer stalled at $\sim$300\,m.
+      \item One targeted fix --- letting the scheme judge its heat transport
+        on its own physical limits, not the momentum's --- opens the walls:
+        mixed-layer depth 317\,m $\to$ 1136\,m against 955\,m observed
+        (blue vs.\ black), within an hour's lag.
+      \item Morning temperature profile error: 1.05\,K --- the best of all
+        five configurations tested, standard scheme included.
+    \end{itemize}
+  \end{columns}
+\end{frame}
+
+% ---------------------------------------------------------------- result 3: partition
+\begin{frame}{Result 3 --- the model is allowed to resolve its own convection}
+  \begin{columns}[c]
+    \column{0.46\textwidth}
+    At midday the 3D run carries far \emph{less} parameterized turbulence
+    than the standard scheme --- at first sight a deficit.
+    \vspace{1ex}
+
+    Adding what the model resolves explicitly changes the picture:
+    \begin{itemize}
+      \item total (resolved + parameterized) turbulence energy:
+        \textbf{equal} to the standard run;
+      \item but the 3D run resolves \textbf{85--91\,\%} of it explicitly
+        (standard: under half);
+      \item its mixed layer is deeper, its heat exchange at the
+        boundary-layer top larger.
+    \end{itemize}
+    \vspace{1ex}
+    The scheme steps back where the grid can do the work itself ---
+    exactly what a scale-aware closure should do.
+    \column{0.52\textwidth}
+    \includegraphics[width=\textwidth]{gz_partition/gz_partition_18.png}
+    {\footnotesize Heat exchange at the boundary-layer top: the 3D run
+    (purple) carries it resolved, the standard scheme (green) parameterized.}
+  \end{columns}
+\end{frame}
+
+% ---------------------------------------------------------------- result 4: cold pool
+\begin{frame}{Result 4 --- the night-time cold pool: the bias is not the scheme's}
+  \begin{columns}[c]
+    \column{0.40\textwidth}
+    \includegraphics[width=0.92\textwidth]{x10_fig1_theta_kolsass_05.png}
+    {\footnotesize Pre-dawn valley temperature: all configurations
+    converge.}
+    \column{0.58\textwidth}
+    The simulated valley cold pool ends the night $\sim$3.5\,K too warm.
+    Measured --- not assumed --- this bias is \textbf{identical} for:
+    \begin{itemize}
+      \item the 3D scheme and the standard scheme,
+      \item an evening start and a midnight start,
+      \item coarse and fine driving data.
+    \end{itemize}
+    \vspace{1ex}
+    So it is a property of the \emph{model system}, not of the turbulence
+    scheme --- and its ingredients are now isolated and measured: a numerical
+    smoothing term that leaks warmth from the slopes into the pool, missing
+    evening cold-air transport, and a surface layer that keeps stirring when
+    the real one has gone calm.
+    \vspace{1ex}
+
+    Diagnosing \emph{where a bias does not come from} is what the
+    head-to-head twin design is for.
+  \end{columns}
+\end{frame}
+
+% ---------------------------------------------------------------- outlook
+\begin{frame}{Running now, and next}
+  \begin{itemize}
+    \item \textbf{Running:} twin chains testing the driving data --- full
+      vertical resolution of the ICON forcing, and ICON's own terrain ---
+      through a complete diurnal cycle; first verdicts are in (the daytime
+      wind deficit that remains is inherited from the driving model, not
+      added by ours).
+    \item \textbf{Night:} the three cold-pool ingredients are measured;
+      candidate fixes exist for each, all off by default until judged
+      against the full observation set.
+    \item \textbf{Next scale:} a 20\,m large-eddy simulation of the same
+      transect (DKRZ proposal in preparation, with the DFG-funded Tübingen
+      UAS group) --- the turbulence reference the 500\,m runs cannot provide
+      for themselves.
+  \end{itemize}
+  \vspace{2ex}
+  \textbf{Take-home:}
+  \begin{enumerate}
+    \item Three-dimensional turbulence pays where the terrain demands it:
+      the daytime valley wind and boundary-layer growth.
+    \item Judged fairly --- resolved plus parameterized, against
+      observations --- the scheme is competitive everywhere and better where
+      it matters.
+    \item The remaining biases are located, measured, and (mostly) not the
+      scheme's.
+  \end{enumerate}
+\end{frame}
+
+\end{document}
