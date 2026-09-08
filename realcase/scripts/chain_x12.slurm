@@ -35,6 +35,13 @@ PREV=${T[0]}; RSTD=${T[1]}; START=${T[2]}; SDAY=${T[3]}; EDAY=${T[4]}; HOURS=${T
 NODES=${NODES:-2}
 if   [ "$NODES" -ge 5 ]; then WTIME=$( [ "$HOURS" -ge 6 ] && echo 02:15:00 || echo 01:10:00 )   # 0.65 s/step measured on 5 nodes
 elif [ "$NODES" -ge 4 ]; then WTIME=$( [ "$HOURS" -ge 6 ] && echo 03:00:00 || echo 01:35:00 ); fi
+# EVERT (X13, 2026-09-08): segments rebuild their namelist from the 80-level template; a refined
+# run must carry its level count or wrf.exe rejects the restart. +11 % steps cost -> longer wall.
+EVERT=${EVERT:-}
+if [ -n "$EVERT" ]; then
+  EXTRA_SET="--set e_vert=$EVERT"
+  [ "$NODES" -ge 5 ] && WTIME=$( [ "$HOURS" -ge 6 ] && echo 02:45:00 || echo 01:25:00 )
+else EXTRA_SET=""; fi
 RST=$DATA/branko_runs/innval_pbl3d_$TAG$PREV/wrfrst_d01_$RSTD
 [ -f "$RST" ] || { echo "!!! restart missing: $RST"; exit 1; }
 "$RC/scripts/setup_restart_run.sh" $TAG$IDX --rst "$RST" --start "$START" --hours "$HOURS" \
@@ -43,7 +50,7 @@ RST=$DATA/branko_runs/innval_pbl3d_$TAG$PREV/wrfrst_d01_$RSTD
   --set pbl3d_moist_cond_max=10000.0 --set pbl3d_t2_scalar=1 \
   --set output_t_fluxes=0 --set output_q_fluxes=0 --set output_u_fluxes=0 \
   --set output_v_fluxes=0 --set output_w_fluxes=0 --set output_tke_moments=1 \
-  --set start_day="$SDAY" --set end_day="$EDAY" || { echo "!!! build failed"; exit 1; }
+  --set start_day="$SDAY" --set end_day="$EDAY" $EXTRA_SET || { echo "!!! build failed"; exit 1; }
 RUNDIR=$DATA/branko_runs/innval_pbl3d_$TAG$IDX
 ln -sfn $DATA/branko_runs/innval_pbl3d_${TAG}bdy/wrfinput_d01 $RUNDIR/wrfinput_d01   # X12bdy = full-window real (13->23); X12a's wrfbdy ends 19:00 (its real ran --hours 6) and starved X12b (job 8549830)
 ln -sfn $DATA/branko_runs/innval_pbl3d_${TAG}bdy/wrfbdy_d01   $RUNDIR/wrfbdy_d01
@@ -53,6 +60,6 @@ echo "$TAG$IDX submitted as $jid"
 sbatch --parsable --dependency=afterok:$jid --export=ALL,TAG=$TAG,IDX=$IDX "$RC/scripts/judge_x12.slurm" >/dev/null && echo "judge armed afterok:$jid"
 sbatch --parsable --dependency=afternotok:$jid --export=ALL,STAGE=$TAG$IDX,FAILED_JOB=$jid "$RC/scripts/notify_x12.slurm" >/dev/null && echo "ping armed afternotok:$jid"
 if [ -n "$NEXT" ]; then
-  nj=$(sbatch --parsable --dependency=afterok:$jid --export=ALL,IDX=$NEXT,TAG=$TAG,LANE=${LANE:-zen3_1024},NODES=$NODES --chdir="$RUNDIR" "$RC/scripts/chain_x12.slurm")
+  nj=$(sbatch --parsable --dependency=afterok:$jid --export=ALL,IDX=$NEXT,TAG=$TAG,LANE=${LANE:-zen3_1024},NODES=$NODES,EVERT=$EVERT --chdir="$RUNDIR" "$RC/scripts/chain_x12.slurm")
   echo "next link ($NEXT) queued as $nj afterok:$jid"
 fi
