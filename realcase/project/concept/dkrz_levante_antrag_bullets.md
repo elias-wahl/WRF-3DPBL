@@ -59,3 +59,43 @@ request.
 (sharpens the intermediate-nest row); the 20 m nest extent (my 25×15 km
 assumption moves the total linearly); whether one case needs the multi-layer
 stratification rehearsal flagged as a risk in the PhD concept.
+
+---
+
+## DKRZ process constraints (from the allocation rules, added 2026-09-08)
+
+- **Eligibility / who submits:** the PI should be affiliated with a German
+  research institution; international groups need a significant German
+  contribution. → The proposal should be **led by Tübingen (Platis)** as PI;
+  Innsbruck joins as the international partner supplying the model system and
+  running the simulations. This inverts the framing of bullets 1–2: it is the
+  German DFG project's proposal, with us as contributor — not ours with them
+  as anchor.
+- **Submission windows:** Sep 1 – Oct 31 (start Jan 1) and Mar 1 – Apr 30
+  (start Jul 1). Allocations run 12 months. **The current window is open
+  (deadline 2026-10-31, start 2027-01-01).**
+- **Compute expires quarterly:** granted node-hours must be consumed roughly
+  evenly (unused compute expires after three months). With LES setup planned
+  for H1 2027 and production H2 2027, a **Jan 1 start forces ~12.5 k node-h of
+  consumption per quarter from January** — either front-load the sensitivity
+  suite and the rehearsal case into Q1/Q2, or target the **Mar–Apr window
+  (start Jul 1 2027)** whose period matches the production schedule. Decide
+  before writing.
+- **Pre-/post-processing needs its own compute** (everything runs through
+  SLURM): add an explicit line item — virtual-flight sampling, spectra,
+  statistics — ≈ 3 000 node-h on top of the 50 k, requested as such.
+- **Document limits:** normal first proposal ≤ 8 pages, ≤ 4 000 characters
+  per page; required structure = project overview, scientific scope,
+  computational/numerical methods, suitability for HLRE-4, **scalability
+  (performance vs. node count — our measured 500 m scaling curve 2/4/5 nodes
+  covers this)**, resource derivation, added value. Renewals require a
+  ≤ 2-page report.
+- **No extra paperwork triggered:** the thresholds for a data-storage usage
+  plan (≥ 1 000 000 node-h, ≥ 1 024 TiB disk or archive) are far above our
+  53 k node-h / 60 TB / 15 TB.
+- **Storage policy:** disk is per allocation period (re-request on renewal;
+  default path is moving data to archive within the period); unused archive
+  grants expire — request archive close to what will actually be written in
+  the period.
+- **GPU:** not requested — WRF runs CPU-only here; hardware-accelerated
+  remote visualization would be the only reason to add it.
