@@ -1,0 +1,83 @@
+% =============================================================================
+%  The assumptions of a one-dimensional PBL closure, and which scheme drops which
+%  Build: source ~/miniconda3/bin/activate tex
+%         tectonic --keep-intermediates pbl_assumptions_table.tex
+%         ~/bin/biber pbl_assumptions_table && tectonic pbl_assumptions_table.tex
+%  Parts live in pbl_assumptions/ (macros, part0, part1, part2, extra.bib).
+%  pdfLaTeX-compatible so the parts can be \input into the concept later.
+% =============================================================================
+\documentclass[10pt,a4paper]{article}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[utf8]{inputenc}
+  \usepackage[T1]{fontenc}
+  \usepackage{lmodern}
+\else
+  \usepackage{fontspec}
+  \setmainfont{lmroman10-regular.otf}[BoldFont=lmroman10-bold.otf,
+    ItalicFont=lmroman10-italic.otf, BoldItalicFont=lmroman10-bolditalic.otf,
+    SmallCapsFont=lmromancaps10-regular.otf]
+  \setsansfont{lmsans10-regular.otf}[BoldFont=lmsans10-bold.otf, ItalicFont=lmsans10-oblique.otf]
+  \setmonofont{lmmono10-regular.otf}
+\fi
+\usepackage[british]{babel}
+\usepackage[a4paper,margin=20mm,top=18mm,bottom=20mm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage[table]{xcolor}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{xltabular}
+\usepackage{pdflscape}
+\usepackage{tikz}
+\usepackage{enumitem}
+\setlist[itemize]{nosep,leftmargin=*}
+\usepackage{caption}
+\captionsetup{font=small,labelfont=bf}
+\usepackage{microtype}
+\usepackage[hidelinks]{hyperref}
+\emergencystretch=2em
+\setlength{\parskip}{0.4ex}
+\setlength{\parindent}{0pt}
+
+\usepackage[backend=biber, style=ext-authoryear, giveninits=true, terseinits=true,
+  maxbibnames=8, minbibnames=1, maxcitenames=2, mincitenames=1,
+  doi=true, isbn=false, url=false, eprint=false, dashed=false, sorting=nyt,
+  uniquelist=false, uniquename=false]{biblatex}
+\renewcommand*{\finalnamedelim}{\addcomma\space}
+\DeclareDelimFormat[bib]{nameyeardelim}{\addspace}
+\DeclareDelimFormat[parencite]{nameyeardelim}{\addcomma\space}
+\DeclareDelimFormat[textcite,cite]{nameyeardelim}{\addspace}
+\renewcommand*{\multinamedelim}{\addcomma\space}
+\renewcommand*{\revsdnamedelim}{}
+\DeclareNameAlias{sortname}{family-given}
+\DeclareNameAlias{default}{family-given}
+\DeclareFieldFormat{titlecase}{#1}
+\renewcommand*{\revsdnamepunct}{}
+\renewbibmacro{in:}{}
+\DeclareFieldFormat[article,periodical]{number}{\mkbibparens{#1}}
+\renewbibmacro*{volume+number+eid}{\printfield{volume}\printfield{number}\setunit{\addcomma\space}\printfield{eid}}
+\addbibresource{phd_concept/references.bib}
+\addbibresource{pbl_assumptions/extra.bib}
+
+\makeatletter
+\input{pbl_assumptions/macros}
+\makeatother
+
+\title{\vspace{-1.5em}The assumptions of a one-dimensional PBL closure,\\ and which scheme drops which\vspace{-0.3em}}
+\author{Notes for the Inn Valley closure comparison}
+\date{2026-09-07}
+
+\begin{document}
+\maketitle
+\vspace{-2em}
+
+\input{pbl_assumptions/front}
+\input{pbl_assumptions/part0}
+\input{pbl_assumptions/part1}
+\input{pbl_assumptions/part2}
+
+\clearpage
+\printbibliography[heading=bibintoc,title={References}]
+\end{document}

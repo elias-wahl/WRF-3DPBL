@@ -1,0 +1,158 @@
+% The full 3D Inn Valley runs held against the literature read on 2026-09-07
+% Build: source ~/miniconda3/bin/activate tex && cd concept && tectonic --keep-intermediates --keep-logs literature_vs_3dfull.tex
+\documentclass[10pt,a4paper]{article}
+\usepackage[hmargin=1.9cm,vmargin=1.8cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs,array,xltabular,pdflscape}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{siunitx}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage[style=ext-authoryear,maxcitenames=2,giveninits=true,uniquename=false,uniquelist=false,dashed=false,sorting=nyt,backend=biber]{biblatex}
+\addbibresource{phd_concept/references.bib}
+\newcommand{\avg}[1]{\langle #1 \rangle}
+\newcommand{\pd}[2]{\partial #1/\partial #2}
+\newcommand{\dx}{\Delta x}
+\newcommand{\qsq}{q^2}
+\newcommand{\Ri}{\mathrm{Ri}}
+\newcommand{\src}[1]{{\scriptsize\textcolor{black!60}{#1}}}
+\newcommand{\agree}{\textcolor{green!45!black}{\textbf{agrees}}}
+\newcommand{\tension}{\textcolor{red!60!black}{\textbf{tension}}}
+\newcommand{\untested}{\textcolor{orange!70!black}{\textbf{untested}}}
+\newcommand{\refines}{\textcolor{blue!60!black}{\textbf{refines}}}
+\setlist{nosep,leftmargin=*}
+\title{\vspace{-1.5em}The full 3D Inn Valley runs held against the literature\\[2pt]
+\large what the papers read on 2026-09-07 say about our configuration and our results\vspace{-0.5em}}
+\author{}
+\date{2026-09-07}
+\begin{document}
+\maketitle
+\vspace{-2.5em}
+
+\section*{Scope}
+Two things are compared here: the papers read on 2026-09-07 --- the Zotero batch and the 21 gap papers now in the concept's bibliography, plus the scheme comparison in \texttt{pbl\_assumptions\_table.pdf} --- against \emph{our approach} in the full three-dimensional Mellor--Yamada runs of the fork (\texttt{pbl3d\_opt=2}, the X-, D-, EVE- and X12 families, reference lineage X10\,$\to$\,X12) and what those runs found up to the X12 verdict of 2026-09-07 14:40. Sources on the project side are cited as \src{DECISIONS.md:10} etc.; measured numbers are marked (M), design statements (D), inferences (I). Every literature number is from the paper named. The comparison is organised by mechanism; the verdict column says whether the literature \agree{} with what we did or found, \refines{} it, stands in \tension{} with it, or names something we have \untested.
+
+\subsection*{Our approach, in one table}
+\begin{small}
+\begin{tabular}{@{}p{3.6cm}p{12.9cm}@{}}
+\toprule
+closure & MY level 2.5, prognostic $\qsq$ (twice the TKE, m$^2$\,s$^{-2}$); all six stresses and three heat-flux components from the $10\times10$ algebraic system solved by \texttt{dgesvx} with column equilibration; full 3D flux divergences applied to $U$, $V$, $W$, $\Theta$, $Q_v$; \texttt{diff\_opt=0}, \texttt{bl\_pbl\_physics=0}, \texttt{hybrid\_opt=0} (required) \src{module\_pbl3d\_my.F:2160--2190} \\
+production & nine shear terms; with \texttt{pbl3d\_sf\_pair=1} the six horizontal-pairing terms are divided by the slope factor $\sigma$ (median 5.2 here) so the $\qsq$ budget is credited only with what the tapered tendency extracts \src{module\_pbl3d.F:6410--6417} \\
+length scale & Blackadar $l = l_0\kappa z/(\kappa z + l_0)$, $l_0 = 0.1\int\tilde q z\,dz/\int\tilde q\,dz$ over the whole column with $\tilde q = \max(q - q_{min}, 0)$; $l \le 0.53\,q/N$ in stable air; Honnert taper on $l$ (inert at 500~m, $P \approx 1$); Tier-1 strain cap $l \le (2\cdot 6/B_1)\,q/|S|$, the limited $l$ reaching production \emph{and} dissipation since \texttt{db3b9176c}; Tier-2 halving on non-realizable solves (scalar block included, \texttt{t2\_scalar=1}); Tier-3 projection \src{module\_pbl3d\_my.F:383--534, 1704--1797} \\
+constants & MY82: $A_1 = 0.92$, $B_1 = 16.6$, $A_2 = 0.74$, $B_2 = 10.1$, $C_1 = 0.08$; level-2 $S_M, S_H$ vanish above $R_{fc} = 0.191$ ($\Ri \approx 0.195$) \src{module\_pbl3d\_my.F:4135--4340} \\
+surface & MOST from the revised MM5 scheme (\texttt{sf\_sfclay\_physics=1}) with $u_* \ge 0.03$~m\,s$^{-1}$ and $z/L \le 10$; the three MOST fluxes set at the ground face, no boundary condition on $\qsq$ (floor $10^{-5}$); the Eghdami 3D surface layer built, never run \src{module\_pbl3d\_my.F:3145--3245} \\
+grid, forcing & $\dx = 500$~m, 80 levels, first mass level $\approx 12$~m, $\Delta t = 2$~s; hourly ICON 500~m forcing on 65 native levels since 2026-09-03 (12 pressure levels before: A19/A21); Noah-MP, Thompson, RRTMG, \texttt{topo\_shading=1}; 6th-order filter on along $\eta$ (\texttt{diff\_6th\_opt=2}) \\
+control & MYNN 2.5 EDMF on stock WRF 4.6.0 (job 8320565): same grid, physics and filters; \texttt{diff\_opt=2}, \texttt{km\_opt=4} (Smagorinsky under the closure), \texttt{hybrid\_opt=2}, no $u_*$ floor, inert topographic shading \src{OPEN\_ISSUES.md:369; realcase/README.md:355--361} \\
+\bottomrule
+\end{tabular}
+\end{small}
+
+\subsection*{What the runs found, in one table}
+\begin{small}
+\begin{tabular}{@{}p{3.6cm}p{12.9cm}@{}}
+\toprule
+nocturnal runaway (closed) & production and dissipation used different length scales; one master scale removed it, domain-max $\qsq$ 150 $\to$ 18.5~m$^2$\,s$^{-2}$ (M) \src{DECISIONS.md:1651--1714}; the strain cap at 6 is load-bearing --- 12 or off brings the runaway back within 45~min (X4/X5) \\
+nocturnal $\qsq$ vs MYNN & ratio 0.22--0.23, flat in every $\Ri$ bin above 0.3; 0.96 at $\Ri < 0$; median $l$ 1.0 vs 3.8~m at $\Ri = 1$--2; 69\,\% of nocturnal valley cells above $\Ri = 0.25$ (M) \src{DECISIONS.md:1429--1437} \\
+slope-factor pairing & 90\,\% of horizontal-pairing production (a third of all production, on slopes) was never paid by the resolved flow; pairing closes the budget to 0.3\,\% and halves nocturnal $\qsq$, flat across slope bins (M) \src{HANDOVER:609--618} \\
+convective partition & 10:00 local, lowest 100~m: subgrid $\qsq$ 0.54 vs 1.95 (MYNN); resolved box variance 3.29 vs 1.77; sum 3.89 vs 3.72~m$^2$\,s$^{-2}$; resolved share 0.85--0.91 vs 0.46--0.48; ML depth 820 vs 631~m (M, box variance an upper bound) \src{DECISIONS.md:935--950} \\
+daytime valley wind & 10~m maximum Kolsass/Radfeld: observed 7.2/5.2, 3D 6.4/5.4, MYNN 4.4/4.2~m\,s$^{-1}$; morning sounding $\theta$ RMSE 1.05~K, best of five; lidar wind within $\pm 1.5$~m\,s$^{-1}$ where MYNN is 2--4.7 low (M) \src{DECISIONS.md:725--733} \\
+cold pool & +3.4…+3.5~K (0--100~m) at 01~UT against HATPRO, identical for 3D, MYNN twin (+3.1 vs +3.7), three forcing variants; forms 19--21~UT, deep-night rate right ($-0.35$ vs $-0.31$~K\,h$^{-1}$); surface heat flux 1.5--3$\times$ too negative at all seven i-Box sites; observed $u_*$ 0.07--0.16, $\sigma_w$ 0.08--0.20~m\,s$^{-1}$; HATPRO 0.8--1.1~K cold below 100~m, so the bias is an upper bound by $\sim$1~K (M) \src{DECISIONS.md:10, 86, 113, 148} \\
+open (A15--A17) & morning ML 330--550 vs 900--950~m observed, interface TKE transport 50$\times$ weaker than MYNN; $\qsq(k_0) = 0.17$ of $B_1^{2/3}u_*^2$; day/evening shear-layer TKE $\approx 2.5\times$ too weak against a preliminary lidar product (M) \src{OPEN\_ISSUES.md A15--A17} \\
+never measured & spectra or effective resolution; the resolved partition at night; the nine-term production shares by regime after pairing; the anisotropy of the solved tensor against the i-Box variances; \texttt{pbl3d\_l\_opt=2}, \texttt{limiter\_opt=2}, the Eghdami surface option, any constant set but MY82 \\
+\bottomrule
+\end{tabular}
+\end{small}
+
+\clearpage
+\begin{landscape}
+\section*{The comparison}
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.1}
+\begin{xltabular}{\linewidth}{@{}>{\raggedright\arraybackslash}p{2.2cm}
+  >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{5.0cm}@{}}
+\toprule
+\textbf{Mechanism} & \textbf{What the literature says} & \textbf{What we do, what we found} & \textbf{Verdict and consequence} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Mechanism} (cont.) & \textbf{Literature} & \textbf{Our runs} & \textbf{Verdict} \\
+\midrule
+\endhead
+\bottomrule
+\endlastfoot
+Length scale as the lever &
+At 750~m in a stable cold pool the length scale, not the horizontal flux treatment, decided the TKE field: MYNN's scale restored MYNN's over-mixing, 2D Smagorinsky in place of the 3D fluxes changed little; the full solution's instability is attributed to the length scale \parencite{arthur2022}; spurious cells return when it is too small \parencite{haupt2023}; the MY82 scale under-estimates midday TKE by $\sim$50\,\% against a stability-dependent one \parencite{eghdami2022}; "the last 1D relic … should be revised" \parencite{juliano2022}. &
+The whole August campaign was a length-scale campaign: A0 ($l_0$ set by the lid), A1 (no buoyancy limit), A9 (production and dissipation on different scales), the strain cap. We run the full closure over real terrain in stable air --- what Arthur and Wiersema could not --- because the cap and the unified scale hold it. Nocturnal $l$ median 1.0~m against MYNN's 3.8 at $\Ri = 1$--2 (M). Morning transport and the surface-layer wall are the open items (A15, A16). &
+\agree{} on the diagnosis, \refines{} the direction: Arthur's stable-air result says a \emph{smaller} scale than MYNN's is right at night; Eghdami's convective result says the MY82 scale is too small by day. \texttt{pbl3d\_l\_opt=2} (the Nakanishi stability-dependent scale) is built and unrun --- the literature puts it ahead of any constant change for A15--A17. \\
+\addlinespace[3pt]
+The $z_i$ inside the scale &
+Over mountains the boundary-layer height has no universal definition; the one fit for flux parametrisation is the inversion base \parencite{dewekker2015}; the bulk-Richardson height was fitted at 0.22/0.25 on flat nights \parencite{vogelezang1996}; MYNN's evening deficiency is "a strong dependency on the diagnosed PBL height" in the master scale \parencite{freddi2026}. &
+Our $l$ uses no $z_i$: $l_0$ integrates the turbulent excess over the whole column, the buoyancy limit uses local $N$, and the only $z_i$-dependent term (the taper, $\min(z_i, 3000)$) is inert at 500~m (D). The lid still enters through the integral: A0 showed $l_0 \to 0.1\,H/2$ when quiescent levels carry the floor (M). &
+\agree{}: the closure is robust to the problem that undermines G19 and MYNN. \refines{}: the turbulent-excess weighting is our answer to De Wekker's point; state it that way in the concept. \\
+\addlinespace[3pt]
+Stable regime: cutoff or not &
+MY82 constants cut $S_M, S_H$ at $R_{fc} = 0.19$ \parencite{mellor1982}; NN09 at 0.30; WRF-MYNN has no cutoff (Canuto/Kitamura factor); the Kansas surface layer reaches $\Ri_c = 0.21$ \parencite{businger1971}; MYNN over-estimates lidar TKE several times through a cold pool \parencite{arthur2022}, all schemes over-predict $u_*$ and destroy the nocturnal jet \parencite{shin2011}, yet WRF-MYNN drives $u_*$ to zero at night in the Inn Valley at 1~km \parencite{simonet2023}; no reference partition exists for the stable regime (every grey-zone paper is free convection); at night a 500~m grid is a mesoscale grid \parencite{zhou2014}. &
+Deficit against MYNN flat at 0.22 above $\Ri = 0.3$, the regime 69\,\% of nocturnal valley cells occupy (M); "MYNN is the control, not the truth". Observed surface layer decoupled: $u_* = 0.07$--0.16, $\sigma_w = 0.08$--0.20~m\,s$^{-1}$, $|w'\theta'| \lesssim 0.02$~K\,m\,s$^{-1}$ at seven i-Box sites (M). With the MOST wall value $6.5\,u_*^2$ these $u_*$ give $\qsq = 0.03$--0.17~m$^2$\,s$^{-2}$ (I) --- between the 3D run's floor-bound values and MYNN's 0.15--0.3. The lidar TKE product is preliminary at night (A17). &
+\tension{} that the literature cannot settle: MYNN errs both ways by regime (over-mixing at 750~m in a cold pool, under-mixing at 1~km in this valley). \refines{}: the i-Box sonic variances, not the lidar, are the nocturnal reference for $\qsq$ and its anisotropy; the standing rule (no constants before the observations are held) is exactly what Arthur and Shin \& Hong imply. Zhou's remark supports "not a grey-zone problem", but our "no resolved turbulence at night" is an assertion --- measure the nocturnal box variance once. \\
+\addlinespace[3pt]
+Convective partition &
+Coarse-grained LES puts the subgrid share of mixed-layer TKE at $P_{sbg}(X)$, $X = \dx/(z_i + h_c)$: 0.72--0.77 for $X = 0.5$--0.6 \parencite{honnert2011}; actual grey-zone runs do not follow the curve --- they resolve the majority of the transport where the filtered LES carries $< 20$\,\% \parencite{zhou2014}, no turbulence is resolved beyond $\dx/z_i = 0.6$ \parencite{efstathiou2015}; what is resolved sits at 6--8$\dx$, the effective resolution \parencite{skamarock2004,zhou2014}; MYNN at 500~m leaves $> 80$\,\% of the heat flux to resolved motions \parencite{shin2016}; resolved TKE $< 20$\,\% of the total at 333~m over a city \parencite{hope2024}. &
+At 10:00 local, $z_i \approx 820$~m, $X \approx 0.6$: resolved share 0.85--0.91 in the 3D run, 0.46--0.48 in MYNN (terrain-confounded), subgrid + resolved equal near the surface (M, box variance an upper bound). We read this as "the closure lets the convection be resolved" \src{DECISIONS.md:935}. No spectrum, no effective-resolution estimate exists (M). &
+\tension{}: Honnert's curve expects three quarters subgrid where we have one tenth; Zhou and Efstathiou say a run that resolves this much at $X \approx 0.6$ is over-resolving at a grid-set scale. The equal total is consistent with Zhou's "first-order statistics insensitive". \untested{}: the spacing of the resolved structures against 6--8$\dx$ (3--4~km), their onset time, and a $w$ spectrum in the midday valley --- one WRFlux frame. Until then the partition result is a statement about energy, not about the eddies. \\
+\addlinespace[3pt]
+Spurious circulations &
+Vertical-only diffusion removes the short-wave cutoff of the Rayleigh instability of a local scheme's superadiabatic layer: cells at $8\dx$ grow with a 20~min e-folding time at 500~m; nonlocal schemes are largely immune \parencite{ching2014}; all three ingredients --- gradients in the fluxes, an adequate length scale, 3D divergences --- are needed to damp them \parencite{juliano2022}; they return when the length scale is too small \parencite{haupt2023}. &
+We have the three ingredients (D) but the cap and the MY82 scale keep $l$ small: $l_{master} = 0.6\,\kappa z$ at the wall, $K_m \approx \tfrac14$ of the surface-layer equilibrium (A16), the strain limiter active in 38\,\% of the lowest five levels (M). The 3--4~km resolved structures of the partition row are the candidates. &
+\untested{} and the same test as the partition row: Ching's diagnostic is the Rayleigh number of the superadiabatic layer the scheme maintains; a low-$K$ surface layer under a 500~m grid is the condition Haupt names. \\
+\addlinespace[3pt]
+The 1D column plus 2D Smagorinsky &
+$K_h = (k_H\Delta)^2|D|$, $k_H \approx 0.28$, introduced at 555~km to drain truncated energy, "appears to play too large a role" \parencite{smagorinsky1963}; the energetic inconsistency SMS-3DTKE and the 3D PBL set out to remove \parencite{zhang2018,juliano2022}. &
+\texttt{diff\_opt=0}: no Smagorinsky operator remains; the horizontal mixing is the closure's own divergence, and the 6th-order filter along $\eta$ (shared with the control) is the only numerical operator left; it warms the pool $+0.12$--0.15~K\,h$^{-1}$ of which the resolved flow re-supplies 85--90\,\% when it is removed (M, A20). &
+\agree{}: we did what the papers ask. \refines{}: the control still runs the Smagorinsky operator underneath MYNN, so part of the day-time difference between the runs is the operator, not the closure (Arthur's case 2 vs 3 separates them; ours does not). \\
+\addlinespace[3pt]
+Surface layer &
+MOST holds over a hill only below a third of the inner layer, with two Obukhov lengths on a slope \parencite{kaimal1994}; the constant-flux layer holds for momentum in 8--28\,\% of Inn Valley daytime periods \parencite{lehner2021}; directional shear sets $u_*$ in weak-wind drainage flow \parencite{mahrt2017}; the surface is stable 4.7\,\% of the time at Innsbruck while the column above is often stable \parencite{ward2022}; the revised scheme lowered WRF's $u_*$ floor from 0.1 (hit 25\,\% of the time, most stable steps) to 0.001~m\,s$^{-1}$ and at $\Ri > 0.7$ cuts HFX from $-12$ to $-1$~W\,m$^{-2}$ \parencite{jimenez2012}; "the limitations of Monin--Obukhov similarity theory, which is the only model currently available in WRF" \parencite{eghdami2022}. &
+Our floor is 0.03, sat on in 77\,\% of valley-floor cells at night, $\qsq$ within $2\times$ of its floor in 48\,\% (M); EVE2 with native caps is a clean null for the evening (M). The model extracts 1.5--3$\times$ too much heat from the surface at night while the observed surface layer is near-laminar; the 0--100~m formation deficit is not attributable to closure, forcing or filter --- the remaining candidates are the surface-layer scheme both closures share and the 17~m first layer against an observed 1.27~K inversion between 2 and 8.7~m (M, A4) \src{DECISIONS.md:148; HANDOVER:7}. &
+\agree{} with where our diagnosis has arrived, and the literature says why: MOST at 12~m on 20--40$^\circ$ slopes is applied where Kaimal's bound is tens of metres and Lehner's constant-flux layer mostly absent. The $u_*$ floor is measured out as a lever (EVE2). \untested{}: the Eghdami surface option (\texttt{pbl3d\_sfc\_opt=1/2}) exists for exactly this; a devel-QOS night test costs minutes. \\
+\addlinespace[3pt]
+Horizontal shear production &
+Horizontal shear is 20\,\% of the bulk shear at 500~m, 30\,\% at 100~m, from structures below 500~m \parencite{freddi2026}; observable at the valley floor in the afternoon \parencite{goger2018}; dominant at the slope base at 15~LT in a 90~m LES \parencite{rohanizadegan2025}; the horizontal heat flux equals the vertical one in an idealised valley LES \parencite{schmidli2013}; offshore the horizontal divergences are "significantly smaller" than $\avg{u'w'}$ \parencite{rybchuk2022}. &
+Before pairing, the horizontal-pairing terms were a third of all production, 92\,\% unpaid on 22--40$^\circ$ slopes, $\sim$0 on flat --- the slope structure of nocturnal $\qsq$ \emph{was} this spurious source (M). After pairing their credited share is roughly the unpaired share divided by the median $\sigma$ of 5.2, i.e.\ of order 5--10\,\% (I); the nine-term shares by regime have not been tabulated since the fix (M). &
+\refines{}: the literature's 20--30\,\% is a shear magnitude, ours is a production credit after a numerical taper --- not the same quantity. \untested{}: the production shares by regime from \texttt{QSQ\_SHEAR\_H} and the vertical terms, and their dependence on $\sigma$; the taper makes the credited horizontal production grid- and slope-dependent in a way no paper describes. \\
+\addlinespace[3pt]
+Anisotropy &
+Shear layers are $\avg{u^2}$-dominated with twice the $uw$ correlation of convective ones \parencite{moeng1994}; horizontal variances 2--3$\times$ the vertical at the i-Box sites, along-slope heat flux as large as the vertical one \parencite{lehner2021}; anisotropy classes decide which scaling holds \parencite{stiperski2017}; LES over-mixes for $\dx \gtrsim 2\Delta z$ at $\Ri \gtrsim 0.1$ \parencite{deroode2017}. &
+The full closure solves the tensor: thirteen moments with one $l$; its variances and stress components are in the history stream (D). No comparison of the solved anisotropy with the i-Box variance ratios exists (M). &
+\untested{} and cheap: $\sigma_u\!:\!\sigma_v\!:\!\sigma_w$ and $\avg{u\theta}/\avg{w\theta}$ by regime against seven sonic sites --- the one hold only a tensor-solving closure can be given. \\
+\addlinespace[3pt]
+Verification design &
+Over the Riviera a closure difference visible within an hour vanished over 30~h; the parent-grid soil moisture moved the valley-wind onset by 3--4~h \parencite{chow2006}; topography and surface exchange rank above the closure, yet the 3D scheme starts the up-valley wind on time where 1D is an hour late \parencite{goger2024}; terrain data beat the closure by five in the wind bias \parencite{liu2020}; heat compensates between subgrid and resolved, momentum does not --- mean wind discriminates where $\theta$ cannot \parencite{shin2016}; a 1~km MYNN bulk heat budget matched a 200~m LES within 30~min \parencite{leukauf2015}. &
+The cold-pool bias is closure-independent (EVE1M twin), forcing-independent (X12 triplet), filter-independent (A20); the valley-wind depth error is shared (stretch 1.5--1.7 in every run); T2 within 0.2~K of MYNN by terrain class. The closure shows in the momentum: daytime valley wind 6.4 vs MYNN 4.4 against 7.2 observed, lidar wind within $\pm 1.5$~m\,s$^{-1}$, the moistest and closest humidity, morning $\theta$ RMSE 1.05~K (M). &
+\agree{} on both halves: the mean thermodynamic state is set by surface exchange, forcing and numerics shared by both closures; the closure signal sits in the wind, as Shin \& Dudhia predict and Goger 2024 observed in ICON. Consequence for paper 1: rank the wind and the flux partition above $\theta$ as decision metrics, and treat a null $\theta$ result as expected, not as a failure. \\
+\addlinespace[3pt]
+Effective resolution and filters &
+A model resolves nothing below $\approx 7\dx$ \parencite{skamarock2004}, 7--8$\dx$ in ICON-LES \parencite{heinze2017}; filters set that number, a 2nd-order operator removes energy at low wavenumbers; grey-zone eddies appear at 6--8$\dx$ \parencite{zhou2014}. &
+At 500~m the trustworthy scale is $\approx 3.5$~km, the valley width; our only $\dx$-scale diagnostic is the $2\dx$ noise gate (W $\times 1.06$--1.16 domain-wide with the 6th-order filter off, saturating) (M); resolved TKE is an 11$\times$11-cell box variance (5.5~km), which by construction integrates over the effective-resolution scale. &
+\refines{}: the box size is defensible for the reason Skamarock gives; the conclusion "resolved" still needs the spectrum of the partition row. \\
+\addlinespace[3pt]
+Nesting and the planned LES &
+Parent spacing at least the boundary-layer depth; a large refinement ratio skips the grey zone but lengthens the turbulence fetch; perturbations shorten it by hundreds of cells in stable air but leave the integral scales artificially small; Rayleigh damping 3--5~km at 0.005~s$^{-1}$; the best parent is not the best nest \parencite{haupt2023}; ratio 3 over terrain because a ratio-11 jump crashes on the terrain mismatch \parencite{liu2020}; 350~m first resolves a 1.5~km wide floor, 150~m adds little inside a forced domain \parencite{chow2006}. &
+The 500~m domain is forced directly by ICON (no nest); by day $z_i \approx 0.8$--1~km $> \dx$, so the runs sit inside Haupt's forbidden band by design --- that is the experiment; at night $z_i \lesssim 300$~m and the same grid is a legitimate mesoscale grid. The soil-moisture conversion (mass to volume fraction) and the native-level forcing (A19/A21) are Chow's parent-grid levers rediscovered (M). &
+\agree{}. For RQ~II the ratio, fetch and perturbation choices are open items the literature now bounds; Haupt's "best parent $\ne$ best nest" applies to the plan of forcing the LES with the best RQ~I run. \\
+\end{xltabular}
+\end{landscape}
+
+\section*{What follows}
+\begin{enumerate}[itemsep=2pt]
+\item \textbf{The partition result is unproven as turbulence.} Coarse-grained LES expects about three quarters of the mixed-layer TKE subgrid at $\dx/(z_i + h_c) \approx 0.6$; the 3D run resolves about nine tenths. That is the signature Zhou, Efstathiou and Ching describe for grey-zone runs that convect at a grid-set scale. One midday WRFlux frame gives the $w$ spectrum, the cell spacing against 6--8$\dx$ (3--4~km) and the Rayleigh number of the surface layer the closure maintains. Until that is done, "the closure lets the convection be resolved" should read "the closure carries the same total kinetic energy with a resolved share that the coarse-graining literature does not predict".
+\item \textbf{The nocturnal comparison needs the sonics, not MYNN.} The literature documents MYNN erring in both directions by regime; the observed $u_* = 0.07$--0.16~m\,s$^{-1}$ imply a wall value of $\qsq = 0.03$--0.17~m$^2$\,s$^{-2}$, between the two closures. The i-Box variances and their ratios are the reference for the nocturnal $\qsq$ magnitude and for the anisotropy the full closure solves; the lidar product is preliminary at night.
+\item \textbf{The length scale before the constants.} Arthur, Eghdami and Haupt make the length scale the first-order lever in both regimes and in opposite directions; \texttt{pbl3d\_l\_opt=2} is built and unrun. It is the literature's candidate for A15--A17, ahead of $S_q$ and ahead of any constant.
+\item \textbf{The surface layer is where the literature and our diagnosis meet.} Kaimal's bound, Lehner's 8--28\,\% and Ward's decoupling all describe the 0--100~m problem the record has isolated; the $u_*$ floor is measured out (EVE2); the Eghdami surface option is the one unrun switch that addresses it.
+\item \textbf{The horizontal production credit needs its own measurement.} The pairing fix removed a spurious source; what remains credited to the six horizontal terms is of order 5--10\,\% by inference, and depends on $\sigma$ --- a slope- and aspect-ratio-dependent number no paper describes. Tabulate the nine shares by regime before paper 1 states a horizontal-production result.
+\item \textbf{Two agreements worth stating in the concept.} The closure signal is in the wind, not in $\theta$ (Shin \& Dudhia; Goger 2024; our valley-wind result and the closure-independent pool bias); and the closure's length scale is free of $z_i$ (De Wekker's problem does not reach it).
+\end{enumerate}
+
+{\footnotesize\printbibliography[title=References]}
+\end{document}

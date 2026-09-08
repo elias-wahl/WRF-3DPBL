@@ -1,0 +1,340 @@
+% ~10 min talk: conceptual changes since forking the Juliano 3D-PBL branch,
+% restricted to the full closure (pbl3d_opt=2). Build: tectonic talk_3dpbl_changes.tex
+\documentclass[10pt,aspectratio=169]{beamer}
+\usetheme{default}
+\usecolortheme{seahorse}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+\setbeamerfont{frametitle}{series=\bfseries,size=\large}
+\setbeamertemplate{itemize items}[circle]
+\usepackage{amsmath,booktabs}
+\newcommand{\avg}[1]{\langle #1 \rangle}
+\newcommand{\pd}[2]{\frac{\partial #1}{\partial #2}}
+\graphicspath{{/gpfs/data/fs72996/ewahl/plot_output/diagnostics/}}
+
+\title{A full 3D Mellor--Yamada closure over real Alpine terrain}
+\subtitle{What it took to make the forked scheme run --- and improve}
+\author{Elias Wahl}
+\institute{University of Innsbruck}
+\date{September 2026}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+% ---------------------------------------------------------------- intro 1
+\begin{frame}{Why a 3D closure at all}
+  A 1D PBL scheme assumes each column is horizontally homogeneous. Of the nine
+  second moments in the mean equations
+  \[
+    \pd{U_i}{t} + U_j \pd{U_i}{x_j}
+      = \dots - \pd{\avg{u_i u_j}}{x_j},
+    \qquad
+    \pd{\Theta}{t} + U_j \pd{\Theta}{x_j} = -\pd{\avg{u_j\theta}}{x_j},
+  \]
+  only $\avg{uw},\ \avg{vw},\ \avg{w\theta}$ survive that assumption --- three
+  numbers per level, acting through their vertical derivative alone.
+  \vspace{1ex}
+
+  At $\Delta x = 500$~m in the Inn Valley this fails twice:
+  \begin{itemize}
+    \item \textbf{Grey zone}: $\Delta x \sim z_i$ --- the energetic eddies are
+      neither subgrid nor resolved; horizontal gradients of the turbulence
+      statistics are as large as vertical ones.
+    \item \textbf{Slopes of $30^\circ$+}: a katabatic jet produces shear that
+      projects onto \emph{every} strain component; a scheme that only sees
+      $\partial U/\partial z$ is structurally blind to most of its production.
+  \end{itemize}
+  \vspace{1ex}
+  The 3D PBL scheme (Kosovi\'c et al.\ 2020, Juliano et al.\ 2022) parameterizes
+  all six stresses and all three components of each scalar flux, and applies
+  their full 3D divergence --- replacing both the 1D PBL scheme \emph{and} the
+  horizontal diffusion. There is no eddy-viscosity backstop behind it.
+\end{frame}
+
+% ---------------------------------------------------------------- intro 2
+\begin{frame}{The full closure in one slide (\texttt{pbl3d\_opt}=2)}
+  Mellor--Yamada level 2.5: one prognostic variable,
+  $q^2 = \avg{u^2}+\avg{v^2}+\avg{w^2}$ (twice the TKE, m$^2$\,s$^{-2}$),
+  plus a master length scale $l$ (m). All other moments are \emph{algebraic}.
+  \vspace{1ex}
+
+  The full variant keeps all nine velocity gradients and all three of
+  $\nabla\Theta_v$: the moment system no longer decouples, and at every grid
+  point, every substep, a dense $10\times10$ linear system is solved
+  \[
+    \mathsf{A}\,\mathbf{x} = \mathbf{b},
+    \qquad
+    \mathbf{x} = \big(\avg{u^2},\avg{v^2},\avg{w^2},\ \avg{uv},\avg{uw},\avg{vw},\
+    \avg{u\theta_v},\avg{v\theta_v},\avg{w\theta_v},\ \avg{\theta_v^2}\big)^{\!\top}
+  \]
+  with $\mathsf{A} = \tau^{-1}\mathsf{I} + \mathsf{S}$: return-to-isotropy rates
+  $\propto q/l$ on the diagonal, mean strain off it, buoyancy $\beta g$ coupling
+  the blocks. A $4\times4$ moisture block follows.
+  \vspace{1ex}
+  \begin{itemize}
+    \item Scalar-flux rows have \emph{no source of their own} --- fluxes exist
+      only because stresses act on scalar gradients.
+    \item Near the turbulence cutoff the diagonal shrinks with $q$ while strain
+      does not: strained, weakly turbulent air drives the system toward
+      singularity --- this is where the fork stood.
+  \end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------- change 1
+\begin{frame}{Change 1 --- an answer at every grid point: the realizability stack}
+  \textbf{At the fork} the full closure did not survive real terrain: when the
+  LAPACK solve failed, the solution vector was \emph{uninitialized memory}; when
+  it succeeded, nothing checked that the returned stress tensor was physically
+  possible. Unrealizable solutions are not rare --- 6--40\,\% of points; singular
+  systems only $\sim$0.005\,\%.
+  \vspace{1ex}
+
+  \textbf{Concept: never hand the dynamics an impossible tensor.} Four tiers,
+  each an \emph{exact} solution of the closure, at shorter $l$ if needed:
+  \begin{enumerate}
+    \item equilibrated double-precision solve, condition estimate checked;
+    \item Durbin strain limit $l \le (2\,c_{\mathrm{lim}}/b_1)\,q/|S|$ ---
+      keeps the closure inside its own validity range, inactive at equilibrium;
+    \item while the solution is degenerate or the stress tensor is not positive
+      semi-definite: halve $l$, resolve (full Sylvester test as acceptance);
+    \item exact realizability completion: variance floor, trace identity,
+      Cauchy--Schwarz, determinant-based covariance shrink.
+  \end{enumerate}
+  \vspace{1ex}
+  Verified on 200\,000 adversarial random states: zero disagreements with a true
+  positive-semi-definite test, zero bound violations after completion.
+\end{frame}
+
+% ---------------------------------------------------------------- change 2
+\begin{frame}{Change 2 --- the length scale must come from the turbulence}
+  Three defects, one theme: \textbf{$l$ was set by things that are not the flow.}
+  \vspace{1ex}
+  \begin{itemize}
+    \item \textbf{The asymptotic scale $l_0$ was set by the model lid.} MY74's
+      $l_0 \propto \int q z\,dz / \int q\,dz$ converges because $q\to0$ aloft ---
+      but $q^2$ is floored, so every quiescent level contributes and
+      $l_0 \to \alpha H/2$: 250\,m for a 5\,km top, 1500\,m for 30\,km.
+      Fixed by excluding floor-level air from the integral.
+    \item \textbf{No buoyancy limit.} Above the boundary layer
+      $\tau = l/q$ reached $10^4$\,s, $N\tau \sim 100$ --- eddies a hundred
+      buoyancy periods long. The Deardorff limit $l \le c\,q/N$ now caps the
+      master scale in stable air.
+    \item \textbf{One master scale everywhere.} Mixing length and dissipation
+      length had diverged; recoupling them removed a nocturnal runaway in which
+      $q^2$ grew without bound over slopes. The strain cap of tier 2 is
+      load-bearing there: relaxing it brings the runaway back within 45 min.
+  \end{itemize}
+  \vspace{1ex}
+  $N$: Brunt--V\"ais\"al\"a frequency (s$^{-1}$); $\tau$: eddy turnover time.
+\end{frame}
+
+% ---------------------------------------------------------------- change 3
+\begin{frame}{Change 3 --- subgrid energy must be paid by the resolved flow}
+  \textbf{Concept: the closure's $q^2$ production and the kinetic energy the
+  resolved flow loses are the same physical transaction} --- so audit them
+  against each other (WRFlux budgets made this measurable).
+  \vspace{1ex}
+
+  The audit found a leak: on slopes, the horizontally-paired shear production
+  --- about a third of \emph{all} production, essentially all of it on slopes ---
+  was credited to $q^2$ while the corresponding momentum tendency was tapered
+  away. $\sim$90\,\% of that energy was never extracted from the resolved wind.
+  \vspace{1ex}
+  \begin{center}
+  \begin{tabular}{lcc}
+    \toprule
+     & before pairing fix & after \\
+    \midrule
+    energy-closure residual & $+14$ to $+37\,\%$ & $+0.3\,\%$ \\
+    nocturnal $q^2$ (fraction of MYNN, 04\,UT) & 0.33 & 0.17 \\
+    slope-bin structure of $q^2$ & strong & flat \\
+    \bottomrule
+  \end{tabular}
+  \end{center}
+  \vspace{1ex}
+  The slope-dependent $q^2$ structure \emph{was} the spurious source. Free
+  energy from an accounting mismatch looks exactly like turbulence physics
+  until the books are balanced.
+\end{frame}
+
+% ---------------------------------------------------------------- change 4
+\begin{frame}{Change 4 --- separate the closure from the host model}
+  Two upstream WRF bugs spent weeks disguised as closure physics:
+  \vspace{1ex}
+  \begin{itemize}
+    \item \textbf{Surface-layer lookup table} out-of-bounds under strong
+      stability (crash) --- patched at the table bound, not papered over.
+    \item \textbf{Undefined albedo ($-9999$) handed to radiation}: with
+      topographic shading on, the Noah-MP driver gives shortwave radiation its
+      fill value wherever the surface gets no direct beam --- RRTMG then
+      \emph{cools} shaded ground at $-80$\,K/h. The morning fog, the $-11$\,K
+      cold bias, the drainage jets and the 07:54 crash were all downstream of
+      one number --- and were withdrawn as closure results.
+  \end{itemize}
+  \vspace{1ex}
+  \textbf{Method that came out of it:} when a budget term is \emph{impossible}
+  (shortwave cooling), stop hypothesizing physics and read the raw model arrays
+  at the offending cells --- found in an hour from a restart file, after a day
+  of closure hypotheses.
+\end{frame}
+
+% ---------------------------------------------------------------- change 5
+\begin{frame}{Change 5 --- judging a 3D closure in the grey zone}
+  \begin{columns}[c]
+    \column{0.52\textwidth}
+    The 3D run's subgrid $q^2$ is 0.28 of MYNN's in the morning mixed layer.
+    \textbf{That is a partition, not a deficit}: the closure leaves to the
+    resolved flow what the resolved flow can do.
+    \vspace{1ex}
+    \begin{itemize}
+      \item subgrid $+$ resolved kinetic energy: 3.9 vs.\ MYNN's 3.7
+        m$^2$\,s$^{-2}$ at 43\,m;
+      \item the 3D run resolves 85--91\,\% of it (MYNN: $\le$20\,\%);
+      \item its mixed layer is deeper, its total entrainment flux larger.
+    \end{itemize}
+    \vspace{1ex}
+    \textbf{Rule:} in unstable air, compare subgrid \emph{and} resolved
+    energy, never subgrid alone. (In stable air there is no resolved
+    turbulence at 500\,m --- there the subgrid number stands alone.)
+    \column{0.46\textwidth}
+    \includegraphics[width=\textwidth]{gz_partition/gz_partition_18.png}
+    {\footnotesize Entrainment heat flux at the CBL top, valley floor: the 3D
+    closure (purple) carries it resolved; MYNN (green) subgrid.}
+  \end{columns}
+\end{frame}
+
+% ---------------------------------------------------------------- change 6
+\begin{frame}{Change 6 --- scalar realizability opens the daytime valley}
+  \begin{columns}[c]
+    \column{0.46\textwidth}
+    The tier-2 acceptance tested the \emph{momentum} tensor only. Rejecting a
+    state for its stresses also discarded its heat flux --- and on the heated
+    valley walls that killed the upslope heat transport: the boundary layer
+    stopped growing at $\sim$300\,m.
+    \vspace{1ex}
+
+    Accepting the scalar block on its own realizability
+    (\texttt{pbl3d\_t2\_scalar}):
+    \vspace{0.5ex}
+    \begin{center}
+    \begin{tabular}{lc}
+      \toprule
+      $h_\theta$, Kolsass 11\,UT & \\
+      \midrule
+      observed (radiosonde) & 955\,m \\
+      closed wall & 317\,m \\
+      scalar acceptance & 746\,m (11\,UT) \\
+       & 1136\,m (12\,UT) \\
+      \bottomrule
+    \end{tabular}
+    \end{center}
+    \vspace{0.5ex}
+    Validated in every regime; bit-for-bit identical when off.
+    \column{0.52\textwidth}
+    \includegraphics[width=\textwidth]{t2s_sounding_11utc.png}
+    {\footnotesize Valley $\theta$ profiles $\sim$11\,UT: the closed wall (red)
+    never mixes the valley; the fix (blue) reaches the observed structure with
+    $\le$1\,h lag.}
+  \end{columns}
+\end{frame}
+
+% ---------------------------------------------------------------- stable regime
+\begin{frame}{Where the science stands --- the stable regime is the frontier}
+  \begin{columns}[c]
+    \column{0.50\textwidth}
+    \includegraphics[width=\textwidth]{x10_fig4_q2_timeheight.png}
+    {\footnotesize Median subgrid $q^2$, night into morning: MYNN mixes the
+    whole valley volume all night; the 3D closure carries an order of magnitude
+    less --- its own stable-regime equilibrium, flat above Ri~$\approx0.3$.}
+    \column{0.48\textwidth}
+    \begin{itemize}
+      \item The nocturnal $q^2$ deficit against MYNN is the closure's stable
+        equilibrium --- not spin-up, not initialization. And MYNN is the
+        \emph{control, not the truth}: it over-mixes the night and
+        under-forecasts the valley wind.
+      \item No constant is tuned before a full diurnal cycle is held against
+        observations --- every new switch defaults to the previous behaviour,
+        bit for bit.
+    \end{itemize}
+  \end{columns}
+\end{frame}
+
+% ---------------------------------------------------------------- cold pool
+\begin{frame}{The cold pool: a model equilibrium, not a closure property}
+  \begin{columns}[c]
+    \column{0.42\textwidth}
+    \includegraphics[width=\textwidth]{x10_fig1_theta_kolsass_05.png}
+    {\footnotesize Kolsass 05\,UT: every configuration converges to the same
+    too-warm pool.}
+    \column{0.56\textwidth}
+    The $\sim$3.5\,K warm bias of the mature valley cold pool is
+    \textbf{invariant} --- measured, not assumed --- to:
+    \begin{itemize}
+      \item the \emph{closure} (MYNN twin: same deficit),
+      \item the \emph{initial state} (evening start vs.\ 01\,UT start),
+      \item the \emph{forcing resolution} (11 vs.\ 65 ICON levels: a 1.4\,K
+        warmer evening start is eaten by 22\,UT; identical pool at 01\,UT).
+    \end{itemize}
+    \vspace{1ex}
+    The measured levers sit elsewhere:
+    \begin{itemize}
+      \item the 6th-order filter warms the pool floor across
+        terrain-following surfaces ($+0.12$--$0.15$\,K/h $\times$ 10\,h night
+        $\approx$ the sunrise deficit);
+      \item missing evening cold-air production/import (19--21\,UT);
+      \item surface coupling: skin held warm, exchange that refuses to die
+        at moderate Ri.
+    \end{itemize}
+  \end{columns}
+\end{frame}
+
+% ---------------------------------------------------------------- forcing
+\begin{frame}{A late lesson: the forcing is part of the model}
+  The driving ICON data entered as an 11-pressure-level product. Two
+  consequences, both found masquerading as model biases:
+  \vspace{1ex}
+  \begin{itemize}
+    \item no level between $\sim$580 and $\sim$1520\,m ASL --- the nocturnal
+      cold pool was \emph{interpolation-filled} ($+2$\,K) in every analysis-time
+      initial state;
+    \item the afternoon up-valley jet was smeared out of the initial condition
+      entirely (2.3 vs.\ 5.6\,m/s observed at first contact).
+  \end{itemize}
+  \vspace{1ex}
+  Rebuilt conversion on the 65 native ICON levels; a 36-level pressure ladder
+  proved fully equivalent (twin runs agree to tenths). What remains of the
+  daytime wind deficit ($\sim$60\,\% of observed) is \emph{in the forcing
+  itself}, measured directly in the boundary files --- at 500\,m the
+  along-valley momentum is largely imposed at the lateral boundaries.
+\end{frame}
+
+% ---------------------------------------------------------------- summary
+\begin{frame}{Summary --- the conceptual arc}
+  \begin{enumerate}
+    \item \textbf{Realizability as the contract}: every grid point returns an
+      exact, physically possible solution of the closure --- momentum
+      \emph{and} scalar blocks judged on their own terms.
+    \item \textbf{The length scale belongs to the turbulence} --- not the lid,
+      not the floor value, not a second bookkeeping copy.
+    \item \textbf{Energy accounting closes the loop}: subgrid production is
+      real only if the resolved flow pays it.
+    \item \textbf{Blame is established by measurement}: host-model bugs,
+      forcing artifacts and closure physics separated by budgets and raw
+      arrays, not by plausibility.
+    \item \textbf{Grey-zone judgement}: subgrid + resolved, against
+      observations --- with MYNN as control, not truth.
+  \end{enumerate}
+  \vspace{1ex}
+  Discipline that made it possible: every switch default-off and bit-for-bit;
+  statistical comparison only; same-turn records of every decision.
+  \vspace{1ex}
+
+  Open: the stable-regime equilibrium vs.\ observed nocturnal turbulence;
+  the three cold-pool levers; ICON-terrain and forcing-resolution chains
+  currently running.
+\end{frame}
+
+\end{document}

@@ -1,0 +1,373 @@
+% Textbook-style overview of the two Kosović–Juliano 3D PBL closure variants
+% Build: source ~/miniconda3/bin/activate tex && tectonic branko_juliano_schemes.tex
+\documentclass[10pt,a4paper]{article}
+\usepackage[hmargin=1.8cm,vmargin=1.6cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{microtype}
+\usepackage{titlesec}
+\titlespacing*{\section}{0pt}{7pt plus 2pt minus 2pt}{4pt plus 1pt}
+\titlespacing*{\subsection}{0pt}{5pt plus 2pt minus 2pt}{3pt plus 1pt}
+\usepackage[hidelinks]{hyperref}
+\usepackage{multicol}
+
+\AtBeginDocument{%
+  \setlength{\abovedisplayskip}{4pt plus 1pt minus 2pt}%
+  \setlength{\belowdisplayskip}{4pt plus 1pt minus 2pt}%
+  \setlength{\abovedisplayshortskip}{2pt plus 1pt}%
+  \setlength{\belowdisplayshortskip}{2pt plus 1pt}}
+
+\newcommand{\avg}[1]{\langle #1 \rangle}
+\newcommand{\pd}[2]{\frac{\partial #1}{\partial #2}}
+
+\title{\vspace{-1.2em}The Kosović--Juliano Three-Dimensional PBL Scheme:\\
+the Approximate and the Full Closure\vspace{-0.4em}}
+\author{Notes for the Inn Valley campaign}
+\date{2026-09-01}
+
+\begin{document}
+\maketitle
+\vspace{-2.2em}
+
+\section{The problem both variants solve}
+
+A conventional PBL parameterization closes the Reynolds-averaged equations under the assumption that each grid cell is horizontally homogeneous. Write the mean momentum and potential-temperature equations with the turbulent terms kept general,
+\begin{equation}
+\pd{U_i}{t} + U_j \pd{U_i}{x_j}
+   = -\varepsilon_{ijk} f_j U_k - \frac{1}{\rho}\pd{P}{x_i}
+     - \pd{\avg{u_i u_j}}{x_j} - g_i ,
+\qquad
+\pd{\Theta}{t} + U_j \pd{\Theta}{x_j} = -\pd{\avg{u_j \theta}}{x_j},
+\label{eq:mean}
+\end{equation}
+where $U_i$ and $\Theta$ are the grid-cell-mean velocity (m\,s$^{-1}$) and potential temperature (K), $u_i$ and $\theta$ their subgrid fluctuations, $f_j$ the Coriolis vector (s$^{-1}$), $P$ the mean kinematic pressure (m$^2\,$s$^{-2}$), and angle brackets denote the grid-cell average; an equation of the form of the second one is carried for water vapour as well. The symmetric stress tensor $\avg{u_i u_j}$ (m$^2\,$s$^{-2}$) has six independent components and each scalar-flux vector $\avg{u_j\theta}$ (K\,m\,s$^{-1}$) three. Under horizontal homogeneity all horizontal derivatives of these statistics vanish identically, so of the nine stress-and-heat-flux quantities only three survive into the mean equations — $\avg{uw}$, $\avg{vw}$ and $\avg{w\theta}$ — and only through their \emph{vertical} derivative. That is the entire content of a 1D PBL scheme: however sophisticated its closure, it delivers three numbers per level.
+
+At $\Delta x = 500$~m over Alpine terrain the homogeneity assumption fails twice over. First, the grid spacing is comparable to the boundary-layer depth $z_i$ — the ``grey zone'' or \emph{terra incognita}, where the most energetic eddies are neither safely subgrid (the mesoscale limit $\Delta x \gg z_i$) nor resolved (the LES limit $\Delta x \ll z_i$). Horizontal gradients of the turbulence statistics are then of the same order as the vertical ones, and a model that ignores them while partially resolving convective structures produces the well-documented spurious circulations of the grey zone. Second, slopes of $30^\circ$ and more tilt the mean gradients so that ``horizontal'' and ``vertical'' cease to be distinguished directions of the flow: a katabatic jet generates shear \emph{across} the slope that projects onto every component of the strain tensor, and a closure that can only respond to $\partial U/\partial z$ and $\partial V/\partial z$ is structurally blind to most of the production acting on it.
+
+The 3D PBL scheme of Kosović et al.\ (2020) and Juliano et al.\ (2022) responds by parameterizing \emph{all} six stress components and all three components of each scalar flux, and applying their full three-dimensional divergence to \eqref{eq:mean}. In the WRF implementation this is a \emph{dynamics}-level option (\texttt{pbl3d\_opt}, requiring \texttt{bl\_pbl\_physics}=0 and \texttt{diff\_opt}=0): the scheme computes its own metric-corrected horizontal derivatives in the terrain-following coordinate and replaces both the 1D PBL vertical mixing and the Smagorinsky horizontal diffusion. There is no eddy-viscosity backstop behind it — what the closure supplies is all the subgrid mixing the model has.
+
+The two variants — \texttt{pbl3d\_opt}$=\pm1$, the \emph{approximate} closure, and \texttt{pbl3d\_opt}$=2$, the \emph{full} closure — share every part of this machinery except one thing: \emph{how the second moments are obtained from the mean gradients}. They are two branches of the same module, not two schemes, which is why almost everything in Sections~\ref{sec:core}--\ref{sec:lscale} and \ref{sec:numerics} applies to both.
+
+\section{The common engine: Mellor--Yamada level 2.5}
+\label{sec:core}
+
+\subsection{Where level 2.5 sits in the hierarchy}
+
+Mellor and Yamada (1974) organized second-order closures into levels by how many moments remain prognostic. Level 4 carries prognostic equations for all second moments — ten transport equations plus the scalar variances, unwieldy in an NWP model. Level 3 keeps prognostic equations only for the turbulence kinetic energy and the temperature variance, making the remaining moments algebraic. Level 2.5, the workhorse of the family (MYNN belongs to it too), keeps a single prognostic variable, and level 2 keeps none: every moment, including the TKE, is diagnosed from a local equilibrium. The reduction at each step is the same pair of modelling ingredients applied more aggressively: Rotta's return-to-isotropy hypothesis for the pressure--strain correlations, and Kolmogorov's local isotropy for the dissipative terms, after which the material derivatives and transport of the demoted moments are neglected so that their equations become algebraic.
+
+Both variants of the 3D scheme are level-2.5 truncations. The prognostic variable is
+\begin{equation}
+q^2 = \avg{u^2}+\avg{v^2}+\avg{w^2} = 2\,\mathrm{TKE}
+\qquad (\text{m}^2\,\text{s}^{-2}),
+\end{equation}
+transported by
+\begin{equation}
+\pd{q^2}{t} + U_k \pd{q^2}{x_k}
+ = \pd{}{x_k}\!\left( l\, q\, S_q \pd{q^2}{x_k} \right)
+   + 2\left( P_s + P_b - \epsilon \right),
+\label{eq:qsq}
+\end{equation}
+where the terms are, in order: advection by the resolved flow (handled by WRF's scalar transport, so $q^2$ is carried through the Runge--Kutta steps like a moist scalar); down-gradient turbulent self-transport with the diffusion-coefficient ratio $S_q = 0.2$ (Mellor--Yamada 1982, Eq.~24); shear production
+\begin{equation}
+P_s = -\avg{u_i u_j}\,\pd{U_i}{x_j};
+\label{eq:ps}
+\end{equation}
+buoyancy production
+\begin{equation}
+P_b = \beta g \avg{w\theta_v},
+\qquad \beta = \frac{1}{T_\mathrm{ref}},\quad T_\mathrm{ref}=300\ \text{K fixed},
+\end{equation}
+with $\theta_v$ the virtual potential temperature, so that an upward heat flux feeds the vertical velocity variance; and the dissipation rate
+\begin{equation}
+\epsilon = \frac{q^3}{B_1\, l}
+\qquad (\text{m}^2\,\text{s}^{-3}).
+\label{eq:eps}
+\end{equation}
+Equation \eqref{eq:eps} is the signature of the family: $\epsilon$ is not modelled independently but diagnosed from the \emph{same} master length scale $l$ that sets the fluxes. Dimensionally it is the Kolmogorov cascade estimate $u^3/\ell$ evaluated with the closure's own velocity and length scales; structurally it means one scale controls both how far an eddy transports and how fast it decays. Keeping that scale single-valued is not a stylistic preference — Section~\ref{sec:full} shows what happens when a limiter breaks it. (A level-2 option, \texttt{pbl3d\_prog}=0, replaces \eqref{eq:qsq} by the local balance $P_s + P_b = \epsilon$ solved for $q$; the default is prognostic.)
+
+\subsection{The algebraic second-moment system}
+
+All remaining second moments are algebraic. Neglecting their material derivatives and transport leaves the coupled system (Juliano et al.\ 2022, Eqs.~10--12)
+\begin{align}
+\avg{u_i u_j} &= \frac{\delta_{ij}}{3}q^2
+ - \frac{3 l_1}{q}\Big[ \big(\avg{u_k u_i} - C_1 q^2 \delta_{ki}\big)\pd{U_j}{x_k}
+ + \big(\avg{u_k u_j} - C_1 q^2 \delta_{kj}\big)\pd{U_i}{x_k}
+ - \tfrac{2}{3}\delta_{ij} \avg{u_k u_n}\pd{U_n}{x_k} \Big] \notag \\
+ &\quad - \frac{3 l_1}{q}\,\beta\Big[ g_j \avg{u_i \theta_v} + g_i \avg{u_j \theta_v}
+ - \tfrac{2}{3}\delta_{ij}\, g_n \avg{u_n \theta_v} \Big],
+\label{eq:stress} \\[3pt]
+\avg{u_j \theta_v} &= -\frac{3 l_2}{q}\Big[ \avg{u_j u_k}\pd{\Theta_v}{x_k}
+ + \avg{u_k \theta_v}\pd{U_j}{x_k} + \beta g_j \avg{\theta_v^2} \Big],
+\label{eq:hflux} \\[3pt]
+\avg{\theta_v^2} &= -\frac{\Lambda_2}{q}\avg{u_k \theta_v}\pd{\Theta_v}{x_k},
+\label{eq:tvar}
+\end{align}
+and an analogous set for the water-vapour fluxes $\avg{u_j q_v}$ and the covariance $\avg{q_v\theta_v}$. The four length scales are proportional to one master scale,
+\begin{equation}
+(l_1,\ \Lambda_1,\ l_2,\ \Lambda_2) = l\,(A_1,\ B_1,\ A_2,\ B_2),
+\end{equation}
+with the closure constants of Mellor and Yamada (1982) as the default set (\texttt{pbl3d\_constants}=\texttt{'MY82'}):
+\begin{equation}
+(A_1,\ B_1,\ A_2,\ B_2,\ C_1) = (0.92,\ 16.6,\ 0.74,\ 10.1,\ 0.08).
+\end{equation}
+These were calibrated against neutral surface-layer data; the alternative sets M73, MY74, MYJ and the Bougeault--Lacarrère-tuned values $(0.3, 8.4, 0.33, 6.4, 0.08)$ are selectable. Note they differ throughout from MYNN's Nakanishi--Niino set — $B_1 = 24$ there against $16.6$ here, so the two schemes do not even dissipate at the same rate for the same $q$ and $l$.
+
+Physically, \eqref{eq:stress} balances Rotta return-to-isotropy against distortion. The $q/l$ factors hidden in $3l_1/q$ are the inverse of a relaxation timescale
+\begin{equation}
+\tau \propto \frac{l}{q},
+\end{equation}
+on which every moment decays toward its isotropic value ($\delta_{ij}q^2/3$ for the stresses, zero for the fluxes), while the mean strain and buoyancy continuously regenerate anisotropy. The $C_1$ terms are the ``isotropization of production'' correction — a fraction of the production tensor fed back into the pressure--strain model. Buoyancy couples the chain downward: the stresses feel the heat flux, the heat flux feels the temperature variance, the temperature variance closes on the heat flux and the mean gradient. Everything in both variants follows from what one is willing to assume when solving \eqref{eq:stress}--\eqref{eq:tvar}.
+
+\section{The master length scale}
+\label{sec:lscale}
+
+The scale $l$ is the closure's only free geometric quantity — it is the size of the energy-containing eddies, and through \eqref{eq:eps} it sets the dissipation. The default formulation (\texttt{pbl3d\_l\_opt}=1) is Blackadar's interpolation between the surface and an asymptotic value,
+\begin{equation}
+l = \frac{\kappa z\, l_0}{\kappa z + l_0},
+\label{eq:blackadar}
+\end{equation}
+with $\kappa$ the von-Kármán constant and $z$ the height above ground: near the wall the eddy size is capped by the distance to the wall, $l \to \kappa z$, and far from it $l \to l_0$. The asymptotic scale is the $q$-weighted mean height of the turbulence (Mellor--Yamada 1974, Eq.~72),
+\begin{equation}
+l_0 = \alpha\,\frac{\displaystyle\int \tilde q\, z\, dz}{\displaystyle\int \tilde q\, dz},
+\qquad \alpha = 0.1,
+\qquad \tilde q = \max\big(q - q_{\min},\, 0\big),
+\label{eq:l0}
+\end{equation}
+integrated over the column. The weighting by the turbulent excess $\tilde q$ rather than by $q$ itself matters more than it looks: $q^2$ carries a numerical floor $q^2_{\min}$, and with raw-$q$ weighting every quiescent free-atmosphere level contributes the floor value, making $l_0$ scale with the model-top height instead of with the depth of the turbulent layer ($l_0 \to \alpha H/2$ for a quiet column of depth $H$). MYNN solves the same problem by truncating the integral at the diagnosed PBL top; over complex terrain, where a single PBL height is ill-posed, the excess weighting achieves the same end without needing one.
+
+Two limits then act on \eqref{eq:blackadar}. In stable stratification,
+\begin{equation}
+l \le 0.53\,\frac{q}{N},
+\qquad N^2 = \beta g \pd{\Theta_v}{z} > 0,
+\label{eq:deardorff}
+\end{equation}
+the Deardorff (1980) buoyancy limit, with $N$ the Brunt--Väisälä frequency: an eddy of velocity scale $q$ cannot overturn farther than the distance at which the potential-energy cost of displacement consumes its kinetic energy, $l\,N \sim q$. Without \eqref{eq:deardorff}, $l$ from \eqref{eq:blackadar} is purely geometric and asymptotes to $l_0$ through arbitrarily strong inversions. Second, a grey-zone taper (Honnert et al.): the scale-awareness function $P_{\sigma}(\Delta x / z_i) \in [0,1]$ multiplies the length scales, shrinking the parameterized eddies as the grid begins to resolve them. In this campaign's nocturnal cases it is inert: derived for convective boundary layers a kilometre deep, it evaluates to 1 at $\Delta x = 500$~m over a $\sim$100~m stable layer — the grid is ``mesoscale'' with respect to the stable layer even while grey-zone with respect to the daytime convective one.
+
+Alternatives sit behind \texttt{pbl3d\_l\_opt}: a MYNN-style harmonic blend of surface, turbulent and buoyancy scales, and the Bougeault--Lacarrère parcel formulation, in which the upward and downward displacements a parcel of energy $E(z)$ can afford against the stratification give the mixing scale $\min(l_\mathrm{up}, l_\mathrm{down})$ and the dissipation scale $\sqrt{l_\mathrm{up} l_\mathrm{down}}$.
+
+One rule ties the section together: since the ``one master length scale'' revision in this fork, \emph{whatever limiting is applied to $l$ is seen by both the flux closure and the dissipation \eqref{eq:eps}}. Production and dissipation always refer to the same eddy. The alternative — limiting the scale inside the stress closure while dissipating on the unlimited one — under-pays the dissipation by exactly the limiter's ratio, and a budget that runs a few percent hot for minutes is an exponential.
+
+\section{The approximate closure (\texttt{pbl3d\_opt}$=\pm1$)}
+\label{sec:approx}
+
+\subsection{The boundary-layer approximation, applied inside the algebra only}
+
+The approximate variant makes one further assumption, and makes it \emph{only inside the algebraic system} \eqref{eq:stress}--\eqref{eq:tvar}: horizontal gradients of the mean fields, and $\partial W/\partial z$, are dropped there. This is Mellor's boundary-layer approximation — the same closure content as a 1D level-2.5 scheme, and exactly the simplification whose consequences the campaign wants to isolate. Its payoff is that the system decouples and can be inverted on paper. The two vertical fluxes collapse to eddy-diffusivity form,
+\begin{equation}
+\avg{uw} = -l\,q\,S_M \pd{U}{z},
+\qquad
+\avg{vw} = -l\,q\,S_M \pd{V}{z},
+\qquad
+\avg{w\theta_v} = -l\,q\,S_H \pd{\Theta_v}{z},
+\label{eq:kgrad}
+\end{equation}
+so that $K_m = l q S_M$ and $K_h = l q S_H$ are ordinary eddy diffusivities (m$^2\,$s$^{-1}$), with all of the stability physics packed into the dimensionless functions $S_M$ and $S_H$.
+
+\subsection{The stability functions}
+
+At level 2, where $q$ itself is in equilibrium, $S_M$ and $S_H$ depend only on the gradient Richardson number
+\begin{equation}
+Ri = \frac{\beta g\, \partial\Theta_v/\partial z}{(\partial U/\partial z)^2 + (\partial V/\partial z)^2},
+\end{equation}
+through the flux Richardson number $R_f = -P_b/P_s$, obtained from $Ri$ by solving the equilibrium quadratic (Yamada 1975):
+\begin{equation}
+R_f = c_1\left( Ri + c_2 - \sqrt{Ri^2 + c_3\, Ri + c_4} \right),
+\end{equation}
+with $c_1 \ldots c_4$ fixed combinations of $(A_1,B_1,A_2,B_2,C_1)$. The functions themselves have the form
+\begin{equation}
+S_H \propto \frac{R_{f,c}-R_f}{1-R_f},
+\qquad
+S_M = \frac{A_1}{A_2}\cdot\frac{R_{f,1}-R_f}{R_{f,2}-R_f}\; S_H,
+\label{eq:smsh}
+\end{equation}
+where $R_{f,1}, R_{f,2}$ and the critical value $R_{f,c}$ again follow from the constants; for MY82, $R_{f,c} \approx 0.195$. At $R_f = R_{f,c}$ both functions reach zero and turbulence is cut off entirely — the closure's own statement that beyond a critical stability, shear production cannot balance the buoyant destruction plus dissipation. At level 2.5 the same functions are corrected for disequilibrium following Helfand and Labraga (1988): where the actual $q$ falls below its level-2 equilibrium value $q_\mathrm{eq}$, the functions are rescaled by $q/q_\mathrm{eq}$, which keeps them regular (the naive level-2.5 forms are singular for growing turbulence) at the cost of hard caps on $S_M$ and $S_H$ where the rescaling would overshoot.
+
+\subsection{The other twelve moments}
+
+What distinguishes this variant from MYNN is what happens next. The remaining moments — which a 1D scheme never forms, because homogeneity would erase their divergence anyway — are diagnosed as closed-form by-products of \eqref{eq:kgrad}. The horizontal--horizontal stress and the horizontal heat fluxes are
+\begin{equation}
+\avg{uv} = \frac{3 A_1 l}{q}\Big( -\avg{uw}\pd{V}{z} - \avg{vw}\pd{U}{z} \Big),
+\qquad
+\avg{u\theta_v} = 3 A_2\, l^2 \big(S_H + S_M\big) \pd{\Theta_v}{z}\pd{U}{z},
+\label{eq:uv}
+\end{equation}
+(similarly $\avg{v\theta_v}$), the temperature variance is
+\begin{equation}
+\avg{\theta_v^2} = B_2\, l^2 S_H \left(\pd{\Theta_v}{z}\right)^{\!2},
+\end{equation}
+and the normal stresses are isotropy plus a strain correction, e.g.
+\begin{equation}
+\avg{w^2} = \frac{q^2}{3} + \frac{2 A_1 l}{q}\Big( \avg{uw}\pd{U}{z} + \avg{vw}\pd{V}{z} + 2\beta g \avg{w\theta_v} \Big),
+\label{eq:w2}
+\end{equation}
+with analogous expressions for $\avg{u^2}$, $\avg{v^2}$ and the moisture fluxes — fourteen expressions in total. Note what \eqref{eq:w2} says about the physics available: each normal stress is $q^2/3$ plus a perturbation. In stable shear the correction drains $\avg{w^2}$ in favour of the streamwise variance, which is qualitatively right, but anisotropy is a perturbative decoration of an isotropic state, never a solved-for property — the tensor cannot rotate its principal axes into a slope flow.
+
+The full three-dimensional divergence of all these fluxes is then applied to \eqref{eq:mean}. At \texttt{pbl3d\_opt}$=-1$ only the vertical part is applied and stock Smagorinsky diffusion is retained horizontally, so the $\pm1$ pair separates two questions usually confounded: \emph{does the closure matter, or does applying it in three dimensions matter?} Only the second differs between them.
+
+\subsection{Why this variant is robust}
+
+The approximation buys robustness along with cost. Substituting \eqref{eq:kgrad} into \eqref{eq:ps},
+\begin{equation}
+P_s = l\,q\,S_M \left[ \left(\pd{U}{z}\right)^{\!2} + \left(\pd{V}{z}\right)^{\!2} \right] \;\ge\; 0,
+\label{eq:psapprox}
+\end{equation}
+a positive-semi-definite quadratic form in the shear: production is manifestly a source, bounded by the capped $S_M$, and the flux is anti-parallel to the gradient by construction. Together with the $R_{f,c}$ cutoff this makes the variant hard to destabilize — the same structural guarantees that two decades of operational 1D Mellor--Yamada schemes rest on. It runs at roughly the cost of MYNN (about 0.8~s per step on this grid) and serves as the campaign's \emph{diagnostic}: it shares the coordinate, the gradients, the length scales and the plumbing of the full closure while retaining the analytic solvability of a 1D scheme, so a failure present in one branch and absent in the other is localized to the flux solve itself.
+
+\section{The full closure (\texttt{pbl3d\_opt}$=2$)}
+\label{sec:full}
+
+\subsection{The linear system}
+
+The full variant makes no homogeneity assumption anywhere. All nine mean-velocity gradients and all three gradients of $\Theta_v$ (and $Q_v$) stay in \eqref{eq:stress}--\eqref{eq:tvar}; the system no longer decouples and there is no closed form. It is solved numerically at every grid point where $q^2$ exceeds its floor, at every substep: a dense $10\times10$ linear system
+\begin{equation}
+\mathsf{A}\,\mathbf{x} = \mathbf{b},
+\qquad
+\mathbf{x} = \big( \avg{u^2}, \avg{v^2}, \avg{w^2},\; \avg{uv}, \avg{uw}, \avg{vw},\;
+\avg{u\theta_v}, \avg{v\theta_v}, \avg{w\theta_v},\; \avg{\theta_v^2} \big)^{\!\top},
+\end{equation}
+followed by a $4\times4$ system for $\big(\avg{u q_v}, \avg{v q_v}, \avg{w q_v}, \avg{q_v\theta_v}\big)$ — the joint system is block-triangular, so the moisture block can be solved after the momentum--heat block, and the moisture variance follows in closed form,
+\begin{equation}
+\avg{q_v^2} = -\frac{B_2 l}{q}\, \avg{u_j q_v} \pd{Q_v}{x_j}.
+\end{equation}
+
+The matrix has the structure $\mathsf{A} = \tau^{-1}\mathsf{I} + \mathsf{S}$: return-to-isotropy rates on the diagonal, mean strain off it, buoyancy coupling the blocks. Representative entries make the anatomy concrete:
+\begin{equation}
+\mathsf{A}_{11} = \frac{q}{2A_1 l} + 2\pd{U}{x},
+\qquad
+\mathsf{A}_{55} = \frac{q}{3A_1 l} + \pd{W}{z} + \pd{U}{x},
+\qquad
+\mathsf{A}_{99} = \frac{q}{3A_2 l} + \pd{W}{z},
+\qquad
+\mathsf{A}_{10,10} = \frac{q}{B_2 l},
+\end{equation}
+\begin{equation}
+\mathsf{A}_{1,9} = \beta g,
+\qquad
+\mathsf{A}_{3,9} = -2\beta g,
+\qquad
+\mathsf{A}_{9,10} = -\beta g .
+\end{equation}
+Row 3 ($\avg{w^2}$) is coupled twice as strongly to the heat flux as row 1, and with opposite sign — buoyancy moves energy between the vertical and horizontal variances, it does not create $q^2$ by itself in this system. Only the first six entries of the right-hand side are non-zero: the isotropic energy supply plus the isotropization-of-production terms,
+\begin{equation}
+b_{1} = \frac{q^3}{6 A_1 l} + 3 C_1 q^2 \pd{U}{x},
+\qquad
+b_{4} = C_1 q^2 \left( \pd{V}{x} + \pd{U}{y} \right),
+\qquad
+b_{7} = \dots = b_{10} = 0,
+\end{equation}
+with $b_2, b_3$ and $b_5, b_6$ the obvious permutations. The heat-flux and variance rows are driven entirely through the coupling — they have no source of their own, which is the algebraic statement that scalar fluxes exist only because stresses act on scalar gradients.
+
+Two properties of $\mathsf{A}$ dictate the numerics. Its columns carry mixed units (s$^{-1}$ on the momentum diagonal, buoyancy entries in m\,s$^{-2}$\,K$^{-1}$), so the raw condition number is meaningless; and near the turbulence cutoff the diagonal shrinks with $q$ while the strain does not, so the system can approach singularity in physically strained, weakly turbulent air. The solve is therefore LAPACK \texttt{dgesvx} in double precision inside a single-precision model, with row/column equilibration requested and the returned condition estimate checked against a ceiling.
+
+\subsection{Realizability, and the safeguard stack}
+
+Because the solved tensor is genuinely anisotropic, nothing in exact arithmetic — let alone finite arithmetic on a near-singular system — guarantees that it is a physically possible one: a variance can come back negative, a correlation can exceed one. And nothing bounds the production such a tensor feeds back into \eqref{eq:qsq}. A stack of safeguards therefore stands between the solver and the model, escalating from prevention to repair.
+
+\emph{First, a strain limiter} in the spirit of Durbin (1996). With the strain-rate magnitude
+\begin{equation}
+|S| = \sqrt{2\, S_{ij} S_{ij}}
+    = \left[ 2\!\left( U_x^2 + V_y^2 + W_z^2 \right)
+      + \left( U_y{+}V_x \right)^2 + \left( U_z{+}W_x \right)^2 + \left( V_z{+}W_y \right)^2 \right]^{1/2},
+\end{equation}
+the scale entering the solve is capped so that the non-dimensional distortion cannot exceed a ceiling $\Sigma_{\max}$ (\texttt{pbl3d\_sk\_eps\_max}, default 6):
+\begin{equation}
+\frac{|S|\,k}{\epsilon} = \frac{|S|\, B_1 l}{2 q} \le \Sigma_{\max}
+\quad\Longleftrightarrow\quad
+l_\mathrm{use} = \min\!\left( l,\ \frac{2\,\Sigma_{\max}}{B_1}\,\frac{q}{|S|} \right).
+\label{eq:tier1}
+\end{equation}
+Physically: when the mean flow distorts an eddy much faster than the eddy can relax ($|S|\tau \gg 1$), the algebraic equilibrium assumption behind \eqref{eq:stress} has no basis, and the solved tensor leaves the realizable region with an unphysically large implied eddy viscosity. Capping $l$ shortens $\tau$ until distortion and relaxation are back in ratio. Because $l_\mathrm{use}$ enters both $\mathsf{A}$ and $\mathbf{b}$, the strain-free isotropic limit is preserved exactly, and — the one-scale rule of Section~\ref{sec:lscale} — the same limited scale reaches the dissipation, so a limited cell transports \emph{and} dissipates at the reduced eddy size. This coupling is load-bearing: with the limiter acting on production only, a cell under strong strain runs its budget a steady 10--20\% hot, which is a $q^2$ exponential with a doubling time of about a minute; with the consistent scale the same cell's production-to-dissipation ratio sits below one and the runaway never starts.
+
+\emph{Second, back off and re-solve.} If the solve is degenerate ($\texttt{info} \neq 0$, condition estimate above the ceiling) or the returned tensor is not positive semi-definite, $l$ is halved and the system solved again, up to six times. Each retry is an \emph{exact} solution of a well-posed problem at a shorter eddy scale — not an approximate solution of the original — which is what makes shrinking $l$ an admissible response rather than a fudge.
+
+\emph{Third, project into the realizable set} whatever still emerges flawed: floor the variances; rescale to the exact trace the system implies (summing the three variance rows of $\mathsf{A}\mathbf{x}=\mathbf{b}$ yields an identity the solution must satisfy); enforce the Cauchy--Schwarz bounds
+\begin{equation}
+\avg{u_i u_j}^2 \le \avg{u_i^2}\avg{u_j^2},
+\qquad
+\avg{u_i \theta_v}^2 \le \avg{u_i^2}\avg{\theta_v^2},
+\qquad
+\avg{u_i q_v}^2 \le \avg{u_i^2}\avg{q_v^2},
+\end{equation}
+and complete positive semi-definiteness with a determinant-based shrink of the off-diagonal block. The same constraints cover the moisture moments — an implied correlation between $q_v$ and $\theta_v$ fluctuations cannot exceed one any more than a momentum correlation can.
+
+\subsection{What the full production changes}
+
+The $q^2$ budget \eqref{eq:qsq} gains the complete nine-term contraction
+\begin{equation}
+P_s = -\avg{u^2}\pd{U}{x} - \avg{v^2}\pd{V}{y} - \avg{w^2}\pd{W}{z}
+      - \avg{uv}\!\left(\pd{U}{y}{+}\pd{V}{x}\right)
+      - \avg{uw}\!\left(\pd{U}{z}{+}\pd{W}{x}\right)
+      - \avg{vw}\!\left(\pd{V}{z}{+}\pd{W}{y}\right),
+\label{eq:ps3d}
+\end{equation}
+which on a $34^\circ$ slope is dominated by cross terms a 1D scheme never sees. Unlike the approximate variant's quadratic form \eqref{eq:psapprox}, \eqref{eq:ps3d} has no built-in sign: with a fully anisotropic tensor, locally negative production — energy returned from the turbulence to the mean flow — is physically admissible and does occur, most commonly where the stress carried over from the previous state opposes a rotated strain. The scheme must therefore tolerate a production term that is a genuine two-way exchange, and the level-2 diagnostic branch guards its $q^3 = B_1 l\,(P_s + P_b)$ inversion with an explicit $\max(\,\cdot\,,0)$ before taking the two-thirds power. Horizontal diffusion of $q^2$ itself, mirroring the resolved-scale operator with its own halo exchange, is also active only on this path.
+
+The measured cost on this grid is 1.3--1.4~s per step against $\sim$0.8 for the approximate variant — the dense solves plus a fraction of a repeat solve per point from the back-off ladder — consistent with the 20--50\% over MYNN quoted by Juliano et al.
+
+\section{Numerics shared by both variants}
+\label{sec:numerics}
+
+Downstream of the closure the two variants are identical, and three implementation choices shape how either behaves in practice.
+
+\emph{The vertical flux divergence is explicit.} Where a 1D PBL scheme hides its stiffness in an implicit tridiagonal solve per column, this scheme applies
+\begin{equation}
+\left(\pd{U}{t}\right)_{\!\mathrm{turb}} = -\frac{1}{\rho}\,\pd{\big(\rho \avg{uw}\big)}{z}
+\end{equation}
+(and its analogues) as an explicit update, sub-stepped \texttt{pbl3d\_nsteps} times per Runge--Kutta step. Explicit diffusion is conditionally stable — per substep, effectively $K\,\Delta t/\Delta z^2 \lesssim \tfrac12$ — so with $\Delta z \approx 17$~m near the ground, strong mixing episodes are absorbed by the substepping rather than by damping — the scheme meets a violent flux with more, smaller steps, not with the unconditional stability of an implicit solve.
+
+\emph{The horizontal derivatives are metric-corrected.} In the terrain-following coordinate $\eta$, a constant-height derivative is assembled as
+\begin{equation}
+\left.\pd{U}{x}\right|_{z}
+ = m \left.\pd{(U/m)}{x}\right|_{\eta}
+ - \left.\pd{z}{x}\right|_{\eta}\, \pd{U}{z},
+\end{equation}
+with $m$ the map-scale factor — on a $30^\circ$ slope the correction term is comparable to the raw derivative, and omitting it would manufacture strain from the coordinate itself. The horizontal flux divergences carry the same correction, and are damped on steep slopes by a factor
+\begin{equation}
+\sigma = \max\!\left( \sqrt{ z_x^2 + z_y^2 },\ 1 \right)
+\end{equation}
+dividing the horizontal tendencies, a pragmatic guard where the coordinate surfaces fold too steeply for the discretization. (In this fork the energy paid into $q^2$ by the horizontal shear production is paired with the slope-tapered tendency the flow actually feels, so the taper cannot become a spurious energy source.)
+
+\emph{The surface anchors $q^2$.} At the lowest level the scheme enforces the neutral surface-layer equilibrium: with $\avg{uw} = -u_*^2$ ($u_*$ the friction velocity from the surface-layer scheme) and production balancing dissipation, $u_*^3/(\kappa z) = q^3/(B_1 \kappa z)$, hence
+\begin{equation}
+q^2 \ge B_1^{2/3}\, u_*^2
+\end{equation}
+at the surface. Optionally (\texttt{pbl3d\_sfc\_opt}) the full Mellor--Yamada (1974) surface-layer second moments replace the lowest-level solve.
+
+\section{Side by side}
+
+\begin{center}
+\footnotesize
+\begin{tabular}{@{}lll@{}}
+\toprule
+ & Approximate 3D (\texttt{pbl3d\_opt}$=\pm1$) & Full 3D (\texttt{pbl3d\_opt}$=2$) \\
+\midrule
+Closure content & Level 2.5 under horizontal homogeneity & Level 2.5, no homogeneity assumption \\
+Gradients in the closure & 2 of 9 (via $S_M$, $S_H$) & 9 of 9 (12 with the scalar gradients) \\
+Second moments & 14 closed forms; anisotropy diagnosed & $10{\times}10$ + $4{\times}4$ solve; anisotropy solved \\
+Normal stresses & $q^2/3$ + perturbation \eqref{eq:w2} & Fully coupled unknowns \\
+$q^2$ shear production & Quadratic form \eqref{eq:psapprox}, $\ge 0$ & Nine-term contraction \eqref{eq:ps3d}, unbounded sign \\
+Stability guard & $R_{f,c}$ cutoff + Helfand--Labraga caps & Strain limiter \eqref{eq:tier1}, re-solve, projection \\
+Flux divergence applied & 3D at $+1$ (vertical only at $-1$) & 3D always \\
+Cost (this grid) & $\sim$0.8 s/step, $\approx$ MYNN & 1.3--1.4 s/step \\
+Role in the campaign & The diagnostic control & The object of study \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The essential picture: there is \emph{one} closure — Mellor--Yamada level 2.5 with prognostic $q^2$ and one master length scale — and one design decision: whether the algebraic second-moment system is simplified until it inverts analytically, or solved as it stands. The approximate variant keeps the guarantees of the 1D tradition while already exercising the three-dimensional \emph{application} of the fluxes, which makes it the clean control for every question about coordinates, divergences and slopes. The full variant is the only one whose stress tensor can tilt its principal axes into a katabatic jet and pay energy back to the mean flow where the physics says it should — and the price of removing the homogeneity assumption is that boundedness and realizability, which the analytic solution provides for free, must be engineered around the solver.
+
+\begin{multicols}{2}
+\begin{thebibliography}{9}\footnotesize\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}
+\bibitem{MY74} Mellor, G.~L., and T.~Yamada, 1974: A hierarchy of turbulence closure models for planetary boundary layers. \emph{J.~Atmos.~Sci.}, \textbf{31}, 1791--1806.
+\bibitem{Y75} Yamada, T., 1975: The critical Richardson number and the ratio of the eddy transport coefficients obtained from a turbulence closure model. \emph{J.~Atmos.~Sci.}, \textbf{32}, 926--933.
+\bibitem{Deardorff80} Deardorff, J.~W., 1980: Stratocumulus-capped mixed layers derived from a three-dimensional model. \emph{Bound.-Layer Meteor.}, \textbf{18}, 495--527.
+\bibitem{MY82} Mellor, G.~L., and T.~Yamada, 1982: Development of a turbulence closure model for geophysical fluid problems. \emph{Rev.~Geophys.~Space Phys.}, \textbf{20}, 851--875.
+\bibitem{HL88} Helfand, H.~M., and J.~C.~Labraga, 1988: Design of a nonsingular level 2.5 second-order closure model for the prediction of atmospheric turbulence. \emph{J.~Atmos.~Sci.}, \textbf{45}, 113--132.
+\bibitem{BL89} Bougeault, P., and P.~Lacarrère, 1989: Parameterization of orography-induced turbulence in a mesobeta-scale model. \emph{Mon.~Wea.~Rev.}, \textbf{117}, 1872--1890.
+\bibitem{Durbin96} Durbin, P.~A., 1996: On the $k$--$\varepsilon$ stagnation point anomaly. \emph{Int.~J.~Heat Fluid Flow}, \textbf{17}, 89--90.
+\bibitem{Kosovic20} Kosović, B., P.~Jiménez Munoz, T.~W.~Juliano, A.~Martilli, M.~Eghdami, A.~P.~Barros, and S.~E.~Haupt, 2020: Three-dimensional planetary boundary layer parameterization for high-resolution mesoscale simulations. \emph{J.~Phys.:~Conf.~Ser.}, \textbf{1452}, 012080.
+\bibitem{Juliano22} Juliano, T.~W., B.~Kosović, P.~A.~Jiménez, M.~Eghdami, S.~E.~Haupt, and A.~Martilli, 2022: ``Gray zone'' simulations using a three-dimensional planetary boundary layer parameterization in the WRF model. \emph{Mon.~Wea.~Rev.}, \textbf{150}, 1585--1619.
+\end{thebibliography}
+\end{multicols}
+
+\end{document}
