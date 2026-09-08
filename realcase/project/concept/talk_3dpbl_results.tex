@@ -61,10 +61,9 @@
 
 % ---------------------------------------------------------------- changes (ONE slide)
 \begin{frame}{What we changed since forking the scheme --- the essentials}
-  The scheme, as forked, did not survive real mountains. Four changes made
+  The scheme, as forked, did not survive real mountains. Five changes made
   the difference; none alters results where the original worked:
-  \vspace{1ex}
-  \begin{enumerate}
+  \begin{enumerate}\small
     \item \textbf{A physically possible answer, everywhere.} Over steep
       terrain the scheme could produce mathematically valid but physically
       impossible turbulence states (or crash). It now always returns a
@@ -82,6 +81,10 @@
       bugs were unmasked --- one made the radiation \emph{cool} shaded ground
       at 80\,K per hour every morning; the morning failures downstream of it
       trace to the host model, not the scheme.
+    \item \textbf{Exact budget bookkeeping built in} (WRFlux, extended to the
+      turbulence energy): every tendency of heat, momentum and TKE decomposed
+      online into named processes --- the instrument behind the energy audit
+      and the cold-pool findings.
   \end{enumerate}
 \end{frame}
 
@@ -110,30 +113,33 @@
 
 % ---------------------------------------------------------------- result 2: scorecard
 \begin{frame}{Result 2 --- the full-day scorecard, 18 July: one day, every metric}
-  Soundings below 500\,m AGL, lidar 100--500\,m, mixed-layer depth per launch
-  --- same day, same grid, same forcing; \textbf{bold = better}.
+  Soundings and lidar (from 100\,m), mixed-layer depth per launch --- same
+  day, same grid, same forcing; \textbf{bold = better}.
   \vspace{1ex}
   \begin{center}
-  \begin{tabular}{@{}lrr@{}}
+  \begin{tabular}{@{}lrrcrr@{}}
     \toprule
-    & MYNN & 3D closure \\
+    & \multicolumn{2}{c}{lowest 500\,m AGL} & &
+      \multicolumn{2}{c}{lowest 1\,km AGL} \\
+    \cmidrule{2-3}\cmidrule{5-6}
+    & MYNN & 3D & & MYNN & 3D \\
     \midrule
-    $\theta$ bias, all launches [K] & 1.63 & \textbf{0.82} \\
-    $\theta$ bias, day [K] & 2.10 & \textbf{0.29} \\
-    $\theta$ bias, evening [K] & 0.77 & \textbf{0.17} \\
-    wind-vector RMSE, soundings [m/s] & 2.20 & \textbf{2.08} \\
-    wind-speed RMSE, lidar [m/s] & 2.09 & \textbf{1.68} \\
-    wind-speed bias, lidar [m/s] & $-0.56$ & $\mathbf{-0.02}$ \\
-    direction RMSE, lidar [deg] & \textbf{29.7} & 33.2 \\
-    TKE, $\log_{10}$(model/lidar), day & $-1.15$ & $\mathbf{-0.83}$ \\
-    mixed-layer depth error [m] & 207 & \textbf{172} \\
+    $\theta$ bias, all launches [K] & 1.63 & \textbf{0.82} & & 1.48 & \textbf{0.86} \\
+    $\theta$ bias, day [K] & 2.10 & \textbf{0.29} & & 1.79 & \textbf{0.47} \\
+    $\theta$ bias, evening [K] & 0.77 & \textbf{0.17} & & 0.73 & \textbf{0.18} \\
+    wind-vector RMSE, soundings [m/s] & 2.20 & \textbf{2.08} & & 2.34 & \textbf{2.21} \\
+    wind-speed RMSE, lidar [m/s] & 2.09 & \textbf{1.68} & & 1.89 & \textbf{1.60} \\
+    wind-speed bias, lidar [m/s] & $-0.56$ & $\mathbf{-0.02}$ & & $-0.64$ & $\mathbf{-0.17}$ \\
+    direction RMSE, lidar [deg] & \textbf{29.7} & 33.2 & & \textbf{28.9} & 30.7 \\
+    TKE, $\log_{10}$(model/lidar), day & $-1.15$ & $\mathbf{-0.83}$ & & $-1.29$ & $\mathbf{-0.89}$ \\
+    mixed-layer depth error [m] & 207 & \textbf{172} & & 207 & \textbf{172} \\
     \bottomrule
   \end{tabular}
   \end{center}
   \vspace{1ex}
-  Eight of nine metrics favour the 3D closure --- the daytime temperature
-  bias by a factor of seven --- with the one exception (wind direction)
-  within a few degrees.
+  Eight of nine metrics favour the 3D closure in both layers --- the daytime
+  temperature bias by a factor of 4--7 --- with the one exception (wind
+  direction) within a few degrees.
 \end{frame}
 
 % ---------------------------------------------------------------- result 3: partition

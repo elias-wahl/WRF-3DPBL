@@ -23,29 +23,23 @@
 \end{frame}
 
 % ---------------------------------------------------------------- scheme
-\begin{frame}{The 3D closure: familiar physics, without the homogeneity shortcut}
-  Level 2.5 as in MYNN --- prognostic $q^2$, length scale $l$ --- but the
-  second-moment algebra is kept in full:
-  \vspace{1.5ex}
-  \begin{center}
-  \begin{tabular}{@{}lll@{}}
-    \toprule
-     & 1D scheme & full 3D closure \\
-    \midrule
-    driven by & $\partial U/\partial z$, $\partial\Theta/\partial z$ &
-      all of $\nabla\mathbf{U}$, $\nabla\Theta_v$, $\nabla Q_v$ \\
-    delivers & $\langle uw\rangle$, $\langle vw\rangle$, $\langle w\theta\rangle$ &
-      all 6 stresses + 3 components per flux \\
-    obtained by & stability functions &
-      $\mathsf{A}\,\mathbf{x}=\mathbf{b}$, $\mathbf{x}=$ the 10 moments, per point \\
-    acts through & $\partial(\text{flux})/\partial z$ &
-      $\nabla\!\cdot(\text{flux})$, incl.\ the horizontal diffusion \\
-    \bottomrule
-  \end{tabular}
-  \end{center}
-  \vspace{1.5ex}
-  In the grey zone and on $30^\circ$ slopes, the discarded gradients carry
-  most of the production.
+\begin{frame}{The 3D closure in three sentences}
+  \begin{itemize}
+    \setlength{\itemsep}{2ex}
+    \item \textbf{A standard boundary-layer scheme} treats every grid column
+      as flat and uniform: it mixes only up--down, and the only wind shear it
+      feels is $\partial U/\partial z$. A fine assumption at 10\,km grid
+      spacing over plains.
+    \item \textbf{In a 500\,m Alpine grid it breaks}: the big eddies are
+      half resolved, and on a $30^\circ$ slope a downslope jet shears the
+      flow in directions a column scheme cannot see --- most of the
+      turbulence production hides there.
+    \item \textbf{The 3D closure keeps everything}: same turbulence-energy
+      budget as MYNN, but all six stresses and all three components of each
+      flux, computed together from \emph{all} the gradients (one small linear
+      system per grid point), and mixing applied in all three directions ---
+      it replaces the vertical scheme \emph{and} the horizontal diffusion.
+  \end{itemize}
 \end{frame}
 
 % ---------------------------------------------------------------- changes
@@ -59,6 +53,9 @@
       by the resolved wind.
     \item \textbf{Host-model bugs separated from scheme physics} --- e.g.\
       radiation cooling shaded ground at 80\,K/h.
+    \item \textbf{Exact online budgets} (WRFlux + a TKE budget) --- every
+      K/h attributable to a named process; found the energy leak and the
+      cold pool's numerical warming.
   \end{enumerate}
 \end{frame}
 
@@ -81,19 +78,22 @@
 % ---------------------------------------------------------------- result 2
 \begin{frame}{One day, every metric (18 July)}
   \begin{center}
-  \begin{tabular}{@{}lrr@{}}
+  \begin{tabular}{@{}lrrcrr@{}}
     \toprule
-    & MYNN & 3D closure \\
+    & \multicolumn{2}{c}{lowest 500\,m AGL} & &
+      \multicolumn{2}{c}{lowest 1\,km AGL} \\
+    \cmidrule{2-3}\cmidrule{5-6}
+    & MYNN & 3D & & MYNN & 3D \\
     \midrule
-    $\theta$ bias, all launches [K] & 1.63 & \textbf{0.82} \\
-    $\theta$ bias, day [K] & 2.10 & \textbf{0.29} \\
-    $\theta$ bias, evening [K] & 0.77 & \textbf{0.17} \\
-    wind-vector RMSE, soundings [m/s] & 2.20 & \textbf{2.08} \\
-    wind-speed RMSE, lidar [m/s] & 2.09 & \textbf{1.68} \\
-    wind-speed bias, lidar [m/s] & $-0.56$ & $\mathbf{-0.02}$ \\
-    direction RMSE, lidar [deg] & \textbf{29.7} & 33.2 \\
-    TKE, $\log_{10}$(model/lidar), day & $-1.15$ & $\mathbf{-0.83}$ \\
-    mixed-layer depth error [m] & 207 & \textbf{172} \\
+    $\theta$ bias, all launches [K] & 1.63 & \textbf{0.82} & & 1.48 & \textbf{0.86} \\
+    $\theta$ bias, day [K] & 2.10 & \textbf{0.29} & & 1.79 & \textbf{0.47} \\
+    $\theta$ bias, evening [K] & 0.77 & \textbf{0.17} & & 0.73 & \textbf{0.18} \\
+    wind-vector RMSE, soundings [m/s] & 2.20 & \textbf{2.08} & & 2.34 & \textbf{2.21} \\
+    wind-speed RMSE, lidar [m/s] & 2.09 & \textbf{1.68} & & 1.89 & \textbf{1.60} \\
+    wind-speed bias, lidar [m/s] & $-0.56$ & $\mathbf{-0.02}$ & & $-0.64$ & $\mathbf{-0.17}$ \\
+    direction RMSE, lidar [deg] & \textbf{29.7} & 33.2 & & \textbf{28.9} & 30.7 \\
+    TKE, $\log_{10}$(model/lidar), day & $-1.15$ & $\mathbf{-0.83}$ & & $-1.29$ & $\mathbf{-0.89}$ \\
+    mixed-layer depth error [m] & 207 & \textbf{172} & & 207 & \textbf{172} \\
     \bottomrule
   \end{tabular}
   \end{center}
@@ -135,10 +135,30 @@
       the forcing.
     \item Cold-pool fixes exist per ingredient, all default-off until judged
       against the full observation set.
-    \item 20\,m LES of the same transect: DKRZ proposal (with the DFG-funded
-      Tübingen UAS group) --- \textbf{50\,000 node-hours}, arithmetic in
-      \texttt{concept/dkrz\_levante\_antrag\_bullets.md}.
+    \item 20\,m LES of the same transect --- the DKRZ pitch on the next
+      slide.
   \end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------------- DKRZ
+\begin{frame}{The DKRZ pitch: a 20\,m LES of the transect}
+  \textbf{The ask: \alert{50\,000 node-hours} on Levante} (+ $\approx$60\,TB
+  work / 15\,TB archive). Why we think it flies:
+  \vspace{1ex}
+  \begin{itemize}
+    \item It serves the \textbf{DFG-funded} Tübingen UAS project (Platis):
+      virtual drone flights through the LES give the correction functions for
+      their measured TKE --- and our grey-zone reference for free.
+    \item Nothing speculative: the 500\,m driver is validated and running,
+      Gionata's 100\,m LES of the same valley exists, throughput is
+      \emph{measured}, not estimated.
+    \item The sum: chain 500\,$\to$\,100\,$\to$\,20\,m at $\approx$160
+      node-h per simulated hour; six full diurnal cycles (nights included ---
+      that's where the deficits live) + sensitivity + margin $=$ 50\,k.
+  \end{itemize}
+  \vspace{1ex}
+  Full arithmetic and the fallback (42\,k):
+  \texttt{concept/dkrz\_levante\_antrag\_bullets.md}.
 \end{frame}
 
 \end{document}
