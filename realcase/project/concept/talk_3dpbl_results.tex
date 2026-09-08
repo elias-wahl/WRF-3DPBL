@@ -108,26 +108,32 @@
   \end{columns}
 \end{frame}
 
-% ---------------------------------------------------------------- result 2: BL growth
-\begin{frame}{Result 2 --- the valley boundary layer now grows to observed depth}
-  \begin{columns}[c]
-    \column{0.54\textwidth}
-    \includegraphics[width=\textwidth]{t2s_sounding_11utc.png}
-    \column{0.44\textwidth}
-    Late-morning temperature profiles against the radiosondes at two valley
-    sites.
-    \vspace{1ex}
-    \begin{itemize}
-      \item An early version (red) kept the heat locked at the valley walls:
-        the mixed layer stalled at $\sim$300\,m.
-      \item One targeted fix --- letting the scheme judge its heat transport
-        on its own physical limits, not the momentum's --- opens the walls:
-        mixed-layer depth 317\,m $\to$ 1136\,m against 955\,m observed
-        (blue vs.\ black), within an hour's lag.
-      \item Morning temperature profile error: 1.05\,K --- the best of all
-        five configurations tested, standard scheme included.
-    \end{itemize}
-  \end{columns}
+% ---------------------------------------------------------------- result 2: scorecard
+\begin{frame}{Result 2 --- the full-day scorecard, 18 July: one day, every metric}
+  Soundings below 500\,m AGL, lidar 100--500\,m, mixed-layer depth per launch
+  --- same day, same grid, same forcing; \textbf{bold = better}.
+  \vspace{1ex}
+  \begin{center}
+  \begin{tabular}{@{}lrr@{}}
+    \toprule
+    & MYNN & 3D closure \\
+    \midrule
+    $\theta$ bias, all launches [K] & 1.63 & \textbf{0.82} \\
+    $\theta$ bias, day [K] & 2.10 & \textbf{0.29} \\
+    $\theta$ bias, evening [K] & 0.77 & \textbf{0.17} \\
+    wind-vector RMSE, soundings [m/s] & 2.20 & \textbf{2.08} \\
+    wind-speed RMSE, lidar [m/s] & 2.09 & \textbf{1.68} \\
+    wind-speed bias, lidar [m/s] & $-0.56$ & $\mathbf{-0.02}$ \\
+    direction RMSE, lidar [deg] & \textbf{29.7} & 33.2 \\
+    TKE, $\log_{10}$(model/lidar), day & $-1.15$ & $\mathbf{-0.83}$ \\
+    mixed-layer depth error [m] & 207 & \textbf{172} \\
+    \bottomrule
+  \end{tabular}
+  \end{center}
+  \vspace{1ex}
+  Eight of nine metrics favour the 3D closure --- the daytime temperature
+  bias by a factor of seven --- with the one exception (wind direction)
+  within a few degrees.
 \end{frame}
 
 % ---------------------------------------------------------------- result 3: partition
