@@ -1311,3 +1311,17 @@ above us drains. Age adds only ~640 priority/day and the same-band jobs age too.
 public-QOS start ⇒ frozen; and count who outranks you:
 `squeue -h -t PD -o '%Q' | awk '$1>OURS' | wc -l` vs the try-depth of 500.
 Skill: `.claude/skills/vsc5-queue/SKILL.md`.
+
+## E43 — a NaN bulk Richardson number leaves the revised MM5 surface layer as `br = 0.0, zol = 0.0` exactly: gfortran's MIN/MAX drop the NaN argument, so `amin1(br,0)` (previously unstable cell) turns a NaN Ri into the neutral regime with finite u* and C_h (2026-09-09, X13a job 8579083)
+
+**Symptom.** The project's SFCLAYREV NaN detector prints `hfx NaN` with `ust`, `chs`, `wspd` finite and `br`, `zol` both exactly zero although the printed skin–air step is 4.5 K (strongly unstable). Read that as: *the Richardson number was NaN and was clipped*, not as a neutral cell.
+
+**Mechanism.** `sf_sfclayrev.F90:388–390`: `br = g/θ · z · Δθ_v/|V|²; if(mol<0) br = amin1(br,0.)`. gfortran implements MIN(a,b) as "a, unless b < a or a is NaN" — a NaN first argument yields the second. The zero sends the cell to the forced-convection branch (ψ_m = ψ_h = 0, zol = 0), so u* = ½u*_old + ½κ|V|/ln((z+z₀)/z₀) and C_h are finite; only quantities that carry the NaN parent (here p_sfc → θ_g, ρ_sfc, θ*) come out NaN. The same silent laundering happens in every `amax1/amin1` clip of the scheme (`hfx = amax1(hfx,-250)` is commented out in this version — that is why the NaN survived to the detector at all).
+
+**Consequence for hunting.** The detector's print set (`ust, hfx, chs, br, zol, wspd; tsk, t1, qv1, xland, znt`) cannot separate a p_sfc NaN from a q_sfc NaN from a Noah-MP T_sk NaN; add `psfc, qsfc, qfx, mol, rhox` and the k = 2 state (`t, p, ph, w`) before the next hunt (12-min relink, E16). A NaN q_sfc alone does **not** trip the detector (it reaches qfx/LH, not hfx) — check `QFX`/`LH` for NaN in the last frame when a run dies later in radiation instead.
+
+## E44 — a 1 h daytime smoke does not gate a 6 h daytime segment, and 89 levels cost +31 % per step, not +11 % (2026-09-09, X13)
+
+**Symptom.** X13's smoke (13→14 UT, 1800 steps) passed; segment a died at 16:49:54, 6897 steps in — a crest cell needed 3 h 50 min of afternoon heating and wind to reach the failing state. Throughput 0.851 s/step (5 nodes) against 0.65 s at 80 levels: the nine thin layers cost 2.8× their share of steps (the closure's per-level work, not the dynamics, is the likely reason — unmeasured). A 6 h × 89-level segment needs 2:33 + I/O; the 2:45 wall handed down by `chain_x12.slurm` (`EVERT` branch) is marginal — use **3:00 / 1:30**.
+
+**Rule.** A level-set (or any grid) change is gated by a run through the *twin's* worst hour, taken from a restart on the same layout (here 16:00→17:00 would have caught it for 25 min of 5 nodes), or by running the first segment as 2 h pieces so a failure costs 40 min, not 1:40 h plus a queue wait. The smoke still has its place: it catches the start (E15/E17-class errors), not the physics.

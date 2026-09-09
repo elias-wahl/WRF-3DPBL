@@ -1260,3 +1260,68 @@ sets; the submit scripts' first action is `cd "$SLURM_SUBMIT_DIR"`, which silent
 
 **Rule:** every scripted submission is `jid=$(cd "$RUNDIR" && sbatch --parsable …)` — never
 `sbatch --chdir`. `chain_x10.slurm` and `launch_x10.sh` do this; any new driver must too.
+
+## E39 — the icon2wrf *surface* product carried geopotential on the 11 isobaric levels; any 3-D product on other levels made metgrid abort with "Error in ext_pkg_write_field" (2026-09-03)
+
+**Symptom.** `metgrid.exe` stops at the first 3-D field of the first time with only `ERROR: Error in ext_pkg_write_field`; the met_em file is a 239-byte empty header. ungrib reports success for every file. Old (11-level) products were unaffected — the failure appeared the moment the 3-D product changed to the 36-level ladder or the 65 native levels (`icon2wrf --vertical plevs|native`).
+
+**Cause.** `extract_surface` merged `z` into the surface dataset ("HSURF fallback"), so every `*_sfc.grib2` also carried ICON's geopotential on the 11 isobaric levels. `Vtable.ICONp` turns that into GHT at those levels in the SFC intermediate file, and metgrid takes the union of GHT levels over FILE and SFC. With the old product the sets were identical and merged silently; with the ladder the foreign 975 hPa level gave GHT 38 levels against 37 for TT/UU/VV/RH (native: 65 + 11). The WRF-IO layer then refuses to redefine `num_metgrid_levels` — visible only at `debug_level = 1000` as `WRF_DEBUG: Warning DIM 4, NAME num_metgrid_levels REDEFINED by var GHT 37 38 in wrf_io.F90`. Found with gdb on `ext_ncd_write_field_` (GHT arrived with 38 levels); disk space, level count, netCDF libraries and shell environment were all ruled out first.
+
+**Fix.** (a) icon2wrf commit `9069aee`: `z` no longer enters the surface product. (b) For surface files made before 2026-09-03, ungrib the SFC and ICON_INIT steps with `Vtable.ICONsfc` (= `Vtable.ICONp` without the level-100 rows; `RUN_WPS_1712ML.sh` does this). The 3-D step keeps `Vtable.ICONp` (ladder) or `Vtable.ICONm` (native, level type 150).
+
+**Observation to check (not yet a defect).** The surface level (200100) of TT/UU/VV/RH in *every* met_em so far, old and new, is fill (±1e30): the ICON surface product has no 2 m/10 m fields (they are `heightAboveGround`, the extractor filters `typeOfLevel = surface`). real.exe has always run on this; how it fills the surface level should be verified before trusting the lowest wrfinput level.
+
+## E40 — two WPS runs in one `WPS/` directory clobber each other: the `RUN_WPS_*.sh` scripts start with `rm -f FILE:* SFC:* ICON_INIT:*` and ungrib/metgrid read those shared intermediate files (2026-09-03)
+
+**Symptom.** A metgrid run that had been writing met_em files for 20 hours stops with `WARNING: Couldn't open file FILE:2025-07-18_12` … `ERROR: The mandatory field TT was not found in any input data` — no error in its own ungrib logs. Cause: a second `RUN_WPS_*.sh` (the native-level pipeline) was started in the same `WPS/` while the first (36-level ladder) was in metgrid; its `rm -f` removed the first run's intermediate files mid-read. The 23 met_em files written before that point are valid; the rest are missing.
+
+**Rule.** One WPS run per directory at a time, or give each product its own scratch WPS directory (symlinks to `ungrib.exe`, `metgrid.exe`, `link_grib.csh`, `geogrid_smoothed_output`, and `metgrid/METGRID.TBL` — metgrid looks for `./metgrid/METGRID.TBL`, not `./METGRID.TBL`; needs the WRF env sourced for `libnetcdff`), as `WPS_nat_test/` does. `pipeline_1712nat.sh` should have waited on the ladder run's PID.
+
+## E41 — `zen3_1024` is largely owned: projects with a dedicated QOS (`p71334_1024`, `p71456_1024`, …) run at priority 1 000 000 against 100 000 for the public `zen3_1024` QOS (2026-09-04)
+
+**Symptom.** Three 2-node wrf jobs sat 22 h in `zen3_1024` with reason *Priority* while the lane showed idle nodes the day before and "18 two-node starts in 2 h" — every one of those starts belonged to an owner project. In 24 h only 2 public-QOS jobs started there; 148 public-QOS jobs were ahead of ours. `sprio` shows the gap: QOS 100 000 + fairshare ~9 000 + age ~700 for us, 1 000 000 + … for owners.
+
+**Check before choosing a lane** (add to the three-lane check of `vsc5-queues`): `squeue -p <lane> -h -t PD -o %q | sort | uniq -c` — a long list under a `p<project>_<lane>` QOS means the lane's idle nodes are not for us; and `sacct -a -r <lane> -S now-12hours -s R,CD -X -o QOS,Start` to see which QOS actually starts. `zen3_2048` has no owners (public jobs at 101–108 k started 2026-09-03) but only 9 usable nodes, all under 3-day jobs on 2026-09-04. `zen3_0512` has owner QOS too (`p70623_0512`, `p70695_0512`, `fast_vsc5`) but 3 300 public jobs and ~290 starts per hour; public 2–4-node jobs do start there by backfill.
+
+**Lever.** `scripts/move_x12_lane.sh <TAG> <lane> [nodes] [wall] [smoke wall]` cancels and resubmits a chain's pending first jobs (E31 forbids `scontrol update Partition`) and hands `LANE`/`NODES` down the chain links; 4 nodes × 3:00 wall replaces 2 nodes × 5:15 at equal core-hours and halves the backfill gap needed.
+
+## E42 — idle nodes in an owned lane are unreachable: `assoc_limit_stop` freezes a partition for ALL lower-priority jobs while the owner's top job is blocked at its group cap (2026-09-05)
+
+**Symptom.** `zen3_1024` showed 17→22 idle nodes (reason "none") while 677 jobs
+were pending; our 5-node × 2:15 heads sat 55 min untouched, and `sacct -a -r
+zen3_1024 -S now-4hours -s R` showed **zero public-QOS starts in 4 h** — every
+start was the owner's. The owner (`p71334_1024`, 412 × 1-node × 24 h queued) sat
+at its group CPU cap (~43 nodes, reason `QOSGrpCpuLimit`/`Resources` on its top
+jobs).
+
+**Mechanism.** The cluster sets `assoc_limit_stop` (SchedulerParameters): when the
+highest-priority pending job of a partition is blocked by an association/QOS group
+limit, SLURM schedules *no* lower-priority job in that partition. The freed nodes
+idle up and nobody can take them. So a binding owner cap does not open the lane to
+public backfill — it padlocks the whole lane until the owner's backlog drains.
+
+**Second gate — backfill try-depth.** `sdiag` (`Depth Mean (try depth): 500`): the
+backfill scheduler only *attempts* the top ~500 pending jobs cluster-wide by
+priority. With 3 399 jobs above our ~109 k (313 at ≥ 1e6), our jobs are never
+examined in any big lane, and job shape (nodes/wall) is irrelevant until the queue
+above us drains. Age adds only ~640 priority/day and the same-band jobs age too.
+
+**Check.** Before moving into a lane on the strength of idle nodes:
+`sacct -a -r <lane> -S now-4hours -s R -X -o Start,QOS,NNodes` — no recent
+public-QOS start ⇒ frozen; and count who outranks you:
+`squeue -h -t PD -o '%Q' | awk '$1>OURS' | wc -l` vs the try-depth of 500.
+Skill: `.claude/skills/vsc5-queue/SKILL.md`.
+
+## E43 — a NaN bulk Richardson number leaves the revised MM5 surface layer as `br = 0.0, zol = 0.0` exactly: gfortran's MIN/MAX drop the NaN argument, so `amin1(br,0)` (previously unstable cell) turns a NaN Ri into the neutral regime with finite u* and C_h (2026-09-09, X13a job 8579083)
+
+**Symptom.** The project's SFCLAYREV NaN detector prints `hfx NaN` with `ust`, `chs`, `wspd` finite and `br`, `zol` both exactly zero although the printed skin–air step is 4.5 K (strongly unstable). Read that as: *the Richardson number was NaN and was clipped*, not as a neutral cell.
+
+**Mechanism.** `sf_sfclayrev.F90:388–390`: `br = g/θ · z · Δθ_v/|V|²; if(mol<0) br = amin1(br,0.)`. gfortran implements MIN(a,b) as "a, unless b < a or a is NaN" — a NaN first argument yields the second. The zero sends the cell to the forced-convection branch (ψ_m = ψ_h = 0, zol = 0), so u* = ½u*_old + ½κ|V|/ln((z+z₀)/z₀) and C_h are finite; only quantities that carry the NaN parent (here p_sfc → θ_g, ρ_sfc, θ*) come out NaN. The same silent laundering happens in every `amax1/amin1` clip of the scheme (`hfx = amax1(hfx,-250)` is commented out in this version — that is why the NaN survived to the detector at all).
+
+**Consequence for hunting.** The detector's print set (`ust, hfx, chs, br, zol, wspd; tsk, t1, qv1, xland, znt`) cannot separate a p_sfc NaN from a q_sfc NaN from a Noah-MP T_sk NaN; add `psfc, qsfc, qfx, mol, rhox` and the k = 2 state (`t, p, ph, w`) before the next hunt (12-min relink, E16). A NaN q_sfc alone does **not** trip the detector (it reaches qfx/LH, not hfx) — check `QFX`/`LH` for NaN in the last frame when a run dies later in radiation instead.
+
+## E44 — a 1 h daytime smoke does not gate a 6 h daytime segment, and 89 levels cost +31 % per step, not +11 % (2026-09-09, X13)
+
+**Symptom.** X13's smoke (13→14 UT, 1800 steps) passed; segment a died at 16:49:54, 6897 steps in — a crest cell needed 3 h 50 min of afternoon heating and wind to reach the failing state. Throughput 0.851 s/step (5 nodes) against 0.65 s at 80 levels: the nine thin layers cost 2.8× their share of steps (the closure's per-level work, not the dynamics, is the likely reason — unmeasured). A 6 h × 89-level segment needs 2:33 + I/O; the 2:45 wall handed down by `chain_x12.slurm` (`EVERT` branch) is marginal — use **3:00 / 1:30**.
+
+**Rule.** A level-set (or any grid) change is gated by a run through the *twin's* worst hour, taken from a restart on the same layout (here 16:00→17:00 would have caught it for 25 min of 5 nodes), or by running the first segment as 2 h pieces so a failure costs 40 min, not 1:40 h plus a queue wait. The smoke still has its place: it catches the start (E15/E17-class errors), not the physics.

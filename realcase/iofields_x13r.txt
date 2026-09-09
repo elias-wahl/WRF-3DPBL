@@ -1,0 +1,9 @@
+# X13r (2026-09-09): 1-minute stream 23 around the X13a NaN (2025-07-17 16:49:54, cell i=165 j=73,
+# OPEN_ISSUES A24). The surface-layer inputs the NaN detector did not print (PSFC, QSFC, MOL, BR,
+# REGIME), the fluxes, and the lowest-layer dynamics + closure state so a NaN born at k=2 can be
+# seen one minute before it reaches the surface layer.
+# Same parser quirks as iofields_a13.txt: NO blank lines; '#' comments the whole line; an unknown
+# name is only a W A R N I N G in rsl.error.0000 -- grep for it after the first minute.
++:h:23:PSFC,TSK,QSFC,HFX,QFX,LH,UST,ZNT,MOL,RMOL,BR,ZOL,REGIME,T2,Q2,U10,V10,PBLH,SNOWH,SNOW,SNOWC
++:h:23:W,T,P,PH,QVAPOR,U,V,MU
++:h:23:Q_SQ,L_MASTER,PBL3D_T1_RATIO,PBL3D_T2_STEPS,PBL3D_T3_FLAGS,PBL3D_COND_A,PBL3D_SK_EPS
