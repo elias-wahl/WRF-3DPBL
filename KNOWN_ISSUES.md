@@ -1335,3 +1335,9 @@ convective day (1186.0 m) in the x12m archive; MYNN's evolves normally.
 must derive it (parcel method on θ: first level where θ > θ(z1) + 0.5 K, as in
 `wrf3dpbl-diag/w_spectrum.py`, or the TKE-based depth in `proc/turbulence.py`)
 — never read PBLH.
+
+## E46 — `submit_wrf.slurm` archives `wrfout*` and `meanout*` only: the 1-minute stream-23 files (`qsqdiag_*`) stay behind in `$WRF_OUTPUT_ROOT/temp/branko/` and are lost the moment that root is reused (2026-09-09, X13r job 8580933)
+
+**Symptom.** `exp/X13r/wrf_output/8580933/` holds nine history frames and the mean file; the fifteen 1-min frames the run was made for (22 GB) sit in `exp/X13r/temp/branko/`. The archive step (`submit_wrf.slurm:119–120`) moves two patterns; a third stream was never added.
+
+**Rule.** After any run with `auxhist23`, move `temp/branko/qsqdiag_*` into the job archive by hand (`exp/x13_diag/run_x13r.sh` does it for X13r) or add the pattern to the archive step — a one-line change in `realcase/scripts/submit_wrf.slurm`, no rebuild, but it changes every future run's archive, so do it in an interactive session and record it in CHANGES.md. Diagnostic scripts should look in both places (`x13r_frames.py` does).

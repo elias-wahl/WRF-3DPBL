@@ -1325,3 +1325,19 @@ Skill: `.claude/skills/vsc5-queue/SKILL.md`.
 **Symptom.** X13's smoke (13→14 UT, 1800 steps) passed; segment a died at 16:49:54, 6897 steps in — a crest cell needed 3 h 50 min of afternoon heating and wind to reach the failing state. Throughput 0.851 s/step (5 nodes) against 0.65 s at 80 levels: the nine thin layers cost 2.8× their share of steps (the closure's per-level work, not the dynamics, is the likely reason — unmeasured). A 6 h × 89-level segment needs 2:33 + I/O; the 2:45 wall handed down by `chain_x12.slurm` (`EVERT` branch) is marginal — use **3:00 / 1:30**.
 
 **Rule.** A level-set (or any grid) change is gated by a run through the *twin's* worst hour, taken from a restart on the same layout (here 16:00→17:00 would have caught it for 25 min of 5 nodes), or by running the first segment as 2 h pieces so a failure costs 40 min, not 1:40 h plus a queue wait. The smoke still has its place: it catches the start (E15/E17-class errors), not the physics.
+
+## E45 — PBLH is stale in every 3D-closure run: with `bl_pbl_physics=0` no scheme updates it, so the field stays at its real.exe/init value for the whole run (2026-09-09)
+
+**Symptom.** Domain-median PBLH identical to two decimals at 09/11/13 UT of a
+convective day (1186.0 m) in the x12m archive; MYNN's evolves normally.
+
+**Rule.** Any diagnostic needing the boundary-layer depth of a 3D-closure run
+must derive it (parcel method on θ: first level where θ > θ(z1) + 0.5 K, as in
+`wrf3dpbl-diag/w_spectrum.py`, or the TKE-based depth in `proc/turbulence.py`)
+— never read PBLH.
+
+## E46 — `submit_wrf.slurm` archives `wrfout*` and `meanout*` only: the 1-minute stream-23 files (`qsqdiag_*`) stay behind in `$WRF_OUTPUT_ROOT/temp/branko/` and are lost the moment that root is reused (2026-09-09, X13r job 8580933)
+
+**Symptom.** `exp/X13r/wrf_output/8580933/` holds nine history frames and the mean file; the fifteen 1-min frames the run was made for (22 GB) sit in `exp/X13r/temp/branko/`. The archive step (`submit_wrf.slurm:119–120`) moves two patterns; a third stream was never added.
+
+**Rule.** After any run with `auxhist23`, move `temp/branko/qsqdiag_*` into the job archive by hand (`exp/x13_diag/run_x13r.sh` does it for X13r) or add the pattern to the archive step — a one-line change in `realcase/scripts/submit_wrf.slurm`, no rebuild, but it changes every future run's archive, so do it in an interactive session and record it in CHANGES.md. Diagnostic scripts should look in both places (`x13r_frames.py` does).
