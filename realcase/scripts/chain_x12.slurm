@@ -42,6 +42,12 @@ if [ -n "$EVERT" ]; then
   EXTRA_SET="--set e_vert=$EVERT"
   [ "$NODES" -ge 5 ] && WTIME=$( [ "$HOURS" -ge 6 ] && echo 02:45:00 || echo 01:25:00 )
 else EXTRA_SET=""; fi
+# XSETS (X14, 2026-09-09): generic ':'-separated key=val list handed down the chain, same trap as
+# EVERT -- any non-default namelist switch must be re-applied in every segment's rebuilt namelist.
+XSETS=${XSETS:-}
+if [ -n "$XSETS" ]; then
+  for kv in $(echo "$XSETS" | tr ':' ' '); do EXTRA_SET="$EXTRA_SET --set $kv"; done
+fi
 RST=$DATA/branko_runs/innval_pbl3d_$TAG$PREV/wrfrst_d01_$RSTD
 [ -f "$RST" ] || { echo "!!! restart missing: $RST"; exit 1; }
 "$RC/scripts/setup_restart_run.sh" $TAG$IDX --rst "$RST" --start "$START" --hours "$HOURS" \
@@ -60,6 +66,6 @@ echo "$TAG$IDX submitted as $jid"
 sbatch --parsable --dependency=afterok:$jid --export=ALL,TAG=$TAG,IDX=$IDX "$RC/scripts/judge_x12.slurm" >/dev/null && echo "judge armed afterok:$jid"
 sbatch --parsable --dependency=afternotok:$jid --export=ALL,STAGE=$TAG$IDX,FAILED_JOB=$jid "$RC/scripts/notify_x12.slurm" >/dev/null && echo "ping armed afternotok:$jid"
 if [ -n "$NEXT" ]; then
-  nj=$(sbatch --parsable --dependency=afterok:$jid --export=ALL,IDX=$NEXT,TAG=$TAG,LANE=${LANE:-zen3_1024},NODES=$NODES,EVERT=$EVERT --chdir="$RUNDIR" "$RC/scripts/chain_x12.slurm")
+  nj=$(sbatch --parsable --dependency=afterok:$jid --export=ALL,IDX=$NEXT,TAG=$TAG,LANE=${LANE:-zen3_1024},NODES=$NODES,EVERT=$EVERT,XSETS=$XSETS --chdir="$RUNDIR" "$RC/scripts/chain_x12.slurm")
   echo "next link ($NEXT) queued as $nj afterok:$jid"
 fi
