@@ -1,21 +1,21 @@
 % Working document for the DKRZ Levante application. Build: tectonic dkrz_antrag.tex
 \documentclass[10pt,a4paper]{article}
-\usepackage[margin=2.2cm]{geometry}
+\usepackage[margin=2.1cm]{geometry}
 \usepackage{amsmath,booktabs,microtype}
 \usepackage{enumitem}
 \setlist{itemsep=2pt,topsep=3pt}
 \usepackage[hidelinks]{hyperref}
-\newcommand{\dx}{\Delta x}
+\newcommand{\ver}{\textbf{[verify]}}
 
 \title{\vspace{-1.5em}DKRZ Levante application --- 20\,m WRF-LES of the Radfeld transect\\
-\large Working document: core bullets, arithmetic, process constraints, proposal outline}
+\large Working document: core bullets, paste-ready sections, resource derivation}
 \author{Elias Wahl (Innsbruck, FWF) --- with the Tübingen UAS group (DFG)}
-\date{2026-09-08}
+\date{2026-09-10 (budget revised: 22\,000 node-hours)}
 
 \begin{document}
 \maketitle
 
-\section*{The five core bullets (agreed version: 50\,000 node-hours)}
+\section*{The five core bullets}
 
 \paragraph{1 --- Objective.} 20\,m WRF-LES of the Radfeld transect (Inn Valley,
 TEAMx) to derive correction functions for UAS-measured turbulence --- the
@@ -34,15 +34,13 @@ WRF setup of the valley is in continuous research use with measured
 throughput; a 100\,m LES of the same valley exists in the group (Freddi 2026)
 and supplies the intermediate nest; no methodological development on Levante.
 
-\paragraph{4 --- Scope and request.} Six full diurnal cycles from the two
-TEAMx intensive periods --- nights included, because the valley cold pool and
-stable-layer turbulence are where the model deficits concentrate and where
-20\,m resolution is decisive; the 20\,m nest covers the full cross-valley
-transect with along-valley fetch ($\sim$130$\times$10$^6$ points,
-$\Delta t \approx 0.1$\,s, $\approx$160 node-h per simulated hour, anchored in
-the measured 500\,m throughput). With a three-member sensitivity suite
-(subgrid closure, nesting ratio) and a 50\,\% restart/I-O margin:
-\textbf{50\,000 node-hours, $\approx$60\,TB work / 15\,TB archive}.
+\paragraph{4 --- Scope and request.} Six cases from the two TEAMx intensive
+periods. The parent chain (500\,m\,$\to$\,100\,m) runs full diurnal cycles;
+the 20\,m nest --- 97\,\% of the cost --- runs \emph{only the windows the
+measurements need}: three cases through the evening and night (14\,h each),
+three daytime-only (10\,h each), plus a three-member sensitivity suite on a
+6\,h window. \textbf{Request: 22\,000 node-hours, 15\,TB work / 5\,TB
+archive}, post-processing included.
 
 \paragraph{5 --- Data value.} One reference dataset serving three uses --- UAS
 correction functions (DFG partner project), grey-zone evaluation of a 3D PBL
@@ -50,102 +48,242 @@ closure (FWF-funded applicant project), and the first LES-resolved nocturnal
 cold-pool budget of this valley --- documented and shared with the TEAMx
 community.
 
-\section*{The arithmetic (for the resource section)}
+\section*{Verwendete Software}
+\begin{itemize}
+\item \textbf{Model:} WRF (ARW) 4.8.0, institutional fork carrying a
+  three-dimensional Mellor--Yamada boundary-layer closure developed in this
+  project; Fortran 90, \textbf{pure MPI} (\texttt{dmpar}, configure option 34,
+  Linux x86\_64 / gfortran), no OpenMP, basic nesting.
+\item \textbf{Compiler and MPI (production build):} GCC \textbf{12.2.0} with
+  \textbf{OpenMPI 4.1.6}, Spack-provided and version-pinned. The same
+  combination (GCC 11/12 + OpenMPI 4.1) exists in Levante's module stack, so no
+  porting work is requested. \ver{} exact Levante module strings.
+\item \textbf{I/O and numerics libraries:} netCDF-C 4.9.0, netCDF-Fortran
+  4.6.0, HDF5, zlib 1.2.13, \textbf{netlib-LAPACK 3.10.1} --- the closure
+  solves a dense $10\times10$ second-moment system per grid point and time step
+  with LAPACK \texttt{dgesvx} (equilibrated, condition-estimated), so a tuned
+  LAPACK/BLAS matters for throughput.
+\item \textbf{LES configuration:} Deardorff 1.5-order TKE closure in the nested
+  LES domains; RK3 split-explicit dynamics on the terrain-following grid;
+  Thompson microphysics, RRTMG radiation, Noah-MP land surface, topographic
+  shading active.
+\item \textbf{Pre-processing:} WPS (ungrib/metgrid) plus an in-house ICON
+  converter (Python + ecCodes) that reads the ICON-500\,m forecasts on their 65
+  native model levels and writes WPS-ready GRIB2 --- the step that removed a
+  documented initialization deficiency of the pressure-level product.
+\item \textbf{Post-processing:} Python 3 (netCDF4, NumPy, SciPy, xarray/dask,
+  matplotlib) in a pinned Conda environment, plus WRFlux for online flux and
+  budget decomposition. All pre- and post-processing runs through SLURM, hence
+  its own compute request.
+\item \textbf{Workflow:} restart-segmented chains with SLURM dependencies and
+  automatic per-segment quality gates; no interactive steps in production.
+\end{itemize}
+
+\section*{Suitability to HLRE-4 (Levante)}
+\begin{itemize}
+\item \textbf{The problem needs a machine of this class.} A two-stage nested
+  large-eddy simulation, 500\,m\,$\to$\,100\,m\,$\to$\,\textbf{20\,m}, over the
+  instrumented Radfeld transect: $\approx$131$\times$10$^6$ grid points in the
+  innermost domain at $\Delta t \approx 0.1$\,s, run as one restart-continuous
+  chain rather than independent short jobs --- beyond local resources within the
+  project's lifetime.
+\item \textbf{The code matches the architecture.} Pure-MPI Fortran with a
+  regular Cartesian decomposition maps directly onto Levante's CPU partition
+  (AMD EPYC Milan, 128 cores per node \ver); throughput is \emph{measured} on
+  the same processor generation, so the request rests on measurement rather than
+  estimate. Communication is nearest-neighbour halo exchange plus the per-step
+  pressure solve --- well served by the HDR InfiniBand fabric.
+\item \textbf{Resource type requested: CPU only.} The model has no GPU port, so
+  the A100 partition is explicitly not requested; remote visualization is not
+  required.
+\item \textbf{Memory and I/O fit.} The standard 256\,GB nodes suffice at the
+  planned decomposition, with fat-memory nodes as a fallback \ver; output is
+  thinned at source through field-selection lists, one file per output time, and
+  the aggregate write rate is well inside what Levante's Lustre \texttt{/work}
+  sustains.
+\item \textbf{The scientific environment is at DKRZ.} The driving data are ICON
+  forecasts --- a DKRZ-native model whose holdings and tooling live on the same
+  system --- and the analysis chain (virtual UAS flights, spectra, statistics)
+  runs in the same SLURM environment as the simulations.
+\item \textbf{Why HLRE-4 rather than the applicants' national systems:} the
+  principal investigator, the UAS observations and the processing software are
+  with the DFG-funded partner group in Germany, and the LES production volume
+  exceeds what the Austrian allocation can absorb alongside the 500\,m ensemble
+  it already carries.
+\end{itemize}
+
+\section*{Scalability}
+
+Measured strong scaling of the production configuration, 500\,m domain
+($601\times501\times80 = 24.1\times10^6$ points, $\Delta t = 2$\,s), 128 MPI
+ranks per node:
 
 \begin{center}
-\begin{tabular}{@{}llr@{}}
+\begin{tabular}{@{}rrrr@{}}
 \toprule
-component & assumption & cost \\
+nodes & ranks & s per time step & node-hours per 6\,h segment \\
 \midrule
-500\,m parent & 24$\times$10$^6$ pts, $\Delta t$ = 2\,s --- \textbf{measured} & $\approx$190 core-h / sim-h \\
-100\,m nest & $\sim$40$\times$30\,km, 12$\times$10$^6$ pts, $\Delta t$ = 0.6\,s (Freddi-like) & $\approx$320 core-h / sim-h \\
-20\,m nest & transect + fetch $\approx$ 25$\times$15\,km, 130$\times$10$^6$ pts, $\Delta t$ = 0.1\,s & $\approx$20\,000 core-h / sim-h \\
-chain total & & $\approx$160 node-h / sim-h \\
-\midrule
-production & 6 cases $\times$ 26 sim-h (24\,h + spin-up) & $\approx$25\,000 node-h \\
-sensitivity & 3 members $\times$ 1 case & $\approx$12\,000 node-h \\
-margin & restarts, I/O, failed segments ($\times$1.33) & $\rightarrow$ $\approx$\textbf{50\,000 node-h} \\
-pre/post & virtual-flight sampling, spectra, statistics (SLURM) & + 3\,000 node-h \\
+2 & 256 & 1.50 & 9.0 \\
+4 & 512 & 0.80 & 9.6 \\
+5 & 640 & 0.65 & 9.8 \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-Fallback floor: 42\,k (two sensitivity members). Shelved 100\,k extensions:
-10 cases, a 10\,m stable-night pilot ($\sim$5\,k) --- reusable as a follow-up
-request. Scalability, measured on the 500\,m domain (128-core nodes):
-1.5\,s/step on 2 nodes, $\sim$0.8 on 4, 0.65 on 5 --- near-linear to 5 nodes.
-
-\textbf{To confirm before writing:} Freddi's 100\,m domain extent and time
-step; the 20\,m nest extent (25$\times$15\,km assumed); whether one case needs
-the multi-layer-stratification rehearsal.
-
-\section*{DKRZ process constraints (allocation rules, 2026-09-08)}
-
 \begin{itemize}
-\item \textbf{Eligibility / PI:} the PI should be at a German research
-  institution; international groups need a significant German contribution.
-  $\Rightarrow$ the proposal is \textbf{led by Tübingen (Platis)}; Innsbruck
-  joins as international partner supplying and running the model system.
-\item \textbf{Windows:} Sep 1 -- Oct 31 (start Jan 1) and Mar 1 -- Apr 30
-  (start Jul 1); allocations run 12 months. \textbf{Current window open,
-  deadline 2026-10-31, start 2027-01-01.}
-\item \textbf{Compute expires quarterly} --- consumption must be roughly even.
-  A Jan 1 start forces $\sim$12.5\,k node-h per quarter from January; LES
-  production is planned H2 2027, so either front-load the sensitivity suite
-  into Q1/Q2 or target the spring window (start 2027-07-01).
-  \emph{Decide before writing.}
-\item \textbf{Pre-/post-processing} runs through SLURM and needs its own
-  requested compute ($\approx$3\,k node-h, in the table).
-\item \textbf{Document limits:} first proposal $\le$ 8 pages,
-  $\le$ 4\,000 characters/page; required sections incl.\ scalability
-  (covered by the measured scaling curve). Renewals: $\le$ 2-page report.
-\item \textbf{No data-storage usage plan triggered} (thresholds:
-  $\ge$ 10$^6$ node-h, $\ge$ 1\,024\,TiB disk or tape --- ours: 53\,k / 60\,TB
-  / 15\,TB).
-\item \textbf{Storage policy:} disk per allocation period (re-request on
-  renewal; move data to archive within the period); unused archive grants
-  expire --- request archive close to what will be written.
-\item \textbf{GPU:} not requested (CPU-only WRF; only hardware-accelerated
-  remote visualization would justify it).
+\item Near-linear to 640 ranks: a 2.3$\times$ speed-up for 2.5$\times$ the
+  nodes ($\approx$92\,\% parallel efficiency) at $\approx$38\,000 grid points
+  per rank.
+\item \textbf{Extrapolation to the LES nest:} holding that points-per-rank
+  figure, the $131\times10^6$-point domain implies $\approx$3\,500 ranks ---
+  \textbf{20--32 nodes per LES segment}, the size planned for production. The
+  halo-to-compute ratio there is no worse than in the measured cases because the
+  subdomain column count is comparable.
+\item \textbf{A short on-machine scaling test (16/32/64 nodes, one simulated
+  hour) is planned in the first weeks} to confirm the extrapolation on Levante's
+  fabric and fix the production node count; its cost is included below.
+\item \textbf{Time-step constraint, stated openly:} the LES nest is limited by
+  the vertical Courant number in thin near-surface layers over steep terrain ---
+  a limit this project has measured directly and mitigates with WRF's targeted
+  vertical-velocity damping rather than a globally shorter time step, which is
+  what keeps the cost estimate stable.
+\item \textbf{I/O scaling:} one file per output time and domain; field selection
+  at source reduces a full 3-D frame by roughly a factor three. Output cadence is
+  a tunable, not a fixed cost.
 \end{itemize}
 
-\section*{Proposal outline ($\le$ 8 pages, DKRZ's section order)}
+\section*{Computing time and storage, with justification}
 
-\begin{enumerate}
-\item \textbf{Project overview} ($\sim$3\,500 chars): the TEAMx campaign and
-  the UAS turbulence gap; the 20\,m LES as the closing reference; partners,
-  funding, deliverables, data sharing.
-\item \textbf{Planned work, scientific view} ($\sim$5\,000): six diurnal
-  cycles (nights included); virtual UAS ascents $\rightarrow$ transfer
-  functions vs.\ $\dx/z_i$; secondary uses (grey-zone reference, cold-pool
-  budget). Only what the compute buys --- no closure-development story.
-\item \textbf{Mathematical/computational aspects} ($\sim$4\,000): WRF 4.8;
-  online nesting 500 $\rightarrow$ 100 $\rightarrow$ 20\,m; Deardorff TKE
-  closure in the LES domains; RK3 split-explicit dynamics; ICON 500\,m
-  forcing (native 65-level conversion); output design for virtual flights.
-\item \textbf{Numerical methods} ($\sim$3\,000): time-step ratios
-  (2 / 0.6 / 0.1\,s), nesting-ratio and damping choices with complex-terrain
-  precedents (METEX21, Perdig\~ao, Riviera); absorbing layer; spin-up;
-  the 3-member sensitivity suite.
-\item \textbf{Suitability for HLRE-4} ($\sim$2\,500): pure-MPI WRF on Milan
-  nodes; production, not development; group precedents (the running 500\,m
-  system, the existing 100\,m LES); I/O sized to Lustre.
-\item \textbf{Scalability} ($\sim$2\,500 + table): the measured 2/4/5-node
-  curve; planned node counts per domain (10--20 nodes per LES segment).
-\item \textbf{Computing time and storage} ($\sim$4\,500 + the arithmetic
-  table): 50\,k + 3\,k node-h, 60\,TB work / 15\,TB archive; per-quarter
-  consumption profile matched to the chosen start date.
-\item \textbf{Added value} ($\sim$2\,500): one dataset, three uses; TEAMx
-  reuse; no comparable LES at the transect.
-\end{enumerate}
+Cost per simulated hour, from the measured 500\,m throughput scaled by grid
+points and time step:
+
+\begin{center}
+\begin{tabular}{@{}llll@{}}
+\toprule
+domain & points & $\Delta t$ & cost per simulated hour \\
+\midrule
+500\,m parent & $24.1\times10^6$ & 2\,s & $\approx$190 core-h = \textbf{1.5 node-h} (measured) \\
+100\,m nest & $\approx12\times10^6$ & 0.6\,s & $\approx$320 core-h = \textbf{2.5 node-h} \\
+20\,m nest & $\approx131\times10^6$ & 0.1\,s & $\approx$20\,000 core-h = \textbf{156 node-h} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The 20\,m nest is $\approx$97\,\% of the cost. \textbf{This dictates the design
+of the request: the cheap parent chain runs the full diurnal cycles, while the
+expensive LES nest runs only the windows the science needs.}
+
+\begin{center}
+\begin{tabular}{@{}llr@{}}
+\toprule
+item & scope & node-hours \\
+\midrule
+parent chain (500 + 100\,m) & 6 cases $\times$ 26 simulated hours & 620 \\
+LES nest, night cases & 3 $\times$ 14\,h (18--06\,UT + 2\,h spin-up) & 6\,550 \\
+LES nest, daytime cases & 3 $\times$ 10\,h (09--17\,UT + 2\,h spin-up) & 4\,680 \\
+sensitivity suite & 3 members $\times$ 6\,h nest window & 2\,810 \\
+on-machine scaling test & 16/32/64 nodes $\times$ 1\,h & 250 \\
+margin (restarts, failed segments, I/O) & $\times$1.3 & +5\,700 \\
+pre-/post-processing (SLURM) & virtual flights, spectra, statistics & 2\,000 \\
+\midrule
+\textbf{Total requested} & & \textbf{$\approx$22\,000} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Justification of each choice.}
+\begin{itemize}
+\item \textbf{Six cases:} two TEAMx intensive observation periods, three cases
+  each, to span the flow regimes the UAS flights sampled; fewer would not
+  separate case-to-case scatter from the correction functions being derived.
+\item \textbf{Only three cases carry the night:} the nocturnal window doubles
+  the LES hours per case and serves the secondary objective (the cold-pool
+  budget), not the UAS correction functions, which are flown by day. Three
+  nights suffice to show whether the nocturnal result is robust; the other three
+  cases stop at the evening transition.
+\item \textbf{The nest runs windows, not whole days:} the virtual-flight
+  comparison needs the LES only where flights exist, plus $\approx$2\,h of LES
+  spin-up. Running the nest for 26\,h per case would roughly triple the cost and
+  add no measurement.
+\item \textbf{A 30\,\% margin:} the chain is restart-segmented and has been in
+  production for months, so failure recovery is cheap; 30\,\% covers first-weeks
+  setup on a new machine and lost segments.
+\item \textbf{The post-processing line item:} all analysis runs through SLURM at
+  DKRZ; resampling $\approx$40 flight trajectories through several TB of LES
+  frames and computing spectra over the nest volume is not a login-node task.
+\end{itemize}
+
+\paragraph{Storage}, derived from \emph{measured} file sizes (500\,m: 6.4\,GB per
+full 3-D history frame at $24.1\times10^6$ points, 14.5\,GB per restart; both
+scale with grid points):
+
+\begin{center}
+\begin{tabular}{@{}llr@{}}
+\toprule
+product & derivation & volume \\
+\midrule
+20\,m nest history & 72 nest-hours, 15-min cadence, thinned ($\approx$12\,GB/frame) & 3.5\,TB \\
+20\,m nest restarts & every 3\,h, $\approx$78\,GB each & 1.9\,TB \\
+100\,m + 500\,m output & 156 simulated hours, 30-min cadence, thinned & 0.9\,TB \\
+sensitivity suite & 3 $\times$ 6\,h nest + restarts & 1.1\,TB \\
+virtual-flight and spectral products & high-frequency columns and trajectories & $<$0.1\,TB \\
+working copies, derived diagnostics & $\times$1.5 on the above & $\approx$4\,TB \\
+\midrule
+\textbf{Disk (\texttt{/work}) requested} & & \textbf{15\,TB} \\
+\textbf{Archive requested} & documented cases + flight products + one reference LES case & \textbf{5\,TB} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Neither figure approaches the thresholds that require a separate data-storage
+plan ($10^6$ node-hours, 1\,024\,TiB disk or tape).
+
+\section*{DKRZ process constraints (allocation rules, retrieved 2026-09-08)}
+\begin{itemize}
+\item \textbf{Eligibility / PI:} the PI should be at a German research
+  institution $\Rightarrow$ the proposal is \textbf{led by Tübingen (Platis)};
+  Innsbruck joins as international partner supplying and running the model
+  system.
+\item \textbf{Windows:} Sep 1 -- Oct 31 (start Jan 1) and Mar 1 -- Apr 30 (start
+  Jul 1); allocations run 12 months. \textbf{Current window open, deadline
+  2026-10-31, start 2027-01-01.}
+\item \textbf{Compute expires quarterly} --- consumption must be roughly even. A
+  Jan 1 start would force $\approx$5\,500 node-h per quarter from January; LES
+  production is planned H2 2027, so either front-load the sensitivity suite and
+  the scaling test into Q1/Q2 or target the spring window (start 2027-07-01).
+  \emph{Decide before writing.}
+\item \textbf{Document limits:} first proposal $\le$8 pages, $\le$4\,000
+  characters per page; required sections include scalability (covered above).
+  Renewals: $\le$2-page report.
+\item \textbf{Storage policy:} disk is per allocation period (re-request on
+  renewal; move data to archive within the period); unused archive grants expire.
+\end{itemize}
+
+\section*{Proportionality (internal, not for the Antrag)}
+\begin{itemize}
+\item Levante's CPU partition is $\approx$2\,800 nodes \ver, i.e.
+  $\approx$24.5$\times10^6$ node-hours per year. The request is
+  \textbf{$\approx$0.09\,\% of a machine-year} and 2.2\,\% of the volume at
+  which DKRZ demands a data-storage plan.
+\item For a DFG project funding one doctoral position, whose computational core
+  this is, $\approx$22\,000 node-hours over twelve months is proportionate: one
+  PhD-year of production, not a community campaign. The earlier 50\,000-hour
+  version was defensible but harder to argue and, under quarterly expiry, less
+  likely to be fully consumed --- which matters for the renewal.
+\item \textbf{If reviewers ask for less:} two sensitivity members and two night
+  cases give $\approx$18\,000 node-hours without touching the primary objective.
+  Natural mid-period extensions if more becomes possible: the three additional
+  nights and a 10\,m stable-night pilot.
+\end{itemize}
 
 \section*{Open decisions}
 \begin{enumerate}
-\item Window: 2026-10-31 deadline (start Jan 1) vs.\ spring (start Jul 1) ---
-  Elias + Platis, against the quarterly-expiry profile.
+\item Submission window: 2026-10-31 deadline (start Jan 1) vs.\ spring (start
+  Jul 1), judged against the quarterly-expiry profile.
 \item PI arrangement and writing split with Tübingen.
-\item The three numbers to confirm (Freddi extent/time step, 20\,m nest
-  extent, rehearsal case).
+\item Numbers to confirm: Freddi's 100\,m domain extent and time step; the 20\,m
+  nest extent (25$\times$15\,km assumed); per-node memory footprint of the nest;
+  Levante's current node/memory specification.
 \end{enumerate}
 
 \end{document}
