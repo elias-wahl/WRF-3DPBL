@@ -1378,3 +1378,14 @@ cost) or `w_damping = 1`.
 
 **Silver lining.** Both crashes were caught by the 1 h daytime smoke gate:
 45 min of wall time each instead of the 85–95 node-hours of a full chain.
+
+**AMENDED 2026-09-10 ~09:30 (DECISIONS ~09:30).** The shared fingerprint is the
+MESSENGER, not the mechanism. Measured: the refined-level run fails on the
+vertical **advection** Courant number (thin layers: max 1.78, 13 768 cells
+> 0.8, vs parent 1.16 / 302); the `pbl3d_l_opt=2` run fails on the vertical
+**diffusion** number (doubled master length scale: max 1.2, 87 151 cells above
+the 0.5 explicit limit, vs 0.3 / 0 for `l_opt=1`). `SFCLAYREV` is simply the
+first routine that inspects a field after the dynamics. Remedies therefore
+differ: `w_damping = 1` (or Δt 1.5 s) for the level refinement; a
+diffusion-number cap on l (or implicit vertical mixing) for the length scale.
+Do NOT expect one fix to serve both.
