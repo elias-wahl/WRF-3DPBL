@@ -7,7 +7,8 @@ Tübingen UAS group). Created 2026-09-08.
 
 | file | what it is |
 |---|---|
-| `antrag_bullets.md` | The five core bullets (50 k node-h version), the cost arithmetic, and the DKRZ process constraints |
+| `antrag_bullets.md` | The five core bullets, the original 50 k arithmetic, and the DKRZ process constraints |
+| `antrag_sections.md` | **Paste-ready sections** (2026-09-10): Verwendete Software, Suitability to HLRE-4, Scalability, Computing time and storage — with the **revised 22 k node-hour** budget and its justifications |
 | `dkrz_rules.md` | The allocation rules (eligibility, windows, expiry, limits) — condensed from dkrz.de, 2026-09-08 |
 | `proposal_outline.md` | Skeleton of the ≤ 8-page request document in DKRZ's required section order, with our content and character budget per section |
 
@@ -25,10 +26,16 @@ Tübingen UAS group). Created 2026-09-08.
 
 ## Key numbers (agreed)
 
-- **Ask: 50 000 node-h** (+ ≈ 3 000 node-h pre/post-processing) on Levante
-  CPU, ≈ 60 TB work / 15 TB archive.
-- Basis: measured 190 core-h per simulated hour at 500 m; chain
-  500 → 100 → 20 m ≈ 160 node-h per simulated hour; 6 diurnal cycles +
-  3-member sensitivity + ×1.33 margin. Fallback floor: 42 k.
+- **Ask (revised 2026-09-10): 22 000 node-h** on Levante CPU (post-processing
+  included), **15 TB work / 5 TB archive**.
+- Basis: measured 190 core-h per simulated hour at 500 m; the 20 m nest is
+  ≈97 % of the chain cost (156 node-h per simulated hour), so the parent chain
+  runs full diurnal cycles while the **LES nest runs only the windows the
+  science needs** — 3 cases with the night (14 h each), 3 daytime-only (10 h
+  each), a 3-member sensitivity suite on a 6 h window, an on-machine scaling
+  test, ×1.3 margin, 2 000 node-h post-processing.
+- Reviewer fallback: ≈18 000 node-h (two sensitivity members, two nights).
+- Superseded: the 50 k version (full-day nesting, 60 TB) — the storage there
+  was not derived from measured frame sizes.
 - Scalability (measured, 500 m domain, 128-core nodes): 1.5 s/step on
   2 nodes, ~0.8 on 4, 0.65 on 5 — near-linear to 5 nodes.
