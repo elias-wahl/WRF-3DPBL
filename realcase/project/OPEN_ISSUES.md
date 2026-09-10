@@ -1,5 +1,13 @@
 # Open issues / questions — 3D PBL rebase (WRF v4.4 -> v4.8.0)
 
+## A26 — Spurious mid-level stratus from the native ICON forcing over the Kolsass reach, 17 July 19:30–23:00 UT (2026-09-10, open)
+
+**Measured.** Kolsass radiometer LW down 304–322 W m⁻² (clear) all evening; X12m/X12p/X15 GLW +44…+64 W m⁻² above it at 19:30–20:00 and 21:30–23:00 with a 0.1–0.3 g kg⁻¹ cloud deck at 1.9–2.5 km AGL over 25–60 % of the Hall–Jenbach floor; X10/EVE1/EVE1M cloud-free (within +7). Net surface longwave loss 21 vs 58 W m⁻² observed at 22 UT. Source: RH 89–98 % at 2.5–3 km ASL in the native met_em (ladder 79–89 %). DECISIONS 2026-09-10 ~14:00.
+
+**Effect.** The Kolsass reach's first-level cooling stalls 22:00–23:00 and the along-valley pressure force pulses up-valley again (~13:15 entry); the 0–100 m bias grows +0.9 K in those two hours against +0.2 K in the cloud-free X10.
+
+**To do.** (1) Raw ICON GRIB: is there cloud at 2.5–3 km over the Inn Valley at 20–22 UT? (2) A 19:00-restart twin with the forcing's humidity above 2 km capped at 90 % (or the ladder's humidity spliced in) — judge on the reach cooling 21:30–23:00, the Hall–Jenbach pressure force and the Kolsass wind. (3) The 18th evening: same check.
+
 ## A25 — OPEN (2026-09-09): `pbl3d_l_opt=2` (the MYNN-form master length scale) blows the flow up at a barren crest within 14 min of a midday start — the A24 fingerprint on two neighbouring cells; hypothesis: the closure's explicit vertical mixing exceeds its stability limit, the same limit X13 reached by thinning the layers
 **Measured** (X14 smoke, job 8581406, `branko_runs/innval_pbl3d_X14smoke/rsl.error.0144|0145`, archive `exp/X14smoke/wrf_output/8581406`): X12m + `pbl3d_l_opt=2`, 80 levels, 5 × 128, start 13:00 UT from the shared wrfinput; last step 2025-07-17 13:13:52 (416 steps, 0.71 s/step). Two ranks fired the SFCLAYREV NaN detector in the same step: **i=150, j=118** — `ust 1.380, hfx NaN, chs 0.0460, br 0.0, zol 0.0, wspd 31.54 m/s`; inputs `tsk 289.3, t1 281.5 K, qv1 2.33 g/kg, xland 1, znt 0.002 m` — and **i=152, j=115** — `ust 1.312, hfx NaN, chs 0.0433, br 0.0, zol 0.0, wspd 7.22`; inputs `tsk 292.9, t1 283.5, qv1 6.67 g/kg, land, znt 1.09 m`. A barren cell (LU 19 class, as A24's) and its forest neighbour, 2 × 3 cells apart, ~50 cells from A24's cell (165, 73). No CFL/W-damping message (none at `debug_level 0`). The twin X12ma (option 1; identical namelist otherwise, verified by diff) ran 13→19 UT clean. Frames 13:00 and 13:10 (3:52 before the crash) exist.
 
@@ -19,6 +27,22 @@ The closure's tendencies are applied forward-Euler (`dyn_em/module_pbl3d.F:525�
 
 **Trap recorded:** E47.
 
+
+**MEASURED (2026-09-10, DECISIONS ~09:30): the hypothesis is confirmed and
+quantified, and it is a DIFFERENT failure from A24.** At 13:10 (identical
+restart, 10 min in) `l_opt=2` gives l(k<12) median 34.1 m / p99 114 m against
+`l_opt=1`'s 16.1 / 45.4, and q² p99 8.24 vs 4.63 — the carrying-capacity
+increase the w-spectrum called for did happen. The explicit vertical mixing
+cannot integrate it: diffusion number K Δt/Δz² (K ≈ ½ q l) reaches **max 1.2
+with 87 151 cells above the 0.5 explicit limit (≈2.4 % of the lowest 12
+levels)** against **max 0.3 and zero such cells** for `l_opt=1`. Same family as
+E28 (explicit q² diffusion → `pbl3d_sq_implicit`, q² only). Δt is a poor
+remedy (dn ∝ Δt: 1.0 s → 0.6, still over; 0.75 s → 0.45, +165 % cost).
+**Proposed (default-off, minimal, sibling of `pbl3d_sk_eps_max`): cap l where
+the explicit diffusion number would exceed ≈0.4** — touches ~2.4 % of
+near-surface cells, median (0.10) untouched, experiment keeps its substance at
+Δt = 2 s. Cleaner alternative: implicit vertical mixing for momentum/heat.
+
 ## A24 — OPEN (2026-09-09): the refined-level run X13 (e_vert 89, nine extra layers below ~610 m) dies with a NaN that enters the surface layer through the surface pressure at a high snow/ice crest (i=165, j=73) 3 h 50 min into the daytime — the 80-level twin runs the same 6 h clean
 **Measured** (job 8579083, `branko_runs/innval_pbl3d_X13a/rsl.error.0085`): last step 2025-07-17 16:49:54; the SFCLAYREV NaN detector (`module_surface_driver.F:2209`) reports `ust 0.683, hfx NaN, chs 0.0239, br 0.0, zol 0.0, wspd 13.88 m/s`, inputs `tsk 288.0 K, t1 283.5 K, qv1 3.62 g/kg, xland 1, znt 0.002 m`. No CFL/W-damping message on any rank (none is printed at `debug_level 0`). 0.851 s/step on 5 nodes (80 levels: 0.65). Twin X12ma (job 8565920, identical namelist but e_vert/eta_levels) ran 13→19 UT clean; the 1 h smoke (8579082, 13→14 UT) passed. Archive `exp/X13a/wrf_output/8579083` (8 × 30-min frames to 16:30), restart `wrfrst_d01_2025-07-17_16:00:00` in the run dir.
 
@@ -35,6 +59,18 @@ The closure's tendencies are applied forward-Euler (`dyn_em/module_pbl3d.F:525�
 **Does not touch:** X12's results (same binary, 80 levels); the smoke's verdict on the 13–14 UT hour. **Trap recorded:** E43 (hidden-NaN fingerprint), E44 (1 h smoke ≠ 6 h gate; +31 % step cost).
 
 **2026-09-09 ~23:05 — X13r (job 8580933) reproduced the crash exactly** (auto-wake; DECISIONS ~23:05): same step 16:49:54, same cell, `ust 0.6834, hfx NaN, chs 0.02388, br 0, zol 0, wspd 13.88` to every printed digit — a deterministic model state, not a decomposition artefact. Record on disk: 15 one-minute stream-23 frames 16:35–16:49 (`exp/X13r/temp/branko/qsqdiag_*`, all fields of `iofields_x13r.txt` present; not archived, E46) and 5-min history 16:05–16:45 (`exp/X13r/wrf_output/8580933`). **Corrections from the 14:15 cell scan (`exp/x13_diag/x13a_crash_cell.log`):** (i) the cell is *not* the vertical-Courant hot spot — its column maximum is 0.37 (16:00) / 0.27 (16:30) under a steady +1.7/+1.2 m/s updraft in ~10 m layers, while the domain maximum 1.72/1.79 sits at (k 5–6, j 193–194, i 546–549), ~400 cells away; candidate (a) now needs the last frames to show a climb it had not begun 20 min before the crash; (ii) `SNOWC = SNOWH = 0`, LU 19 (barren) — `znt 0.002 m` is bare ground, not snow; the snow/ice reading in point 4 is withdrawn. The cell sits two cells from a `znt 1.09 m` forest pair (×500 roughness step, u* 1.1–1.5 there against 0.4–0.5). The 80-level twin carries the same updraft (+1.8/+1.4 m/s) in 16 m layers and ran clean. **Next (staged, `exp/x13_diag/run_x13r.sh` → `x13r_frames.log`):** the per-minute cell record with the a/b/c verdict key; python was denied in the auto-session.
+
+
+**MEASURED AND CLOSED AS A MECHANISM (2026-09-10, DECISIONS ~09:30).** The X13r
+reproduction's 1-minute frames show **no NaN anywhere in the domain 54 s before
+the fatal step** (PSFC/W/T/Q_SQ all finite at 16:49:00) — the p_sfc-propagation
+hypothesis is retired; the NaN is born in the last minute. Cause is the vertical
+**advection** Courant margin: refinement halved Δz (16.0 → 10.1 m at the cell)
+at unchanged w, so Courant(mass-level w, Δt = 2 s, k<12) went max 1.16 / 302
+cells > 0.8 (80 levels) → **1.78 / 13 768** (89 levels). The cell then grew a
+plume ×1.41/min for 4 min (w 0.90 → 2.38 m/s; u* 0.40 → 0.65; PSFC −11 Pa/min);
+Courant 1 needs w = 5.1 m/s there, ~2.2 min away. Remedy: `w_damping = 1`
+(targeted, ~free; measure its footprint) or Δt = 1.5 s. Not closure physics.
 
 ## A23 — OPEN, candidate (2026-09-07, code reading for the concept's assumption table; not run-verified): two forms in `module_pbl3d.F` differ from their WRF templates — the horizontal q² diffusion carries q² where the template has ρ̄, and θ_v is built from the perturbation θ
 Found while transcribing the fork for `concept/pbl_assumptions_table.pdf` (Table II.2b, notes 5). Both are observations on the code as written; neither has been measured in a run yet.

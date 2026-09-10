@@ -1,5 +1,13 @@
 # Open issues / questions — 3D PBL rebase (WRF v4.4 -> v4.8.0)
 
+## A26 — Spurious mid-level stratus from the native ICON forcing over the Kolsass reach, 17 July 19:30–23:00 UT (2026-09-10, open)
+
+**Measured.** Kolsass radiometer LW down 304–322 W m⁻² (clear) all evening; X12m/X12p/X15 GLW +44…+64 W m⁻² above it at 19:30–20:00 and 21:30–23:00 with a 0.1–0.3 g kg⁻¹ cloud deck at 1.9–2.5 km AGL over 25–60 % of the Hall–Jenbach floor; X10/EVE1/EVE1M cloud-free (within +7). Net surface longwave loss 21 vs 58 W m⁻² observed at 22 UT. Source: RH 89–98 % at 2.5–3 km ASL in the native met_em (ladder 79–89 %). DECISIONS 2026-09-10 ~14:00.
+
+**Effect.** The Kolsass reach's first-level cooling stalls 22:00–23:00 and the along-valley pressure force pulses up-valley again (~13:15 entry); the 0–100 m bias grows +0.9 K in those two hours against +0.2 K in the cloud-free X10.
+
+**To do.** (1) Raw ICON GRIB: is there cloud at 2.5–3 km over the Inn Valley at 20–22 UT? (2) A 19:00-restart twin with the forcing's humidity above 2 km capped at 90 % (or the ladder's humidity spliced in) — judge on the reach cooling 21:30–23:00, the Hall–Jenbach pressure force and the Kolsass wind. (3) The 18th evening: same check.
+
 ## A25 — OPEN (2026-09-09): `pbl3d_l_opt=2` (the MYNN-form master length scale) blows the flow up at a barren crest within 14 min of a midday start — the A24 fingerprint on two neighbouring cells; hypothesis: the closure's explicit vertical mixing exceeds its stability limit, the same limit X13 reached by thinning the layers
 **Measured** (X14 smoke, job 8581406, `branko_runs/innval_pbl3d_X14smoke/rsl.error.0144|0145`, archive `exp/X14smoke/wrf_output/8581406`): X12m + `pbl3d_l_opt=2`, 80 levels, 5 × 128, start 13:00 UT from the shared wrfinput; last step 2025-07-17 13:13:52 (416 steps, 0.71 s/step). Two ranks fired the SFCLAYREV NaN detector in the same step: **i=150, j=118** — `ust 1.380, hfx NaN, chs 0.0460, br 0.0, zol 0.0, wspd 31.54 m/s`; inputs `tsk 289.3, t1 281.5 K, qv1 2.33 g/kg, xland 1, znt 0.002 m` — and **i=152, j=115** — `ust 1.312, hfx NaN, chs 0.0433, br 0.0, zol 0.0, wspd 7.22`; inputs `tsk 292.9, t1 283.5, qv1 6.67 g/kg, land, znt 1.09 m`. A barren cell (LU 19 class, as A24's) and its forest neighbour, 2 × 3 cells apart, ~50 cells from A24's cell (165, 73). No CFL/W-damping message (none at `debug_level 0`). The twin X12ma (option 1; identical namelist otherwise, verified by diff) ran 13→19 UT clean. Frames 13:00 and 13:10 (3:52 before the crash) exist.
 
