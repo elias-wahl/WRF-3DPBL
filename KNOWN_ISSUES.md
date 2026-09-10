@@ -1349,3 +1349,32 @@ must derive it (parcel method on θ: first level where θ > θ(z1) + 0.5 K, as i
 **Where it hides.** `dyn_em/module_pbl3d_my.F:433–437` (3DTKE constants `alpha_1 = 0.8, alpha_2 = 1.0, alpha_3 = 1.0, alpha_4 = 100`), `:494–495` (l₀ = α₁ …), `:549–557` (l_b = 10¹⁰ m when ∂θ_v/∂z ≤ 0; the `N_TAU_MAX` block of the option-1 branch is not executed), `:559` (harmonic blend, capped by l_f only in stable air); the explicit update is `dyn_em/module_pbl3d.F:525–603`. The 2026-09-09 ~19:00 pre-registration read the option as a change of *form* only; its change of *magnitude* was not checked against the explicit-diffusion limit before submission.
 
 **Rule.** Before running any switch that lengthens the master scale or thins the lowest layers, estimate K Δt/Δz² = S_M l q Δt/Δz² at the worst crest of an archived noon frame (`exp/x14_diag/x14smoke_crash_cell.py` prints it); above ~0.3 expect the crash class of A24/A25 within the first hot hour. A new length-scale option must state its α and its buoyancy cap next to the production values in the DECISIONS entry. The 1 h daytime smoke is the right gate for a first-ever option (it caught this one in 14 min); a level or Δt change still needs E44's restart gate at the twin's hottest hour.
+
+## E46 — `SFCLAYREV produced NaN` is a SHARED fingerprint of a latent instability, not a property of one experiment: two unrelated default-off switches trigger it (2026-09-10)
+
+**Occurrences.** (1) Refined near-surface levels (e_vert 89): died 2026-09-09
+at simulated 16:49:54, rank 85, i,j = 165,73 — a 2452 m crest with ~10 m
+layers, 8–9 m/s wind, a ×500 roughness step. (2) `pbl3d_l_opt=2` (MYNN-blend
+length scale, unchanged levels): died 2026-09-10 at simulated 13:13:52, ranks
+144/145, i,j = 150,118 and 152,115, **wspd 31.5 m/s** and ust 1.38.
+
+**Common signature.** `hfx = NaN` while `ust`, `chs` are finite and
+`br = zol = 0.0` exactly — the bulk Richardson number clipped to zero by
+`amin1(br,0)` after a NaN comparison (gfortran MIN/MAX return the non-NaN
+argument), i.e. the NaN arrives from upstream. In case (2) the 31.5 m/s wind
+shows the resolved flow blew up locally *before* the surface layer complained.
+
+**Reading.** Any change that increases near-surface mixing or steepens the
+near-surface gradients pushes particular terrain cells (steep, high, at a
+roughness discontinuity) over a stability edge the production configuration
+sits just inside. The surface-layer NaN detector is the messenger.
+
+**What to do.** Diagnose once, for both: the X13r reproduction (bit-for-bit,
+1-minute stream around the crash, `exp/x13_diag/`) names the first field to go
+NaN; that answer applies to both runs. Do not "fix" it by widening the NaN
+guard (U2's lesson: a guard turns a loud crash into a silent NaN). Candidate
+remedies to be judged from the frames, both default-off: `Δt = 1.5 s` (+33 %
+cost) or `w_damping = 1`.
+
+**Silver lining.** Both crashes were caught by the 1 h daytime smoke gate:
+45 min of wall time each instead of the 85–95 node-hours of a full chain.
