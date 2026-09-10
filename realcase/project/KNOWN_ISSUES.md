@@ -1342,6 +1342,12 @@ must derive it (parcel method on θ: first level where θ > θ(z1) + 0.5 K, as i
 
 **Rule.** After any run with `auxhist23`, move `temp/branko/qsqdiag_*` into the job archive by hand (`exp/x13_diag/run_x13r.sh` does it for X13r) or add the pattern to the archive step — a one-line change in `realcase/scripts/submit_wrf.slurm`, no rebuild, but it changes every future run's archive, so do it in an interactive session and record it in CHANGES.md. Diagnostic scripts should look in both places (`x13r_frames.py` does).
 
+## E48 — The `F{U,V,W,T,Q}{X,Y,Z}_ADV_MEAN_2ND` fields of the thinned WRFlux stream are written but ZERO in every X12-lineage archive, and no archive carries a momentum-flux set at all; a single-column momentum budget on η surfaces is dominated by the terrain-following cancellation and by 2Δx pressure noise (2026-09-10)
+
+**Symptom.** `meanout_*` of X10b/X12mb/X12pb/X12mtb/X15b (33 variables) list the 2nd-order advective fluxes with `max = 0` everywhere; the EVE1/EVE1M/CPB1x archives (49 variables) carry the populated θ set (`FT{X,Y,Z}_ADV_MEAN`, `FT{X,Y}_CORR`, `CORR_DTDT`, `FT*_SGS_MEAN`, `T_TEND_*`) but their `_2ND` and all momentum fluxes are zero too. A budget script that reads them returns exactly 0.00 for the advection term without an error.
+
+**Rule.** Check `np.abs(field).max() > 0` before using any `*_MEAN` flux; use the EVE/CPB archives for θ budgets; a resolved momentum budget needs a new run with the momentum fluxes switched on in the WRFlux namelist. For the momentum balance at one column, the pressure-gradient term on η surfaces is the small difference of two O(1 m s⁻²) terms (`−(1/ρ)∂p/∂s|_η − g ∂z/∂s|_η`) and the fixed-height version changes by a factor 2–4 between 1-, 2- and 3-cell stencils (2Δx pressure noise, cf. `noise_2dx.py`); use the valley-scale gradient (two columns 20–25 km apart at a fixed height ASL, `valley_transect.py`) — it is stencil-free and agrees across runs to 1·10⁻⁴ m s⁻².
+
 ## E47 — `pbl3d_l_opt=2` is not "the master scale computed MYNN-style" at the production constants: it hard-codes α₁ = 0.8 (8× the `MY82` α = 0.1), bypasses the buoyancy cap in unstable air and nearly doubles it in stable air — and the closure applies its tendencies explicitly, so a longer l (or a thinner Δz, X13) meets the diffusion limit K Δt/Δz² < ½ first at convective barren crests (2026-09-09, X14 smoke job 8581406)
 
 **Symptom.** X14's 1 h daytime smoke died after 416 steps (13:13:52 UT) with the E43 fingerprint on two neighbouring crest cells and a 31.5 m/s first-level wind over bare ground; the option-1 twin ran the same six hours clean (OPEN_ISSUES A25).
@@ -1349,3 +1355,43 @@ must derive it (parcel method on θ: first level where θ > θ(z1) + 0.5 K, as i
 **Where it hides.** `dyn_em/module_pbl3d_my.F:433–437` (3DTKE constants `alpha_1 = 0.8, alpha_2 = 1.0, alpha_3 = 1.0, alpha_4 = 100`), `:494–495` (l₀ = α₁ …), `:549–557` (l_b = 10¹⁰ m when ∂θ_v/∂z ≤ 0; the `N_TAU_MAX` block of the option-1 branch is not executed), `:559` (harmonic blend, capped by l_f only in stable air); the explicit update is `dyn_em/module_pbl3d.F:525–603`. The 2026-09-09 ~19:00 pre-registration read the option as a change of *form* only; its change of *magnitude* was not checked against the explicit-diffusion limit before submission.
 
 **Rule.** Before running any switch that lengthens the master scale or thins the lowest layers, estimate K Δt/Δz² = S_M l q Δt/Δz² at the worst crest of an archived noon frame (`exp/x14_diag/x14smoke_crash_cell.py` prints it); above ~0.3 expect the crash class of A24/A25 within the first hot hour. A new length-scale option must state its α and its buoyancy cap next to the production values in the DECISIONS entry. The 1 h daytime smoke is the right gate for a first-ever option (it caught this one in 14 min); a level or Δt change still needs E44's restart gate at the twin's hottest hour.
+
+## E46 — `SFCLAYREV produced NaN` is a SHARED fingerprint of a latent instability, not a property of one experiment: two unrelated default-off switches trigger it (2026-09-10)
+
+**Occurrences.** (1) Refined near-surface levels (e_vert 89): died 2026-09-09
+at simulated 16:49:54, rank 85, i,j = 165,73 — a 2452 m crest with ~10 m
+layers, 8–9 m/s wind, a ×500 roughness step. (2) `pbl3d_l_opt=2` (MYNN-blend
+length scale, unchanged levels): died 2026-09-10 at simulated 13:13:52, ranks
+144/145, i,j = 150,118 and 152,115, **wspd 31.5 m/s** and ust 1.38.
+
+**Common signature.** `hfx = NaN` while `ust`, `chs` are finite and
+`br = zol = 0.0` exactly — the bulk Richardson number clipped to zero by
+`amin1(br,0)` after a NaN comparison (gfortran MIN/MAX return the non-NaN
+argument), i.e. the NaN arrives from upstream. In case (2) the 31.5 m/s wind
+shows the resolved flow blew up locally *before* the surface layer complained.
+
+**Reading.** Any change that increases near-surface mixing or steepens the
+near-surface gradients pushes particular terrain cells (steep, high, at a
+roughness discontinuity) over a stability edge the production configuration
+sits just inside. The surface-layer NaN detector is the messenger.
+
+**What to do.** Diagnose once, for both: the X13r reproduction (bit-for-bit,
+1-minute stream around the crash, `exp/x13_diag/`) names the first field to go
+NaN; that answer applies to both runs. Do not "fix" it by widening the NaN
+guard (U2's lesson: a guard turns a loud crash into a silent NaN). Candidate
+remedies to be judged from the frames, both default-off: `Δt = 1.5 s` (+33 %
+cost) or `w_damping = 1`.
+
+**Silver lining.** Both crashes were caught by the 1 h daytime smoke gate:
+45 min of wall time each instead of the 85–95 node-hours of a full chain.
+
+**AMENDED 2026-09-10 ~09:30 (DECISIONS ~09:30).** The shared fingerprint is the
+MESSENGER, not the mechanism. Measured: the refined-level run fails on the
+vertical **advection** Courant number (thin layers: max 1.78, 13 768 cells
+> 0.8, vs parent 1.16 / 302); the `pbl3d_l_opt=2` run fails on the vertical
+**diffusion** number (doubled master length scale: max 1.2, 87 151 cells above
+the 0.5 explicit limit, vs 0.3 / 0 for `l_opt=1`). `SFCLAYREV` is simply the
+first routine that inspects a field after the dynamics. Remedies therefore
+differ: `w_damping = 1` (or Δt 1.5 s) for the level refinement; a
+diffusion-number cap on l (or implicit vertical mixing) for the length scale.
+Do NOT expect one fix to serve both.
