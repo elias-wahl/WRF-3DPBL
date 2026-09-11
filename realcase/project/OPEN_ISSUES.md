@@ -1,5 +1,11 @@
 # Open issues / questions — 3D PBL rebase (WRF v4.4 -> v4.8.0)
 
+## A27 — The calm valley's own cooling deficit and the spurious deep-night drainage (2026-09-11, open; from the X16b cold start)
+
+**Measured (X16b, 17 → 18 July, clear sky, calm floor).** Cooling 21 → 01 UT 38 % (0–100 m) and 42 % (100–300 m) short of HATPRO; longwave up 356–358 vs 362–365 W m⁻² observed (skin ≈1.5 K too cold) with 2 m air +0.5…+1.1 K and 0–100 m +1.5…+2.2 K too warm — the surface cools, the air does not follow: the wall-layer collapse of the sonic referee, isolated from the wind error. From 01:30 UT a 2.5–3.4 m s⁻¹ down-valley jet at 50–300 m (tower 0.3–0.5, lidar 0.3 at 00 UT) under a valley-scale force of −6…−14·10⁻⁴ m s⁻²; floor bias +2.3 → +3.1 K by 03:30. DECISIONS 2026-09-11 ~06:30.
+
+**To do.** (1) X16b + `pbl3d_sfc_qsq_bc=1` (same wrfinput, one namelist key) — judge on the 21 → 01 UT cooling and the skin–air difference (obs LW up, T2, HATPRO 0–100 m); the X15 verdict (warmer pool) was made on a windy floor and does not transfer. (2) Downstream pressure and wind (Jenbach, Strass, Kundl) to test the model's nocturnal along-valley gradient. (3) Whether the drainage is the model's cold pool failing to decouple (too warm, too shallow) rather than the gradient being wrong: compare the pool depth/strength at 01 UT with the sounding/HATPRO before changing anything.
+
 ## A26 — Spurious mid-level stratus from the native ICON forcing over the Kolsass reach, 17 July 19:30–23:00 UT (2026-09-10, open)
 
 **Measured.** Kolsass radiometer LW down 304–322 W m⁻² (clear) all evening; X12m/X12p/X15 GLW +44…+64 W m⁻² above it at 19:30–20:00 and 21:30–23:00 with a 0.1–0.3 g kg⁻¹ cloud deck at 1.9–2.5 km AGL over 25–60 % of the Hall–Jenbach floor; X10/EVE1/EVE1M cloud-free (within +7). Net surface longwave loss 21 vs 58 W m⁻² observed at 22 UT. Source: RH 89–98 % at 2.5–3 km ASL in the native met_em (ladder 79–89 %). DECISIONS 2026-09-10 ~14:00.
