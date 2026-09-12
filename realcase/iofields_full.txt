@@ -1,0 +1,3 @@
+# Full output streams (Elias 2026-09-12: no thinning until production). Only the additions of iofields_d1d2.txt; no blank lines.
++:h:0:L_MASTER,L0_ASYM,PBL3D_T1_RATIO,PBL3D_SK_EPS,PBL3D_P_EPS
++:h:0:KE_LOSS_H,QSQ_SHEAR_H
