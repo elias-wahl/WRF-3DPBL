@@ -1,0 +1,95 @@
+% =============================================================================
+%  Part 0 -- Quicklook: what each scheme does (one landscape page)
+% =============================================================================
+\landscapeopen
+\section*{Part 0 --- Quicklook: what each scheme does}
+\vspace{-1ex}
+{\scriptsize\noindent One line per scheme. Colours mark the versions run in this project (see the Legend);
+the glyph matrix of Part~I says which assumption each scheme drops.\par}
+\vspace{0.4ex}
+\renewcommand{\arraystretch}{1.05}
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\begin{tabularx}{\linewidth}{@{}L{2.0cm} Y Y Y Y Y Y >{\raggedright\arraybackslash}p{5.0cm} L{2.6cm}@{}}
+\toprule
+\textbf{Scheme} & \textbf{Family, order} & \textbf{Prognostic} & \textbf{What is three-dimensional} &
+\textbf{Length scale(s)} & \textbf{Grid awareness} & \textbf{Nonlocal transport} &
+\textbf{Signature equation} & \textbf{Lives in} \\
+\midrule
+\textbf{MYNN 2.5 (NN09), baseline} & Mellor--Yamada level 2.5; 1.5-order TKE; one column &
+$\qsq = 2\,\mathrm{TKE}$ & nothing: vertical shear, vertical flux divergence, vertical transport &
+$1/L = 1/L_S + 1/L_T + 1/L_B$ (surface layer, turbulent layer, buoyancy) &
+none & none (level 3 would add $\Gamma_\theta$) &
+$\avg{uw} = -L q S_M\,\pd{U}{z}$, \quad $\varepsilon = q^3/(B_1 L)$ &
+Nakanishi \& Niino (2009); WRF \texttt{bl\_pbl\_physics=5}, original form \\
+\midrule
+\cellcolor{tMYNN}\textcolor{cMYNN}{\textbf{MYNN as run}} & NN09 at level 2.6 with an eddy-diffusivity/mass-flux plume model &
+$\qsq$, moisture variance & nothing ($\qsq$ advection off) &
+NN09 blend, $L_T \in [8, 400]$~m, BouLac blend above the PBL, LES-limit taper &
+weak: $\Psi_{bl}(2.5\dx/z_i)$ on $L$ and plume size $\le 1.2\dx$; inert at 500~m &
+mass-flux plumes (heat, moisture, momentum) &
+K-form as NN09, but no critical Ri: $A_2 \to A_2/(1 + \Ri)$ &
+WRF 4.8 defaults; the control run \\
+\textbf{YSU} & first-order K-profile, nonlocal & none & nothing &
+$K_m = \kappa w_s z(1 - z/h)^2$, $h$ from a bulk Richardson number &
+none & countergradient $\gamma_\theta = b\,\avg{w\theta}_0/w_s$; entrainment flux $\propto (z/h)^3$ &
+$\avg{w\theta} = -K_h(\pd{\Theta}{z} - \gamma_\theta/h) + \avg{w\theta}_h (z/h)^3$ &
+Hong et al.\ (2006); WRF \texttt{bl\_pbl\_physics=1} \\
+\textbf{Shin--Hong 2015} & first-order K-profile, scale-aware & none & nothing &
+YSU profile; $h$ from a bulk Richardson number &
+$P_{NL}, P_L(\Delta/z_i)$ scale the nonlocal flux and $K$; both vanish in the LES limit &
+prescribed nonlocal heat-flux profile, weighted by $P_{NL}$ &
+$\avg{w\theta} = -K_h P_L\,\pd{\Theta}{z} + P_{NL}\, m_f(z)$ &
+Shin \& Hong (2015); WRF \texttt{bl\_pbl\_physics=11} \\
+\textbf{BouLac} & 1.5-order TKE, parcel length scale & $e$ (not advected) & nothing &
+$l_{up}, l_{down}$: parcel displacement against the stratification; $l_k = \min$, $l_\varepsilon = \sqrt{l_{up} l_{down}}$ &
+none & Troen--Mahrt countergradient $\gamma = 10\,\avg{w\theta}_0/(w_* h)$ &
+$K = 0.4\, l_k \sqrt{e}$, \quad $\varepsilon = e^{3/2}/(1.4\, l_\varepsilon)$ &
+Bougeault \& Lacarr\`ere (1989); WRF \texttt{bl\_pbl\_physics=8} \\
+\midrule
+\cellcolor{tGXVIII}\textcolor{cGXVIII}{\textbf{G18 port}} & MYNN plus a horizontal shear-production source &
+$\qsq$ (advected at 500~m) & production from the four horizontal gradients of the horizontal wind; TKE advection &
+vertical: NN09; horizontal: $0.2\,\dx$ &
+none ($\dx$ is a length, not a partition) & as MYNN &
+$P_{HSP} = (0.2\dx)^2\big[(\pd{U}{x})^2 + (\pd{V}{y})^2 + \tfrac12(\pd{U}{y} + \pd{V}{x})^2\big]^{3/2}$ &
+\texttt{goger18WRF}; COSMO original Goger et al.\ (2018) \\
+\cellcolor{tGXIX}\textcolor{cGXIX}{\textbf{G19 port}} & as G18 with a flow-dependent horizontal length &
+$\qsq$ & as G18 &
+$l_h^2 = U^2\, T_{L,u} T_{L,v}$, $T_L = 0.15\, z_i/\sigma_{u,v}$ &
+none & as MYNN &
+$P_{HSP} = U^2 T_{L,u} T_{L,v}\,[\ldots]^{3/2}$ &
+\texttt{goger19WRF}; COSMO original Goger et al.\ (2019) \\
+\textbf{Ito et al.\ 2015} & MYNN level 3 as a 3D subgrid closure, scale-aware lengths &
+$\qsq$, $\avg{\theta^2}$ & K-form fluxes for all components; 3D TKE transport &
+NN09 $L$ times $F(\Delta/h)$; horizontal $L_x = 0.1\, h\, F$ &
+$F = P_{TKE}^{3/2}(\Delta/h)$ on every length scale & level-3 $\Gamma_\theta$ &
+$\tau_{ij} = -L q S_M\, \pd{U_i}{x_j}$ with $L \to F L$ &
+Ito et al.\ (2015), their LES code; not in WRF \\
+\cellcolor{tAPPROX}\textcolor{cAPPROX}{\textbf{3D-APPROX}} & Mellor--Yamada level 2.5; PBL approximation in the algebra; 3D divergences &
+$\qsq$ & divergences of all six stresses and the scalar fluxes; TKE advection &
+Blackadar $l = \kappa z\, l_0/(\kappa z + l_0)$, $l_0 = 0.1\int \tilde q z / \int \tilde q$; $l \le 0.53\, q/N$ &
+Honnert taper on $l$, inert at 500~m & none &
+$\avg{uw} = -l q S_M\,\pd{U}{z}$; \ $\avg{uv} = \tfrac{3A_1 l}{q}\big(-\avg{uw}\pd{V}{z} - \avg{vw}\pd{U}{z}\big)$ &
+WRF fork \texttt{pbl3d\_opt=$\pm$1}; Juliano et al.\ (2022) \\
+\cellcolor{tFULL}\textcolor{cFULL}{\textbf{3D-FULL}} & Mellor--Yamada level 2.5; the algebraic stress tensor solved &
+$\qsq$ & everything: nine production terms, 3D divergences, 3D TKE transport &
+as 3D-APPROX, plus the strain cap $l \le 12\, q/(B_1 |S|)$ &
+as 3D-APPROX & none &
+$\mathsf{A}\mathbf{x} = \mathbf{b}$: six stresses, three heat fluxes, $\avg{\theta_v^2}$ ($10\times10$) &
+WRF fork \texttt{pbl3d\_opt=2}; Kosovi\'c et al.\ (2020) \\
+\textbf{SMS-3DTKE} & 1.5-order 3D TKE blending the LES and mesoscale limits & $e$ &
+all nine deformation components; 3D divergence; 3D transport &
+$l_h = \sqrt{\dx\Delta y}$; $l_v$ blends $\min(\Delta z, 0.76\sqrt{e}/N)$ and a mesoscale $l_M$ with weight $P_u$ &
+partition functions $P(\Delta_h/z_i)$ weight the two limits &
+nonlocal heat flux ($P_{nl}$); countergradient momentum ($P_u$) &
+$K_{mv} = (1 - P_u)\, c_k \sqrt{e}\, l_{LES} + P_u\, 0.4\sqrt{e}\, l_{M}$ &
+Zhang et al.\ (2018); WRF \texttt{km\_opt=5} \\
+\textbf{LES limit} & 1.5-order TKE subgrid model (Deardorff) & $e$ & all &
+$l = \min(\Delta,\, 0.76\sqrt{e}/N)$ & the grid is the length scale & none &
+$K = 0.15\sqrt{e}\, l$, \quad $\varepsilon = C_\varepsilon\, e^{3/2}/l$ &
+Deardorff (1980); WRF \texttt{km\_opt=2} \\
+\bottomrule
+\end{tabularx}
+\landscapeclose

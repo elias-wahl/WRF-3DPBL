@@ -1,0 +1,127 @@
+% =============================================================================
+%  Section I.3 -- The PhD concept read against the table (added 2026-09-12)
+%  Which rows the concept names, whether they are the right ones, what is missing.
+%  Keep free of code and namelist keys (Part I rule); code facts are in Part II.
+% =============================================================================
+\clearpage
+\subsection*{I.3 --- The PhD concept read against the table}
+
+The concept draft (review render of 2026-09-07; RQ~I compares \schemeM, \schemeG, \schemeA{} and
+\schemeF{} at $\dx = 500$~m by regime, RQ~II builds a large-eddy simulation as reference for the UAS
+turbulence) names its assumptions in four places: the anatomy of the 1.5-order closure in the state
+of research (four components, each ``hiding one flat-terrain assumption''), the three-ingredient
+checklist of Juliano et al.\ (horizontal gradients in the flux relations, an adequate length scale,
+the full 3D divergences), the columns of its scheme table, and the regimes and decision metrics of
+RQ~I. Table~I.3 maps each of these onto the rows of this note. Rows marked \kfull{} are the ones
+a research question, a regime or a decision metric of the concept turns on; rows marked \khalf{}
+are the ones the project's own findings or its methods depend on. The same marks stand beside the
+row ids in every table of this note. Verdicts: ``sound'' = the right assumption, tested the right
+way; ``sharpen'' = named, but the statement is incomplete or does not match the runs; ``missing'' =
+not named.
+
+\begin{center}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.12}
+\begin{xltabular}{\linewidth}{@{}>{\raggedright\arraybackslash}p{3.3cm}
+  >{\raggedright\arraybackslash}p{1.4cm}
+  >{\raggedright\arraybackslash}X
+  >{\raggedright\arraybackslash}p{1.6cm}@{}}
+\toprule
+\textbf{Where in the concept} & \textbf{Row(s)} & \textbf{What the concept says --- and what the table adds} & \textbf{Verdict} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Where in the concept} (continued) & \textbf{Row(s)} & & \textbf{Verdict} \\
+\midrule
+\endhead
+\bottomrule
+\endlastfoot
+\multicolumn{4}{@{}l}{\textit{State of research --- the anatomy of the 1.5-order closure and the Juliano checklist}} \\
+\addlinespace[2pt]
+Component (i): the truncated TKE budget hides homogeneity --- two of nine production terms, vertical-only transport &
+\rid{B1}, \rid{B2}, \rid{B4} &
+The nine-term matrix is the right organising object: it is the assumption whose removal is the full closure's reason to exist and the one the four-point UAS transect and the RHI scans can reach. The concept's matrix figure assigns the $W$-gradient row to the full closure alone --- correct (B2). The transport half of component (i) has no column in the scheme table, although the control runs with TKE advection off, the Goger port with it on and the 3D closures with advection plus their own horizontal diffusion (B4): one column, or the evening and stable regimes confound transport with production. &
+sound (B1, B2); sharpen (B4) \\
+\addlinespace[3pt]
+Component (ii): a scalar eddy viscosity hides isotropy &
+\rid{C2}, \rid{C3} &
+Named, and given the one direct test the observations allow --- $K_M$ from observed first and second moments against the modelled one (C3). What the concept does not say: \schemeA{} keeps the alignment for the vertical fluxes and diagnoses the rest as products of them, so the M$\to$A step does not test C3 at all; only A$\to$F does. Note~1 of Part~II. &
+sound; sharpen (which step tests it) \\
+\addlinespace[3pt]
+Component (iii): the master length scale --- ``the one place terrain could enter and does not''; the ``last 1D relic'' of the 3D closure &
+\rid{C4}, \rid{C5} &
+The right frontier: no scheme in the comparison drops C4, and at 750~m in a stable cold pool the scale, not the horizontal flux, was the lever \parencite{arthur2022}. Two things to add. First, ``$l_0$ too small'' is Juliano's convective statement; at night the fork's $l$ is bounded by a buoyancy limit and a strain cap that the published scheme does not have (both fork additions, \fork{} in Table~I.2b) --- the paper must describe the scale as run. Second, the concept's ``length scale or constants'' need not stay a hypothesis: in the level-2 balance that \schemeM{} and \schemeA{} share, $\qsq_{\mathrm{eq}} = B_1 S_M (1 - \Rf)\, l^2\, [(\pd{U}{z})^2 + (\pd{V}{z})^2]$, so at equal shear the ratio of two schemes' equilibrium $\qsq$ factorises into a constants factor ($B_1$: $16.6/24 = 0.69$), a stability-function factor and the squared length ratio --- all stored fields, a per-$\Ri$-bin measurement. &
+sound; sharpen (bound at night; factorised attribution) \\
+\addlinespace[3pt]
+Component (iv): the stability functions hide local equilibrium &
+\rid{C7}, \rid{C6} &
+Named as equilibrium (C7) but not as a cutoff (C6). Both matter, in different regimes. C7 is what the evening transition tests --- the relaxation time $l/q$ (minutes) against the transition (an hour) --- and the concept lists the transition and the limiter footprint without connecting them; the strain cap is the full closure's admission that C7 fails under fast strain, so its footprint by regime is C7's measurement. C6 is Note~2 of Part~II: \schemeA{} switches off at $\Rfc = 0.191$, the control as run and \schemeF{} never do; with 69\,\% of the nocturnal valley cells above $\Ri = 0.3$, the approximate variant's night is a cutoff experiment before it is a closure experiment. Not in the concept. &
+sharpen (C7); missing (C6) \\
+\addlinespace[3pt]
+The horizontal treatment ``substitutes fake physics'': Smagorinsky where the flux divergences belong; Ching's spurious cells &
+\rid{B5}, \rid{B3} &
+Sound, and the design decision that follows from it is right: the control keeps Smagorinsky so that the ladder measures the closure, and the horizontal flux divergence of each closure is to be held against the resolved advection in the WRFlux budget, binned by $\Ri$ --- the test Xu et al.\ (2026) could not run. &
+sound \\
+\addlinespace[3pt]
+The grey zone: subgrid share a function of $\dx/(z_i + h_c)$; effective resolution $6$--$8\dx$; the stable night is mesoscale again &
+\rid{A1} &
+Sound, and correctly turned into a rule (sum resolved and subgrid TKE; evaluate by regime). What the convective result has not yet shown: 85--91\,\% of the kinetic energy resolved at 43~m is the signature of grid-set convection as much as of turbulence --- coarse-grained LES expects about three quarters subgrid at $\dx/(z_i + h_c) \approx 0.6$ --- so the ``partition, not deficit'' reading stands only once a $w$-spectrum shows energy below $6$--$8\dx$. The concept lists that check in its analysis methods; it should tie the claim to it. &
+sound; sharpen (tie the claim to the check) \\
+\addlinespace[3pt]
+Juliano's triad: (1) horizontal gradients inside the flux relations, (2) an adequate length scale, (3) full 3D divergences; ``spatial vs ensemble averaging decides whether $l$ may depend on $\dx$'' &
+\rid{B1}, \rid{C4}, \rid{B3}; \rid{A2} &
+The checklist is exactly rows B1, C4 and B3, and the four-scheme audit against it is correct (\schemeA{}: 3 without 1). The averaging remark is row A2 and is the only place the concept touches it; it deserves one sentence more, because it is the reason the published scale is grid-free while the fork carries a grey-zone taper (a fork addition, inert at night, $\ge 0.92$ by day from the formula). &
+sound; sharpen (A2) \\
+\addlinespace[3pt]
+Bottom boundary of the algebraic system from the 3D surface-layer extension of MOST (Eghdami et al.\ 2022) &
+\rid{B6} &
+The methods bullet reads as if this surface layer is the bottom boundary. It is an unrun option; the runs use flat-surface similarity with a friction-velocity floor and, unlike every MYNN-family scheme, no wall value of $\qsq$ (an opt-in condition exists, tested once, neutral in a windy transition). B6 is also where the project's largest closure-independent discrepancy is measured: sonic $\qsq$ of 0.13--0.41~m$^2$\,s$^{-2}$ all night at seven i-Box sites while every model, the control included, goes laminar. B6 should be a hypothesis of regime~(iii), not a methods detail, and the nocturnal $\qsq$ should be judged against the sonics (observed $u_*$ of 0.07--0.16~m\,s$^{-1}$ implies a wall $\qsq$ of 0.03--0.17, between the two closures), not against the control. &
+sharpen \\
+\addlinespace[4pt]
+\multicolumn{4}{@{}l}{\textit{Research question I and the scheme table}} \\
+\addlinespace[2pt]
+Regime (i) convective, judged on subgrid plus resolved TKE; (ii) evening transition, shear the only source; (iii) stable night binned by $\Ri$ &
+\rid{A1}; \rid{C7}; \rid{C6} &
+The regime split is the right one, and classifying by stratification and flow rather than by the sign of the surface heat flux is correct in a valley (B6: the surface layer is stable 4.7\,\% of the time at Innsbruck under an often stable column, \citeauthor{ward2022}). Each regime is a test of one row; the concept should say which (above). &
+sound \\
+\addlinespace[3pt]
+Scheme table: columns ``horizontal shear production'', ``horizontal flux divergence'', ``length scale(s)'' &
+\rid{B1}, \rid{B3}, \rid{C4} &
+Three of the nineteen rows. The columns that would make the table honest about the ladder are missing: a stability cutoff (C6: yes / no / yes / no), nonlocal transport (C1: mass-flux plumes in the control, none elsewhere), TKE transport (B4), the constant set (C9: NN09 / NN09 / MY82 / MY82), and an ``as run'' line for the 3D closures (six departures from the publication: one master scale, strain cap, buoyancy limit, excess-weighted $l_0$, slope-factor pairing, friction-velocity floor). The methods say the switches ``all default to the reference behaviour''; true of the code, false of the production namelist. &
+sharpen \\
+\addlinespace[3pt]
+The control: ``MYNN with mass flux for heat and moisture but not momentum, TKE advection on'' &
+\rid{C1}, \rid{B4} &
+Measured from the control run's namelist: no MYNN option is set, so the model's defaults apply --- level 2.6, mass-flux transport of heat, moisture \emph{and momentum}, TKE advection \emph{off}. Part~0 of this note has the run right; the concept's methods do not. Beyond the text: the plume is a nonlocal transport none of the other three schemes has, so in the convective regime M$\to$F changes the transport model and the dimensionality at once. A second control --- mass flux off, advection on, level 2.5 --- is one run and turns M$\to$A into a one-assumption step. &
+sharpen (text); missing (second control) \\
+\addlinespace[3pt]
+Decision metric: budget terms at the Radfeld station --- shear (horizontal/vertical), buoyancy, transport, dissipation &
+\rid{C10}, \rid{B4} &
+Transport is the one term in which the pressure correlations hide (C10, kept by every scheme; Goger's ``dangerous assumption''). The budget station's residual is the only observation of it in the campaign; the concept should say that this metric tests C10 and nothing else can. &
+missing \\
+\addlinespace[3pt]
+Preliminary findings: one master length scale fixed the runaway; the strain cap is load-bearing; the slope-factor pairing &
+\rid{C5}, \rid{C7}, \rid{B7} &
+These are the project's own evidence for C5 (\ev{run}) and C7. Row B7 --- the coordinate assumption that goes live for every 3D scheme --- appears in the concept only as the pairing fix; it should also carry the measured pool-warming term of the sixth-order filter along model surfaces (shared by the control), since that is the one B7 effect that reaches the mean state the observations see. &
+sound (C5, C7); sharpen (B7) \\
+\addlinespace[3pt]
+Not named anywhere: buoyancy beyond the vertical heat flux; the closure constants as a comparison variable; the pressure terms &
+\rid{C8}, \rid{C9}, \rid{C10} &
+C8 is the concept's own parking item (open item~9): the full closure carries three heat-flux components and buoyancy in every stress row, the slope-normal surface heat flux has a horizontal component, and stable-air anisotropy is buoyancy acting selectively on $\avg{w^2}$ --- one bullet in the 3D-closure subsection. C9: three constant sets in one comparison; the $B_1$ factor of 1.45 in the dissipation at equal $q$ and $l$ is larger than several effects the paper will report. C10: above. &
+missing \\
+\end{xltabular}
+\end{center}
+
+\paragraph{Verdict.}
+The assumption set behind RQ~I is the right one. The four rows that decide its questions --- B1
+(with B2), B3, C4 and C3 --- are the concept's organising objects, and the tests it names for them
+(the nine-term partition, the flux divergence against the resolved advection, the length scale
+per scheme and regime, $K_M$ from observed moments) are the tests this note would choose. What the
+concept describes, however, are the published schemes: the schemes that will run carry six
+departures from the publication, a control whose transport model differs from the one written
+down, and a stability cutoff that separates the approximate variant from both its neighbours at
+night without being mentioned. Of the five rows no scheme drops (the shaded ones), the concept
+can test two --- B6 with the sonics and C10 with the budget residual --- and should say so; C7 is
+tested by the transition, C9 is not testable in this design, and A2 needs one sentence. Correcting
+the text is an afternoon; the second control is one run.

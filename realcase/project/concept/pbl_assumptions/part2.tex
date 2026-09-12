@@ -1,0 +1,384 @@
+% =============================================================================
+%  Part II -- Lookup: equations, constants, sources, code lines
+% =============================================================================
+\landscapeopen
+\section*{Part II --- Lookup}
+{\small Sources are given per cell: paper equation or page numbers, or \texttt{file:line} in the
+local WRF trees. Abbreviations: MB = \texttt{branko/phys/}\allowbreak\texttt{module\_bl\_mynnedmf.F} (WRF~4.8 MYNN);
+YS = \texttt{branko/phys/}\allowbreak\texttt{physics\_mmm/}\allowbreak\texttt{bl\_ysu.F90}; SH = \texttt{branko/phys/}\allowbreak\texttt{physics\_mmm/}\allowbreak\texttt{bl\_shinhong.F90};
+BL = \texttt{branko/phys/}\allowbreak\texttt{module\_bl\_boulac.F}; G18 = \texttt{goger18WRF/phys/}\allowbreak\texttt{module\_bl\_mynn.F},
+G19 = \texttt{goger19WRF/phys/}\allowbreak\texttt{module\_bl\_mynn.F} (working tree), G19w = its wrapper
+\texttt{module\_bl\_mynn\_}\allowbreak\texttt{wrapper.F}; M3D = \texttt{branko/dyn\_em/}\allowbreak\texttt{module\_pbl3d.F},
+MY = \texttt{branko/dyn\_em/}\allowbreak\texttt{module\_pbl3d\_my.F}; DE = \texttt{branko/dyn\_em/}\allowbreak\texttt{module\_diffusion\_em.F};
+J22 = \textcite{juliano2022}, K20 = \textcite{kosovic2020}, Z18 = \textcite{zhang2018},
+I15 = \textcite{ito2015}, G18p/G19p = \textcite{goger2018,goger2019}. Grey italics: the new
+assumption or cost a scheme takes on. \fork\ port or fork differs from the publication;
+\open\ open item.\par}
+
+% ---------------------------------------------------------------------------
+%  Table II.1  NN09 in detail
+% ---------------------------------------------------------------------------
+\subsection*{Table II.1 --- The original MYNN 2.5 (Nakanishi \& Niino 2009) in detail}
+{\small The forms below are those of \textcite{nakanishi2009} (NN09) with the constants of their
+Table; they are transcribed from the WRF implementation where the two coincide (MB, references
+given), with WRF's later modifications excluded --- those are the MYNN-as-run column of
+Table~II.2a. NN09 equation numbers were not checked against the paper and are therefore not quoted.\par}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.12}
+\begin{xltabular}{\linewidth}{@{}>{\raggedright\arraybackslash}p{3.2cm} >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Row} & \textbf{Where and how NN09 uses the assumption} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Row} (continued) & \textbf{Where and how NN09 uses the assumption} \\
+\midrule
+\endhead
+\bottomrule
+\endlastfoot
+\rid{A1} all eddies subgrid & Budget of $\qsq$ (the prognostic variable, $\qsq = 2\,\mathrm{TKE}$):
+$\dfrac{D}{Dt}\dfrac{\qsq}{2} - \dfrac{\partial}{\partial z}\Big(L q S_q\,\dfrac{\partial}{\partial z}\dfrac{\qsq}{2}\Big) = P_s + P_b - \varepsilon$.
+No $\Delta$ in $L$, $S_M$, $S_H$, $S_q$ or $\varepsilon$; the resolved flow supplies only its mean gradients. \\
+\rid{A2} ensemble mean & Reynolds averaging; the eight closure constants were fitted to large-eddy simulations of flat convective and stable boundary layers (ensemble statistics). \\
+\rid{B1} no horizontal shear production & $P_s = -\avg{uw}\,\pd{U}{z} - \avg{vw}\,\pd{V}{z} = L q S_M\,[(\pd{U}{z})^2 + (\pd{V}{z})^2]$; the stability functions depend on $G_M = \dfrac{L^2}{q^2}\Big[\big(\pd{U}{z}\big)^2 + \big(\pd{V}{z}\big)^2\Big]$ and $G_H = -\dfrac{L^2}{q^2}\,\beta g\,\pd{\Theta_v}{z}$ only \src{MB:1414--1428 for the discrete forms}. \\
+\rid{B2} no $W$ gradients & $W$ does not appear: the only stresses formed are $\avg{uw}$, $\avg{vw}$, the only heat flux $\avg{w\theta}$. \\
+\rid{B3} no horizontal flux divergence & $\pd{U}{t} = \pd{}{z}\big(K_M\,\pd{U}{z}\big)$, $\pd{\Theta}{t} = \pd{}{z}\big(K_H\,\pd{\Theta}{z}\big)$ with $K_M = L q S_M$, $K_H = L q S_H$, solved implicitly per column \src{MB:2840--2865, 3105--3175}. \\
+\rid{B4} TKE column-local & Transport term $\pd{}{z}\big(L q S_q\,\pd{}{z}\tfrac{\qsq}{2}\big)$ with $S_q = 3 S_M$; no advection term is carried in the scheme. \\
+\rid{B5} mixing separable & Not a statement of NN09 itself but of its use in WRF: the scheme mixes vertically, \texttt{diff\_opt=2}, \texttt{km\_opt=4} mixes horizontally with $K_h = (c_s\Delta_h)^2 |D_h|$, $c_s = 0.25$, $|D_h|^2 = \tfrac14(D_{11} - D_{22})^2 + \overline{D_{12}}^{\,2}$ \src{DE:1973--2039}; the two never exchange energy. \\
+\rid{B6} flat MOST surface & Surface fluxes from the surface-layer scheme via Monin--Obukhov functions; production at the lowest level $P_{ke}(1) = 2 u_*^3 \phi_m/(\kappa\,\tfrac12\Delta z_1)$ \src{MB:3085}, i.e.\ the neutral wall balance $u_*^3/(\kappa z) = q^3/(B_1 \kappa z)$, giving $\qsq = B_1^{2/3} u_*^2$ at the wall. \\
+\rid{B7} model surfaces horizontal & Not needed: the scheme contains no horizontal derivative. \\
+\rid{C1} local down-gradient & Level 2.5: $\avg{uw} = -L q S_M\,\pd{U}{z}$, $\avg{w\theta_l} = -L q S_H\,\pd{\Theta_l}{z}$, $\avg{w q_w} = -L q S_H\,\pd{Q_w}{z}$. Level 3 (not used here) adds $-L q\,\Gamma_\theta$ from the prognostic variances. \\
+\rid{C2} one $K$ & One $K_M$ for both momentum components, one $K_H$ for all scalars; no horizontal coefficient. \\
+\rid{C3} flux anti-parallel & Implied by the K-form. \\
+\rid{C4} eddy size from the vertical structure & $\dfrac{1}{L} = \dfrac{1}{L_S} + \dfrac{1}{L_T} + \dfrac{1}{L_B}$ with, for $\zeta = z/L_{\mathrm{MO}}$:
+$L_S = \kappa z/(1 + 2.7\zeta)$ for $0 \le \zeta < 1$, $\kappa z/3.7$ for $\zeta \ge 1$, $\kappa z (1 - 100\zeta)^{0.2}$ for $\zeta < 0$;
+$L_T = 0.23 \displaystyle\int_0^\infty q z\,dz \Big/ \int_0^\infty q\,dz$;
+$L_B = q/N$ for $\pd{\Theta_v}{z} > 0$, $\zeta \ge 0$; $L_B = [1 + 5\,(q_c/L_T N)^{1/2}]\,q/N$ for $\pd{\Theta_v}{z} > 0$, $\zeta < 0$ with $q_c = (\beta g\,\avg{w\theta_v}_0\, L_T)^{1/3}$; $L_B = \infty$ for $\pd{\Theta_v}{z} \le 0$ \src{MB:1651--1728, option 0}. Ingredients: distance to the ground, the $q$-weighted depth of the turbulent layer, the buoyancy scale. \\
+\rid{C5} one scale for $K$ and $\varepsilon$ & $\varepsilon = q^3/(B_1 L)$ with the same $L$ \src{MB:3106--3107}. \\
+\rid{C6} vertical Ri; cutoff & Level 2 (Yamada 1975 form): with $\gamma_1 = \tfrac13 - 2A_1/B_1 = 0.235$, $\gamma_2 = \tfrac{B_2}{B_1}(1 - C_3) + \tfrac{2A_1}{B_1}(3 - 2C_2) = 0.553$ (computed from the NN09 constants):
+$\Rfc = \gamma_1/(\gamma_1 + \gamma_2) = 0.298$, \ $S_{H} = 3A_2(\gamma_1 + \gamma_2)\,\dfrac{\Rfc - \Rf}{1 - \Rf}$, \ $S_M = \dfrac{A_1 F_1}{A_2 F_2}\,\dfrac{R_{f1} - \Rf}{R_{f2} - \Rf}\,S_H$,
+$\Rf$ from $\Ri$ through the equilibrium quadratic \src{MB:1349--1551, with $a_2$-factor $= 1$}. Both functions vanish at $\Rf = \Rfc$: no turbulence beyond it.
+Level 2.5: $S_M = \alpha_c A_1\dfrac{E_3 - 3C_1 E_4}{E_2 E_4 + E_5 E_3}$, $S_H = \alpha_c A_2\dfrac{E_2 + 3C_1 E_5}{E_2 E_4 + E_5 E_3}$ with
+$E_1 = 1 - 3\alpha_c^2 A_2 B_2 (1 - C_3) G_H$, $E_2 = 1 - 9\alpha_c^2 A_1 A_2 (1 - C_2) G_H$, $E_3 = E_1 + 9\alpha_c^2 A_2^2 (1 - C_2)(1 - C_5) G_H$, $E_4 = E_1 - 12\alpha_c^2 A_1 A_2 (1 - C_2) G_H$, $E_5 = 6\alpha_c^2 A_1^2 G_M$ \src{MB:2623--2636}. \\
+\rid{C7} local equilibrium & $\alpha_c = q/q_{eq}$ where $q < q_{eq}$ (level-2 equilibrium $q_{eq}^2 = B_1 L^2 (S_M G_M + S_H G_H)$), else 1 \parencite{helfand1988} \src{MB:2581--2600}; all moments but $\qsq$ algebraic. \\
+\rid{C8} buoyancy via $\avg{w\theta_v}$ & $P_b = \beta g\,\avg{w\theta_v} = -L q S_H\,\beta g\,\pd{\Theta_v}{z}$ (with the moist $\Theta_v$ gradient built from $\Theta_l$ and $Q_w$). \\
+\rid{C9} universal constants & $A_1 = 1.18$, $A_2 = 0.665$, $B_1 = 24.0$, $B_2 = 15.0$, $C_1 = 0.137$, $C_2 = 0.75$, $C_3 = 0.352$, $C_5 = 0.2$ ($C_4 = 0$); $\Pr = A_1(\gamma_1 - C_1)/(A_2\gamma_1) = 0.74$. \\
+\rid{C10} pressure terms & Pressure transport absorbed: $S_q = 3S_M$ in the $\qsq$ transport. Pressure--strain: Rotta return to isotropy with time scale $3A_1 L/q$ plus the isotropisation-of-production constant $C_1$; pressure--scalar terms with $A_2$, $C_2$, $C_3$, $C_5$ --- all inside $S_M$, $S_H$. \\
+\end{xltabular}
+\normalsize
+\landscapeclose
+
+% ---------------------------------------------------------------------------
+%  Table II.2a  1D family in detail
+% ---------------------------------------------------------------------------
+\landscapeopen
+\subsection*{Table II.2a --- The 1D family in detail}
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\renewcommand{\arraystretch}{1.08}
+\begin{xltabular}{\linewidth}{@{}>{\raggedright\arraybackslash}p{1.7cm}
+  >{\columncolor{tMYNN}\raggedright\arraybackslash}X
+  >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X@{}}
+\toprule
+ & \hd{mynnrun} & \hdn{YSU} & \hdn{Shin--Hong 2015} & \hdn{BouLac} \\
+\midrule
+\endfirsthead
+\toprule
+ & \hd{mynnrun} & \hdn{YSU} & \hdn{Shin--Hong 2015} & \hdn{BouLac} \\
+\midrule
+\endhead
+\bottomrule
+\endlastfoot
+\rowshade{A1}\rid{A1} &
+\C{A1}{mynnrun}{Taper $\Psi_{bl}(r) = \dfrac{r^2 + 0.106\,r^{0.667}}{r^2 + 0.066\,r^{0.667} + 0.071}$, $r = \max(2.5\dx, 10)/\min(z_i, 3000)$, applied as $l \leftarrow l\,\Psi_{bl} + (1 - \Psi_{bl})\min(l_{LES}, l)$, $l_{LES} = 0.25\,\overline{\Delta z}$ \src{MB:8287--8362, 2000--2004}; plume diameter $\le 1.2\dx$ and plume area $\propto l^2/\dx^2$ in the mass flux \src{MB:6570, 6614--6645}. \cost{Inert here: $\Psi_{bl} = 0.99$ at $\dx = 500$~m, $z_i = 1$~km; $\dx$ is the nominal grid length without map factor.} \lit{Against filtered LES MYNN parameterises as if the grid were 250~m at every spacing: at 500~m over 80\,\% of the heat flux is left to resolved motions and the subgrid share changes with the grid at 11\,\% of the reference rate \parencite{shin2016}.}} &
+\C{A1}{ysu}{No grid length anywhere in the scheme; the driver passes none \src{YS; module\_pbl\_driver.F:1240--1270}.} &
+\C{A1}{shh}{$P_{NL}(x) = 0.243\dfrac{x^2 + 0.936x^{7/8} - 1.110}{x^2 + 0.312x^{7/8} + 0.329} + 0.757$, $P_L(x) = 0.280\dfrac{x^2 + 0.870x^{1/2} - 0.913}{x^2 + 0.153x^{1/2} + 0.278} + 0.720$, clipped to $[0,1]$ \src{SH:2527, 2554}; nonlocal argument $x = \Delta/(c_{sf} z_i)$ with $c_{sf} = \tfrac12[\tanh(14 - 80|u_*/w_* - 0.5|) + 3] \in (1,2)$ \src{SH:895--902}, local argument $\Delta_{\mathrm{eff}}/z_i$ with $\Delta_{\mathrm{eff}} = \Delta\max(0.2 z_i/z, 1)$ \src{SH:1284--1286}; $\Delta = \dx$ \src{module\_physics\_init.F:5860--5891}. \cost{Both functions reach 0: the scheme switches itself off in the LES limit, there is no subgrid model behind it; free convection only (Shin \& Hong 2015).}} &
+\C{A1}{boulac}{No grid length in the scheme \src{BL; module\_pbl\_driver.F:1953--1970}.} \\
+\rowshade{A2}\rid{A2} &
+\C{A2}{mynnrun}{Ensemble closure.} & \C{A2}{ysu}{Ensemble closure.} &
+\C{A2}{shh}{Ensemble closure; the partition functions were fitted to coarse-grained LES of one convective case.} & \C{A2}{boulac}{Ensemble closure.} \\
+\rowshade{B1}\rid{B1} &
+\C{B1}{mynnrun}{$G_M$ from the vertical shear only \src{MB:1414--1427}.} &
+\C{B1}{ysu}{First order: no production term exists.} & \C{B1}{shh}{As YSU.} &
+\C{B1}{boulac}{$\mathrm{sh} = \bar K\,[(\Delta u/\Delta z)^2 + (\Delta v/\Delta z)^2]$ at the layer faces \src{BL:805--834}.} \\
+\rowshade{B2}\rid{B2} & \C{B2}{mynnrun}{$W$ absent.} & \C{B2}{ysu}{$W$ absent.} & \C{B2}{shh}{$W$ absent.} & \C{B2}{boulac}{$W$ absent.} \\
+\rowshade{B3}\rid{B3} &
+\C{B3}{mynnrun}{Vertical divergence only; the control run mixes horizontally with \texttt{diff\_opt=2}, \texttt{km\_opt=4} \src{namelist.input.mynn}.} &
+\C{B3}{ysu}{As MYNN: with \texttt{bl\_pbl\_physics}$>0$ WRF calls only the horizontal diffusion of \texttt{diff\_opt} \src{module\_em.F:1108, 1703}.} &
+\C{B3}{shh}{As YSU.} & \C{B3}{boulac}{As YSU; tendencies computed inside the scheme \src{BL:368--443}.} \\
+\rowshade{B4}\rid{B4} &
+\C{B4}{mynnrun}{\texttt{bl\_mynn\_tkeadvect} default \texttt{.false.} \src{Registry.EM\_COMMON:2620}: \texttt{qke\_adv} is advected as a WRF scalar but read back into the scheme only when the switch is on \src{MB:588--589, 1063--1064}; the control sets no \texttt{bl\_mynn\_*} key. No horizontal TKE diffusion in the scheme.} &
+\C{B4}{ysu}{No TKE (a diagnostic $q^2 = [16.6\,l(\text{shear} - \text{buoy})]^{0.66}$ exists only for the \texttt{topo\_wind} blend, \src{YS:1258--1278}).} &
+\C{B4}{shh}{No TKE in the fluxes; a diagnostic TKE is computed after the solve \src{SH:1661--1780}.} &
+\C{B4}{boulac}{"IN THIS VERSION TKE IS NOT ADVECTED" \src{BL:17--18}; \texttt{tke\_pbl} carries no advection flag \src{Registry.EM\_COMMON:1368}; vertical diffusion with the same $K$ as momentum \src{BL:542}.} \\
+\rowshade{B5}\rid{B5} &
+\C{B5}{mynnrun}{$K_v = l q S_M$; $K_h = (0.25\Delta_h)^2|D_h|$ from \texttt{km\_opt=4} \src{DE:1973--2039}; no energy exchange.} &
+\C{B5}{ysu}{As MYNN.} & \C{B5}{shh}{As MYNN.} & \C{B5}{boulac}{As MYNN.} \\
+\rowshade{B6}\rid{B6} &
+\C{B6}{mynnrun}{\texttt{sf\_sfclay\_physics=5} (MYNN surface layer) in the control; wall production $P_{ke}(1) = 2u_*^3\phi_m/(\kappa\,0.5\Delta z_1)$ \src{MB:3085}. \lit{In the Inn Valley at 1~km WRF-MYNN drives $u_*$ to $\approx 0$ at night against observed $\approx 0.1$~m\,s$^{-1}$ \parencite{simonet2023}.}} &
+\C{B6}{ysu}{MOST from \texttt{sf\_sfclay}; \texttt{topo\_wind=1} \parencite{jimenez2012}: $C_t = \tfrac12\ln(\mathrm{var\_sso})$ from the WPS subgrid-orography variance, tapered on ridges by $\nabla^2 h$ \src{start\_em.F:1660--1705}, multiplies the implicit surface-drag term inside YSU \src{YS:1307--1319}; switched off in convective, deep-PBL conditions through $v_{conv}$. \cost{Default \texttt{topo\_wind=0}; the one place standard WRF lets subgrid terrain into the momentum exchange.}} &
+\C{B6}{shh}{MOST from \texttt{sf\_sfclay}; surface flux as bottom boundary of the tridiagonal solve \src{SH:1248, 1523--1533}.} &
+\C{B6}{boulac}{MOST enters the mean equations only: $b_\theta(1) = \mathrm{HFX}/(\rho_1 c_p\Delta z_1)$, $a_u(1) = -u_*^2/(\Delta z_1|V_1|)$ \src{BL:394--397}. In the TKE equation the surface source lines $\mathrm{sh}(1) = u_*^3/(\kappa\,\Delta z_1/2)$ and $\mathrm{bu}(1) = -u_*\theta_* g/\theta_0$ are commented out \src{BL:783--784, 814--819} and $K(k_{ts}) = 0$ \src{BL:658}: the lowest level gets TKE only from above.} \\
+\rowshade{B7}\rid{B7} & \C{B7}{mynnrun}{No horizontal derivative.} & \C{B7}{ysu}{None.} & \C{B7}{shh}{None (\texttt{grep} finds no neighbour-column index).} & \C{B7}{boulac}{None.} \\
+\rowshade{C1}\rid{C1} &
+\C{C1}{mynnrun}{\texttt{bl\_mynn\_closure} default 2.6 \src{Registry.EM\_COMMON:2635}: level 2.5 plus a prognostic moisture variance for the cloud PDF; the countergradient terms $\Gamma$ exist only for closure $\ge 3.0$ \src{MB:2674--2820, 2815--2820}. \texttt{bl\_mynn\_edmf=1}, \texttt{edmf\_mom=1} \src{Registry:2623--2625}: mass-flux plumes for heat, moisture and momentum \src{MB:6197ff}. \cost{Nonlocal transport by plumes, not by countergradient terms; scale-aware through $\Psi_{shcu}$ and the plume-size cap.}} &
+\C{C1}{ysu}{$\avg{w c} = -K_c\big(\pd{C}{z} - \gamma_c/h\big) + \avg{wc}_h\,\zeta^3$, $\zeta = (z - z_1)/(h - z_1)$ \src{YS:943--944, 1054--1058}; $\gamma_\theta = \min(6.8\,\avg{w\theta}_0/w_{s0}, 3~\mathrm{K})$, $\gamma_q = \min(6.8\,\avg{wq}_0/w_{s0}, 2\times10^{-3})$ \src{YS:686--696}; $\gamma_u = -15.9\,\dfrac{u_*^2}{|V|}\dfrac{w_*^3}{w_{s0}^4}\,u_1$ \parencite{noh2003} \src{YS:694--696}; entrainment $w_e = \avg{w\theta_v}_h/\Delta\theta_v$, $\avg{w\theta_v}_h = -0.15\,\theta_v w_m^3/(g h)$, $w_m^3 = w_*^3 + 5u_*^3$ \src{YS:831--839, 902--924}. \lit{The nonlocal term keeps the column near-critical, so YSU, ACM2 and MYNN3 grow few spurious cells at 1~km where the local schemes (BouLac, MYJ, QNSE, MYNN2) grow vigorous ones \parencite{ching2014}.}} &
+\C{C1}{shh}{$\avg{w\theta} = -K_h\big[\pd{\theta}{z} + P_{NL}\,\mathcal{H}(z)\big]$, $\mathcal{H} = m_f(z)/K_h$ \src{SH:1251--1295}: $m_f$ is a three-piece profile in $z/z_i$ with amplitude $F_{nl} = 0.7\,(1 - 1.15\varphi_s)\avg{w\theta_v}_0$ and an exponential entrainment bump $F_{nl}\varepsilon_f e^{-|z - z_i|/\delta}$, $\varepsilon_f \in [-0.8, -0.4]$ \src{SH:1197--1233}; momentum $\gamma_u = -15.9\,u_*^2 w_*^3 u_1/(|V_1| w_s^4)\,P_u$ \src{SH:818--820, 971}. \cost{The 2025 revision by Hong replaces the published linear entrainment ramp \src{SH:87--93}.}} &
+\C{C1}{boulac}{Troen--Mahrt countergradient hard-wired (\texttt{igamma=1}): $\gamma = 10\,\avg{w\theta}_0/(w_* h)$ for $z \le h$, $\avg{w\theta}_0 > 0$ \src{BL:236, 310--318}, in the buoyancy term \src{BL:793} and as $-\partial_z(K\gamma)$ in the heat equation \src{BL:404--408}; $h$ = first level with $\theta_v > \theta_v(1) + 0.5$~K \src{BL:958--992}.} \\
+\rowshade{C2}\rid{C2} &
+\C{C2}{mynnrun}{$K_m = l q_t S_M$, $K_h = l q S_H$ \src{MB:2840--2865}; vertical only.} &
+\C{C2}{ysu}{$K_h = K_m/\Pr$, $\Pr = 1 + (\Pr_0 - 1)\exp[-3(z - 0.1h)^2/h^2]$, $\Pr_0 = \phi_h/\phi_m + 0.272 \in [0.25, 4]$ \src{YS:948--971}.} &
+\C{C2}{shh}{As YSU.} &
+\C{C2}{boulac}{$\Pr \equiv 1$: \texttt{exch\_h = exch\_m} \src{BL:364--365}.} \\
+\rowshade{C3}\rid{C3} & \C{C3}{mynnrun}{K-form.} & \C{C3}{ysu}{K-form.} & \C{C3}{shh}{K-form.} & \C{C3}{boulac}{K-form.} \\
+\rowshade{C4}\rid{C4} &
+\C{C4}{mynnrun}{\texttt{bl\_mynn\_mixlength=1} (default) \src{MB:1730--1863}: $\alpha_1 = 0.23$, $\alpha_2 = 0.30$ below $\dx = 4$~km (grow to 0.24, 0.40 at 16~km); $l_T = \min(\max(\alpha_1\overline{qz}/\overline{q}, 8), 400)$~m \src{MB:1791}; $l_B$ with a mass-flux term $l_B^{mf} = \alpha_6 q_{mf}/N/(1 + \alpha_6 q_{mf}/(100N))$, $l_B \le z$; $l_S$ as NN09 with $c_{ns} = 3.5$; blend to a BouLac length above $z_i$ by $w_t = \tfrac12\tanh[(z - z_{i2} - h_1)/h_2] + \tfrac12$ \src{MB:1841--1855}; then the LES-limit taper of A1. \cost{Still a vertical-structure quantity: $z$, $z/L$, $\int qz$, $q/N$, $z_i$.} \lit{In the evening up-valley wind at 500~m the resolved shear production rises while the subgrid one does not --- "a strong dependency on the diagnosed PBL height and stability is present in the master length scale" \parencite{freddi2026}.}} &
+\C{C4}{ysu}{$K_m = \kappa w_s z(1 - \zeta)^2 + \kappa w_{s2}(h - z)\zeta^2$ \src{YS:961--962}, $w_s = (u_*^3 + 8\kappa w_*^3\zeta)^{1/3}$ \src{YS:945--946}; $h$: $\Ri_b(z) = g z[\theta_v(z) - \theta_T]/(\theta_{v,1}\max(U^2, 1))$ with thermal excess $\theta_T = \theta_{v,1} + 6.8\,\avg{w\theta_v}_0/w_{s0}\cdot\min(z_1/0.1h, 1)$, critical 0 (unstable), 0.25 (stable land), $\min(0.16(10^{-7}\mathrm{Ro})^{-0.18}, 0.3)$ (water) \src{YS:625--827}. \cost{The Coriolis parameter in Ro is hard-wired to $10^{-4}$~s$^{-1}$ \src{YS:119}.} \lit{The bulk-Richardson height was fitted at 0.22 in the classical form and recommended at 0.25 with a $100u_*^2$ friction term, on flat Cabauw nights \parencite{vogelezang1996}; MRF's $\Ri_{bcr} = 0.5$ produced a 3--6~K thermal excess and "too much mixing over the valleys in the western United States", the reason for YSU's 0 \parencite{hong2006}.}} &
+\C{C4}{shh}{YSU profile; $z_i$ by three bulk-Richardson passes with the same critical values \src{SH:746--963}.} &
+\C{C4}{boulac}{$\displaystyle\int_z^{z + l_{up}}\beta[\theta(z') - \theta(z)]\,dz' = e(z)$, $\displaystyle\int_{z - l_{down}}^{z}\beta[\theta(z) - \theta(z')]\,dz' = e(z)$, trapezoidal with a quadratic sub-layer closure \src{BL:556--619}; $l_{down} \le z$, $l_{up} \le z_{top} - z$; $l_k = \min(l_{up}, l_{down})$ \src{BL:631--633}; $K = 0.4\,\bar l_k\sqrt{\bar e}$ at faces, $K(k_{ts}) = 0$, $K \ge 0.1$, no upper bound \src{BL:648--672}. \cost{No ground distance, no $z_i$, no $\Delta$: in a deep mixed layer $l_{up}$ reaches kilometres.}} \\
+\rowshade{C5}\rid{C5} &
+\C{C5}{mynnrun}{$\varepsilon = q^3/(B_1 l)$, implicit \src{MB:3106--3107}.} & \C{C5}{ysu}{No dissipation.} & \C{C5}{shh}{No dissipation.} &
+\C{C5}{boulac}{$l_\varepsilon = \sqrt{l_{up} l_{down}}$ \src{BL:632}, $\varepsilon = e^{3/2}/(1.4\,l_\varepsilon)$ implicit \src{BL:898--900}. \cost{Geometric mean, not the $[\tfrac12(l_{up}^{-2/3} + l_{down}^{-2/3})]^{-3/2}$ of Bougeault \& Lacarr\`ere.}} \\
+\rowshade{C6}\rid{C6} &
+\C{C6}{mynnrun}{$a_{2fac} = 1/(1 + \mathrm{CK}_{mod}\max(\Ri, 0))$, $\mathrm{CK}_{mod} = 1$ \src{MB:359, 1523, 2537}, applied to $A_2$ in the level-2 and level-2.5 functions \parencite{canuto2008,kitamura2010}: $S_M, S_H > 0$ at every $\Ri$; Kondo-type cap $S_M \le \Pr_{lim}\max(S_H, 0.004)$, $\Pr_{lim} = \min(7\Ri, 6)$ for $\Ri \ge 1$ \src{MB:2545--2556, 2670--2671}; $C_2 = 0.729$, $C_3 = 0.340$ instead of 0.75, 0.352 \src{module\_bl\_mynnedmf\_common.F:89--109}. \cost{Turbulence never dies at any Richardson number; the vertical shear remains the only shear.}} &
+\C{C6}{ysu}{Stable PBL: $w_s = \max(u_*/\phi_m, 10^{-3})$, $\phi_m = 1 + 5z/L$, $\Pr \equiv 1$ \src{YS:951--957}. Above $h$: $K_0 = \ell^2|S|$, $\ell = \kappa z\lambda/(\lambda + \kappa z)$, $\lambda = \min(\Delta z, \min(\max(0.1\Delta z, 30), 300))$~m; stable $K_h = K_0/(1 + 5\Ri)^2$, $\Pr = \min(1 + 2.1\Ri, 4)$; unstable $K_m = K_0[1 + 8(-\Ri)/(1 + 1.746\sqrt{-\Ri})]$ \src{YS:984--1030}.} &
+\C{C6}{shh}{Stable regime identical to YSU and without any $\Delta$ dependence: the $P_L$ multiplications are gated on the unstable flag \src{SH:1120--1127, 1287, 1387, 1571}.} &
+\C{C6}{boulac}{No stability functions and no Richardson number: stability acts only through $l_k$ (the parcel is stopped by the $\theta$ profile) \src{BL:556--619}; buoyancy with dry $\theta$, $\theta_0 = 300$~K \src{BL:189, 775--800}.} \\
+\rowshade{C7}\rid{C7} &
+\C{C7}{mynnrun}{Level 2.5 with Helfand--Labraga rescaling $q_{div} = \sqrt{\qsq/q_2^2}$ \src{MB:2581--2600}.} &
+\C{C7}{ysu}{First order: all fluxes diagnostic.} & \C{C7}{shh}{First order.} & \C{C7}{boulac}{1.5 order: $K$ instantaneous in $e$ and $l_k$.} \\
+\rowshade{C8}\rid{C8} &
+\C{C8}{mynnrun}{$P_{ke} = l q(S_M G_M + S_H G_H + \Gamma_v) + \tfrac12\mathrm{TKEprod}_{dn} + \tfrac12\mathrm{TKEprod}_{up}$ \src{MB:2846--2853}: buoyancy through $G_H$, plus the plume production.} &
+\C{C8}{ysu}{No TKE budget; buoyancy enters through $h$, $w_*$ and $\gamma$.} & \C{C8}{shh}{As YSU.} &
+\C{C8}{boulac}{$\mathrm{bu} = -\bar K(\overline{\pd{\theta}{z}} - \bar\gamma)\,g/\theta_0$ \src{BL:793}.} \\
+\rowshade{C9}\rid{C9} &
+\C{C9}{mynnrun}{$\Pr = 0.74$, $\gamma_1 = 0.235$, $B_1 = 24$, $B_2 = 15$, $C_2 = 0.729$, $C_3 = 0.340$, $C_4 = 0$, $C_5 = 0.2$, $A_1 = B_1(1 - 3\gamma_1)/6 = 1.18$ \src{module\_bl\_mynnedmf\_common.F:89--109}; $S_q$ replaced by $K_q = 3K_m$ (\texttt{Sqfac}) \src{common.F:81, MB:3046}.} &
+\C{C9}{ysu}{$a = b = 6.8$, $p = 2$, $\phi_{fac} = 8$, sfcfrac $= 0.1$, $\Pr_0$ offset 0.272, Noh coefficient 15.9, entrainment 0.15, $d_1 = 0.02$, $d_2 = 0.05$ \src{YS:141--155}.} &
+\C{C9}{shh}{YSU constants plus the partition coefficients of A1 and $c_{sf}$; nlfrac 0.7, $a_{11} = 1.0$, $a_{12} = -1.15$, $f_{ent} = 2$, $c_{ent} = -0.2$ \src{SH:1197--1233}.} &
+\C{C9}{boulac}{$C_\varepsilon = 1/1.4$, $C_k = 0.4$, $e_{min} = 10^{-4}$, $\gamma$ coefficient 10, $K \ge 0.1$ \src{BL:28--29, 313, 666}; compile-time constants, no namelist knob.} \\
+\rowshade{C10}\rid{C10} &
+\C{C10}{mynnrun}{TKE transport with $K_q = 3K_m$ \src{MB:3046}; Rotta terms inside $S_M, S_H$ as NN09.} &
+\C{C10}{ysu}{None modelled.} & \C{C10}{shh}{None modelled.} &
+\C{C10}{boulac}{TKE diffused with $K$ itself \src{BL:542}; no pressure--strain model at 1.5 order.} \\
+\end{xltabular}
+\landscapeclose
+
+% ---------------------------------------------------------------------------
+%  Table II.2b  3D family in detail
+% ---------------------------------------------------------------------------
+\landscapeopen
+\subsection*{Table II.2b --- The 3D family in detail}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.08}
+\begin{xltabular}{\linewidth}{@{}>{\raggedright\arraybackslash}p{1.1cm}
+  >{\columncolor{tGXVIII}\raggedright\arraybackslash}X
+  >{\columncolor{tGXIX}\raggedright\arraybackslash}X
+  >{\raggedright\arraybackslash}X
+  >{\columncolor{tAPPROX}\raggedright\arraybackslash}X
+  >{\columncolor{tFULL}\raggedright\arraybackslash}X
+  >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X@{}}
+\toprule
+ & \hd{gxviii} & \hd{gxix} & \hdn{Ito et al.\ 2015} & \hd{approx} & \hd{full} & \hdn{SMS-3DTKE} & \hdn{LES limit} \\
+\midrule
+\endfirsthead
+\toprule
+ & \hd{gxviii} & \hd{gxix} & \hdn{Ito et al.\ 2015} & \hd{approx} & \hd{full} & \hdn{SMS-3DTKE} & \hdn{LES limit} \\
+\midrule
+\endhead
+\bottomrule
+\endlastfoot
+\rowshade{A1}\rid{A1} &
+\C{A1}{gxviii}{$\mathrm{hsp} = (0.2\,\dx)^2\,\mathrm{agg\_def2}^{3/2}$ with $\dx = $ \texttt{grid\%dx}, no map factor, not $\sqrt{\dx\Delta y}$ \src{G18:3090--3095; wrapper :457}. \cost{Grid length as eddy length: at $\dx = 2.2$~km the COSMO original gave 7~m$^2$\,s$^{-2}$, "a lucky choice" at 1.1~km (G18p p.~22).}} &
+\C{A1}{gxix}{No partition; $\dx$ re-enters only as the blend target $(0.2\dx)^2$ above $\zeta = 0.8$ and as the cap $(4\dx)^2$ \src{G19:7944--7962}.} &
+\C{A1}{ito}{$F(\Delta^*) = \Big[\dfrac{\Delta^{*2} + 0.07\,\Delta^{*2/3}}{\Delta^{*2} + \tfrac{3}{21}\Delta^{*2/3} + \tfrac{3}{42}}\Big]^{3/2}$, $\Delta^* = \Delta/h$ \src{I15 Eq.~20} $= P_{TKE}^{3/2}$ of \textcite{honnert2011}, because the dissipation is filter-independent while $q^3$ is not \src{I15 Eqs.~18--19, Fig.~4}; applied to $L_\varepsilon$, $L_\theta$ and the transport and pressure lengths \src{Eqs.~18, 21, 24}; height-independent; mesoscale limit at $\Delta^* = 3.16$. \cost{Derived from dry free convection only; $h$ from the maximum $\theta$ gradient.}} &
+\C{A1}{approx}{\texttt{pbl3d\_scale\_aware=1} (template): $P(r) = \dfrac{r^2 + 0.106\,r^{0.667}}{r^2 + 0.066\,r^{0.667} + 0.071}$, $r = \max(2.5\Delta, 10)/\min(z_i, 3000)$, $\Delta = \sqrt{\dx\Delta y/m^2}$, multiplies $l_{master}$ and $l_{BouLac}$ only \src{MY:4043--4127}\fork. Publication: "the length scale formulation is not a function of $\dx$", by the ensemble argument \src{J22 p.~1588, 1605, 1611}. \cost{$P \approx 1$ at 500~m; $z_i$ from a MYNN-type hybrid diagnosis \src{MY:3915}.}} &
+\C{A1}{full}{As 3D-APPROX.} &
+\C{A1}{sms}{$P_u(r) = \dfrac{r^2 + 0.070\,r^{2/3}}{r^2 + 0.142\,r^{2/3} + 0.071}$, $P_\theta(r) = 0.720 +$ $0.280\,(r^2 + 0.870 r^{1/2} - 0.913)/$ $(r^2 + 0.153 r^{1/2} + 0.278)$, $P_{nl}(r) = 0.757 +$ $0.243\,(r^2 + 0.936 r^{7/8} - 1.110)/$ $(r^2 + 0.312 r^{7/8} + 0.329)$, $r = \Delta_h/z_i$, set to 0 for $\Delta_h \le 100$~m \src{DE:5459--5541; Z18 Eqs.~A1--A3}; $z_i$ where $\theta_v > \theta_v(1) + 0.5$~K \src{DE:5322--5334}. \cost{Functions fitted to one dry convective LES; the height dependence is ignored (Z18 App.).} \lit{Against aircraft TKE at 333~m "overly scale aware": subgrid TKE falls faster than resolved TKE rises \parencite{hope2024}; the H-gradient extension adds a horizontal-gradient countergradient flux above the PBL \parencite{ye2023}.}} &
+\C{A1}{les}{$\ell_h = \sqrt{\dx\Delta y/m^2}$, $\ell_v = \min(\Delta z, 0.76\sqrt{e}/N)$ (\texttt{mix\_isotropic=0}) \src{DE:2205--2229}; isotropic option $\Delta_{iso} = (\dx\Delta y\Delta z)^{1/3}$ \src{DE:2231--2253}. \cost{Assumes the grid resolves the energetic eddies.} \lit{No turbulence is resolved beyond $\dx/z_i = 0.6$ \parencite{efstathiou2015}; at too coarse a spacing the closure gives "incorrect stress profiles" \parencite{haupt2023}.}} \\
+\rowshade{A2}\rid{A2} &
+\C{A2}{gxviii}{Ensemble.} & \C{A2}{gxix}{Ensemble.} &
+\C{A2}{ito}{Top-hat filter over $\Delta_H \times \Delta_H$ \src{I15 Eq.~1}; "we assume the spatial average instead of the ensemble average" \src{p.~27}.} &
+\C{A2}{approx}{Ensemble by declaration; "using a length scale that is a function of the gridcell size implies a spatial averaging approach" \src{J22 p.~1611}.} & \C{A2}{full}{As 3D-APPROX.} &
+\C{A2}{sms}{Deardorff filter closure in the LES limit, ensemble scheme in the mesoscale limit, blended.} & \C{A2}{les}{Filter closure.} \\
+\rowshade{B1}\rid{B1} &
+\C{B1}{gxviii}{$\mathrm{agg\_def2} = \tfrac14(D_{11}^2 + D_{22}^2) + \tfrac12 D_{12}^2 = (\pd{U}{x})^2 + (\pd{V}{y})^2 + \tfrac12(\pd{U}{y} + \pd{V}{x})^2$, $\mathrm{hsp} = (0.2\dx)^2\,\mathrm{agg\_def2}^{3/2}$ added to the TKE production \texttt{pdk} \src{G18:3090--3106}; factor-2 bookkeeping correct ($\mathrm{rp} = \mathrm{pdk}_k + \mathrm{pdk}_{k+1}$ \src{G18:3348}). Same bracket as G18p Eq.~5. Scalars: no horizontal gradient. \cost{Cancelled in the lowest layer by $\mathrm{pdk}(k_{ts}) = \mathrm{pdk}_1 - \mathrm{pdk}(k_{ts}+1)$ \src{G18:3335}; a mass-point quantity inserted into an interface budget.}} &
+\C{B1}{gxix}{$\mathrm{qHSP} = l_{eff}^2\,D_h^2\sqrt{D_h^2}$, same bracket \src{G19:7940--7964, 3113--3116}. \cost{Candidate defect: the destaggered $D_{12}$ is computed \src{G19w:368--376} but the raw corner-staggered array is passed \src{G19w:579}; the G18 wrapper passes the destaggered one \src{G18w:571}. The cross-shear term sits half a cell off, unsmoothed, systematically too large.}} &
+\C{B1}{ito}{$\tau_{ij} = -L q S_M\,\pd{U_i}{x_j}$ for all components \src{I15 Eq.~12}, $f_i = -L q(S_H\,\pd{\theta}{x_i} + \Gamma_\theta)$ \src{Eq.~13}, used as the subgrid model of a 3D code \src{Sect.~4}; $S_M$, $S_H$, $\Gamma_\theta$ still from the boundary-layer approximation \src{p.~29}. \cost{Horizontal fluxes with $S_M = S_H = 1$.}} &
+\C{B1}{approx}{$\partial_t\qsq|_{P_s} = -2(\avg{uw}\,U_z + \avg{vw}\,V_z)$ \src{M3D:6336}, \texttt{qsq\_shear\_h} zeroed \src{M3D:5863}: two of nine terms, $= 2 l q S_M(U_z^2 + V_z^2)$. Stresses under the approximation \src{MY:2631--3098}: $\avg{uw} = -q l S_M U_z$, $\avg{uv} = \tfrac{3a_1 l}{q}(-\avg{uw}V_z - \avg{vw}U_z)$, $\avg{u\theta_v} = 3a_2 l^2(S_H + S_M)\Theta_{v,z}U_z$ (J22 Eq.~22: "horizontal gradients of mean quantities identically zero", p.~1589). \cost{The energy budget is blind to the horizontal shear whose stresses it diagnoses.}} &
+\C{B1}{full}{All nine: $-2(\avg{u^2}U_x + \avg{uv}(U_y + V_x) + \avg{v^2}V_y + \avg{uw}(U_z + W_x) + \avg{vw}(V_z + W_y) + \avg{w^2}W_z)$ \src{M3D:6418--6426}; with \texttt{sf\_pair=1} the six horizontal-pairing terms divided by $\sigma$ \src{M3D:6405--6416}\fork. Stresses from the $10\times10$ system \src{J22 Eq.~19; K20 Eq.~7 has an erratum}: diagonal $q/(2A_1 l)$, $q/(3A_1 l)$, $q/(3A_2 l)$, $q/(B_2 l)$; $b_1 = q^3/(6A_1 l) + 3C_1 q^2 U_x$ etc.; solved by \texttt{dgesvx} with equilibration \src{MY:2159}.} &
+\C{B1}{sms}{$P_s = \tfrac12 K_{mh}(D_{11}^2 + D_{22}^2) + \tfrac12 K_{mv}D_{33}^2 + K_{mh}\overline{D_{12}^2} + K_{mv}(\overline{D_{13}^2} + \overline{D_{23}^2})$ \src{DE:7337--7489}; Z18 Eq.~7 writes $-\avg{u_iu_j}\,\pd{u_i}{x_j}$ with a scalar $K$ (Eq.~6) --- the anisotropic $K$ in the production is implementation. Scalars: $K_{hh}\,\pd{\theta}{x}$ horizontally.} &
+\C{B1}{les}{Same routine and form as SMS-3DTKE.} \\
+\rowshade{B2}\rid{B2} &
+\C{B2}{gxviii}{No $W$ gradient in the source.} & \C{B2}{gxix}{As G18.} &
+\C{B2}{ito}{$\pd{W}{x_j}$ inside Eq.~12.} &
+\C{B2}{approx}{"Additionally, the vertical gradient of vertical velocity is neglected" \src{J22 p.~1589}; rows 1--3 of Eq.~22 lose $3C_1 q^2 W_z$.} &
+\C{B2}{full}{$W_x, W_y, W_z$ in all six stress rows and in $P_s$ \src{J22 Eq.~19}; a tendency is applied to $W$ \src{M3D:2604, 3300}.} &
+\C{B2}{sms}{$D_{13} = U_z + W_x$, $D_{23}$, $D_{33} = 2W_z$ \src{DE cal\_deform\_and\_div}.} & \C{B2}{les}{As SMS-3DTKE.} \\
+\rowshade{B3}\rid{B3} &
+\C{B3}{gxviii}{No horizontal $K$ is created; \texttt{module\_diffusion\_em.F} untouched in the port.} & \C{B3}{gxix}{As G18.} &
+\C{B3}{ito}{3D divergence of all fluxes in the dynamical core \src{I15 Sect.~4.1}.} &
+\C{B3}{approx}{\texttt{Horizontal\_turb\_mix} for \texttt{pbl3d\_opt}$>0$ \src{M3D:2833; part2:1391}: $U \leftarrow \partial_x\avg{u^2} + \partial_y\avg{uv}$, $V$, $W \leftarrow \partial_x\avg{uw} + \partial_y\avg{vw}$ (4th order), $\Theta, Q_v \leftarrow \partial_x\avg{u\theta} + \partial_y\avg{v\theta}$ \src{M3D:3152--3458}; vertical \texttt{Vertical\_turb\_mix} incl.\ $W$ from $\avg{w^2}$ \src{M3D:2261--2604}. At \texttt{pbl3d\_opt=-1} vertical only. J22 §2e, K20 p.~4 ("hybrid approach"). \lit{Over flat offshore terrain these divergences are "significantly smaller than $\avg{u'w'}$" \parencite{rybchuk2022} --- the contrast case for a valley.}} &
+\C{B3}{full}{As 3D-APPROX.} &
+\C{B3}{sms}{\texttt{horizontal\_diffusion\_2/\_s} with $K_{mh}$, $K_{hh}$, metric-corrected \src{DE:3826--4114}.} & \C{B3}{les}{As SMS-3DTKE.} \\
+\rowshade{B4}\rid{B4} &
+\C{B4}{gxviii}{WRF's \texttt{qke\_adv} ($\qsq$, not $q$ as in COSMO): \texttt{bl\_mynn\_tkeadvect=.true.} only in the 500~m namelist \src{run/namelist.input:112}; no turbulent horizontal diffusion of its own (upstream Smagorinsky filtering of the scalar remains).} &
+\C{B4}{gxix}{As G18.} &
+\C{B4}{ito}{Transport $-L q S_q\,\pd{e}{x_i}$ in three dimensions, with $L_x$ horizontally \src{I15 Eqs.~3, 26}.} &
+\C{B4}{approx}{$\qsq$ advected by WRF's RK3 scalar transport (\texttt{pbl3d\_adv\_opt}, orders 5/3) \src{solve\_em.F:2767--2864}, with WRF's 2nd-order horizontal mixing and 6th-order filter unless \texttt{pbl3d\_mix2\_off}/\texttt{mix6\_off}; vertical $K_q = S_q l q$, $S_q = 0.2$ \src{M3D:5940--5977}; the closure's own horizontal $\qsq$ diffusion only for \texttt{pbl3d\_opt=2} \src{M3D:5847--5856}\fork. Publication: Eq.~9 written in 3D, implementation not described.} &
+\C{B4}{full}{Plus \texttt{Calc\_q\_sq\_}\allowbreak\texttt{horizontal\_diffusion} \src{M3D:6101}: $\bar K = 0.2\cdot\overline{l\sqrt{\qsq}}$ (hard-coded, not \texttt{pbl3d\_sq}) \src{M3D:6125}, overall factor 2 \src{M3D:6291}. \open\ The flux carries an extra factor $\tfrac12(\qsq_{k+1} + \qsq_k)$ where the WRF template has $\bar\rho$, and the metric term sits outside the $K$ bracket \src{M3D:6190--6192}.} &
+\C{B4}{sms}{Advected by RK3 \src{solve\_em.F:2667}; diffused with $2K_{mh}$ horizontally and $2K_{mv}$ vertically \src{DE:3118--3130, 4102--4111, 8881--8882}. \open\ The positive-definite renormalisation is gated on \texttt{km\_opt=2} only \src{solve\_em.F:2668}.} &
+\C{B4}{les}{RK3 positive-definite advection (\texttt{tke\_adv\_opt=1}); diffusion $2K_m$ \src{DE:3120, 4536, 4103--4110, 5111--5118}.} \\
+\rowshade{B5}\rid{B5} &
+\C{B5}{gxviii}{Energy enters $\qsq$ from the deformation, but momentum is still mixed by \texttt{km\_opt=4}, whose invariant $\tfrac14(D_{11} - D_{22})^2 + \overline{D_{12}}^{\,2}$ \src{DE:2004} differs from the HSP invariant (which includes the divergence). \cost{A one-way source: TKE gained, resolved flow not decelerated.}} &
+\C{B5}{gxix}{As G18.} &
+\C{B5}{ito}{One closure for both directions ($L$, $L_x$).} &
+\C{B5}{approx}{\texttt{diff\_opt=0} required for \texttt{pbl3d\_opt=2} \src{module\_check\_a\_mundo.F; template}; no Smagorinsky operator remains.} & \C{B5}{full}{As 3D-APPROX.} &
+\C{B5}{sms}{$K_{mh} = P_\theta(c_s\Delta_h)^2|S|_h + (1 - P_\theta)c_k\sqrt{e}\,\Delta_h$, $|S|_h^2 = \tfrac14(D_{11} - D_{22})^2 + \overline{D_{12}}^{\,2}$, $K^S_{mh} \le 10\Delta_h$ \src{DE:2262--2329; Z18 Eq.~40}; the production uses this $K_{mh}$, so the Smagorinsky part feeds $e$. Z18: "a single energetically consistent framework" (abstract).} &
+\C{B5}{les}{One $e$, $K_{mh} = c_k\sqrt{e}\,\ell_h$, $K_{mv} = c_k\sqrt{e}\,\ell_v$ \src{DE:2205--2229}.} \\
+\rowshade{B6}\rid{B6} &
+\C{B6}{gxviii}{MOST: \texttt{sf\_sfclay\_physics} 5 (outer) / 1 (500~m) in the namelists; no code change. COSMO remark: its transfer scheme "avoids the empirical functions of MOST" (G18p p.~9), still flat.} &
+\C{B6}{gxix}{As G18.} & \C{B6}{ito}{Bulk MOST with Businger functions in the LES \src{I15 Sect.~2.1}.} &
+\C{B6}{approx}{\texttt{pbl3d\_sfc\_opt=0}: $\avg{uw} = -u_*^2\cos\alpha$, $\avg{vw} = -u_*^2\sin\alpha$, $\avg{w\theta} = \mathrm{HFX}/(\rho c_p^*)$ at the ground face \src{MY:3145--3167}; other ground moments at \texttt{TURB\_FLUX\_MIN}; \texttt{sfclayrev} with $u_* \ge 0.03$, $z/L \le 10$ \src{sf\_sfclayrev.F90:422, 824; template}. The Eghdami et al.\ (2022) 3D surface layer (MY74 Eqs.~46--49, Businger functions) is \texttt{pbl3d\_sfc\_opt=1/2} \src{MY:3168--3245} and off\fork; J22 used it "in all simulations" (p.~1591). \lit{The revised scheme had lowered WRF's $u_*$ floor from 0.1 (hit 25\,\% of the time, most stable steps) to 0.001~m\,s$^{-1}$ \parencite{jimenez2012}; ours sits between. Kansas: $\kappa = 0.35$, $\Ri_c = 0.21$ \parencite{businger1971}; WRF keeps 0.4.}} &
+\C{B6}{full}{As 3D-APPROX.} &
+\C{B6}{sms}{MOST from \texttt{sf\_sfclay} $\in\{0, 1, 5, 91\}$ \src{module\_check\_a\_mundo.F:535--556}; $\tau = u_*^2\rho/|U|$ \src{DE:8483}; drag production at $k_{ts}$ \src{DE:7420--7456}.} &
+\C{B6}{les}{$\tau_{xz} = u_*^2 u_1/|U_1|$ \src{DE:4322--4360} with $u_*$ without the convective correction (\texttt{ustm}) \src{module\_sf\_sfclay.F:800--803}; surface buoyancy $\tfrac12[K_{hv}N^2 - (g/\theta)\mathrm{HFX}/(c_{pm}\rho)]$ \src{DE:6992--7024}.} \\
+\rowshade{B7}\rid{B7} &
+\C{B7}{gxviii}{WRF's deformations from \texttt{cal\_deform\_and\_div} with metric correction \src{DE:180--200, 485--500}, computed after the PBL call: previous time step; identically zero if \texttt{diff\_opt=0}. \cost{One-step lag; silent zero.}} &
+\C{B7}{gxix}{As G18.} & \C{B7}{ito}{Flat periodic domain.} &
+\C{B7}{approx}{$\pd{U}{x}|_z = m_{tx}m_{ux}\,[\Delta_x(U/m_{ux})/\dx$ $- \bar z_x\,\Delta_z(U/m_{ux})/\Delta z]$ \src{M3D:1099--1101}; $\pd{W}{x}$ 4th order \src{M3D:1310}; scalars with the metric term outside $m$ \src{M3D:2016--2018} (small inconsistency). Slope factor $\sigma = \max(\tau, 1)$, $\tau^2 = \tau_x^2 + \tau_y^2$, $\tau_x = \overline{|z_x|}\,\dx/(m\Delta z)$ \src{M3D:3130--3137} divides every horizontal tendency \src{M3D:4090, 4256, 4353}\fork; papers silent. \cost{$\sigma$ grows with $\dx/\Delta z$: a second grid dependence.}} &
+\C{B7}{full}{As 3D-APPROX; \texttt{pbl3d\_sf\_pair=1} credits $\qsq$ only with the tapered production \src{M3D:6405--6416}\fork.} &
+\C{B7}{sms}{\texttt{diff\_opt=2} forced \src{module\_check\_a\_mundo.F:341--353}; \texttt{compute\_diff\_metrics} \src{DE:7538--7786}; ad hoc taper $\alpha = \max(a, 1)$, $a^2 = (\overline{|z_x|}\,\dx/\Delta z)^2$ $+ (\overline{|z_y|}\,\Delta y/\Delta z)^2$, on the Smagorinsky part \src{DE:2278--2291}.} &
+\C{B7}{les}{Metric correction as SMS-3DTKE; no slope taper for \texttt{km\_opt=2} \src{DE:2205--2253}.} \\
+\rowshade{C1}\rid{C1} &
+\C{C1}{gxviii}{K-form of its MYNN base.} & \C{C1}{gxix}{As G18.} &
+\C{C1}{ito}{Level-3 $\Gamma_\theta$ \src{I15 Eq.~13}; down-gradient kept although "a poor assumption in the TI zone" \src{p.~35}.} &
+\C{C1}{approx}{Vertical fluxes $\avg{uw} = -q l S_M U_z$, $\avg{w\theta_v} = -q l S_H\Theta_{v,z}$ \src{MY:3250--3259}; $S_M$, $S_H$ per J22 Eqs.~20--21; the other moments diagnosed from them \src{J22 p.~1589}.} &
+\C{C1}{full}{$\mathsf{A}\mathbf{x} = \mathbf{b}$, $\mathsf{A} = \tau^{-1}\mathsf{I} + \mathsf{S}$: no eddy viscosity anywhere \src{J22 Eq.~19; MY:2116, 2443}.} &
+\C{C1}{sms}{Nonlocal heat-flux profile \texttt{nlflux} (three pieces in $z/z_i$, $\times P_{nl}$, plus an entrainment term) \src{DE:5126--5454; Z18 Eqs.~23--24}; countergradient momentum $\gamma_u = -P_u\, s_m\, u_*^2 w_*^3/(z_i w_s^4)$ $\times\, u_1/|U_1|$, $s_m = 10.9$ \src{DE:5360--5373} (Z18 Eq.~27: 15.9); vertical only.} &
+\C{C1}{les}{K-form.} \\
+\rowshade{C2}\rid{C2} &
+\C{C2}{gxviii}{$l_h = 0.2\dx$ horizontally against NN09 vertically: two magnitudes.} &
+\C{C2}{gxix}{$l_G^2 = U^2 T_{L,u} T_{L,v}$ \src{G19:7944}: two horizontal scales and a vertical one.} &
+\C{C2}{ito}{$L_x^*(\infty) = 0.1$ with $S_M = S_H = 1$ for the horizontal fluxes \src{I15 p.~37, Eqs.~25--26} against $L$ with stability functions vertically.} &
+\C{C2}{approx}{One $l$; $\avg{w^2} = \tfrac{\qsq}{3} + \tfrac{2A_1 l}{q}(\avg{uw}U_z + \avg{vw}V_z + 2\beta g\avg{w\theta_v})$ etc. \src{MY:3250--3418}: anisotropy as a perturbation of isotropy.} &
+\C{C2}{full}{Tensor solved; one master $l$ for all thirteen moments \src{J22 p.~1611: "should be revised"}.} &
+\C{C2}{sms}{$K_{hh} = 3K_{mh}$ (\texttt{prandtl} $= 1/3$ \src{module\_model\_constants.F:86}); $K_{hv} = K_{mv}[(1 - P_\theta)(1 + 2\ell_v/\Delta z) + P_\theta]$ \src{DE:2320--2326}.} &
+\C{C2}{les}{$K_{hh} = 3K_{mh}$, $K_{hv} = K_{mv}(1 + 2\ell_v/\Delta z)$ \src{DE:2205--2229}. \lit{Excessive mixing once $\dx \gtrsim 2\Delta z$ at $\Ri \gtrsim 0.1$, and $\Pr = 1/3$ over-mixes heat at the lowest levels \parencite{deroode2017}.}} \\
+\rowshade{C3}\rid{C3} &
+\C{C3}{gxviii}{K-form.} & \C{C3}{gxix}{K-form.} & \C{C3}{ito}{K-form.} &
+\C{C3}{approx}{Vertical fluxes aligned; $\avg{uv}$, $\avg{u\theta_v}$ are products of vertical fluxes and vertical gradients.} &
+\C{C3}{full}{Counter-gradient components admissible; $P_s$ has no built-in sign, guarded by $\max(\cdot, 0)$ on the diagnostic branch \src{MY:3779--3785}.} &
+\C{C3}{sms}{K-form.} & \C{C3}{les}{K-form.} \\
+\rowshade{C4}\rid{C4} &
+\C{C4}{gxviii}{Vertical: NN09 blend of its MYNN base, unchanged; horizontal $0.2\dx$. $z_i$ from a rewritten \texttt{GET\_PBLH} \src{G18:5539--5694}: $\theta_v$ minimum searched to 1500~m, $\Delta\theta_v = \max(0.5, \min(1.5, 1.5 - u_*))$ over land, TKE branch without the $\pm350$~m clamp\fork.} &
+\C{C4}{gxix}{$T_{L,u} = \min(0.15\,z_i/\max(\sigma_u, 0.1),$ $7200~\mathrm{s})$ unstable, capped at 20~s in stable or neutral air \src{G19:7930--7936}; $U^2 = u_1^2 + v_1^2$ at the level \src{:7941}; $\sigma_{u,v}$ from flat-terrain profiles (unstable $\sigma_u^2/u_*^2 = 0.35(-z_i/\kappa L)^{2/3} + 5 - 4\zeta$, $\sigma_v^2/u_*^2 = 2(1 - \zeta)$; stable $5 - 4\zeta$, $2(1 - \zeta)$) rescaled so that $\sigma_u^2 + \sigma_v^2 + \sigma_w^2 = \qsq$ \src{:7897--7925}; $l_{eff}^2 = w_b l_G^2 + (1 - w_b)(0.2\dx)^2$, cosine blend for $\zeta \in [0.8, 1.2]$, cap $(4\dx)^2$ \src{:7944--7962}; $z_i$ from the rewritten \texttt{GET\_PBLH} \src{:5549--5704}, not the bulk-Richardson $z_i$ of G19p Eq.~5\fork. \cost{The 20~s cap makes $l_h \approx 100$~m at night; when \texttt{GET\_PBLH} falls back, $\zeta > 1.2$ everywhere and the scheme degenerates to G18.} \lit{The $\sigma$ profiles come from a daytime, two-dimensional dispersion model with no $\sigma_v$ of its own \parencite{rotach1996}; the 3D extension assumes $v'$ independent of $u'$, $w'$ and imports $T_L$ from Gryning et al.\ (1987) \parencite{dehaan1998}; $\sigma_u$, $\sigma_v$ do not obey MOST even over flat ground and fall over a crest \parencite{kaimal1994}; the COSMO thresholds 0.22/0.33 sit beside Vogelezang's 0.22/0.25; over mountains $z_i$ has no universal definition \parencite{dewekker2015}.}} &
+\C{C4}{ito}{$L$ from $1/L = 1/L_S + 1/L_T + 1/L_B$ \src{I15 Eqs.~14--17} times $F$; $L_x = F\cdot 0.1\,h$ \src{Eq.~26}.} &
+\C{C4}{approx}{$l_0 = 0.1\sum\tilde q z\Delta z/\sum\tilde q\Delta z$ over the whole column, $\tilde q = \max(q - q_{min}, 0)$, $l_0 \ge$ \texttt{pbl3d\_l0\_min} \src{MY:465--495}; $l = l_0\kappa z/(\kappa z + l_0)$ \src{MY:510}; $l \le 0.53\,q/N$ for $\pd{\theta_v}{z} > 0$ \src{MY:520--524}\fork; then the taper. Publication: J22 Eqs.~14--15 ($\alpha = 0.10$, integral to $h$, no $q/N$ limit); BouLac Eqs.~17a--d used for all cases after the first (\texttt{pbl3d\_l\_opt=3} here, $l_k = \min$, $l_\varepsilon = \sqrt{l_{up}l_{down}}$ \src{MY:708--829}). \cost{"The last 1D relic": one scale for thirteen moments; its proportionality "breaks down for nearly all portions of the BL" (J22 p.~1611).} \lit{At 750~m in a stable cold pool swapping the length scale reverted the TKE field to MYNN's while swapping the horizontal fluxes for 2D Smagorinsky changed little, and the full solution's instability is attributed to the length scale \parencite{arthur2022}; spurious cells return "when the length scale is insufficiently large" \parencite{haupt2023}; with the MY82 scale or without buoyancy terms midday TKE is under-estimated by $\sim$50\,\% \parencite{eghdami2022}.}} &
+\C{C4}{full}{As 3D-APPROX plus Tier~1: $|S|^2 = 2(U_x^2 + V_y^2 + W_z^2)$ $+ (U_y + V_x)^2$ $+ (U_z + W_x)^2$ $+ (V_z + W_y)^2$, $l_{use} = \min(l, 2\cdot 6/B_1\cdot q/|S|)$, i.e.\ $|S|B_1 l/(2q) \le 6$ \src{MY:1704--1734} \parencite{durbin1996}; Tier~2 halves $l$ up to six times on ill-conditioning or non-realizability \src{MY:1762--1800}; Tier~3 projection \src{MY:1928--2088}\fork.} &
+\C{C4}{sms}{$\ell_h = \Delta_h$ always \src{DE:2273}; $\ell_v^{LES} = \min(\Delta z, 0.76\sqrt{e}/N)$ \src{DE:2302--2307} (Z18 Eq.~10 uses $\Delta_s = (\dx\Delta y\Delta z)^{1/3}$); $l_M$ from an NN09-type blend with $\alpha_1 = 0.8$, $\alpha_2 = \alpha_3 = 1$, $\alpha_4 = 100$ over the whole column, blended to BouLac above the PBL \src{DE:2411--2662} (Z18 Eqs.~28--33 quote 1.9, 0.9, 1, 5); $K_{mv} = (1 - P_u)c_k\sqrt{e}\,\ell_v^{LES} + P_u\,0.4\sqrt{e}\,l_M$ \src{DE:2313--2318; Z18 Eqs.~36--37}. \cost{Code and paper constants differ.}} &
+\C{C4}{les}{$\ell = \Delta$ with the Deardorff stable limit: no vertical structure, no terrain.} \\
+\rowshade{C5}\rid{C5} &
+\C{C5}{gxviii}{$q^3/(B_1 L)$ with the vertical $L$: the horizontal source is dissipated with the vertical eddy size. COSMO: "implies isotropic turbulence" (G18p p.~8).} & \C{C5}{gxix}{As G18.} &
+\C{C5}{ito}{Same $F$ on every length \src{I15 Eqs.~18, 21, 24}; locality option $L_\varepsilon^* \approx 1.9F^{2/3}q^*$, $L_\theta^* \approx 0.8F^{2/3}q^*$ \src{Eqs.~22--23}.} &
+\C{C5}{approx}{$\partial_t\qsq|_\varepsilon = -2(\qsq)^{3/2}/(B_1 l_{dissip})$ \src{M3D:6555}, $l_{dissip} = l_{master}$ \src{M3D:5729} except \texttt{l\_opt=3}.} &
+\C{C5}{full}{The Tier-1 limited $l$ is written back and reaches $\varepsilon$ and $K_q$ \src{MY:1320--1321}; the Tier-2 back-off is not \src{MY:1310--1313}\fork.} &
+\C{C5}{sms}{$\ell_{diss} = (1 - P_u)\ell_{scale}/C_\varepsilon + P_u\,l_M/0.3$, $C_\varepsilon = c_{\varepsilon1} + c_{\varepsilon2}\ell_{scale}/\Delta$, $c_{\varepsilon1} = 1.9c_k = 0.285$, $c_{\varepsilon2} = 0.645$ \src{DE:7124--7176}; $\varepsilon = e^{3/2}/\ell_{diss}$ implicit \src{DE:8900--8914}; Z18 Eqs.~38--39.} &
+\C{C5}{les}{$\varepsilon = C_\varepsilon e^{3/2}/\ell$, $C_\varepsilon = 0.285 + 0.645\,\ell/\Delta_{iso}$ for $c_k = 0.15$ (not Deardorff's $0.19 + 0.51\,\ell/\Delta$), 3.9 at the lowest and top level \src{DE:7040--7182}.} \\
+\rowshade{C6}\rid{C6} &
+\C{C6}{gxviii}{The source is independent of Ri; $S_M$, $S_H$ of the MYNN base unchanged.} & \C{C6}{gxix}{As G18.} &
+\C{C6}{ito}{$S_M$, $S_H$, $\Gamma_\theta$ "determined in the conventional way" \src{I15 p.~29}; $L_B$ Eq.~17.} &
+\C{C6}{approx}{Level 2: $\Rf = f_1(\Ri + f_2 - \sqrt{\Ri^2 + f_3\Ri + f_4})$, $S_M = c_m\dfrac{(\Rfc - \Rf)(R_{f1} - \Rf)}{(1 - \Rf)(R_{f2} - \Rf)}$, $S_H = \dfrac{c_{h2}}{c_m}\dfrac{R_{f2} - \Rf}{R_{f1} - \Rf}S_M$, $S = $ \texttt{TURB\_FLUX\_MIN} for $\Rf \ge \Rfc$ \src{MY:3464--3510}; $\Rfc = 0.1912$, $R_{f1} = 0.234$, $R_{f2} = 0.223$ for MY82 \src{MY:4297--4336}; level 2.5 by $\sqrt{\qsq/q^2_{HL88}}$ with caps $S_M \le 0.44/\sqrt{G_M}$, $S_H \le 0.76 B_2$ \src{MY:3540--3583}. With prognostic $\qsq$ the $\Rfc$ gate on $\qsq$ is not live, but the fluxes vanish above $\Rfc$. \cost{The stable-regime deficit of the project sits above $\Ri \approx 0.3$.}} &
+\C{C6}{full}{No $S_M$, $S_H$; the equilibrium follows from the full strain and buoyancy through $\mathsf{A}$; $N$ enters $l$ (0.53~$q/N$) only.} &
+\C{C6}{sms}{No stability functions; $N$ in $\ell_v$, $l_B$, $l_F$; Prandtl numbers not Ri-dependent \src{DE:2320--2322}.} &
+\C{C6}{les}{$N$ in $\ell$ and in $P_b = -K_{hv}N^2$ with the moist $N^2$ \src{DE:6985, 1485--1713}. \lit{In the Riviera the closure "will not produce SFS turbulence when the flow is stable (as measured by the Richardson number)"; removing it changed nothing above 500~m over 30~h \parencite{chow2006}.}} \\
+\rowshade{C7}\rid{C7} &
+\C{C7}{gxviii}{As its MYNN base.} & \C{C7}{gxix}{As G18.} & \C{C7}{ito}{Level 3: $\avg{\theta^2}$ prognostic too \src{I15 Eq.~5}.} &
+\C{C7}{approx}{Level 2.5 \src{MY:2631}.} &
+\C{C7}{full}{Level 2.5; where $|S|\,l/q \gg 1$ the algebraic equilibrium has no basis --- the strain cap of C4 is its guard\fork. Without it the full closure was ``numerically unstable'' at 280~m over real terrain and only 3D-APPROX could be run \parencite{wiersema2023}.} &
+\C{C7}{sms}{1.5 order.} & \C{C7}{les}{1.5 order.} \\
+\rowshade{C8}\rid{C8} &
+\C{C8}{gxviii}{As MYNN.} & \C{C8}{gxix}{As MYNN.} &
+\C{C8}{ito}{$P_b = (g/\theta_0)f_z$ \src{I15 Eq.~2}; horizontal $f_x$, $f_y$ exist through Eq.~13.} &
+\C{C8}{approx}{$\partial_t\qsq|_{P_b} = 2\beta g\avg{w\theta_v}$ only \src{M3D:6473}; $\beta g\avg{w\theta_v}$ redistributes between $\avg{w^2}$ and the horizontal variances \src{MY:3250--3418}; $\avg{u\theta_v}$, $\avg{v\theta_v}$ from vertical gradients.} &
+\C{C8}{full}{$\beta g$ couples $\avg{w\theta_v}$ into rows 1--3 ($+\beta g$, $+\beta g$, $-2\beta g$), $\avg{u\theta_v}$, $\avg{v\theta_v}$ into rows 5--6, $\avg{\theta_v^2}$ into row 9 \src{J22 Eq.~19}; three heat-flux components with $\pd{\Theta_v}{x_j}$ (rows 7--9). The $\qsq$ budget still uses $\avg{w\theta_v}$ only \src{M3D:6473}.} &
+\C{C8}{sms}{$P_b = -K_{hv}N^2 + (g/\theta)\overline{(w'\theta')_{nl}}$ \src{DE:6971--6979}; horizontal $K_{hh}\,\pd{\theta}{x}$ exists.} &
+\C{C8}{les}{$P_b = -K_{hv}N^2$ \src{DE:6985}; horizontal $K_{hh}\,\pd{\theta}{x}$.} \\
+\rowshade{C9}\rid{C9} &
+\C{C9}{gxviii}{Base constants plus $c = 0.2$ (the code comments disagree on whether it is Smagorinsky's constant times or divided by $\sqrt2$ \src{G18:3094; G19:7864}).} &
+\C{C9}{gxix}{Plus 0.15 \parencite{hanna1982}, the caps 7200~s, 20~s, $(4\dx)^2$.} &
+\C{C9}{ito}{NN09 set unchanged \src{I15 Table~1}; "smaller $B_1$" would fix the mesoscale $\theta$ profile but is kept \src{footnote~2}.} &
+\C{C9}{approx}{\texttt{pbl3d\_constants='MY82'}: $(A_1, B_1, A_2, B_2, C_1) = (0.92, 16.6, 0.74, 10.1, 0.08)$, $\Rfc = 0.191$ \src{MY:4135--4290}; alternatives MY74 (0.213), MYJ (0.191), \texttt{Boulac} $(0.3, 8.4, 0.33, 6.4, 0.08)$ (0.212) --- the set of all J22 runs \src{J22 Eq.~18}; $\beta = 1/300$ \src{M3D:58}. \cost{No $C_2$, $C_3$ in this closure.}} &
+\C{C9}{full}{As 3D-APPROX.} &
+\C{C9}{sms}{$c_s = 0.25$, $c_k = 0.15$ \src{Registry.EM\_COMMON:3040--3041}; mesoscale 0.4; $a_{11} = 1.0$, $a_{12} = -1.15$, nlfrac $= 0.68$ \src{DE:5428--5450} (Z18: 0.7).} &
+\C{C9}{les}{$c_k = 0.15$, $c_s = 0.25$. \lit{Over a real massif NBA beat the 1.5-order TKE model, which beat Smagorinsky, on wind profiles, TKE and spectra \parencite{liu2020}.}} \\
+\rowshade{C10}\rid{C10} &
+\C{C10}{gxviii}{As MYNN; G18p: "taking the pressure correlation term to be small may be a dangerous assumption" (p.~8).} & \C{C10}{gxix}{As G18.} &
+\C{C10}{ito}{Transport Eq.~3, Rotta Eq.~9, both with $L \to FL$ \src{I15 Eq.~24}.} &
+\C{C10}{approx}{$K_q = S_q l q$, $S_q = 0.2$ (MY82 Eq.~24); Rotta $q/(3A_1 l)$ and isotropisation $C_1$ \src{J22 Eq.~10}.} &
+\C{C10}{full}{As 3D-APPROX, plus the horizontal $\qsq$ diffusion of B4.} &
+\C{C10}{sms}{$\overline{u_i'(e + p'/\rho_0)} = -2K\,\pd{e}{x_i}$ in three dimensions \src{Z18 Eq.~8}.} &
+\C{C10}{les}{As SMS-3DTKE.} \\
+\end{xltabular}
+\landscapeclose
+
+% ---------------------------------------------------------------------------
+%  Notes
+% ---------------------------------------------------------------------------
+\subsection*{Notes to the tables}
+\begin{small}
+\begin{enumerate}[leftmargin=*,itemsep=2pt]
+\item \textbf{The approximate 3D closure keeps the two-term production.} In the fork the $\qsq$
+budget of \texttt{pbl3d\_opt}$=\pm1$ contains $-2(\avg{uw}\,\pd{U}{z} + \avg{vw}\,\pd{V}{z})$ and
+nothing else \src{M3D:6336, 5863}, while the momentum and scalar equations receive the full 3D
+divergences of the diagnosed stresses. The publication does not state the production of 3D-APPROX;
+the code does. \textcite{wiersema2023} ran exactly this variant at 280~m over the METEX21 terrain because the full closure was numerically unstable there. This is the cell that separates "applying fluxes in three dimensions" from "solving
+the tensor".
+\item \textbf{Two stability cutoffs, one control.} The control run's MYNN has no critical
+Richardson number (the $a_2$-factor of Canuto and Kitamura keeps $S_M, S_H > 0$), the approximate
+3D closure with MY82 constants cuts off at $\Rfc = 0.191$, the original NN09 at 0.298. Two of the
+compared schemes therefore differ at night in the very quantity the project's deficit is binned by.
+\item \textbf{Ito et al.\ (2015) is not a column scheme.} As published and tested it is MYNN
+level~3 used as the subgrid model of a three-dimensional code, with all flux components in K-form,
+Honnert-scaled length scales and a separate horizontal length scale $L_x = 0.1\,h\,F$. It is the
+Mellor--Yamada sibling of SMS-3DTKE; the concept currently cites it as a grid-size-dependent length
+scale, which is true but not the whole of it.
+\item \textbf{Goger ports: candidate defects, not run-verified.} (a) G19 only: the destaggered
+cross-deformation is computed but the raw corner-staggered array is passed \src{G19w:368--376 vs.\ :579};
+G18 passes the destaggered one \src{G18w:571}. (b) Both: the surface-layer overwrite
+$\mathrm{pdk}(k_{ts}) = \mathrm{pdk}_1 - \mathrm{pdk}(k_{ts}+1)$ cancels the horizontal source in the
+lowest layer \src{G18:3335}. (c) Both: a mass-point source is inserted into an interface quantity.
+(d) Both: the time-averaged \texttt{qHSP\_mean} uses the previous grid point's density
+\src{module\_avgflx\_em.F:647}. (e) \texttt{qHSP} is written only with \texttt{tke\_budget=1}.
+\item \textbf{Fork observations, to be checked before they are called defects.} (i) The horizontal
+$\qsq$ diffusion of \texttt{pbl3d\_opt=2} carries a factor $\tfrac12(\qsq_{k+1} + \qsq_k)$ where the
+WRF template has $\bar\rho$, so the effective coefficient is $S_q\,l\,q\cdot\qsq$ rather than a
+diffusivity, the metric term sits outside the $K$ bracket, and the divergence carries a factor 2
+\src{M3D:6190--6192, 6291}. (ii) \texttt{Calc\_thetav} applies the $0.608\,q_v$ factor to the
+perturbation $\theta - 300$ (with \texttt{use\_theta\_m=1}: to $\theta_m - 300$) \src{M3D:1693}, so the
+interior $\theta_v$ misses $300 \cdot 0.608\,q_v$ while the surface face uses the full $\theta$
+\src{M3D:5488--5491}; $N^2$ and $\Ri$ inherit the difference.
+\item \textbf{Code versus paper.} SMS-3DTKE's mesoscale length-scale constants (0.8, 1, 1, 100 in
+the code against 1.9, 0.9, 1, 5 in the paper), its LES-limit vertical length ($\Delta z$ against
+$\Delta_s$), its countergradient coefficient (10.9 against 15.9) and its nonlocal fraction (0.68
+against 0.7) differ; Deardorff's dissipation constant in WRF is $0.285 + 0.645\,\ell/\Delta$ for the
+default $c_k = 0.15$, not the published $0.19 + 0.51\,\ell/\Delta$; the Shin--Hong code carries a
+2025 revision of the entrainment profile. Where the table quotes a number, it says which.
+\item \textbf{Remarks, not columns.} MYJ \parencite{janjic1994} is the operational Mellor--Yamada
+2.5 and differs from MYNN in constants and length scale only (its constant set exists in the fork,
+$\Rfc = 0.191$). QNSE \parencite{sukoriansky2005} and the energy- and flux-budget closure of
+\textcite{zilitinkevich2013} keep stably stratified turbulence alive at all Richardson numbers ---
+the point row C6 makes for the control run. Smagorinsky--Lilly \parencite{smagorinsky1963,lilly1962}
+(WRF \texttt{km\_opt=3}) and ICON's 3D Smagorinsky \parencite{dipankar2015,goger2024} are first-order
+relatives of the LES column. The Méso-NH scheme of \textcite{cuxart2000} with the partition of
+\textcite{honnert2011} is the lineage behind the Shin--Hong, Ito and SMS-3DTKE functions. ACM2
+\parencite{pleim2007} and TEMF \parencite{angevine2010} are further nonlocal-transport variants of
+row C1; MYNN level~3 and the total-energy closure ($\ge 2.7$) are options of the as-run scheme
+\parencite{olson2019}.
+\item \textbf{What the literature adds (read 2026-09-07).} (a) Every grey-zone partition result --- Honnert, Zhou, Ching, Shin \& Dudhia, Boutle --- is flat-terrain free convection with a prescribed uniform surface flux, and each paper says so; no reference partition exists for the stable regime, so row C6's "not a grey-zone problem" rests on \textcite{zhou2014}'s remark that the nocturnal eddy is $\lesssim 100$~m, not on a measured partition. (b) The spurious secondary circulations of row B5 are the Rayleigh instability of the superadiabatic layer a local scheme must sustain to transport heat down-gradient; vertical-only diffusion has no short-wave cutoff, so finer grids grow them faster (e-folding 20~min at 500~m); nonlocal schemes are largely immune \parencite{ching2014}. (c) The canonical blend, $l = W_{1D}l_{bl} + (1 - W_{1D})l_{smag}$ with $W_{1D} = 1 - \tanh(0.15\,z_{turb}/\dx)\max(0, 1 - \dx/4z_{turb})$, still 30\,\% unresolved at 100~m for a 600~m layer \parencite{boutle2014}, is the third position beside the Goger and Kosović columns: blend the scales by regime, keep the tensor. (d) Ito's $F$ is Honnert's Eq.~9 to the power $3/2$ with the same constants. (e) A closure difference can be real and invisible: over the Riviera the two subfilter closures diverged within one hour and agreed over 30~h, because hourly lateral forcing, short residence time and the computational mixing set the day-long answer \parencite{chow2006}; terrain data beat the closure by a factor of five in the wind bias over a Chinese massif \parencite{liu2020}. (f) Effective resolution is $\approx 7\dx$ \parencite{skamarock2004}: $l_h = 0.2\dx$ (G18), $\dx$ (SMS-3DTKE, LES limit) and the plume cap $1.2\dx$ (MYNN) are grid lengths, not eddy sizes.
+\item \textbf{What no scheme drops.} The ensemble average (A2), the flat surface layer (B6), local
+equilibrium (C7), universal constants (C9) and the pressure terms (C10) survive every column. The
+Eghdami et al.\ (2022) surface layer touches B6 as an option; nothing touches the other four.
+\end{enumerate}
+\end{small}

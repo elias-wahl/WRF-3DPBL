@@ -1,0 +1,183 @@
+% =============================================================================
+%  Front matter: purpose, notation, legend
+% =============================================================================
+\section*{Purpose}
+A one-dimensional boundary-layer scheme is a stack of assumptions, each of which was
+reasonable for a flat, homogeneous surface at a grid spacing of ten kilometres. This note
+splits that stack into its smallest testable statements (nineteen rows), shows where the
+original MYNN~2.5 scheme of \textcite{nakanishi2009} uses each of them, why each fails over
+mountains and in the grey zone, and how eleven other schemes handle it: kept, relaxed, or
+dropped --- and if dropped, what is assumed instead. It comes in three versions: a one-page
+quicklook of what each scheme does (Part~0), an overview with the mechanisms as equations
+(Part~I), and a lookup with constants, equation numbers and code references (Part~II). Section~I.3 (added 2026-09-12) marks the rows the PhD concept turns on and judges whether the assumptions the concept names are the right ones and which are missing.
+Everything stated about the WRF schemes was read from the local WRF~4.8 sources
+(\texttt{branko}, \texttt{goger18WRF}, \texttt{goger19WRF}); everything about the published
+schemes from the papers, with equation numbers.
+
+\section*{Notation}
+{\small Every symbol used in the tables, grouped by role. Where two schemes use one letter for
+different things, both meanings are listed with the context in which they occur. Units are SI;
+"--" marks a dimensionless quantity; "code" marks a Fortran variable named as in the source.\par}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.1}
+\newcommand{\notgroup}[1]{\multicolumn{3}{@{}l}{\rule{0pt}{3ex}\textbf{#1}} \\ \addlinespace[1pt]}
+\begin{xltabular}{\linewidth}{@{}>{\raggedright\arraybackslash}p{3.6cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{2.3cm}@{}}
+\toprule
+\textbf{Symbol} & \textbf{Meaning} & \textbf{Unit} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Symbol} (continued) & \textbf{Meaning} & \textbf{Unit} \\
+\midrule
+\endhead
+\bottomrule
+\endlastfoot
+\notgroup{Indices, subscripts and decorations}
+$i, j, k, n$ (on $u$, $U$, $x$, $\tau$, $g$, $f$) & Cartesian component indices, $1, 2, 3$ for $x, y, z$; a repeated index is summed ($P_s = -\avg{u_iu_j}\,\pd{U_i}{x_j}$ runs over nine terms). On its own, $k$ is also the vertical level index of a model column. & -- \\
+$U_x, U_y, U_z, V_x, \ldots, W_z$; $\Theta_{v,z}$ & Shorthand for the partial derivative of a mean field: $U_x \equiv \pd{U}{x}$, $\Theta_{v,z} \equiv \pd{\Theta_v}{z}$. & s$^{-1}$; K\,m$^{-1}$ \\
+$\partial_t$, $\partial_x$, $\partial_y$, $\partial_z$; $\Delta_x(\cdot)$, $\Delta_z(\cdot)$ & Partial derivatives; finite differences across one grid interval in $x$ or in the vertical, as written in the code. & -- \\
+$\avg{\cdot}$ & Grid-cell average: an ensemble average in the 1D closures and the 3D Mellor--Yamada closure, a spatial filter in Ito et al.\ and the LES-type closures (row A2). & -- \\
+$\overline{\cdot}$ & Average of a staggered quantity onto the grid point where it is used (e.g.\ $\overline{D_{12}^2}$, $\overline{|z_x|}$: four-point averages); in quoted formulas of Zhang et al.\ and Ito et al.\ the overbar is the resolved (filtered) field. & -- \\
+$u', \theta', w'\theta'$ (primed) & Subgrid fluctuation, in the notation of the quoted papers; identical to the unprimed lower-case $u_i$, $\theta$ of the Mellor--Yamada notation used elsewhere. & as the variable \\
+subscript $0$: $\avg{w\theta}_0$, $\avg{w\theta_v}_0$, $\avg{wq}_0$, $\theta_0$, $T_0$, $\rho_0$, $\Pr_0$, $l_0$ & Value at the surface (the surface fluxes), or a reference value ($\theta_0 = T_0 = 300$~K, $\rho_0$ the reference density); $\Pr_0$ the surface-layer Prandtl number of YSU; $l_0$ Blackadar's asymptotic length (see below). & as the variable \\
+subscript $1$: $u_1$, $v_1$, $U_1$, $V_1$, $z_1$, $\theta_{v,1}$, $\rho_1$, $\Delta z_1$ & Value at, or thickness of, the lowest model level. & as the variable \\
+subscript $h$ on a flux: $\avg{w\theta}_h$, $\avg{w\theta_v}_h$, $\avg{wc}_h$ & Entrainment flux at the boundary-layer top $h$ (YSU, Shin--Hong). & as the flux \\
+subscripts $h$, $v$ on $K$, $l$, $\ell$, $\Delta$: $K_h$, $K_v$ (rows B5, C2), $l_h$, $\ell_h$, $\ell_v$, $\Delta_h$ & Horizontal and vertical. Exception: in the YSU and Shin--Hong cells $K_m$, $K_h$, $K_c$, $K_q$ follow those schemes' convention and mean the eddy diffusivity for momentum, heat, a generic scalar $c$, and moisture. & -- \\
+subscripts $mh$, $mv$, $hh$, $hv$: $K_{mh}$, $K_{mv}$, $K_{hh}$, $K_{hv}$ & WRF's diffusion code: first letter momentum ($m$) or heat ($h$), second letter horizontal ($h$) or vertical ($v$). & -- \\
+subscripts $M$, $H$, $q$: $K_M$, $K_H$, $S_M$, $S_H$, $S_q$, $G_M$, $G_H$ & Mellor--Yamada convention: momentum, heat, turbulence kinetic energy. & -- \\
+subscripts $S$, $T$, $B$, $F$ on $L$ or $l$ & Surface-layer, turbulent-layer, buoyancy, and free-atmosphere length scales of the MYNN blend. & -- \\
+subscripts $up$, $down$, $k$, $\varepsilon$ on $l$ & BouLac: upward and downward parcel displacements, the mixing length, the dissipation length. & -- \\
+subscripts $LES$, $meso$ or $M$, $diss$ or $dissip$, $scale$, $master$, $use$, $eff$, $G$ on $l$ or $\ell$ & Length scale in the LES limit, in the mesoscale limit, for dissipation, from WRF's \texttt{calc\_l\_scale}, the fork's master scale, the strain-limited scale actually used, the G19 port's effective and unblended (Goger) horizontal scales. & -- \\
+subscripts $NL$, $L$, $u$, $q$, $\theta$, $nl$, $TKE$ on $P$ & Partition (scale-awareness) functions for the nonlocal heat flux, the local heat flux, momentum, moisture, heat, the nonlocal term (Zhang et al.), and TKE. & -- \\
+subscript or superscript $*$: $u_*$, $w_*$, $\theta_*$, $q^*$, $L^*$, $\Delta^*$ & Surface-layer and convective scales (friction velocity, convective velocity, temperature scale); in Ito et al.\ a quantity made dimensionless with $w_*$ and $h$. & -- \\
+subscripts $c$, $eq$, $2$, $HL88$, $min$, $div$ on $q$ or $\alpha$ & $q_c$: NN09's convective velocity scale; $q_{eq} = q_2 = q_{HL88}$: the level-2 equilibrium value of $q$; $q_{min}$: the numerical floor; $q_{div}$: the Helfand--Labraga ratio $q/q_{eq}$; $\alpha_c$: the resulting disequilibrium factor. & -- \\
+subscripts $ts$, $te$: $k_{ts}$, $k_{te}$ & WRF tile indices of the lowest and the highest model level. & -- \\
+subscripts $x$, $y$ on $z$ and $\tau$: $z_x$, $z_y$, $\tau_x$, $\tau_y$ & Slope of the model (terrain-following) surface, $(\pd{z}{x})_\eta$; components of the fork's slope factor. & -- \\
+subscripts $u$, $v$, $w$ on $\sigma$; $L,u$ and $L,v$ on $T$ & Standard deviations of the velocity components; streamwise and spanwise Lagrangian integral time scales. & m\,s$^{-1}$; s \\
+subscripts $mf$, $bl$, $shcu$, $ent$, $sf$, $ns$, $fac$, $lim$, $conv$ & Mass flux ($l_B^{mf}$, $q_{mf}$), boundary layer ($\Psi_{bl}$), shallow cumulus ($\Psi_{shcu}$), entrainment ($f_{ent}$, $c_{ent}$), surface ($c_{sf}$), stable ($c_{ns}$), factor ($\phi_{fac}$, $a_{2fac}$), limit ($\Pr_{lim}$), convective ($v_{conv}$). & -- \\
+superscripts $S$, $mf$, $LES$ on $K$ or $l$: $K^S_{mh}$, $l_B^{mf}$, $\ell_v^{LES}$ & The Smagorinsky part of a coefficient, the mass-flux contribution to a length, the LES-limit value. & -- \\
+\notgroup{Mean fields and turbulent fluctuations}
+$U, V, W$; $U_i$ & Mean (resolved) wind components along $x$, $y$, $z$; index form. & m\,s$^{-1}$ \\
+$u, v, w$; $u_i$ & Subgrid velocity fluctuations. & m\,s$^{-1}$ \\
+$|V|$, $|U_1|$, $U$ (G19 cells) & Horizontal wind speed at the lowest level (surface-layer input); in the G19 port the local horizontal wind speed used as velocity scale. & m\,s$^{-1}$ \\
+$V_{10}$ & 10-m wind speed (in the Rossby number of YSU). & m\,s$^{-1}$ \\
+$\Theta$, $\theta$; $\Theta_v$, $\theta_v$; $\Theta_l$, $\theta_l$; $\theta_m$ & Potential temperature (mean, fluctuation); virtual; liquid-water; WRF's moist potential temperature $\theta_m = \theta(1 + 1.61 q_v)$. & K \\
+$\theta_T$ & YSU's thermal excess added to $\theta_v$ of the first level in the bulk Richardson number. & K \\
+$\Delta\theta_v$, $\Delta\theta$, $\Delta u$, $\Delta q$ & Jumps across the boundary-layer top (entrainment). & K; m\,s$^{-1}$; kg\,kg$^{-1}$ \\
+$Q_v$, $q_v$; $Q_w$, $q_w$ & Water-vapour mixing ratio (mean, fluctuation); total water. & kg\,kg$^{-1}$ \\
+$C$, $c$ & A generic transported scalar and its fluctuation (YSU flux formula). & as the scalar \\
+$p$ & Pressure fluctuation. & Pa \\
+$\rho$, $\rho_0$, $\rho_1$ & Air density; reference; at the lowest level. & kg\,m$^{-3}$ \\
+$\avg{u_iu_j}$, $\tau_{ij}$; $\avg{u^2}$, $\avg{v^2}$, $\avg{w^2}$, $\avg{uv}$, $\avg{uw}$, $\avg{vw}$ & Reynolds (subgrid) stress tensor and its six components; $\tau_{ij}$ is the deviatoric form of Ito et al. & m$^2$\,s$^{-2}$ \\
+$\avg{u_j\theta_v}$, $\avg{u\theta_v}$, $\avg{v\theta_v}$, $\avg{w\theta_v}$; $\avg{w\theta}$, $\avg{wq}$, $\avg{wc}$; $f_i$, $f_x$, $f_y$, $f_z$ & Turbulent heat-flux vector and its components; moisture and scalar fluxes; $f_i$ is the heat-flux vector of Ito et al. & K\,m\,s$^{-1}$; kg\,kg$^{-1}$\,m\,s$^{-1}$ \\
+$\avg{\theta_v^2}$, $\avg{\theta^2}$ & Temperature variance. & K$^2$ \\
+HFX, QFX & WRF surface sensible heat flux and moisture flux; $\avg{w\theta}_0 = \mathrm{HFX}/(\rho c_p)$. & W\,m$^{-2}$; kg\,m$^{-2}$\,s$^{-1}$ \\
+$\tau_{xz}$ & Surface momentum flux (kinematic stress), $= u_*^2\,u_1/|U_1|$. & m$^2$\,s$^{-2}$ \\
+\notgroup{Turbulence energy budget}
+$e$ & Turbulence kinetic energy, $e = \tfrac12(\avg{u^2} + \avg{v^2} + \avg{w^2})$ (BouLac, SMS-3DTKE, LES, Ito). & m$^2$\,s$^{-2}$ \\
+$\qsq$, $q$, $q_t$ & Twice the TKE (the prognostic variable of the Mellor--Yamada schemes; WRF calls it \texttt{qke}); $q = \sqrt{\qsq}$ is the turbulent velocity scale; $q_t = \sqrt{\qsq + q_{pe}}$ is WRF-MYNN's total turbulent velocity including the potential energy $q_{pe}$ (zero below closure 2.7). & m$^2$\,s$^{-2}$; m\,s$^{-1}$ \\
+$E$, $R$ (Ito) & Resolved (grid-scale) kinetic energy of the deviations from the horizontal mean; subgrid fraction $R = e/(e + E)$. & m$^2$\,s$^{-2}$; -- \\
+$P_s$, $P_b$, $\varepsilon$ & Shear production, buoyancy production, dissipation rate of TKE. & m$^2$\,s$^{-3}$ \\
+$P_{HSP}$, hsp, \texttt{qHSP} (code) & Horizontal shear production added by the Goger ports. & m$^2$\,s$^{-3}$ \\
+$P_{ke}$, pdk (code) & MYNN's production term of $\qsq/2$ at a level; rp $= \mathrm{pdk}_k + \mathrm{pdk}_{k+1}$ is what enters the $\qsq$ tendency. & m$^2$\,s$^{-3}$ \\
+sh, bu (code) & BouLac's shear and buoyancy production per level. & m$^2$\,s$^{-3}$ \\
+agg\_def2, $D_h^2$, $|D_h|$, $|S|_h$ & Horizontal deformation invariants: agg\_def2 $= D_h^2 = (\pd{U}{x})^2 + (\pd{V}{y})^2 + \tfrac12(\pd{U}{y} + \pd{V}{x})^2$ (Goger source); $|S|_h^2 = \tfrac14(D_{11} - D_{22})^2 + \overline{D_{12}}^{\,2}$ (WRF Smagorinsky, deviatoric). & s$^{-2}$; s$^{-1}$ \\
+$D_{ij}$, $D_{11}, D_{12}, \ldots, D_{33}$ & Deformation tensor $D_{ij} = \pd{U_i}{x_j} + \pd{U_j}{x_i}$ ($D_{11} = 2\,\pd{U}{x}$). & s$^{-1}$ \\
+$|S|$ & Strain-rate magnitude, $|S|^2 = 2(U_x^2 + V_y^2 + W_z^2) + (U_y + V_x)^2 + (U_z + W_x)^2 + (V_z + W_y)^2$. & s$^{-1}$ \\
+$\Pi_{ij}$ & Pressure--strain correlation (return to isotropy). & m$^2$\,s$^{-3}$ \\
+$\Gamma_\theta$, $\Gamma_v$ & NN09 level-3 countergradient term for heat; the corresponding term in MYNN's TKE production (dimensionless there, alongside $S_M G_M$). & K\,m$^{-1}$; -- \\
+$\gamma_\theta$, $\gamma_q$, $\gamma_u$, $\gamma_v$, $\gamma_c$ & YSU / Shin--Hong countergradient amplitudes for heat, moisture, momentum, a generic scalar; the gradient correction actually used is $\gamma/h$. & K; kg\,kg$^{-1}$; m\,s$^{-1}$ \\
+$\gamma$ (BouLac) & Troen--Mahrt countergradient term, $10\,\avg{w\theta}_0/(w_* h)$. & K\,m$^{-1}$ \\
+$a_u(1)$, $b_\theta(1)$, $b_q(1)$ & BouLac's implicit drag coefficient and explicit flux sources of the lowest level. & s$^{-1}$; K\,s$^{-1}$; kg\,kg$^{-1}$\,s$^{-1}$ \\
+\notgroup{Closure: eddy coefficients, stability functions, constants}
+$K$, $K_M$, $K_H$; $K_m$, $K_h$, $K_c$, $K_q$ & Eddy viscosity (momentum) and eddy diffusivity (heat); $K = L q S$ in the Mellor--Yamada schemes; lower-case pairs in the YSU and Shin--Hong convention (see the index list). & m$^2$\,s$^{-1}$ \\
+$K_{mh}$, $K_{mv}$, $K_{hh}$, $K_{hv}$; $K^S_{mh}$ & WRF's horizontal and vertical coefficients for momentum and heat; the Smagorinsky part of $K_{mh}$. & m$^2$\,s$^{-1}$ \\
+$K_q$, $K_e$, $K_{q_{ke}}$ & Diffusivity of TKE ($K_q = S_q l q$ in the Mellor--Yamada schemes, $3K_m$ in WRF-MYNN, $2K$ in the Deardorff-type schemes). & m$^2$\,s$^{-1}$ \\
+$K_0$ & YSU's local free-atmosphere coefficient before the Richardson-number factor, $K_0 = \ell^2|S|$. & m$^2$\,s$^{-1}$ \\
+$S_M$, $S_H$, $S_q$, $S_\theta$ & Dimensionless stability functions (diffusivity ratios) for momentum, heat, TKE, temperature variance. & -- \\
+$G_M$, $G_H$ & Non-dimensional vertical shear and buoyancy, $G_M = (L^2/q^2)[(\pd{U}{z})^2 + (\pd{V}{z})^2]$, $G_H = -(L^2/q^2)\,\beta g\,\pd{\Theta_v}{z}$. & -- \\
+$E_1, \ldots, E_5$ & Auxiliary functions of $G_M$, $G_H$ in the level-2.5 stability functions. & -- \\
+$F_1$, $F_2$, $f_1, \ldots, f_4$, $c_m$, $c_{h2}$ & Combinations of the closure constants in the level-2 functions (NN09 form; the fork's \texttt{fac1}--\texttt{fac4}, \texttt{cm}, \texttt{ch2}). & -- \\
+$\alpha_c$, $q_{div}$ & Helfand--Labraga disequilibrium factor, $q/q_{eq}$ where $q < q_{eq}$, else 1. & -- \\
+$A_1, A_2, B_1, B_2, C_1, \ldots, C_5$; $a_1, a_2, b_2, c_1$ & Mellor--Yamada closure constants (Rotta and dissipation time scales, isotropisation of production, pressure--scalar terms); lower case: the same constants in the fork's code. & -- \\
+$\gamma_1$, $\gamma_2$ & NN09 combinations, $\gamma_1 = \tfrac13 - 2A_1/B_1$, $\gamma_2 = \tfrac{B_2}{B_1}(1 - C_3) + \tfrac{2A_1}{B_1}(3 - 2C_2)$; $\Rfc = \gamma_1/(\gamma_1 + \gamma_2)$. & -- \\
+$a_{2fac}$, CK$_{mod}$ & Canuto/Kitamura factor on $A_2$, $1/(1 + \mathrm{CK}_{mod}\max(\Ri, 0))$, $\mathrm{CK}_{mod} = 1$. & -- \\
+$\Pr$, $\Pr_0$, $\Pr_{lim}$ & Turbulent Prandtl number $K_M/K_H$; YSU's surface-layer value; MYNN's Richardson-dependent cap. & -- \\
+$c_k$, $c_s$; $C_k$, $C_\varepsilon$; $c_{\varepsilon1}$, $c_{\varepsilon2}$ & Deardorff and Smagorinsky constants ($0.15$, $0.25$); BouLac's constants ($0.4$, $1/1.4$); WRF's dissipation constants ($C_\varepsilon = c_{\varepsilon1} + c_{\varepsilon2}\,\ell/\Delta$). & -- \\
+$\alpha_1, \ldots, \alpha_6$, $c_{ns}$ & MYNN length-scale constants (turbulent-layer, buoyancy and stable-surface-layer coefficients). & -- \\
+$\alpha$ & Three uses: the coefficient 0.10 of the Blackadar asymptotic length (Mellor--Yamada 1974, Juliano et al.); the wind-direction angle in the fork's surface stress ($\avg{uw} = -u_*^2\cos\alpha$); SMS-3DTKE's slope taper on the Smagorinsky coefficient. & -- \\
+$b$, $a$; $\phi_{fac}$; $s_m$ & YSU countergradient constants ($a = b = 6.8$); the coefficient 8 in $w_s$; the Noh et al.\ momentum coefficient (15.9 in YSU and Shin--Hong, 10.9 in SMS-3DTKE). & -- \\
+$c$ (Goger) & Smagorinsky constant of the horizontal shear production, 0.2. & -- \\
+$\mathsf{A}$, $\mathbf{x}$, $\mathbf{b}$, $b_1$; $\mathsf{I}$, $\mathsf{S}$, $\tau^{-1}$ & The $10 \times 10$ linear system of the full closure: matrix, vector of the ten second moments, right-hand side and its first entry; the matrix is the identity times the inverse relaxation time plus the strain block. & mixed \\
+$\mathcal{H}$ & Shin--Hong's nonlocal term written as a gradient correction, $\mathcal{H} = m_f/K_h$. & K\,m$^{-1}$ \\
+$m_f$, $F_{nl}$, $\varepsilon_f$ & Shin--Hong's prescribed nonlocal heat-flux profile, its amplitude and the entrainment factor. & K\,m\,s$^{-1}$; K\,m\,s$^{-1}$; -- \\
+\notgroup{Length and velocity scales}
+$L$, $l$, $\ell$ & Master (mixing) length scale: the size of the energy-containing eddies. $L$ in NN09 and Ito et al., $l$ in the fork and BouLac, $\ell$ in WRF's diffusion code and YSU's local scheme. In $z/L$ and $L_{\mathrm{MO}}$, $L$ is the Obukhov length. & m \\
+$L_S$, $L_T$, $L_B$; $l_S$, $l_T$, $l_B$, $l_F$ & MYNN blend: surface-layer, turbulent-layer, buoyancy and free-atmosphere lengths. & m \\
+$l_0$, $\tilde q$ & Blackadar's asymptotic length ($q$-weighted mean height of the turbulence); the turbulent excess $\tilde q = \max(q - q_{min}, 0)$ that weights it in the fork. & m; m\,s$^{-1}$ \\
+$l_{up}$, $l_{down}$, $l_k$, $l_\varepsilon$ & BouLac parcel displacements, mixing length $\min(l_{up}, l_{down})$, dissipation length $\sqrt{l_{up}l_{down}}$. & m \\
+$l_M$, $l_{meso}$, $l_{LES}$, $\ell_v^{LES}$, $\ell_h$, $\ell_v$, $\ell_{diss}$, $\ell_{scale}$, $\Delta_{iso}$ & SMS-3DTKE and Deardorff lengths: mesoscale, LES-limit, horizontal, vertical, dissipation; WRF's \texttt{calc\_l\_scale}; isotropic grid length. & m \\
+$l_{master}$, $l_{dissip}$, $l_{use}$, $l_{BouLac}$ & The fork's master scale, its dissipation copy, the strain-limited value entering the solve, the BouLac alternative. & m \\
+$l_h$, $l_G$, $l_{eff}$ & Horizontal length of the Goger ports: $0.2\,\dx$ (G18); $l_G^2 = U^2 T_{L,u}T_{L,v}$ and its blended, capped form $l_{eff}$ (G19). & m \\
+$L_x$, $L_\varepsilon$, $L_\theta$ & Ito et al.: horizontal length ($0.1\,h\,F$), dissipation length ($B_1 L$), temperature-variance dissipation length ($B_2 L$). & m \\
+$\lambda$ & YSU's asymptotic length in the free atmosphere, 30--300~m. & m \\
+$u_*$, $w_*$, $\theta_*$ & Friction velocity; convective velocity $w_* = (\beta g\,\avg{w\theta_v}_0\, z_i)^{1/3}$; surface temperature scale. & m\,s$^{-1}$; K \\
+$w_s$, $w_{s0}$, $w_{s2}$ & YSU mixed-layer velocity scale $(u_*^3 + 8\kappa w_*^3\zeta)^{1/3}$; its value at $z = h/2$ (used for the countergradient terms); the top-down (cloud-top) branch. & m\,s$^{-1}$ \\
+$w_m$ & Combined velocity scale $w_m^3 = w_*^3 + 5u_*^3$ (entrainment). & m\,s$^{-1}$ \\
+$w_e$ & Entrainment velocity at the boundary-layer top. & m\,s$^{-1}$ \\
+$q_c$ & NN09 convective velocity scale $(\beta g\,\avg{w\theta_v}_0\, L_T)^{1/3}$. & m\,s$^{-1}$ \\
+$\sigma_u$, $\sigma_v$, $\sigma_w$ & Standard deviations of the velocity components (G19 port, from similarity profiles). & m\,s$^{-1}$ \\
+$T_L$, $T_{L,u}$, $T_{L,v}$ & Lagrangian integral time scales, $0.15\,z_i/\sigma$. & s \\
+$\tau$ & Relaxation time of the closure, $\propto l/q$ (row C7); in the fork's slope factor $\tau^2 = \tau_x^2 + \tau_y^2$ (dimensionless). & s; -- \\
+$\delta$, $\delta_{sh}$ & Entrainment-zone depth (YSU, Shin--Hong). & m \\
+\notgroup{Stability, boundary-layer depth, surface layer}
+$g$, $g_j$, $\beta$ & Gravity; the gravity vector $(0, 0, -g)$ in the buoyancy terms of the stress equations; buoyancy coefficient $\beta = 1/T_{\mathrm{ref}}$, $T_{\mathrm{ref}} = 300$~K in every WRF scheme here. & m\,s$^{-2}$; K$^{-1}$ \\
+$N$, $N^2$ & Brunt--V\"ais\"al\"a frequency, $N^2 = \beta g\,\pd{\Theta_v}{z}$. & s$^{-1}$; s$^{-2}$ \\
+$\Ri$, $\Ri_b$ & Gradient Richardson number $N^2/[(\pd{U}{z})^2 + (\pd{V}{z})^2]$; bulk Richardson number from the surface (YSU, Shin--Hong, Goger 2019). & -- \\
+$\Rf$, $\Rfc$, $R_{f1}$, $R_{f2}$ & Flux Richardson number $-P_b/P_s$; its critical value; two auxiliary values of the level-2 functions. & -- \\
+$L_{\mathrm{MO}}$, $\zeta$ & Obukhov length; $\zeta = z/L_{\mathrm{MO}}$ in the MYNN length scales. In YSU $\zeta = (z - z_1)/(h - z_1)$, in the G19 port $\zeta = z/z_i$ (both dimensionless heights). & m; -- \\
+$\phi_m$, $\phi_h$ & Monin--Obukhov stability functions for momentum and heat. & -- \\
+$z_i$, $h$, $z_{i2}$, $h_1$, $h_2$, $z_{top}$ & Boundary-layer (mixed-layer) depth ($z_i$ in the Mellor--Yamada and SMS contexts, $h$ in YSU, Shin--Hong, BouLac, Ito); $z_{i2} = \max(z_i, 200~\mathrm{m})$ and the blend heights of MYNN's length scale; the model top. & m \\
+$w_t$, $w_b$ & Blend weights: MYNN's BouLac blend above the PBL; the G19 port's blend to the Smagorinsky length above $\zeta = 0.8$. & -- \\
+$\varphi_s$ & Shin--Hong: top of the surface layer as a fraction of $z_i$. & -- \\
+$\mathrm{Ro}$, $f$, $z_0$ & Surface Rossby number $|V_{10}|/(f z_0)$; Coriolis parameter; roughness length. & --; s$^{-1}$; m \\
+$C_t$, var\_sso, $\nabla^2 h$ & \texttt{topo\_wind} drag factor; WPS variance of the subgrid orography; terrain Laplacian as coded (five-point sum). & --; m$^2$; m \\
+$v_{conv}$ & YSU's convective velocity that switches the \texttt{topo\_wind} correction off. & m\,s$^{-1}$ \\
+$d_1$, $d_2$ & YSU entrainment-depth constants (0.02, 0.05). & -- \\
+$c_p$, $c_p^*$, $c_{pm}$ & Specific heat of air at constant pressure; its moist forms $c_p(1 + 0.84 q_v)$ and $c_p(1 + 0.8 q_v)$. & J\,kg$^{-1}$\,K$^{-1}$ \\
+$e_{min}$, $q_{min}$, TURB\_FLUX\_MIN & Numerical floors on TKE, on $q$ and on the fluxes. & m$^2$\,s$^{-2}$; m\,s$^{-1}$ \\
+\notgroup{Grid, coordinates and scale awareness}
+$\Delta$, $\dx$, $\Delta y$, $\Delta z$, $\overline{\Delta z}$ & Grid spacings; the mean of two adjacent layer thicknesses. & m \\
+$\Delta_h$, $\Delta_{iso}$, $\Delta_s$, $\Delta_H$, $\Delta_{\mathrm{eff}}$ & Horizontal grid length $\sqrt{\dx\Delta y}$; isotropic length $(\dx\Delta y\Delta z)^{1/3}$ (Zhang et al.\ write $\Delta_s$); Ito's filter width; Shin--Hong's near-surface-inflated grid length $\Delta\max(0.2z_i/z, 1)$. & m \\
+$\Delta^*$, $r$, $x$ & Grid length made dimensionless with the boundary-layer depth: $\Delta/h$ (Ito), $r = \Delta_h/z_i$ or $\max(2.5\Delta, 10)/\min(z_i, 3000)$ (SMS-3DTKE, MYNN, fork), $x = \Delta/(c_{sf}z_i)$ (Shin--Hong). & -- \\
+$P(\cdot)$, $P_u$, $P_\theta$, $P_{nl}$, $P_{NL}$, $P_L$, $P_q$, $P_{TKE}$ & Partition functions between the LES limit (0) and the mesoscale limit (1). & -- \\
+$F(\Delta^*)$ & Ito et al.'s length-scale factor, $P_{TKE}^{3/2}$. & -- \\
+$\Psi_{bl}$, $\Psi_{shcu}$ & WRF-MYNN's scale-awareness tapers for the length scale and the mass flux. & -- \\
+$c_{sf}$ & Shin--Hong stability factor on the nonlocal argument, between 1 and 2. & -- \\
+$m$, $m_{tx}$, $m_{ux}$, $m_x$, $m_y$ & Map-scale factors (at mass and $u$ points). & -- \\
+$\eta$ & WRF's terrain-following vertical coordinate; "along $\eta$" means along a model surface. & -- \\
+$z_x$, $z_y$ & Slopes of the model surface, $(\pd{z}{x})_\eta$, $(\pd{z}{y})_\eta$. & -- \\
+$\sigma$ & The fork's slope factor $\max(\tau, 1)$ dividing the horizontal tendencies; slope times grid aspect ratio. & -- \\
+$\kappa$ & Von K\'arm\'an constant, 0.4. & -- \\
+\notgroup{Scheme-specific remainders}
+$a_{11}$, $a_{12}$, nlfrac, $f_{ent}$, $c_{ent}$ & Shin--Hong nonlocal-profile constants (1.0, $-1.15$, 0.7, 2, $-0.2$). & -- \\
+$\delta_{ij}$ & Kronecker delta. & -- \\
+$\pm$, $\mp$ in $\texttt{pbl3d\_opt} = \pm 1$ & The two approximate variants of the 3D closure: $-1$ applies vertical divergences only, $+1$ the full 3D divergences. & -- \\
+\end{xltabular}
+\normalsize
+
+\section*{Legend}\label{sec:legend}
+\begin{small}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{5.6cm} >{\raggedright\arraybackslash}X@{}}
+\gK\ \gP\ \gD\ \gN & assumption kept \,/\, relaxed or partly dropped \,/\, dropped \,/\, not applicable to the scheme \\
+\fglyph{\gD}\ {\setlength{\fboxsep}{1.6pt}\setlength{\fboxrule}{0.5pt}\fbox{\gP\ decisive cell}} & a \emph{decisive} cell: the assumption whose removal is the scheme's reason to exist, a cell that decides the questions of the first paper (horizontal production, $W$ gradients, length scale, stability cutoff), or a surprise \\
+\colorbox{cShade}{\rule{0pt}{1.6ex}\ kept by every scheme\ } & shaded row: no scheme drops it --- the open frontier \\
+\textcolor{cMYNN}{\textbf{MYNN as run}}\ \ \textcolor{cGXVIII}{\textbf{G18 port}}\ \ \textcolor{cGXIX}{\textbf{G19 port}} \newline \textcolor{cAPPROX}{\textbf{3D-APPROX}}\ \ \textcolor{cFULL}{\textbf{3D-FULL}} & the versions run in this project, in the colours of the project's diagnostics; colour means scheme identity and nothing else \\
+\rg{day}\ \rg{night}\ \rg{both} & regime in which the failure matters: convective valley atmosphere, stable night, or both \\
+\ev{obs}\ \ev{inf}\ \ev{run} & evidence: observed, inferred, or measured in this project's runs \\
+\lit{} & literature evidence on the cell, added after the reading of 2026-09-07 \\
+\fork\ \ \open & the fork or the WRF port differs from the publication \,/\, open item, named as such \\
+\kfull\ \khalf & row the PhD concept turns on (a research question, regime or decision metric) \,/\, row the project's findings or methods depend on --- Section~I.3 reads the concept against the table \\
+\end{tabularx}
+\end{small}

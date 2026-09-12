@@ -1,0 +1,156 @@
+% =============================================================================
+%  macros.tex -- one source of truth for the assumption tables
+%  status data (row x scheme), glyphs, frames, colours, headers, tags
+% =============================================================================
+
+% ---- scheme identity colours (proc/config/config.yaml; 3D-APPROX derived) ----
+\definecolor{cMYNN}{HTML}{3A6B00}   % og    : the MYNN control as run
+\definecolor{cGXVIII}{HTML}{9E5B00} % g18   : Goger 2018 port
+\definecolor{cGXIX}{HTML}{990011}   % g19   : Goger 2019 port
+\definecolor{cFULL}{HTML}{7B2D8E}   % 3dpbl : 3D-FULL (palette purple)
+\definecolor{cAPPROX}{HTML}{9A5AA8} % 3dpbl lightened 25 %: 3D-APPROX
+\definecolor{cShade}{gray}{0.90}    % kept-by-all rows
+\colorlet{tMYNN}{cMYNN!7}
+\colorlet{tGXVIII}{cGXVIII!8}
+\colorlet{tGXIX}{cGXIX!7}
+\colorlet{tFULL}{cFULL!8}
+\colorlet{tAPPROX}{cAPPROX!8}
+
+% ---- scheme keys, display names, colours -----------------------------------
+% keys: mynnrun ysu shh boulac | gxviii gxix ito approx full sms les
+\newcommand{\schemename}[1]{\csname sn@#1\endcsname}
+\newcommand{\schemecolor}[1]{\csname sc@#1\endcsname}
+\newcommand{\schemetint}[1]{\csname stint@#1\endcsname}
+\newcommand{\defscheme}[4]{\expandafter\def\csname sn@#1\endcsname{#2}%
+  \expandafter\def\csname sc@#1\endcsname{#3}\expandafter\def\csname stint@#1\endcsname{#4}}
+\defscheme{mynnrun}{MYNN as run}{cMYNN}{tMYNN}
+\defscheme{ysu}{YSU}{black}{white}
+\defscheme{shh}{Shin--Hong 2015}{black}{white}
+\defscheme{boulac}{BouLac}{black}{white}
+\defscheme{gxviii}{G18 port}{cGXVIII}{tGXVIII}
+\defscheme{gxix}{G19 port}{cGXIX}{tGXIX}
+\defscheme{ito}{Ito et al.\ 2015}{black}{white}
+\defscheme{approx}{3D-APPROX}{cAPPROX}{tAPPROX}
+\defscheme{full}{3D-FULL}{cFULL}{tFULL}
+\defscheme{sms}{SMS-3DTKE}{black}{white}
+\defscheme{les}{LES limit}{black}{white}
+\def\schemelist{mynnrun,ysu,shh,boulac,gxviii,gxix,ito,approx,full,sms,les}
+\def\schemelistoneD{mynnrun,ysu,shh,boulac}
+\def\schemelistthreeD{gxviii,gxix,ito,approx,full,sms,les}
+
+% ---- glyphs (TikZ, font independent) ----------------------------------------
+\newcommand{\gK}{\tikz[baseline=-0.6ex]{\fill (0,0) circle (0.42em);}}                       % kept
+\newcommand{\gP}{\tikz[baseline=-0.6ex]{\draw[line width=0.5pt] (0,0) circle (0.42em);
+  \fill (0,0) -- (90:0.42em) arc (90:270:0.42em) -- cycle;}}                                 % partial
+\newcommand{\gD}{\tikz[baseline=-0.6ex]{\draw[line width=0.5pt] (0,0) circle (0.42em);}}     % dropped
+\newcommand{\gN}{\raisebox{0.15ex}{--}}                                                       % n/a
+
+% ---- status data: \setst{row}{scheme}{K|P|D|N}; frames: \setfr{row}{scheme} --
+\newcommand{\setst}[3]{\expandafter\def\csname st@#1@#2\endcsname{#3}}
+\newcommand{\setfr}[2]{\expandafter\def\csname fr@#1@#2\endcsname{1}}
+\newcommand{\statusof}[2]{\csname st@#1@#2\endcsname}
+% row-wise setter: \strow{A1}{P K D K K K D P P D D}  (order = \schemelist)
+\newcommand{\strow}[2]{\strowx{#1}#2\relax}
+\def\strowx#1#2 #3 #4 #5 #6 #7 #8 #9 {\setst{#1}{mynnrun}{#2}\setst{#1}{ysu}{#3}\setst{#1}{shh}{#4}%
+  \setst{#1}{boulac}{#5}\setst{#1}{gxviii}{#6}\setst{#1}{gxix}{#7}\setst{#1}{ito}{#8}\setst{#1}{approx}{#9}%
+  \strowy{#1}}
+\def\strowy#1#2 #3 #4\relax{\setst{#1}{full}{#2}\setst{#1}{sms}{#3}\setst{#1}{les}{#4}}
+
+%            mynnrun ysu shh boulac | gxviii gxix ito approx full sms les
+\strow{A1}{P K D K K K D P P D D}
+\strow{A2}{K K K K K K P K K P P}
+\strow{B1}{K K K K P P D K D D D}
+\strow{B2}{K K K K K K D K D D D}
+\strow{B3}{K K K K K K D D D D D}
+\strow{B4}{K N N K P P D P D D D}
+\strow{B5}{K K K K P P D D D D D}
+\strow{B6}{K K K K K K K K K K K}
+\strow{B7}{N N N N D D N D D D D}
+\strow{C1}{P P P P K K P K D P K}
+\strow{C2}{K K K K P P P P D P P}
+\strow{C3}{K K K K K K K P D K K}
+\strow{C4}{K K K D P P P K K P D}
+\strow{C5}{K N N D K K P K K P P}
+\strow{C6}{D K K P P P K K P P P}
+\strow{C7}{K K K K K K K K K K K}
+\strow{C8}{K K K K K K P P D P P}
+\strow{C9}{K K K K K K K K K K K}
+\strow{C10}{K N N K K K K K K P P}
+
+% decisive cells (frame): (a) reason to exist, (b) paper-1 questions, (c) surprises
+\setfr{C6}{mynnrun}
+\setfr{C1}{ysu}
+\setfr{A1}{shh}
+\setfr{C4}{boulac}\setfr{B6}{boulac}
+\setfr{B1}{gxviii}\setfr{B2}{gxviii}\setfr{C4}{gxviii}\setfr{C6}{gxviii}\setfr{B5}{gxviii}
+\setfr{B1}{gxix}\setfr{B2}{gxix}\setfr{C4}{gxix}\setfr{C6}{gxix}\setfr{B5}{gxix}
+\setfr{A1}{ito}\setfr{C4}{ito}\setfr{B1}{ito}\setfr{B2}{ito}\setfr{C6}{ito}
+\setfr{B3}{approx}\setfr{B1}{approx}\setfr{B2}{approx}\setfr{C4}{approx}\setfr{C6}{approx}
+\setfr{B1}{full}\setfr{B2}{full}\setfr{C3}{full}\setfr{C4}{full}\setfr{C6}{full}
+\setfr{A1}{sms}\setfr{B5}{sms}\setfr{B1}{sms}\setfr{B2}{sms}\setfr{C4}{sms}\setfr{C6}{sms}
+\setfr{A1}{les}\setfr{C4}{les}\setfr{B1}{les}\setfr{B2}{les}\setfr{C6}{les}
+
+% ---- rendering ---------------------------------------------------------------
+\newcommand{\rawglyph}[2]{\csname g\csname st@#1@#2\endcsname\endcsname}
+\newcommand{\fglyph}[1]{{\setlength{\fboxsep}{1.2pt}\setlength{\fboxrule}{0.5pt}\fbox{#1}}}
+\newcommand{\G}[2]{\ifcsname fr@#1@#2\endcsname\fglyph{\rawglyph{#1}{#2}}\else\rawglyph{#1}{#2}\fi}
+\newcommand{\framecell}[1]{{\setlength{\fboxsep}{1.6pt}\setlength{\fboxrule}{0.5pt}%
+  \fbox{\parbox[t]{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}{\raggedright #1}}}}
+% cell = glyph + text, framed when decisive
+\newcommand{\C}[3]{\ifcsname fr@#1@#2\endcsname\framecell{\rawglyph{#1}{#2}\ #3}\else\rawglyph{#1}{#2}\ #3\fi}
+
+% row shade when no scheme drops the row (no D among the eleven); computed once at load time
+\def\rs@D{D}
+\def\rowlist{A1,A2,B1,B2,B3,B4,B5,B6,B7,C1,C2,C3,C4,C5,C6,C7,C8,C9,C10}
+\def\computeshades{\@for\rs@r:=\rowlist\do{\def\rs@hasD{0}%
+  \@for\rs@s:=\schemelist\do{\edef\rs@v{\csname st@\rs@r @\rs@s\endcsname}\ifx\rs@v\rs@D\def\rs@hasD{1}\fi}%
+  \if\rs@hasD1\else\expandafter\let\csname sh@\rs@r\endcsname\@empty\fi}}
+\computeshades
+% expandable at row start: \rowcolor must be the first token of the row
+\newcommand{\rowshade}[1]{\ifcsname sh@#1\endcsname\rowcolor{cShade}\fi}
+
+% ---- headers -----------------------------------------------------------------
+% in p/X columns: name in scheme colour + coloured rule; neutral otherwise
+\newcommand{\hd}[1]{\textcolor{\schemecolor{#1}}{\textbf{\schemename{#1}}}\par\vspace{-0.8ex}%
+  \textcolor{\schemecolor{#1}}{\rule{\linewidth}{1pt}}}
+\newcommand{\hdn}[1]{\textbf{#1}\par\vspace{-0.8ex}\rule{\linewidth}{0.4pt}}
+% rotated header for the glyph matrix
+\newcommand{\hdr}[1]{\rotatebox[origin=c]{90}{\textcolor{\schemecolor{#1}}{\footnotesize\textbf{\schemename{#1}}}}}
+% landscape pages with slimmer margins
+\newcommand{\landscapeopen}{\newgeometry{margin=13mm,top=13mm,bottom=13mm}\begin{landscape}}
+\newcommand{\landscapeclose}{\end{landscape}\restoregeometry}
+
+% ---- tags --------------------------------------------------------------------
+\newcommand{\rg}[1]{{\scriptsize\textsc{#1}}}            % regime: day / night / both
+\newcommand{\ev}[1]{\textsuperscript{\scriptsize #1}}    % evidence: obs / inf / run
+\newcommand{\lit}[1]{\textcolor{black!60}{\textit{Lit.}}\ #1}   % literature evidence added 2026-09-07
+\newcommand{\fork}{\textsuperscript{\dag}}               % fork or port differs from publication
+\newcommand{\open}{\textsuperscript{$\square$}}          % open item
+\newcommand{\src}[1]{{\scriptsize\textcolor{black!60}{#1}}} % source pointer in Part II
+\newcommand{\cost}[1]{{\scriptsize\textcolor{black!60}{\textit{#1}}}} % new assumption / cost
+% ---- rows the PhD concept turns on (added 2026-09-12; see Section I.3) ------
+% \setkey{row}{1}: a research question, regime or decision metric of the concept turns on it
+% \setkey{row}{2}: the project's findings or methods depend on it
+\definecolor{cKey}{HTML}{7B2D8E}
+\newcommand{\setkey}[2]{\expandafter\def\csname key@#1\endcsname{#2}}
+\newcommand{\kfull}{\textcolor{cKey}{$\blacktriangleright$}}
+\newcommand{\khalf}{\textcolor{cKey}{$\triangleright$}}
+\setkey{A1}{1}\setkey{B1}{1}\setkey{B2}{1}\setkey{B3}{1}\setkey{C3}{1}\setkey{C4}{1}\setkey{C6}{1}\setkey{C7}{1}
+\setkey{B5}{2}\setkey{B6}{2}\setkey{C2}{2}\setkey{C5}{2}\setkey{C9}{2}
+\newcommand{\keymark}[1]{\ifcsname key@#1\endcsname
+  \if1\csname key@#1\endcsname\kfull\else\khalf\fi\fi}
+\newcommand{\rid}[1]{\makebox[0.95em][l]{\keymark{#1}}\textbf{#1}} % row id, with the concept mark
+
+% ---- notation shortcuts --------------------------------------------------------
+\newcommand{\avg}[1]{\langle #1 \rangle}
+\newcommand{\pd}[2]{\partial #1/\partial #2}
+\newcommand{\pdf}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\qsq}{q^{2}}
+\newcommand{\dx}{\Delta x}
+\newcommand{\Ri}{\mathrm{Ri}}
+\newcommand{\Rf}{R_f}
+\newcommand{\Rfc}{R_{fc}}
+\newcommand{\schemeM}{\textsc{mynn}}
+\newcommand{\schemeG}{\textsc{g19}}
+\newcommand{\schemeA}{\textsc{3d-approx}}
+\newcommand{\schemeF}{\textsc{3d-full}}
