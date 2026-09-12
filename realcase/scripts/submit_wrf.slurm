@@ -62,6 +62,7 @@ export OMP_NUM_THREADS=1
 # FPE trapping here -- intermediate NaNs in the back-off path are expected and
 # handled.
 
+mkdir -p "${WRF_OUTPUT_ROOT:?}/temp/branko" || exit 1   # E49: without it WRF still reports SUCCESS while every write fails (-1021)
 [ -f wrfinput_d01 ] || { echo "no wrfinput_d01 -- run submit_real.slurm first" >&2; exit 1; }
 [ -f wrfbdy_d01 ]   || { echo "no wrfbdy_d01 -- run submit_real.slurm first" >&2; exit 1; }
 

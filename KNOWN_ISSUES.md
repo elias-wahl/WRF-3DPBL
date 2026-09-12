@@ -1395,3 +1395,9 @@ first routine that inspects a field after the dynamics. Remedies therefore
 differ: `w_damping = 1` (or Δt 1.5 s) for the level refinement; a
 diffusion-number cap on l (or implicit vertical mixing) for the length scale.
 Do NOT expect one fix to serve both.
+
+## E49 — WRF reports `SUCCESS COMPLETE WRF` after a run in which EVERY history and WRFlux write failed: if `$WRF_OUTPUT_ROOT/temp/branko/` does not exist, each `open_hist_w` returns `WRF_WARN_NETCDF` (−1021), a warning, and the integration continues to the end (2026-09-12, X16w job 8599103)
+
+**Symptom.** `rsl.error.0000` carries one `open_hist_w : error opening …/temp/branko/wrfout_d01_… for writing. -1021` per frame (18 lines for 9 history + 9 mean frames), the run finishes in the normal wall time, `submit_wrf.slurm` archives an empty `wrf_output/<jobid>/` (only `job_info.txt` and `namelist.input`), and the dependent analysis job reports "no such file". 1:14 h on 5 nodes and a queue wait lost.
+**Cause.** A run directory built by hand (copy of X16b's dir with a new `WRF_OUTPUT_ROOT`) skipped the `mkdir -p "$WRF_OUTPUT_ROOT/temp/branko"` that `setup_rundir.sh` (line 108) performs; nothing in `submit_wrf.slurm` created it, and WRF's netCDF open failure is a warning, not an abort.
+**Rule.** `submit_wrf.slurm` (template and X16w's copy) now runs `mkdir -p "${WRF_OUTPUT_ROOT:?}/temp/branko" || exit 1` before `wrf.exe`. For any hand-built run dir: `ls -d $WRF_OUTPUT_ROOT/temp/branko` before `sbatch`, and `grep -c open_hist_w rsl.error.0000` must be 0 at the first frame. The empty archive is kept as `exp/X16w/wrf_output/8599103_nooutput`.
