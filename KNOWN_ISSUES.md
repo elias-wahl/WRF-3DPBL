@@ -1401,3 +1401,13 @@ Do NOT expect one fix to serve both.
 **Symptom.** `rsl.error.0000` carries one `open_hist_w : error opening …/temp/branko/wrfout_d01_… for writing. -1021` per frame (18 lines for 9 history + 9 mean frames), the run finishes in the normal wall time, `submit_wrf.slurm` archives an empty `wrf_output/<jobid>/` (only `job_info.txt` and `namelist.input`), and the dependent analysis job reports "no such file". 1:14 h on 5 nodes and a queue wait lost.
 **Cause.** A run directory built by hand (copy of X16b's dir with a new `WRF_OUTPUT_ROOT`) skipped the `mkdir -p "$WRF_OUTPUT_ROOT/temp/branko"` that `setup_rundir.sh` (line 108) performs; nothing in `submit_wrf.slurm` created it, and WRF's netCDF open failure is a warning, not an abort.
 **Rule.** `submit_wrf.slurm` (template and X16w's copy) now runs `mkdir -p "${WRF_OUTPUT_ROOT:?}/temp/branko" || exit 1` before `wrf.exe`. For any hand-built run dir: `ls -d $WRF_OUTPUT_ROOT/temp/branko` before `sbatch`, and `grep -c open_hist_w rsl.error.0000` must be 0 at the first frame. The empty archive is kept as `exp/X16w/wrf_output/8599103_nooutput`.
+
+## E50 — the i-Box ECPY `mean_t{1,2,3}` is SONIC temperature: an acoustic virtual temperature with per-sensor offsets of 1–3 K, not a thermometer; absolute θ comparisons must use the ventilated `ta_avg`/`t_air_*`/`taact_avg` of the RAW tables (2026-09-15)
+
+**Symptom.** Model − sonic θ at Eggen −1.2 K and at StanserJoch/Arbeser −3.7 K (DECISIONS 2026-09-15 ~10:30) became +0.03 K and −1.2 K with the ventilated sensors (~12:30). Differences and variances from the sonic are fine; levels are not.
+**Rule.** For any absolute temperature at an i-Box site take the RAW table (`data/stations/ibox_rad/<site>_RAW/data.csv`, or Kolsass_RAW `taact_avg`); sonic `mean_t` only for fluctuations and fluxes.
+
+## E51 — the Kolsass HATPRO temperature retrieval is warm-biased above ~800 m AGL: +0.7 K at 1600 m ASL, +1.6 at 1900, +2.0 at 2200, +3.0 at 2500 against the co-located 05 UT sonde (and the same at 17 UT); the 2026-09-01 'matches sondes to 0.2–0.5 K in every layer above 100 m' holds only up to ~1 km AGL (2026-09-15)
+
+**Symptom.** Every model (X12m, MYNN, X16b, the ICON initial state) looked 1.5–3.5 K too cold at ridge level against HATPRO; the sonde agrees with the models to ±0.3 K there.
+**Rule.** Use HATPRO for 0–800 m AGL (with its ~1 K cold bias below 100 m at night, 2026-09-01); above that use the sondes (`data/soundings/kol`, 05/08/11/14/17 UT on the 18th; `ibk` 02/11 UT). Script: `slope_radiation_check.py` section I in `exp/x16_judge/X16w_slope_radiation.log`.
