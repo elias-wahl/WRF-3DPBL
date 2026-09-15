@@ -1,5 +1,12 @@
 # Open issues / questions — 3D PBL rebase (WRF v4.4 -> v4.8.0)
 
+## A28 — OPEN: the ICON forcing's soil temperature is 3–7 K too cold below the top centimetres; every run inherits it, the nocturnal ground heat flux is 20–25 W m⁻² short and the air pays for it (2026-09-15)
+
+**Measured.** 5-cm soil probes vs Noah-MP layer 1, 17 July night: Kolsass 19.5 vs 13.0 °C, Eggen 17.8 vs 12.0, StanserJoch 11.0 vs 7.5; Kolsass column (8 sensors) 20.3–21.5 °C vs model 13.0/15.5/16.3/15.6 in the four layers. Raw ICON GRIB at 14 UT under Kolsass: 20.7/18.8/17.2/15.6 °C at 0.5/6/18/54 cm — the cold column is ICON's own; its top layer follows the skin (12.4 °C at 21 UT). MYNN control starts (01 UT) from 12.0 °C at 0–10 cm (obs 18.6). Ground flux: model GRDFLX −30/−25/−14 W m⁻² (Kolsass/Weerberg/Hochhäuser) vs observed residual −47…−49/−47/−41; HFX −13/−21/−42 vs sonic −4/−16/−14. DECISIONS 2026-09-15 ~14:30; `wrf3dpbl-diag/slope_soil_check.py`, `exp/x16_judge/X16w_slope_soil.log`.
+**Why it matters.** Surface energy balance day and night: by day the cold soil sinks heat that should warm the air (valley-wind under-forecast, CBL depth); at night the surface takes 10–25 W m⁻² more from the air, the skin is colder and the slope drainage 1.5–2.5× too fast. It is the fourth forcing-side error after the SMOIS mass/volume bug, the 12-level ladder (A19/A21) and the moist layer aloft (A26).
+**Fix candidate (needs a soundness review and Elias's go).** Rewrite `TSLB`/`TMN` in wrfinput from an elevation-dependent profile anchored on the three i-Box soil records (`fix_soil_temp.py`, default-off, `SMOIS` untouched), twin X16b → X16s with the gates listed in DECISIONS. Report to the TEAMx ICON providers.
+**Not the cause of:** the sidewall longwave (measured right within 3 W m⁻², DECISIONS ~12:30).
+
 ## A27 — The calm valley's own cooling deficit and the spurious deep-night drainage (2026-09-11, open; from the X16b cold start)
 
 **Measured (X16b, 17 → 18 July, clear sky, calm floor).** Cooling 21 → 01 UT 38 % (0–100 m) and 42 % (100–300 m) short of HATPRO; longwave up 356–358 vs 362–365 W m⁻² observed (skin ≈1.5 K too cold) with 2 m air +0.5…+1.1 K and 0–100 m +1.5…+2.2 K too warm — the surface cools, the air does not follow: the wall-layer collapse of the sonic referee, isolated from the wind error. From 01:30 UT a 2.5–3.4 m s⁻¹ down-valley jet at 50–300 m (tower 0.3–0.5, lidar 0.3 at 00 UT) under a valley-scale force of −6…−14·10⁻⁴ m s⁻²; floor bias +2.3 → +3.1 K by 03:30. DECISIONS 2026-09-11 ~06:30.
