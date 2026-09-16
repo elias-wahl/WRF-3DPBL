@@ -76,6 +76,36 @@
 \hecto{Buoyancy production}{The slope-normal surface heat flux has a horizontal component with no home in the budget; in stable air buoyancy damps $\avg{w^2}$ selectively, the pancake anisotropy; by day resolved thermals carry the horizontal heat flux and its subgrid part stays unrepresented.}
 
 
+% ---- dependencies the contact rule cannot draw (used by the LINKS version only; scripts/make_pyramid_links.py)
+% \lean{<block title>}{<block title it leans on>}; from the audit of 2026-09-16. No-op here.
+\newcommand{\lean}[2]{}
+\lean{Locality}{Mixing}
+\lean{Ergodicity in space}{Scale separation}
+\lean{Boundary-layer (column) approximation}{Boussinesq}
+\lean{Monin--Obukhov similarity}{Horizontal homogeneity}
+\lean{Monin--Obukhov similarity}{Axisymmetry}
+\lean{Mixing length}{Horizontal homogeneity}
+\lean{Energy cascade}{Stationarity}
+\lean{Local equilibrium}{Locality}
+\lean{Eddy viscosity}{Locality}
+\lean{Universal constants}{Reynolds averaging}
+\lean{Vertical divergence only}{Scale separation}
+\lean{Wall value and surface fluxes}{Monin--Obukhov similarity}
+\lean{Wall value and surface fluxes}{Universal constants}
+\lean{Level-2.5 truncation}{Return to isotropy}
+\lean{Level-2.5 truncation}{Universal constants}
+\lean{Level-2.5 truncation}{Boundary-layer (column) approximation}
+\lean{Master length scale}{Universal constants}
+\lean{Master length scale}{Axisymmetry}
+\lean{Pressure terms}{Locality}
+\lean{Pressure terms}{Universal constants}
+\lean{K-form fluxes}{Locality}
+\lean{K-form fluxes}{Mixing length}
+\lean{K-form fluxes}{Local equilibrium}
+\lean{Dissipation}{Master length scale}
+\lean{Resolved gradient}{Boundary-layer (column) approximation}
+
+
 % vertical block: rectangle + centred text, text width = block width - hpad
 \newcommand{\pbv}[7]{\pgfmathsetmacro{\pbw}{#2-#1-#7}%
   \draw[#5] (#1,#3) rectangle (#2,#4);
