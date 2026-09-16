@@ -1,0 +1,140 @@
+% =============================================================================
+%  The assumptions of a one-dimensional PBL closure, as a pyramid (standalone)
+%  Companion to pbl_assumptions_table.tex (rows A1-C10 = Table I.1; D3-D8 added here).
+%  Build: source ~/miniconda3/bin/activate tex && tectonic pbl_assumptions_pyramid.tex
+%  Layout rule: a block touches at its bottom exactly the blocks it relies on; blocks
+%  on one level never touch (air gap 0.10 cm). Unit width 1.26 cm, doubles 2.62 cm.
+%  Ground order is forced by the adjacency chain GAP-HOM-STA-BOU-AXI-ISOb-SIM;
+%  the BOU/AXI boundary sits under the right part of C8 so that BOU has room for its text.
+% =============================================================================
+\documentclass[10pt]{article}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[utf8]{inputenc}
+  \usepackage[T1]{fontenc}
+  \usepackage{lmodern}
+\else
+  \usepackage{fontspec}
+  \setmainfont{lmroman10-regular.otf}[BoldFont=lmroman10-bold.otf,
+    ItalicFont=lmroman10-italic.otf, BoldItalicFont=lmroman10-bolditalic.otf]
+\fi
+\usepackage[british]{babel}
+\usepackage[a4paper,landscape,margin=10mm,top=9mm,bottom=9mm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{microtype}
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5ex}
+
+% ---- notation ---------------------------------------------------------------
+\newcommand{\avg}[1]{\langle #1 \rangle}
+\newcommand{\pd}[2]{\partial #1/\partial #2}
+\newcommand{\qsq}{q^{2}}
+\newcommand{\Rfc}{R_{fc}}
+\newcommand{\dx}{\Delta x}
+% ---- rows the PhD concept turns on (same data as the note's macros.tex) ------
+\definecolor{cKey}{HTML}{7B2D8E}
+\newcommand{\setkey}[2]{\expandafter\def\csname key@#1\endcsname{#2}}
+\makeatletter
+\setkey{A1}{1}\setkey{B1}{1}\setkey{B2}{1}\setkey{B3}{1}\setkey{C3}{1}\setkey{C4}{1}\setkey{C6}{1}\setkey{C7}{1}
+\setkey{B5}{2}\setkey{B6}{2}\setkey{C2}{2}\setkey{C5}{2}\setkey{C9}{2}
+\newcommand{\keymark}[1]{\ifcsname key@#1\endcsname
+  \if1\csname key@#1\endcsname\textcolor{cKey}{$\blacktriangleright$}\else\textcolor{cKey}{$\triangleright$}\fi\fi}
+\makeatother
+\newcommand{\pid}[1]{\keymark{#1}\textbf{#1}}
+% \pb{x0}{x1}{y0}{y1}{style}{text}: a block from (x0,y0) to (x1,y1), text centred
+\newcommand{\pb}[6]{\pgfmathsetmacro{\pbw}{#2-#1-0.20}%
+  \draw[#5] (#1,#3) rectangle (#2,#4);
+  \node[align=center, font=\tiny, inner sep=0pt, text width=\pbw cm] at ({(#1+#2)/2},{(#3+#4)/2}) {#6};}
+
+\begin{document}
+{\Large\bfseries The assumptions of a one-dimensional PBL closure, as a pyramid: what rests on what}\\[0.3ex]
+{\small Companion to the assumptions note (rows A1--C10 are its Table~I.1; D3--D8 are added here). 2026-09-16.}
+
+\vspace{0.6ex}
+{\footnotesize Every block is an assumption a boundary-layer scheme makes in order to run. A block touches at its
+bottom exactly the blocks it relies on, and blocks on one level do not touch each other. Dark grey: the ground ---
+seven hypotheses that rest on nothing else here. Light grey: hypotheses that themselves presuppose another
+(the Reynolds conditions and locality presuppose the gap; ergodicity in space presupposes homogeneity across the
+cell, its second premise --- many decorrelated eddies per cell --- being A1's contact on A2; the scalar eddy
+viscosity is Rotta's isotropy evaluated with one axis). White: the closure's assumptions, with the concept marks
+of the note ($\blacktriangleright$ a research question turns on it, $\triangleright$ the project's methods do).
+Each block shows its primary reliance; the incidence matrix of the note has the full set. Not drawn, because no
+scheme needs them to run: ergodicity in time and Taylor's hypothesis, which carry the observations and the
+calibration; the constraints realizability and Galilean invariance, which bound the algebra rather than carry a
+block; and the dynamical core's numerical dissipation. The fixed reference temperature of the buoyancy coefficient
+sits inside the Boussinesq block.\par}
+
+\vspace{1.2ex}
+\begin{center}
+\begin{tikzpicture}[x=1cm, y=1cm,
+  ground/.style={draw, line width=0.4pt, fill=black!22},
+  hyp/.style={draw, line width=0.4pt, fill=black!9},
+  row/.style={draw, line width=0.4pt, fill=white}]
+% ---- level 0: the ground (y 0 -- 1.7); each boundary sits under the block that spans it -----------
+\pb{0}{6.70}{0}{1.7}{ground}{\textbf{Scale separation}\\ a spectral gap between the energy-containing eddies and the mean flow: a finite integral scale, \mbox{$\Delta \gg l$}, and a mean that varies on scales \mbox{$\gg l$}}
+\pb{6.80}{13.50}{0}{1.7}{ground}{\textbf{Horizontal homogeneity}\\ statistics invariant under horizontal translation: \mbox{$\pd{\avg{\cdot}}{x} = \pd{\avg{\cdot}}{y} = 0$} for every mean and every moment}
+\pb{13.60}{17.58}{0}{1.7}{ground}{\textbf{Stationarity}\\ statistics invariant under time translation over the relaxation time $l/q$; the cascade in equilibrium}
+\pb{17.68}{19.90}{0}{1.7}{ground}{\textbf{Boussinesq fluid}\\ buoyancy the only density effect, \mbox{$\beta = g/T_{\mathrm{ref}}$} fixed; incompressible fluctuations}
+\pb{20.00}{21.66}{0}{1.7}{ground}{\textbf{Axisymmetry}\\ one preferred axis, gravity, along the surface normal; no handedness}
+\pb{21.76}{25.06}{0}{1.7}{ground}{\textbf{Small-scale isotropy}\\ Kolmogorov's one dissipation rate; Rotta's return to isotropy at one rate}
+\pb{25.16}{27.10}{0}{1.7}{ground}{\textbf{Similarity}\\ one universal scaled relation; the parameter list complete}
+% ---- level 1 (y 1.7 -- 3.0): 12 single blocks of 1.26 cm, 4 doubles of 2.62 cm, air gap 0.10 -----
+\pb{0}{1.26}{1.7}{3.0}{hyp}{\textbf{Locality}\\ gradient transport: $l \ll$ the scale of the gradient}
+\pb{1.36}{2.62}{1.7}{3.0}{row}{\textbf{D4}\\ the vertical grid resolves the shear layer}
+\pb{2.72}{3.98}{1.7}{3.0}{row}{\pid{B5}\\ vertical and horizontal mixing separable}
+\pb{4.08}{5.34}{1.7}{3.0}{row}{\pid{A1}\\ all energetic eddies are subgrid}
+\pb{5.44}{6.70}{1.7}{3.0}{hyp}{\textbf{Reynolds conditions}\\ the cell mean is an averaging operator}
+\pb{6.80}{8.06}{1.7}{3.0}{hyp}{\textbf{Ergodicity in space}\\ the cell mean converges to the ensemble mean}
+\pb{8.16}{9.42}{1.7}{3.0}{row}{\pid{B7}\\ model surfaces are horizontal}
+\pb{9.52}{10.78}{1.7}{3.0}{row}{\pid{B3}, \textbf{B4}\\ no horizontal transport of fluxes or TKE}
+\pb{10.88}{12.14}{1.7}{3.0}{row}{\pid{B1}\\ no horizontal shear production}
+\pb{12.24}{14.86}{1.7}{3.0}{row}{\pid{B6}\\ flat, homogeneous, stationary surface: a constant-flux layer, MOST, one roughness length}
+\pb{14.96}{17.58}{1.7}{3.0}{row}{\pid{C7}\\ local equilibrium of all moments but $\qsq$: one prognostic moment, the rest algebraic}
+\pb{17.68}{20.30}{1.7}{3.0}{row}{\textbf{C8}\\ buoyancy acts on TKE through $\avg{w\theta_v}$ alone: no horizontal heat flux, no redistribution among components}
+\pb{20.40}{23.02}{1.7}{3.0}{hyp}{\textbf{Isotropic eddy viscosity}\\ a scalar $K$: linear in the strain, Rotta's isotropy with one axis}
+\pb{23.12}{24.38}{1.7}{3.0}{row}{\textbf{C10}\\ pressure terms: transport absorbed, Rotta}
+\pb{24.48}{25.74}{1.7}{3.0}{row}{\pid{C9}\\ universal closure constants}
+\pb{25.84}{27.10}{1.7}{3.0}{row}{\pid{C4}\\ eddy size from $z$, one $z_i$ per column, $N$}
+% ---- level 2 (y 3.0 -- 4.3) ------------------------------------------------------------------------
+\pb{0.08}{1.18}{3.0}{4.3}{row}{\textbf{C1}\\ fluxes local and down-gradient}
+\pb{4.25}{7.90}{3.0}{4.3}{row}{\textbf{A2}\\ cell mean $=$ ensemble mean: subgrid eddies, a Reynolds operator, one realisation}
+\pb{10.96}{12.06}{3.0}{4.3}{row}{\pid{B2}\\ no gradients of $W$ (continuity)}
+\pb{12.34}{13.40}{3.0}{4.3}{row}{\textbf{D3}\\ first level in the inertial sublayer}
+\pb{13.60}{16.20}{3.0}{4.3}{row}{\textbf{D6}\\ the wall value: $\qsq = B_1^{2/3} u_*^2$ at the ground, the neutral level-2 equilibrium}
+\pb{16.40}{18.90}{3.0}{4.3}{row}{\pid{C6}\\ vertical Ri only; turbulence dies at $\Rfc$}
+\pb{19.10}{20.22}{3.0}{4.3}{row}{\textbf{D5}\\ dry buoyancy flux: no subgrid condensation}
+\pb{20.50}{22.92}{3.0}{4.3}{row}{\pid{C2}\\ one $K$ for all directions; $K_H/K_M$ a function of Ri alone}
+\pb{24.70}{27.00}{3.0}{4.3}{row}{\pid{C5}\\ one scale for transport and dissipation: $\varepsilon = q^3/(B_1 l)$}
+% ---- level 3 (y 4.3 -- 5.6): the top row ---------------------------------------------------------
+\pb{5.00}{7.20}{4.3}{5.6}{row}{\textbf{D8}\\ the resolved flow is not turbulent: its shear may feed production without double counting}
+\pb{20.58}{21.66}{4.3}{5.6}{row}{\textbf{D7}\\ all scalars mix alike, one $K_H$}
+\pb{21.76}{22.84}{4.3}{5.6}{row}{\pid{C3}\\ flux anti-parallel to the gradient}
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.8ex}
+{\footnotesize\textbf{Reading.} Three towers stand on the mesa. On the left, the grey-zone tower: the gap makes the
+eddies subgrid (A1), the operator and the ergodic premise make the cell mean an ensemble mean (A2), and only then
+may the model's own gradients feed production as ensemble gradients (D8) --- the block that fails first when the
+grid resolves part of the spectrum. In the middle, the surface tower: the constant-flux layer (B6) and local
+equilibrium (C7) together carry the wall value of $\qsq$ (D6); the surface layer alone carries the placement of
+the first level (D3); equilibrium and the one-axis buoyancy term carry the Richardson cutoff (C6). On the right,
+the isotropy tower: a linear isotropic eddy viscosity (from small-scale isotropy and one axis) gives one $K$ (C2),
+and on that rest both the alignment of flux and gradient (C3) and the mixing of all scalars alike (D7).
+The middle carries the night, the left the convective day, the right the tensor.\par}
+
+\vspace{0.6ex}
+{\footnotesize\textbf{Added here, not yet rows of the note.} D3 the first model level above the roughness
+sublayer and below any wind maximum ($z_0 \ll z_1 \ll z_i$). D4 the vertical grid resolves the layer that
+produces the turbulence, the vertical counterpart of A1 with the sign reversed. D5 the buoyancy flux of
+unsaturated air, saturation acting through the resolved condensation only. D6 the lower boundary of the TKE
+equation, $\qsq = B_1^{2/3} u_*^2$, the neutral level-2 equilibrium of the surface layer (every MYNN-family
+scheme; the 3D closure fork runs without it). D7 one eddy diffusivity for every scalar, with $K_H/K_M$ a
+function of Ri alone. D8 the resolved flow carries no turbulence, so the grid-mean shear is the ensemble-mean
+shear in $P_s$ --- the second half of the note's A1, separated because it fails on its own in the grey zone.
+B3 and B4 of the note are one block here: no horizontal transport of fluxes or of TKE. Which scheme drops which
+block is Table~I.0 of the note.\par}
+\end{document}
