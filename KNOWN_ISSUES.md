@@ -1416,3 +1416,11 @@ Do NOT expect one fix to serve both.
 
 **How it hid.** (1) The MYNN control shares the soil with every 3D run, so the "closure vs control" method demoted everything they share; the surface was probed only via the surface-layer scheme (EVE2, X15, sfclay=5) — three correct nulls. (2) The 2026-09-01 SEB check compared one floor site's ground flux by residual in a chain whose top soil layer had spun up 5 K by day, and printed the 19–20 °C probe without opening the model's `TSLB`. (3) The ECPY sensible heat flux was on disk from 2026-09-01; the 2026-09-09 sonic analysis used q² only. (4) `check_wrfinput.py` tests `SMOIS` (after the mass/volume bug) and not `TSLB`.
 **Rule.** Before any physics hypothesis: hold the initial state against every station variable on disk (T2, TSK, TSLB, SMOIS, HFX, radiation components) at every site, and apply "impossible term ⇒ raw arrays first" (E18) to the surface energy balance as well as to the atmosphere. Add to `check_wrfinput.py`: `TSLB` layer 1 within 5 K of a July 2-m climatology at the cell height (fail below 15 °C on the valley floor in July) and the top-layer-vs-`T2` difference.
+
+## E53 — HRLDAS (MPI, v5.1.1) segfaults in `NoahmpInitMain` on the last rank with 128 ranks on the 500 × 600 domain when the setup file carries snow; 64 ranks run, and 128 ranks run with a snow-free setup (2026-09-16, devel jobs 8632153/8632194/8632195)
+
+**Rule.** Run HRLDAS on this domain with 64 ranks (1 node, `--ntasks-per-node=64`); the MPI decomposition with 128 ranks is not safe for the snow initialisation. Launch with `mpirun -np $SLURM_NTASKS` (as WRF): `srun` fails at MPI_Init (PMIx). HRLDAS ends without MPI_Finalize — mpirun's 'exited improperly' notice after a complete run is cosmetic; judge by the output files.
+
+## E54 — a second agent instance on the same account can run the same plan in parallel and submit jobs into the same run directories (2026-09-16 10:23–10:26: duplicate spin-up and dependent segments, one with the crashing 128-rank layout, one with a wrong restart path)
+
+**Rule.** Before submitting or chaining, `squeue -u $USER` and `ls -lat` the run-dir parent for submissions and directories you did not make; cancel duplicates that write into shared directories, leave their directories, and say so in the record. Only one session should hold a run directory at a time.
