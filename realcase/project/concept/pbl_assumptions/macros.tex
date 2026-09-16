@@ -44,6 +44,9 @@
   \fill (0,0) -- (90:0.42em) arc (90:270:0.42em) -- cycle;}}                                 % partial
 \newcommand{\gD}{\tikz[baseline=-0.6ex]{\draw[line width=0.5pt] (0,0) circle (0.42em);}}     % dropped
 \newcommand{\gN}{\raisebox{0.15ex}{--}}                                                       % n/a
+% principle incidence (Table I.1b): generates / leans on
+\newcommand{\pG}{\tikz[baseline=-0.55ex]{\fill (-0.36em,-0.36em) rectangle (0.36em,0.36em);}}
+\newcommand{\pL}{\tikz[baseline=-0.55ex]{\draw[line width=0.5pt] (-0.36em,-0.36em) rectangle (0.36em,0.36em);}}
 
 % ---- status data: \setst{row}{scheme}{K|P|D|N}; frames: \setfr{row}{scheme} --
 \newcommand{\setst}[3]{\expandafter\def\csname st@#1@#2\endcsname{#3}}
