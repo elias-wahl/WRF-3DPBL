@@ -1424,3 +1424,11 @@ Do NOT expect one fix to serve both.
 ## E54 — a second agent instance on the same account can run the same plan in parallel and submit jobs into the same run directories (2026-09-16 10:23–10:26: duplicate spin-up and dependent segments, one with the crashing 128-rank layout, one with a wrong restart path)
 
 **Rule.** Before submitting or chaining, `squeue -u $USER` and `ls -lat` the run-dir parent for submissions and directories you did not make; cancel duplicates that write into shared directories, leave their directories, and say so in the record. Only one session should hold a run directory at a time.
+
+## E55 — the first LDASOUT file of an HRLDAS segment (`SKIP_FIRST_OUTPUT = .false.`) carries −9999 in the flux fields (HFX, LH, GRDFLX, …) while the state fields (SOIL_T, SOIL_M, TG) and FSA/FIRA are valid; averaged in, it halves every flux mean (Kolsass 13–14 UT smoke mean read −4937 W m⁻²) (2026-09-16)
+
+**Rule.** Mask values below −9000 before averaging HRLDAS output (`hrldas_check.py` does), or start every flux window at the second file. The state in the first file is the initial state and is valid.
+
+## E56 — the `realcase/env/vsc5.sh` python has numpy and netCDF4 but no pandas; every diagnostic that reads station CSVs (`slope_soil_check.py`, `hrldas_check.py`, the judge scripts) needs `source ~/miniconda3/bin/activate proc` — the SLURM judge scripts do this, an interactive call from the WRF env dies with `ModuleNotFoundError: pandas` (2026-09-16)
+
+**Rule.** Station comparisons: `source ~/miniconda3/bin/activate proc && python <script>`. `wrfinput`/restart manipulation (`hrldas_to_wrfinput.py`, `check_wrfinput.py`, `make_setup.py`): the WRF env's `python3` is enough and is what the shell tools call.
