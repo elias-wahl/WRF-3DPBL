@@ -1,8 +1,10 @@
 % =============================================================================
-%  Table I.1b -- The principles behind the rows (added 2026-09-16)
+%  Table I.1b -- The principles behind the rows (added 2026-09-16, re-checked the same day:
+%  ergodicity's premises, Taylor's hypothesis, Galilean invariance, candidate rows D1-D5)
 %  Which hypothesis of turbulence theory generates which assumption row, what
 %  breaks it in mountains and in the grey zone, which scheme of the comparison
-%  gives it up, and what the campaign can measure. Incidence matrix at the end.
+%  gives it up, and what the campaign can measure. Incidence matrix and the
+%  pyramid (Figure I.1b) at the end.
 %  Part I rule: no code, no namelist keys. Incidence data live at the top of
 %  this file (\prset), the glyphs \pG/\pL in macros.tex, the legend in front.tex.
 % =============================================================================
@@ -17,26 +19,30 @@
 \prset{gap}{A1=G,B5=G,A2=L,C4=L,C5=L}
 \prset{reynolds}{A2=G,C9=L}
 \prset{ergodic}{A2=G,B6=L,C7=L,C9=L}
+\prset{taylor}{C4=L}
 \prset{homog}{B1=G,B2=G,B3=G,B4=G,B6=G,B7=G,A2=L,B5=L,C4=L,C8=L}
-\prset{station}{C6=G,C7=G,B6=L}
+\prset{station}{C6=G,C7=G,B6=L,C5=L}
 \prset{isok}{C2=G,C3=G}
 \prset{isoloc}{C5=G,C9=G,C10=G,C6=L}
 \prset{axisym}{C6=G,C8=G,B6=L,C2=L}
 \prset{local}{C1=G,C10=G,C4=L,C6=L,C7=L}
 \prset{simil}{B6=G,C4=G,C9=G,A1=L,C6=L}
 \prset{realiz}{C3=L,C5=L,C6=L,C7=L}
+\prset{galilean}{C4=L}
 \newcommand{\prline}[2]{#2 & \PR{#1}{A1} & \PR{#1}{A2} & \PR{#1}{B1} & \PR{#1}{B2} & \PR{#1}{B3} & \PR{#1}{B4} & \PR{#1}{B5} & \PR{#1}{B6} & \PR{#1}{B7} & \PR{#1}{C1} & \PR{#1}{C2} & \PR{#1}{C3} & \PR{#1}{C4} & \PR{#1}{C5} & \PR{#1}{C6} & \PR{#1}{C7} & \PR{#1}{C8} & \PR{#1}{C9} & \PR{#1}{C10} \\}
 \newcommand{\prname}[2]{\textbf{#1}\newline{\scriptsize\textit{#2}}}
 
 \landscapeopen
 \subsection*{Table I.1b --- The principles behind the rows: which hypothesis generates which assumption}
 {\footnotesize The nineteen rows are not independent choices. They are a handful of hypotheses of turbulence theory
---- three about the averaging operator, three symmetries of the flow, two constitutive hypotheses and one constraint
---- written out term by term for the closure. Each block gives the hypothesis in its mathematical form, the rows
-it generates, what breaks it in a valley and what breaks it in the grey zone (the two failure columns of
-Table~I.1), which scheme of the comparison gives it up, and which observation of the campaign tests it. The matrix
-at the end shows the incidence: \pG{} the row is this hypothesis written out for the closure; \pL{} the row holds
-only if the hypothesis also holds. Terrain breaks the symmetries; the grey zone breaks the averaging. \par}
+--- four about the averaging and its link to a measured record, three symmetries of the flow, two constitutive
+hypotheses and two constraints --- written out term by term for the closure. Each block gives the hypothesis in
+its mathematical form, the rows it generates, what breaks it in a valley and what breaks it in the grey zone (the
+two failure columns of Table~I.1), which scheme of the comparison gives it up, and which observation of the
+campaign tests it. A last group lists five assumptions that the nineteen rows do not yet carry. The matrix at the
+end shows the incidence: \pG{} the row is this hypothesis written out for the closure; \pL{} the row holds only if
+the hypothesis also holds. Terrain breaks the symmetries; the grey zone breaks the averaging; the observations
+stand on two hypotheses of their own. \par}
 \vspace{0.5ex}
 \scriptsize
 \setlength{\tabcolsep}{3.5pt}
@@ -61,11 +67,12 @@ only if the hypothesis also holds. Terrain breaks the symmetries; the grey zone 
 \endhead
 \bottomrule
 \endlastfoot
-\multicolumn{7}{@{}l}{\textit{The averaging operator}} \\*
+\multicolumn{7}{@{}l}{\textit{The averaging, and its link to a measured record}} \\*
 \addlinespace[2pt]
 \prname{Scale separation}{a spectral gap} &
-The spectrum has a gap between the energy-containing eddies of size $l$ and the mean flow, so an average of any
-width inside the gap gives the same mean: the decomposition $U + u$ is unique and $\pd{\avg{\cdot}}{\Delta} = 0$. &
+The spectrum has a gap between the energy-containing eddies of size $l$ and the mean flow, so the integral scale
+is finite and small against the averaging width, and an average of any width inside the gap gives the same mean:
+the decomposition $U + u$ is unique and $\pd{\avg{\cdot}}{\Delta} = 0$. &
 \pG\ \rid{A1} is the gap with the grid as the width, $\Delta \gg l, z_i$. \pG\ \rid{B5}: vertical and horizontal
 mixing may be separated because they act at separate scales, the closure on the eddies, the numerical operator
 below them. \pL\ \rid{A2}: only inside the gap is the cell mean filter-independent, i.e.\ a Reynolds mean.
@@ -73,21 +80,21 @@ below them. \pL\ \rid{A2}: only inside the gap is the cell mean filter-independe
 wider than the eddy. &
 No gap even at 10~km: slope-wind layers of tens of metres, the valley wind of hundreds, the thermal circulation of
 kilometres form a continuum with the turbulence they drive; at night gravity waves and turbulence share the band
-(C6). &
+(C6), and a wave has no finite integral scale. &
 The width sits inside the energy-containing range: the mean depends on $\Delta$ and the subgrid share follows
 $\Delta/(z_i + h_c)$ \parencite{honnert2011,wyngaard2004}. &
 Shin--Hong, Ito, SMS-3DTKE accept that there is no gap and blend the two limits with partition functions; the LES
 limit sits on the other side of the gap; every Mellor--Yamada scheme assumes it (the fork's taper is a fork
 addition, inert here). &
-The $w$-spectrum of the UAS legs and of the RQ~II large-eddy simulation against the model's resolved spectrum:
-energy below $6$--$8\Delta$ is the absent gap made visible --- the check the convective partition result waits
-for (Section~I.3). \\
+The $w$-spectrum of the UAS legs (a spatial series while the aircraft outruns the wind, see Taylor below) and of
+the RQ~II large-eddy simulation against the model's resolved spectrum: energy below $6$--$8\Delta$ is the absent
+gap made visible --- the check the convective partition result waits for (Section~I.3). \\
 \addlinespace[3pt]
 \prname{Reynolds conditions}{the operator} &
-The average is linear, commutes with derivatives, is idempotent, $\avg{\avg{a}} = \avg{a}$, and factorises
-against an averaged quantity, $\avg{\avg{a}\,b} = \avg{a}\avg{b}$; hence $\avg{u} = 0$ and $\avg{U u} = 0$. Only
-the expectation over realisations satisfies all four. A filter of finite width fails the last two, and the closed
-stress splits into Leonard, cross and Reynolds parts \parencite{leonard1975,germano1986}. &
+The average is linear, commutes with derivatives, and factorises against an averaged quantity,
+$\avg{\avg{a}\,b} = \avg{a}\avg{b}$, whence idempotence, $\avg{\avg{a}} = \avg{a}$, and $\avg{u} = 0$,
+$\avg{U u} = 0$. Only the expectation over realisations satisfies all of them. A filter of finite width fails the
+last two, and the closed stress splits into Leonard, cross and Reynolds parts \parencite{leonard1975,germano1986}. &
 \pG\ \rid{A2} is this statement for the cell mean. \pL\ \rid{C9}: constants fitted to ensemble statistics are
 not filter constants. &
 None directly: a property of the operator, not of the surface. &
@@ -100,17 +107,23 @@ Filter the RQ~II large-eddy simulation to 500~m and split the subfilter stress b
 of the Leonard and cross parts against the Reynolds part is the error of A2 at this grid, by regime. \\
 \addlinespace[3pt]
 \prname{Ergodicity}{one realisation stands for the ensemble} &
-For a stationary (homogeneous) random field the time (space) average of one realisation converges to the
-ensemble mean as the window grows; the variance of the estimate is about $2\,T_{int}/T$ times the variance of
-the quantity, $T_{int}$ the integral time scale \parencite{lumley1964,lenschow1994}: the window must hold many
-integral scales. &
-\pG\ \rid{A2} is this statement in space: the cell mean estimates the ensemble mean only with many eddies per
-cell --- A2 needs A1. \pL\ \rid{B6}, \rid{C9} in time: the similarity functions and the constants were
-calibrated from tower time averages under stationarity, or from large-eddy simulations averaged over
-homogeneous planes. \pL\ \rid{C7}: local equilibrium is stationarity over $l/q$. &
-At night the integral time is set by the interval between intermittent events, so a 30-minute average is one
-poorly converged realisation; the slope-wind layer and the valley core in one cell make the space average a
-mixture of two populations, not a converged estimate of either. &
+For a random field whose statistics are invariant along the averaging direction --- stationary in time,
+homogeneous in space --- and which is mixing, so that correlations decay and the integral scale $T_{int}$ is
+finite, the average over one realisation converges to the ensemble mean as the window $T$ grows; the variance of
+the estimate is about $2\,T_{int}/T$ times the variance of the quantity \parencite{lumley1964,lenschow1994}.
+Invariance alone does not suffice: a system that stays in one of several invariant states is stationary but not
+ergodic \parencite{palmer1982}. Two forms: in time (the tower record, the sonic, the calibration) and in space
+(the cell mean). &
+\pG\ \rid{A2} is the space form: the cell mean estimates the ensemble mean only if the statistics are the same
+across the cell (homogeneity) and the cell holds many eddies --- A1 supplies the window, mixing the decay.
+\pL\ \rid{B6}, \rid{C9} rest on the time form: the similarity functions and the constants were calibrated from
+tower time averages under stationarity, or from large-eddy simulations averaged over homogeneous planes.
+\pL\ \rid{C7}: local equilibrium is stationarity over $l/q$. &
+The nocturnal valley is multi-stable: coupled and decoupled, pooled and flushed nights are distinct regimes
+\parencite{sun2012}, and a night spent in the cold pool never visits the other --- its time average is a
+conditional mean, ergodicity broken by the regime before intermittency shortens the window. Within a night the
+integral time is set by the interval between events. In space, the slope-wind layer and the valley core in one
+cell are two populations, not one converged estimate. &
 With $l \approx 100$~m at night a 500~m cell holds five integral scales per horizontal direction and $\Delta z =
 20$~m holds none: the sampling error of a second moment per cell is of order $(2l/\Delta)^{1/2} \approx 0.6$ per
 averaged direction --- the cell statistic is an order-one realisation even where A1 holds. Wyngaard's
@@ -118,8 +131,29 @@ fluctuating statistics, with a number. \ev{inf} &
 No scheme: every closure computes ensemble moments. Ito and the LES limit compute filtered moments and accept
 the fluctuation. &
 The observation is itself the estimator. The random error of each 30-minute sonic flux \parencite{lenschow1994}
-by regime says which comparisons exist: a few percent by day, of order one on intermittent nights --- a
-model--sonic comparison then holds only as a statistic over nights and sites, never station by station. \\
+by regime says which comparisons exist: a few percent by day, of order one on intermittent nights; and a point
+inside a cell that holds two flows samples one of them. A model--sonic comparison holds only as a statistic over
+nights, sites and regimes, never station by station. \\
+\addlinespace[3pt]
+\prname{Taylor's hypothesis}{frozen turbulence} &
+A time series at a fixed point is a line in space swept past by the mean wind, $u(x, t) = u(x - Ut)$: frequency
+becomes wavenumber, $k = 2\pi f/U$, and an integral time becomes an integral length, $l = U\,T_{int}$
+\parencite{taylor1938}. Valid while the eddies are swept past faster than they evolve, $\sigma_u/U \ll 1$, with
+corrections of order $\sigma_u^2/U^2$ \parencite{lumley1965}. &
+None of the closure's rows. \pL\ \rid{C4} for one scheme: G19's horizontal length is a Lagrangian time scale
+times the mean wind, the same conversion, so in weak wind the length collapses with $U$ while the eddies do not.
+Every spectral quantity in the last column of this table --- $\varepsilon$ from the inertial subrange, integral
+lengths, a sonic's $w$-spectrum --- stands on it. &
+Weak-wind nights: $U$ below 1--2~m\,s$^{-1}$ in the cold pool against $\sigma_u$ of 0.25--0.45~m\,s$^{-1}$ from
+the sonic $\qsq$ --- $\sigma_u/U$ of order one exactly where the stable-regime deficit is to be judged. Along a
+slope the wind turns with height, so the swept line is not straight. &
+The UAS leg is a snapshot only while the aircraft outruns the wind: with a 10~m\,s$^{-1}$ valley jet against
+15--20~m\,s$^{-1}$ of airspeed the field moves half a leg during the leg --- the same hypothesis in a moving
+frame. &
+G19 alone carries it inside the closure; every other scheme is free of it. The evaluation is not. &
+The UAS flying through a sonic's footprint gives the spatial series that the time series is supposed to be, by
+wind-speed class --- the one direct check of the hypothesis the campaign can run; below it, every spectral
+result must carry its $\sigma_u/U$. \\
 \addlinespace[4pt]
 \multicolumn{7}{@{}l}{\textit{The symmetries of the flow}} \\*
 \addlinespace[2pt]
@@ -148,10 +182,13 @@ whether $\avg{w^2}$ changes by a factor of two across 500~m is the direct test o
 \addlinespace[3pt]
 \prname{Stationarity}{invariance under time translation} &
 Statistics are invariant under time translation over the closure's relaxation time $\tau \propto l/q$: every
-second moment but $\qsq$ is in equilibrium with the current gradients. The time form of ergodicity. &
+second moment but $\qsq$ is in equilibrium with the current gradients. The same hypothesis one scale down: the
+cascade is in equilibrium, dissipation equals the energy flux leaving the large eddies, so $\varepsilon$ may be
+algebraic instead of prognostic. The time form of ergodicity's first premise. &
 \pG\ \rid{C7}: tendencies and transport of the other moments dropped. \pG\ \rid{C6}: the cutoff is a property of
 the stationary balance $P_s + P_b = \varepsilon$, which has no solution beyond $\Rfc$; turbulence that survives
-there is non-stationary by definition (intermittency). \pL\ \rid{B6}: the constant-flux layer. &
+there is non-stationary by definition (intermittency). \pL\ \rid{C5}: an algebraic $\varepsilon$ needs the
+cascade in equilibrium. \pL\ \rid{B6}: the constant-flux layer. &
 Transitions (evening, drainage onset) and intermittency; along-valley advection makes the record at a fixed
 point non-stationary even when the flow is steady in its own frame (Riviera; B4). &
 Resolved strain rotates faster than $l/q$, $|S|\,l/q \gg 1$; in convection the third-moment transport of TKE is
@@ -161,27 +198,31 @@ hypothesis fails. &
 The strain-cap footprint by regime is the measurement of C7; the evening-transition budget at the Radfeld
 station is its observation ($l/q$ of minutes against a transition of an hour). \\
 \addlinespace[3pt]
-\prname{Isotropy (a): of the eddy viscosity}{invariance under rotation} &
-The general linear relation between stress and mean gradient carries a fourth-rank tensor, $\avg{u_i u_j} -
+\prname{Isotropy (a): of the eddy viscosity}{linear and isotropic} &
+The general \emph{linear} relation between stress and mean gradient carries a fourth-rank tensor, $\avg{u_i u_j} -
 \tfrac{\delta_{ij}}{3}\qsq = -K_{ijkl}\,\pd{U_k}{x_l}$. If that tensor is isotropic it is a combination of
-Kronecker deltas, and the relation collapses to a scalar $K$ times the strain. &
+Kronecker deltas, and the relation collapses to a scalar $K$ times the strain. Two hypotheses in one: linearity
+in the strain, and no preferred direction in the response. &
 \pG\ \rid{C2} and \rid{C3} are one assumption seen twice: one magnitude, and alignment with the strain. This is
 why 3D-APPROX keeps the alignment for the vertical fluxes and only the step to 3D-FULL tests C3
 (Section~I.3). &
 Where the slope wind turns into the valley wind the principal axes of the stress rotate away from the gradient
 (C3); the horizontal eddy scale is set by the valley, the vertical by the layer (C2). &
 The grid filter has aspect ratio $\dx/\Delta z = 25$: the subgrid statistics inherit an anisotropy that has
-nothing to do with the flow. &
-3D-FULL alone (the tensor is solved, its axes are free). Ito, SMS-3DTKE and the LES limit relax C2 with two
-coefficients but keep the alignment; G18/G19 add a horizontal length to the source only. &
+nothing to do with the flow. Under fast resolved strain the response is not linear either --- the strain cap
+(C7). &
+3D-FULL alone (the tensor is solved, its axes are free; the solve is nonlinear in the strain). Ito, SMS-3DTKE
+and the LES limit relax C2 with two coefficients but keep the alignment; G18/G19 add a horizontal length to the
+source only. &
 $K_M$ from observed first and second moments against the modelled one, component by component (the concept's
-test of C3); the sign of $\avg{uv}$ against $\pd{U}{y} + \pd{V}{x}$ across the UAS transect. \\
+test of C3); the sign of $\avg{uv}$ against $\pd{U}{y} + \pd{V}{x}$ across the UAS transect. Neither needs
+Taylor's hypothesis: single-point moments. \\
 \addlinespace[3pt]
 \prname{Isotropy (b): of the small scales}{Kolmogorov, Rotta} &
 At scales far below $l$ the eddies forget the direction of the shear and of gravity \parencite{kolmogorov1991}:
 the dissipation tensor is $\varepsilon_{ij} = \tfrac23\,\varepsilon\,\delta_{ij}$ with one rate $\varepsilon =
-q^3/(B_1 l)$, and the slow pressure--strain term returns the stress to isotropy at one rate, $q/(3A_1 l)$
-\parencite{rotta1951}. &
+q^3/(B_1 l)$, and the slow pressure--strain term returns the stress to isotropy at one rate, $q/(3A_1 l)$, linear
+in the anisotropy \parencite{rotta1951}. &
 \pG\ \rid{C5} one $\varepsilon$ from the one master length; \pG\ \rid{C9} the constants are return-to-isotropy
 and dissipation rates; \pG\ \rid{C10} Rotta plus the isotropisation of production. \pL\ \rid{C6}: the level-2
 stability functions are the Rotta model solved for the stationary balance. &
@@ -192,18 +233,21 @@ At $\Delta \sim l$ the filter cuts into the range assumed isotropic; $\varepsilo
 $q^3$ is not, so $L_\varepsilon$ must shrink with the grid \parencite{ito2015}. &
 None. Every scheme keeps Kolmogorov's dissipation and, where it has a pressure--strain model, Rotta's. &
 The dissipation rate from the inertial subrange of the sonic and UAS spectra against the model's
-$q^3/(B_1 l)$: at equal $q$ a measurement of $B_1 l$ by regime. The budget residual at Radfeld is the only
+$q^3/(B_1 l)$: at equal $q$ a measurement of $B_1 l$ by regime --- through Taylor's hypothesis, so only where
+$\sigma_u/U \ll 1$, and only where an inertial range exists. The budget residual at Radfeld is the only
 observation of the pressure terms. \\
 \addlinespace[3pt]
 \prname{Isotropy (c): axisymmetry about gravity}{one preferred axis} &
 Full isotropy is already broken by gravity; the closure assumes the weaker invariance under rotation about the
-vertical: one preferred axis, $g_j = (0, 0, -g)$, aligned with the surface normal. &
+vertical and reflection in vertical planes: one preferred axis, $g_j = (0, 0, -g)$, aligned with the surface
+normal, and no handedness. &
 \pG\ \rid{C8}: buoyancy acts through $\avg{w\theta_v}$ alone, $\avg{u\theta_v} = \avg{v\theta_v} = 0$ without
 horizontal gradients; \pG\ \rid{C6}: stability is measured along gravity only. \pL\ \rid{C2}: $\avg{uw}$ and
 $\avg{vw}$ share one $K$. \pL\ \rid{B6}: fluxes normal to a horizontal surface, one Obukhov length. &
 A slope has two axes, gravity and the surface normal: two Obukhov lengths \parencite{kaimal1994}, a slope-normal
 surface heat flux with a horizontal component, buoyancy damping $\avg{w^2}$ selectively into the pancake
-anisotropy \parencite{stiperski2017}. &
+anisotropy \parencite{stiperski2017}; the up-valley jet veering with height breaks the reflection symmetry
+(C3). &
 None of its own; the filter anisotropy of (a) adds to it. &
 3D-FULL partly: buoyancy in every stress row and three heat-flux components, but the $\qsq$ budget still uses
 $\avg{w\theta_v}$ alone. Ito and SMS-3DTKE carry a horizontal heat flux in K-form. &
@@ -217,20 +261,21 @@ slope sonics. \\
 A flux is proportional to the local gradient of its own mean only if the mixing length is small against the
 scale over which the gradient varies \parencite{corrsin1975} and the travel time long against the Lagrangian
 integral time --- diffusive after it, ballistic before \parencite{taylor1922}. Applied to the second moments
-this is the K-form; applied one order up it is the down-gradient transport of TKE. &
+this is the K-form; applied one order up it makes the third moments proportional to gradients of the second ---
+the down-gradient transport of TKE, which is a no-skewness (quasi-normal) assumption. &
 \pG\ \rid{C1} fluxes local and down-gradient; \pG\ \rid{C10} the transport half. \pL\ \rid{C4}: $l$ as a
 property of the column that the flux at one level may use. \pL\ \rid{C7}: equilibrium with the local
 gradients. \pL\ \rid{C6}: no transport sustains turbulence beyond the cutoff. &
 Turbulence produced aloft at the slope--valley interface is transported without a local gradient; at the nose
 of the nocturnal jet the shear vanishes while the stress does not \parencite{rotach2004,lehner2018}. &
-Convective eddies span $z_i$, so the gradient over one eddy is not small, and the skewed updraughts carry heat
-against the local gradient --- the plume and countergradient terms exist for this; once resolved, that part is
-handed to the grid first \parencite{shin2015}. &
+Convective eddies span $z_i$, so the gradient over one eddy is not small, and the updraughts are skewed ---
+$w$-skewness of order one --- so the third moment carries heat against the local gradient: the plume and
+countergradient terms exist for this; once resolved, that part is handed to the grid first \parencite{shin2015}. &
 YSU, Shin--Hong, BouLac (countergradient terms), MYNN as run (mass-flux plumes), Ito (level-3
 $\Gamma_\theta$), SMS-3DTKE (nonlocal profile) --- all partially and vertically. G18/G19, 3D-APPROX and 3D-FULL
 keep it: the algebraic system is local. &
 The sign of flux against gradient by level and regime from the sonic profiles and the UAS (the countergradient
-fraction); the transport term of the Radfeld budget. \\
+fraction); the $w$-skewness of the sonics by regime; the transport term of the Radfeld budget. \\
 \addlinespace[3pt]
 \prname{Similarity}{universality of the scaled relations} &
 After scaling with the governing parameters one dimensionless relation holds in every flow, its coefficients
@@ -251,7 +296,7 @@ Collapse tests on the i-Box sonics by slope class: do $\phi_m$ and the wall rati
 8.3 for the NN09 set, 6.5 for the MY82 set) fall on the flat functions? Where they do not, the missing group
 is the slope. \\
 \addlinespace[4pt]
-\multicolumn{7}{@{}l}{\textit{The constraint}} \\*
+\multicolumn{7}{@{}l}{\textit{The constraints}} \\*
 \addlinespace[2pt]
 \prname{Realizability}{moments of some distribution} &
 The modelled second moments must be moments of a probability distribution: variances non-negative,
@@ -271,14 +316,101 @@ direction). &
 The footprint fraction of every guard by regime (stored fields). Observed $b_{ij}$ lies inside the realisable
 triangle by construction, so the barycentric map that tests isotropy (c) also tests whether the six stresses
 of 3D-FULL are realisable. \\
+\addlinespace[3pt]
+\prname{Galilean invariance}{no absolute wind speed} &
+A closure may depend on gradients and on the motion of the fluid relative to a boundary, never on the wind
+speed in an arbitrary frame; a model that violates it changes the turbulence when the observer moves
+\parencite{speziale1985}. The ground fixes a frame in the surface layer, so wind relative to the ground is
+admissible there. &
+None generated. \pL\ \rid{C4} for one scheme: G19's horizontal length $l_h^2 = U^2 T_{L,u}T_{L,v}$ scales with
+the squared wind speed --- defensible where the ground or the valley walls are the frame, but the formula takes
+the speed, not the shear against them. &
+In a valley the walls are a frame too, which is the physical content of a wind-speed-dependent horizontal
+length: the shear is between the jet and the walls (B1). The speed stands in for that shear without measuring
+it. &
+None of its own. &
+Every scheme satisfies it except the G19 port's horizontal length; Taylor's conversion carries the same frame
+dependence into the observations. &
+No campaign test; a consistency property, not a measurement. \\
+\addlinespace[4pt]
+\multicolumn{7}{@{}l}{\textit{Not yet rows of Table I.1 --- candidates D1--D5 (statuses per scheme still to be read from the sources)}} \\*
+\addlinespace[2pt]
+\prname{D1 --- a constant buoyancy coefficient}{the Boussinesq reference state} &
+The Boussinesq form of the second-moment equations carries $\beta g\,\avg{u_i\theta_v}$ with $\beta =
+1/T_{\mathrm{ref}}$, $T_{\mathrm{ref}} = 300$~K in every WRF scheme here (Notation), where the local
+$1/\Theta_v$ belongs; density fluctuations enter through buoyancy only. &
+Would sit in family C beside C8; leans on nothing in this table --- a statement about the fluid, not about the
+statistics. &
+$\Theta_v$ of 285--295~K in the nocturnal valley: $P_b$, $N^2$ and the buoyancy limit on $l$ are 2--5\,\% too
+weak, systematic and of the same sign in every scheme. \ev{inf} &
+None. &
+Shared by all eleven; a one-line change. &
+Not observable; arithmetic. \\
+\addlinespace[3pt]
+\prname{D2 --- numerical dissipation negligible}{$\varepsilon$ the only sink} &
+The closure's $\varepsilon$ is the only sink of kinetic energy: the upwind-biased advection scheme and the
+sixth-order filter remove resolved kinetic energy below the effective resolution of $6$--$8\Delta$
+\parencite{skamarock2004} without returning it to $\qsq$, and numerical errors are of the order of the subgrid
+term at $2\Delta$ \parencite{ghosal1996}. No backscatter either way. &
+Would sit in family B beside B5, whose statement it extends from the horizontal operator to the dynamical
+core; leans on A1 (harmless while everything that matters is subgrid). &
+Steep terrain excites grid-scale noise that the filter removes along model surfaces --- B7's pool-warming
+term is this sink acting on heat. &
+The resolved eddies between $2\Delta$ and $7\Delta$ lose their energy numerically: the 85--91\,\% resolved
+share is what survives the numerical sink, and subgrid plus resolved falls short of the true total by it. &
+A property of the dynamical core, shared by every scheme; the 3D closure removes the numerical horizontal
+operator (B5) but not this sink. &
+The residual of the WRFlux kinetic-energy budget after production, buoyancy, $\varepsilon$ and transport is the
+numerical sink, by regime and height. \\
+\addlinespace[3pt]
+\prname{D3 --- the first level in the inertial sublayer}{$z_0 \ll z_1 \ll z_i$} &
+Similarity is applied between the ground and the first model level, a few metres above it here; this presumes
+$z_1$ above the roughness sublayer, which reaches two to three canopy heights \parencite{harman2007}, and below
+any wind maximum, i.e.\ inside the constant-flux layer. &
+Would sit in family B beside B6, of which it is the vertical-grid half; leans on B6 and on similarity. &
+Over the forested slopes $z_0 \approx 1$~m, canopy 10--15~m, roughness sublayer 20--40~m: the first level is
+inside it. The katabatic jet maximum at 2--10~m sits at or below the first level, so the surface flux is taken
+from a shear whose sign differs from the layer above (B6). \ev{inf} &
+None. &
+Shared by all; the roughness-sublayer correction exists in canopy models, not in any scheme here. &
+Flux constancy between the sonic levels of the i-Box slope sites --- the 8--28\,\% of \textcite{lehner2021} is
+the daytime answer already in hand. \\
+\addlinespace[3pt]
+\prname{D4 --- the vertical grid resolves the shear layer}{$\Delta z \ll$ the layer that produces} &
+The vertical grid resolves the gradients that drive production: $\Delta z \ll$ the depth of the shear and
+inversion layers. The vertical counterpart of A1 with the sign reversed: at night the eddies are subgrid, A1
+holds, but the layer that produces them is thinner than $\Delta z$. &
+Would sit in family A beside A1; leans on nothing in this table. &
+Katabatic layers 10--50~m deep with the nose at 2--10~m, cold-pool inversions of 50--100~m in three to five
+levels: the shear at the nose is smeared over $\Delta z$, and $P_s \propto (\pd{U}{z})^2$ falls with the square
+of the smearing. \ev{inf} &
+The anisotropic filter of C2 ($\dx/\Delta z = 25$) is this assumption seen from the side. &
+Shared by all; the project's two vertical grids are the only variation run. &
+Nocturnal shear production by height bin on the two vertical grids; the sonic profile's shear against the
+model's at the same heights. \\
+\addlinespace[3pt]
+\prname{D5 --- a dry buoyancy flux}{no subgrid condensation} &
+The buoyancy flux is $\beta g\,\avg{w\theta_v}$ of unsaturated air; saturation acts through the resolved
+condensation only. In a saturated cell the subgrid buoyancy flux follows the moist-adiabatic gradient and
+carries the liquid-water flux. &
+Would sit in family C beside C8; leans on C8. &
+Cold-pool fog and low stratus; the fog gate of the morning. &
+Resolved cloud edges. &
+MYNN as run carries a partial-condensation scheme that blends the two forms by a subgrid cloud fraction; the
+3D closure and BouLac are dry; whether the LES-limit scheme switches to a moist stability in saturated cells is
+not yet recorded in Part~II. &
+The campaign's ceilometer and the cloud-water field of each run on fog nights. \\
+\addlinespace[2pt]
+\multicolumn{7}{@{}p{\linewidth}@{}}{\scriptsize Not listed, both small here: the Coriolis terms of the second-moment budgets ($f\,l/q \sim 10^{-2}$) and the radiative damping of temperature variance.} \\
 \end{xltabular}
 
-\vspace{1.5ex}
+\newpage
 {\footnotesize\textbf{Incidence.} \pG{} the row is this hypothesis written out for the closure; \pL{} the row
 holds only if the hypothesis also holds. Of the five rows no scheme drops (the shaded rows of Table~I.0: A2, B6, C7, C9, C10), four are
-generated or carried by the three averaging hypotheses, which none of the four schemes run here gives up; the
+generated or carried by the averaging hypotheses, which none of the four schemes run here gives up; the
 fifth, the pressure terms, rests on small-scale isotropy and locality. The frontier is the operator first, the
-pressure term second. \par}
+pressure term second. Taylor's hypothesis and Galilean invariance touch the closure only through one scheme's
+length scale; their weight is on the observations. \par}
 \vspace{0.5ex}
 \footnotesize
 \setlength{\tabcolsep}{3pt}
@@ -289,6 +421,7 @@ pressure term second. \par}
 \prline{gap}{Scale separation}
 \prline{reynolds}{Reynolds conditions}
 \prline{ergodic}{Ergodicity}
+\prline{taylor}{Taylor's hypothesis}
 \addlinespace[3pt]
 \prline{homog}{Horizontal homogeneity}
 \prline{station}{Stationarity}
@@ -300,71 +433,80 @@ pressure term second. \par}
 \prline{simil}{Similarity}
 \addlinespace[3pt]
 \prline{realiz}{Realizability (constraint)}
+\prline{galilean}{Galilean invariance (constraint)}
 \bottomrule
 \end{tabular}\par
 \normalsize
 \vspace{0.6ex}
-{\scriptsize\textit{Derived from another row} (the contacts of Figure~I.1b): A2 from A1, the Reynolds conditions and ergodicity; B2 from B1 and continuity; C3 from C2 (a scalar
-$K$ aligns the flux with the gradient); C5 from C4 and C9 ($\varepsilon = q^3/(B_1 l)$ takes its constant from one
-and its length from the other); C6 from C7 and C8 (the stationary balance, buoyancy along one axis); B7 live only
-once B1--B3 are dropped. Rows with a mark in every family --- B6, C6 --- are the ones a single experiment cannot
-attribute: the surface layer and the stability cutoff each rest on four hypotheses at once.\par}
+{\scriptsize\textit{Derived from another row} (the contacts of Figure~I.1b): A2 from A1, the Reynolds conditions and ergodicity in
+space; B2 from B1 and continuity; C3 from C2 (a scalar $K$ aligns the flux with the gradient); C5 from C4 and C9
+($\varepsilon = q^3/(B_1 l)$ takes its constant from one and its length from the other); C6 from C7 and C8 (the
+stationary balance, buoyancy along one axis); B7 live only once B1--B3 are dropped. Rows with a mark in every family
+--- B6, C6 --- are the ones a single experiment cannot attribute: the surface layer and the stability cutoff each rest
+on four hypotheses at once.\par}
 
 \newpage
 \subsection*{Figure I.1b --- The chain as a pyramid: what rests on what}
 {\footnotesize Every block is an assumption. A block touches at its bottom exactly the blocks it relies on, and
 blocks on one level do not touch each other. Dark grey: the ground --- the six hypotheses that rest on nothing
-else here. Light grey: hypotheses that themselves presuppose another (ergodicity presupposes homogeneity; the
-Reynolds conditions and locality presuppose the gap; the scalar eddy viscosity is Rotta's isotropy evaluated with
-one axis). White: the nineteen rows. Each block shows its primary reliance; the matrix above has the full
-incidence. Reading: the left quarter of the closure rests on scale separation alone, the middle on the two
-translation symmetries, the right on the rotation symmetries and universality; the tip --- the alignment of flux
-and gradient --- stands three blocks above the ground. Realizability is not drawn: it is a constraint on the
-whole, not a block in it. \par}
+else here. Light grey: hypotheses that themselves presuppose another --- the Reynolds conditions and locality
+presuppose the gap; ergodicity in space presupposes homogeneity across the cell (its second premise, decay of
+correlations within the cell, is A1's contact on A2); the scalar eddy viscosity is Rotta's isotropy evaluated with
+one axis. Dashed: the two hypotheses no row of the closure rests on but every measured record does --- ergodicity
+in time, which presupposes stationarity and mixing, and Taylor's frozen-turbulence hypothesis, which presupposes
+that the turbulence does not evolve while it is swept past the sensor. White: the nineteen rows. Each block shows
+its primary reliance; the matrix above has the full incidence. Reading: the left quarter of the closure rests on
+scale separation alone, the middle on the two translation symmetries, the right on the rotation symmetries and
+universality; the tip --- the alignment of flux and gradient --- stands three blocks above the ground. Not drawn:
+the two constraints, realizability and Galilean invariance, which bound the whole rather than carry a block, and
+the candidate rows D1--D5 until they are rows. \par}
 \vspace{1ex}
 \begin{center}
 \newcommand{\pid}[1]{\keymark{#1}\textbf{#1}}
 % \pb{x0}{x1}{y0}{y1}{style}{text}: a block from (x0,y0) to (x1,y1), text centred
-\newcommand{\pb}[6]{\pgfmathsetmacro{\pbw}{#2-#1-0.24}%
+\newcommand{\pb}[6]{\pgfmathsetmacro{\pbw}{#2-#1-0.22}%
   \draw[#5] (#1,#3) rectangle (#2,#4);
   \node[align=center, font=\tiny, inner sep=0pt, text width=\pbw cm] at ({(#1+#2)/2},{(#3+#4)/2}) {#6};}
 \begin{tikzpicture}[x=1cm, y=1cm,
   ground/.style={draw, line width=0.4pt, fill=black!22},
   hyp/.style={draw, line width=0.4pt, fill=black!9},
+  eval/.style={draw, line width=0.4pt, dashed, fill=black!9},
   row/.style={draw, line width=0.4pt, fill=white}]
-% ---- level 0: the ground (y 0 -- 1.6) ----------------------------------------
-\pb{0}{6.45}{0}{1.6}{ground}{\textbf{Scale separation}\\ a spectral gap between the energy-containing eddies and the mean flow: \mbox{$\Delta \gg l$}, and the mean varies on scales \mbox{$\gg l$}}
-\pb{6.6}{15.525}{0}{1.6}{ground}{\textbf{Horizontal homogeneity}\\ statistics invariant under horizontal translation: \mbox{$\pd{\avg{\cdot}}{x} = \pd{\avg{\cdot}}{y} = 0$} for every mean and every moment}
-\pb{15.675}{18.0}{0}{1.6}{ground}{\textbf{Stationarity}\\ invariance under time translation over the relaxation time $l/q$}
-\pb{18.15}{20.475}{0}{1.6}{ground}{\textbf{Axisymmetry}\\ one preferred axis: gravity, aligned with the surface normal}
-\pb{20.625}{23.775}{0}{1.6}{ground}{\textbf{Small-scale isotropy}\\ Kolmogorov's one dissipation rate; Rotta's return to isotropy at one rate}
-\pb{23.925}{26.25}{0}{1.6}{ground}{\textbf{Similarity}\\ one universal scaled relation; the parameter list complete}
-% ---- level 1 (y 1.6 -- 2.7): 16 blocks of 1.5 cm, air gap 0.15 ---------------
-\pb{0}{1.5}{1.6}{2.7}{hyp}{\textbf{Locality}\\ gradient transport: $l \ll$ the scale of the gradient}
-\pb{1.65}{3.15}{1.6}{2.7}{row}{\pid{B5}\\ vertical and horizontal mixing separable}
-\pb{3.3}{4.8}{1.6}{2.7}{row}{\pid{A1}\\ all energetic eddies are subgrid}
-\pb{4.95}{6.45}{1.6}{2.7}{hyp}{\textbf{Reynolds conditions}\\ the cell mean is an averaging operator}
-\pb{6.6}{8.1}{1.6}{2.7}{hyp}{\textbf{Ergodicity}\\ one realisation stands for the ensemble}
-\pb{8.25}{9.75}{1.6}{2.7}{row}{\pid{B7}\\ model surfaces are horizontal}
-\pb{9.9}{11.4}{1.6}{2.7}{row}{\pid{B3}\\ no horizontal flux divergence}
-\pb{11.55}{13.05}{1.6}{2.7}{row}{\pid{B4}\\ TKE stays in its column}
-\pb{13.2}{14.7}{1.6}{2.7}{row}{\pid{B1}\\ no horizontal shear production}
-\pb{14.85}{16.35}{1.6}{2.7}{row}{\pid{B6}\\ flat, homogeneous surface (MOST)}
-\pb{16.5}{18.0}{1.6}{2.7}{row}{\pid{C7}\\ local equilibrium of all moments but $\qsq$}
-\pb{18.15}{19.65}{1.6}{2.7}{row}{\pid{C8}\\ buoyancy acts only through $\avg{w\theta_v}$}
-\pb{19.8}{21.3}{1.6}{2.7}{hyp}{\textbf{Isotropic eddy viscosity}\\ a scalar $K$: Rotta with one axis}
-\pb{21.45}{22.95}{1.6}{2.7}{row}{\pid{C10}\\ pressure terms: transport absorbed, Rotta}
-\pb{23.1}{24.6}{1.6}{2.7}{row}{\pid{C9}\\ universal closure constants}
-\pb{24.75}{26.25}{1.6}{2.7}{row}{\pid{C4}\\ eddy size from the vertical structure}
-% ---- level 2 (y 2.7 -- 3.8) ---------------------------------------------------
-\pb{0.1}{1.4}{2.7}{3.8}{row}{\pid{C1}\\ fluxes local and down-gradient}
-\pb{3.5}{7.9}{2.7}{3.8}{row}{\pid{A2}\\ cell mean $=$ ensemble mean: subgrid eddies, a Reynolds operator, one realisation}
-\pb{13.3}{14.6}{2.7}{3.8}{row}{\pid{B2}\\ no gradients of $W$ (continuity)}
-\pb{16.8}{19.4}{2.7}{3.8}{row}{\pid{C6}\\ vertical Ri only; turbulence dies at $\Rfc$}
-\pb{19.9}{21.2}{2.7}{3.8}{row}{\pid{C2}\\ one $K$ for all directions}
-\pb{23.3}{26.1}{2.7}{3.8}{row}{\pid{C5}\\ one scale for transport and dissipation: $\varepsilon = q^3/(B_1 l)$}
-% ---- level 3 (y 3.8 -- 4.9): the tip -----------------------------------------
-\pb{20.0}{21.1}{3.8}{4.9}{row}{\pid{C3}\\ flux anti-parallel to the gradient}
+% ---- level 0: the ground (y 0 -- 1.6); boundaries sit under the blocks that span them ------------
+\pb{0}{5.88}{0}{1.6}{ground}{\textbf{Scale separation}\\ a spectral gap between the energy-containing eddies and the mean flow: a finite integral scale, \mbox{$\Delta \gg l$}, and a mean that varies on scales \mbox{$\gg l$}}
+\pb{6.0}{14.13}{0}{1.6}{ground}{\textbf{Horizontal homogeneity}\\ statistics invariant under horizontal translation: \mbox{$\pd{\avg{\cdot}}{x} = \pd{\avg{\cdot}}{y} = 0$} for every mean and every moment}
+\pb{14.25}{19.38}{0}{1.6}{ground}{\textbf{Stationarity}\\ statistics invariant under time translation over the relaxation time $l/q$; the cascade in equilibrium}
+\pb{19.5}{21.63}{0}{1.6}{ground}{\textbf{Axisymmetry}\\ one preferred axis, gravity, aligned with the surface normal; no handedness}
+\pb{21.75}{24.63}{0}{1.6}{ground}{\textbf{Small-scale isotropy}\\ Kolmogorov's one dissipation rate; Rotta's return to isotropy at one rate}
+\pb{24.75}{26.88}{0}{1.6}{ground}{\textbf{Similarity}\\ one universal scaled relation; the parameter list complete}
+% ---- level 1 (y 1.6 -- 2.9): 18 blocks of 1.38 cm, air gap 0.12 ---------------------------------
+\pb{0}{1.38}{1.6}{2.9}{hyp}{\textbf{Locality}\\ gradient transport: $l \ll$ the scale of the gradient}
+\pb{1.5}{2.88}{1.6}{2.9}{row}{\pid{B5}\\ vertical and horizontal mixing separable}
+\pb{3.0}{4.38}{1.6}{2.9}{row}{\pid{A1}\\ all energetic eddies are subgrid}
+\pb{4.5}{5.88}{1.6}{2.9}{hyp}{\textbf{Reynolds conditions}\\ the cell mean is an averaging operator}
+\pb{6.0}{7.38}{1.6}{2.9}{hyp}{\textbf{Ergodicity in space}\\ the cell mean converges to the ensemble mean}
+\pb{7.5}{8.88}{1.6}{2.9}{row}{\pid{B7}\\ model surfaces are horizontal}
+\pb{9.0}{10.38}{1.6}{2.9}{row}{\pid{B3}\\ no horizontal flux divergence}
+\pb{10.5}{11.88}{1.6}{2.9}{row}{\pid{B4}\\ TKE stays in its column}
+\pb{12.0}{13.38}{1.6}{2.9}{row}{\pid{B1}\\ no horizontal shear production}
+\pb{13.5}{14.88}{1.6}{2.9}{row}{\pid{B6}\\ flat, homogeneous surface (MOST)}
+\pb{15.0}{16.38}{1.6}{2.9}{eval}{\textbf{Ergodicity in time}\\ a record converges: stationary and mixing}
+\pb{16.5}{17.88}{1.6}{2.9}{eval}{\textbf{Taylor's hypothesis}\\ a time series is a line in space, $\sigma_u/U \ll 1$}
+\pb{18.0}{19.38}{1.6}{2.9}{row}{\pid{C7}\\ local equilibrium of all moments but $\qsq$}
+\pb{19.5}{20.88}{1.6}{2.9}{row}{\pid{C8}\\ buoyancy acts only through $\avg{w\theta_v}$}
+\pb{21.0}{22.38}{1.6}{2.9}{hyp}{\textbf{Isotropic $K$}\\ a scalar eddy viscosity: linear, Rotta with one axis}
+\pb{22.5}{23.88}{1.6}{2.9}{row}{\pid{C10}\\ pressure terms: transport absorbed, Rotta}
+\pb{24.0}{25.38}{1.6}{2.9}{row}{\pid{C9}\\ universal closure constants}
+\pb{25.5}{26.88}{1.6}{2.9}{row}{\pid{C4}\\ eddy size from the vertical structure}
+% ---- level 2 (y 2.9 -- 4.2) ----------------------------------------------------------------------
+\pb{0.1}{1.28}{2.9}{4.2}{row}{\pid{C1}\\ fluxes local and down-gradient}
+\pb{3.2}{7.2}{2.9}{4.2}{row}{\pid{A2}\\ cell mean $=$ ensemble mean: subgrid eddies, a Reynolds operator, one realisation}
+\pb{12.1}{13.28}{2.9}{4.2}{row}{\pid{B2}\\ no gradients of $W$ (continuity)}
+\pb{18.3}{20.6}{2.9}{4.2}{row}{\pid{C6}\\ vertical Ri only; turbulence dies at $\Rfc$}
+\pb{21.1}{22.28}{2.9}{4.2}{row}{\pid{C2}\\ one $K$ for all directions}
+\pb{24.2}{26.7}{2.9}{4.2}{row}{\pid{C5}\\ one scale for transport and dissipation: $\varepsilon = q^3/(B_1 l)$}
+% ---- level 3 (y 4.2 -- 5.5): the tip --------------------------------------------------------------
+\pb{21.2}{22.18}{4.2}{5.5}{row}{\pid{C3}\\ flux anti-parallel to the gradient}
 \end{tikzpicture}
 \end{center}
 \landscapeclose
