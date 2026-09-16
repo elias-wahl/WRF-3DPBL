@@ -76,35 +76,6 @@
 \hecto{Buoyancy production}{The slope-normal surface heat flux has a horizontal component with no home in the budget; in stable air buoyancy damps $\avg{w^2}$ selectively, the pancake anisotropy; by day resolved thermals carry the horizontal heat flux and its subgrid part stays unrepresented.}
 
 
-% ---- dependencies the contact rule cannot draw (used by the LINKS version only; scripts/make_pyramid_links.py)
-% \lean{<block title>}{<block title it leans on>}; from the audit of 2026-09-16. No-op here.
-\newcommand{\lean}[2]{}
-\lean{Locality}{Mixing}
-\lean{Ergodicity in space}{Scale separation}
-\lean{Boundary-layer (column) approximation}{Boussinesq}
-\lean{Monin--Obukhov similarity}{Horizontal homogeneity}
-\lean{Monin--Obukhov similarity}{Axisymmetry}
-\lean{Mixing length}{Horizontal homogeneity}
-\lean{Energy cascade}{Stationarity}
-\lean{Local equilibrium}{Locality}
-\lean{Eddy viscosity}{Locality}
-\lean{Universal constants}{Reynolds averaging}
-\lean{Vertical divergence only}{Scale separation}
-\lean{Wall value and surface fluxes}{Monin--Obukhov similarity}
-\lean{Wall value and surface fluxes}{Universal constants}
-\lean{Level-2.5 truncation}{Return to isotropy}
-\lean{Level-2.5 truncation}{Universal constants}
-\lean{Level-2.5 truncation}{Boundary-layer (column) approximation}
-\lean{Master length scale}{Universal constants}
-\lean{Master length scale}{Axisymmetry}
-\lean{Pressure terms}{Locality}
-\lean{Pressure terms}{Universal constants}
-\lean{K-form fluxes}{Locality}
-\lean{K-form fluxes}{Mixing length}
-\lean{K-form fluxes}{Local equilibrium}
-\lean{Dissipation}{Master length scale}
-\lean{Resolved gradient}{Boundary-layer (column) approximation}
-
 
 % vertical block: rectangle + centred text, text width = block width - hpad
 \newcommand{\pbv}[7]{\pgfmathsetmacro{\pbw}{#2-#1-#7}%
@@ -140,37 +111,37 @@ correspondence to the note's rows are on the next page.\par}
 \node[font=\scriptsize\bfseries, text=black!60] at (6.095,24.418) {concepts};
 \node[font=\scriptsize\bfseries, text=black!60] at (10.925,24.418) {formalism};
 \node[font=\scriptsize\bfseries, text=black!60, align=center] at (16.510,24.418) {at the hectometre scale};
-\pbv{0.000}{3.910}{21.428}{24.068}{ground}{\textbf{Scale separation}\\ a spectral gap between the energy-containing eddies and the mean flow: \mbox{$\Delta \gg l$}}{0.30}
+\pbv{0.000}{3.910}{21.428}{24.068}{ground}{\textbf{Scale separation}\\ a spectral gap between the energy-containing eddies and the mean flow}{0.30}
 \pbv{0.000}{3.910}{20.328}{21.340}{ground}{\textbf{Mixing}\\ correlations decay within a finite integral scale}{0.30}
 \pbv{0.000}{3.910}{15.378}{20.240}{ground}{\textbf{Horizontal homogeneity}\\ statistics invariant under horizontal translation: \mbox{$\pd{\avg{\cdot}}{x} = \pd{\avg{\cdot}}{y} = 0$} for every mean and every moment}{0.30}
 \pbv{0.000}{3.910}{12.078}{15.290}{ground}{\textbf{Stationarity}\\ statistics invariant under time translation over the relaxation time $l/q$; the cascade in equilibrium}{0.30}
 \pbv{0.000}{3.910}{8.228}{11.990}{ground}{\textbf{Similarity}\\ one universal scaled relation in every flow; the parameter list complete}{0.30}
-\pbv{0.000}{3.910}{3.278}{8.140}{ground}{\textbf{Small-scale isotropy}\\ the small eddies forget the direction of shear and gravity: Kolmogorov's one dissipation rate, Rotta's return to isotropy at one rate}{0.30}
+\pbv{0.000}{3.910}{3.278}{8.140}{ground}{\textbf{Small-scale isotropy}\\ at high Reynolds number the small eddies forget the direction of shear and gravity: Kolmogorov's one dissipation rate, Rotta's return to isotropy at one rate}{0.30}
 \pbv{0.000}{3.910}{1.628}{3.190}{ground}{\textbf{Axisymmetry}\\ one preferred axis, gravity, along the surface normal; no handedness}{0.30}
-\pbv{0.000}{3.910}{0.000}{1.540}{ground}{\textbf{Boussinesq}\\ buoyancy the only density effect, $\beta$ fixed; incompressible}{0.30}
+\pbv{0.000}{3.910}{0.000}{1.540}{ground}{\textbf{Boussinesq}\\ unsaturated air; buoyancy the only density effect, $\beta$ fixed; incompressible}{0.30}
 \pbv{3.910}{8.280}{22.528}{23.540}{hyp}{\textbf{Locality}\\ the flux answers the local gradient, $l \ll$ its scale}{0.30}
 \pbv{3.910}{8.280}{21.428}{22.440}{hyp}{\textbf{Reynolds averaging}\\ mean plus fluctuation; the averaging rules hold}{0.30}
-\pbv{3.910}{8.280}{19.228}{21.340}{hyp}{\textbf{Ergodicity in space}\\ the cell mean converges to the ensemble mean: many decorrelated eddies per cell, alike across it}{0.30}
-\pbv{3.910}{8.280}{15.928}{19.140}{hyp}{\textbf{Boundary-layer (column) approximation}\\ every mean and every moment varies in $z$ only; $W = 0$}{0.56}
-\pbv{3.910}{8.280}{14.828}{15.840}{hyp}{\textbf{Constant-flux layer}\\ near the ground the fluxes do not vary with height}{0.30}
+\pbv{3.910}{8.280}{19.228}{21.340}{hyp}{\textbf{Ergodicity in space}\\ the cell mean converges to the ensemble mean: many decorrelated eddies per cell, \mbox{$\Delta \gg l$}, alike across it}{0.30}
+\pbv{3.910}{8.280}{15.928}{19.140}{hyp}{\textbf{Boundary-layer (column) approximation}\\ every mean and every moment varies in $z$ only; $W = 0$ by continuity}{0.56}
+\pbv{3.910}{8.280}{14.828}{15.840}{hyp}{\textbf{Constant-flux layer}\\ fluxes constant with height in the lowest tenth of the layer}{0.30}
 \pbv{3.910}{8.280}{13.728}{14.740}{hyp}{\textbf{Local equilibrium}\\ second moments follow the current gradients}{0.30}
 \pbv{3.910}{8.280}{10.428}{13.640}{hyp}{\textbf{Monin--Obukhov similarity}\\ universal flux--profile relations in $z/L_{\mathrm{MO}}$; one Obukhov length, one roughness length}{0.30}
 \pbv{3.910}{8.280}{9.328}{10.340}{hyp}{\textbf{Mixing length}\\ one eddy size, set by the vertical structure}{0.30}
 \pbv{3.910}{8.280}{7.128}{9.240}{hyp}{\textbf{Universal constants}\\ the rates of return to isotropy and of dissipation are the same numbers in every flow}{0.30}
-\pbv{3.910}{8.280}{6.028}{7.040}{hyp}{\textbf{Energy cascade}\\ Kolmogorov: dissipation isotropic, set by the large eddies, $\varepsilon \sim q^3/l$}{0.30}
-\pbv{3.910}{8.280}{3.828}{5.940}{hyp}{\textbf{Return to isotropy}\\ pressure--strain relaxes anisotropy at one rate (Rotta); pressure transport diffusive}{0.30}
+\pbv{3.910}{8.280}{6.028}{7.040}{hyp}{\textbf{Energy cascade}\\ Kolmogorov: isotropic dissipation in equilibrium with the large eddies, $\varepsilon \sim q^3/l$}{0.30}
+\pbv{3.910}{8.280}{3.828}{5.940}{hyp}{\textbf{Return to isotropy}\\ pressure--strain relaxes anisotropy at one rate, linear in it (Rotta); pressure transport diffusive}{0.30}
 \pbv{3.910}{8.280}{2.728}{3.740}{hyp}{\textbf{Eddy viscosity}\\ a scalar $K \sim l q$: linear, isotropic, one axis}{0.40}
 \pbv{3.910}{8.280}{0.528}{2.640}{hyp}{\textbf{Buoyancy production}\\ buoyancy acts on TKE through the vertical heat flux alone; no redistribution among the stress components}{0.30}
 \pbv{8.280}{13.570}{22.598}{23.470}{row}{\textbf{Resolved gradient}\\ $\Delta z \ll$ the shear layer}{0.30}
 \pbv{8.280}{13.570}{19.316}{22.370}{row}{\textbf{Grid means are ensemble means}\\ the grid spacing appears nowhere; the resolved flow is not turbulent, so its shear feeds production}{0.30}
 \pbv{8.280}{13.570}{17.952}{19.070}{row}{\textbf{Vertical shear only}\\ two of nine production terms; no gradient of $W$}{0.56}
 \pbv{8.280}{13.570}{15.998}{17.776}{row}{\textbf{Vertical divergence only}\\ mean equations and TKE in $z$ only; TKE not advected; horizontal mixing by numerics, its energy lost to $\qsq$; surfaces horizontal}{0.56}
-\pbv{8.280}{13.570}{14.256}{15.770}{row}{\textbf{Wall value and surface fluxes}\\ $\qsq = B_1^{2/3} u_*^2$ at the ground; fluxes from bulk transfer at the first level}{0.30}
-\pbv{8.280}{13.570}{12.452}{14.080}{row}{\textbf{Level-2.5 truncation}\\ all moments but $\qsq$ algebraic; $S_M$, $S_H$ from the level-2 balance in the vertical Ri alone; cutoff at $\Rfc$}{0.56}
-\pbv{8.280}{13.570}{11.396}{12.276}{row}{\textbf{First model level}\\ inside the inertial sublayer: $z_0 \ll z_1 \ll z_i$}{0.30}
-\pbv{8.280}{13.570}{9.398}{11.220}{row}{\textbf{Master length scale}\\ $1/L = 1/L_S + 1/L_T + 1/L_B$: wall distance with $\zeta$, one $z_i$ per column, $q/N$; the same $L$ in $K$ and $\varepsilon$; blind to terrain and grid}{0.56}
-\pbv{8.280}{13.570}{8.272}{9.170}{row}{\textbf{Constant set}\\ one set, fitted over flat terrain}{0.30}
-\pbv{8.280}{13.570}{6.098}{8.096}{row}{\textbf{Dissipation}\\ $\varepsilon = q^3/(B_1 L)$: isotropic, one rate, diagnosed from the master length}{0.30}
+\pbv{8.280}{13.570}{14.256}{15.770}{row}{\textbf{Wall value of $\qsq$}\\ $\qsq = B_1^{2/3} u_*^2$ at the ground: the neutral level-2 equilibrium of the constant-flux layer}{0.30}
+\pbv{8.280}{13.570}{12.584}{14.080}{row}{\textbf{Level-2.5 truncation}\\ all moments but $\qsq$ algebraic; $S_M$, $S_H$ from the level-2 balance in the vertical Ri alone; cutoff at $\Rfc$}{0.56}
+\pbv{8.280}{13.570}{11.396}{12.408}{row}{\textbf{Surface fluxes and first level}\\ bulk transfer between the ground and $z_1$, which lies in the inertial sublayer: $z_0 \ll z_1 \ll z_i$}{0.30}
+\pbv{8.280}{13.570}{8.932}{11.220}{row}{\textbf{Master length scale}\\ $1/L = 1/L_S + 1/L_T + 1/L_B$ with universal coefficients: wall distance with $\zeta$, one $z_i$ per column, $q/N$; the same $L$ in $K$ and $\varepsilon$; blind to terrain and grid}{0.56}
+\pbv{8.280}{13.570}{7.964}{8.756}{row}{\textbf{Constant set}\\ one set, fitted over flat terrain}{0.30}
+\pbv{8.280}{13.570}{6.098}{7.788}{row}{\textbf{Dissipation}\\ $\varepsilon = q^3/(B_1 L)$: isotropic, one rate, diagnosed from the master length}{0.30}
 \pbv{8.280}{13.570}{4.972}{5.870}{row}{\textbf{Pressure terms}\\ Rotta with $A_1$, $C_1$; transport into $S_q$}{0.30}
 \pbv{8.280}{13.570}{2.746}{4.796}{row}{\textbf{K-form fluxes}\\ \mbox{$\avg{uw} = -K_M\,U_z$}, \mbox{$\avg{w\theta} = -K_H\,\Theta_z$}, $K = l q S$: one scalar $K$, the same in every direction, aligned with the gradient; one $K_H$ for every scalar}{0.40}
 \pbv{8.280}{13.570}{0.598}{2.570}{row}{\textbf{Buoyancy term}\\ $P_b = \beta g\,\avg{w\theta_v}$ of unsaturated air, $\beta = 1/300$~K; no horizontal heat flux; $L_B \propto q/N$}{0.30}
@@ -180,10 +151,10 @@ correspondence to the note's rows are on the next page.\par}
 \hlv{8.280}{13.570}{17.952}{19.070}{cGXIX}{0.14}
 \hlv{8.280}{13.570}{15.998}{17.776}{cFULL}{0.05}
 \hlv{8.280}{13.570}{15.998}{17.776}{cGXIX}{0.14}
-\hlv{8.280}{13.570}{12.452}{14.080}{cFULL}{0.05}
-\hlv{8.280}{13.570}{12.452}{14.080}{cGXIX}{0.14}
-\hlv{8.280}{13.570}{9.398}{11.220}{cFULL}{0.05}
-\hlv{8.280}{13.570}{9.398}{11.220}{cGXIX}{0.14}
+\hlv{8.280}{13.570}{12.584}{14.080}{cFULL}{0.05}
+\hlv{8.280}{13.570}{12.584}{14.080}{cGXIX}{0.14}
+\hlv{8.280}{13.570}{8.932}{11.220}{cFULL}{0.05}
+\hlv{8.280}{13.570}{8.932}{11.220}{cGXIX}{0.14}
 \hlv{3.910}{8.280}{2.728}{3.740}{cFULL}{0.05}
 \hlv{8.280}{13.570}{2.746}{4.796}{cFULL}{0.05}
 \pbh{13.870}{19.150}{22.558}{23.510}{By day eddies span $z_i$ and the flux stops answering the local gradient; on slopes it arrives from the interface. Holds at night.}
@@ -241,7 +212,7 @@ universal constants; small-scale isotropy gives the cascade, the return to isotr
 eddy viscosity; one axis and a Boussinesq fluid give buoyancy production through the vertical heat flux. The right
 column is the closure as written, and every one of its statements applies one or two concepts: the truncation
 applies local equilibrium and takes its stability functions from the surface-layer relations they were fitted
-to; the master length takes its wall branch from Monin--Obukhov similarity and its shape from the mixing length;
+to; the master length takes its wall branch from Monin--Obukhov similarity, its shape from the mixing length and its coefficients from universality;
 the dissipation takes its form from the cascade and its constant from universality; the K-form takes its scalar
 from the eddy viscosity and its coefficients from the return to isotropy. Terrain breaks the ground at the top
 and in the middle --- homogeneity, the column, the constant-flux layer, one axis --- and the grey zone breaks it
@@ -249,8 +220,7 @@ at the very top; the lower third, isotropy and its constants, is the part no sch
 
 \vspace{0.5ex}
 {\footnotesize\textbf{Correspondence to the note's rows.} Grid means are ensemble means: A1, A2. Vertical shear only: B1, B2. Vertical divergence only: B3, B4, B5, B7. Constant-flux layer with Monin--Obukhov similarity:
-B6, split because one block cannot touch three foundations. Wall value and surface fluxes: the lower boundary of
-the TKE equation (D6). First model level: D3. Resolved gradient: D4. K-form fluxes: C1, C2, C3 and the mixing of
+B6, split because one block cannot touch three foundations. Wall value of $\qsq$: the lower boundary of the TKE equation (D6). Surface fluxes and first level: D3 with the bulk-transfer half of B6. Resolved gradient: D4. K-form fluxes: C1, C2, C3 and the mixing of
 all scalars alike. Master length scale: C4 with the one-length statement of C5. Dissipation: C5. Level-2.5
 truncation: C6, C7. Buoyancy term: C8 with the dry buoyancy flux (D5). Constant set: C9. Pressure terms: C10.
 Which scheme drops which statement is Table~I.0 of the note.\par}
