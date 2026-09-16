@@ -4,7 +4,7 @@
 %  Build: source ~/miniconda3/bin/activate tex && tectonic pbl_assumptions_pyramid.tex
 %  Layout rule: a block touches at its bottom exactly the blocks it relies on; blocks
 %  on one level never touch (air gap 0.10 cm). Three tiers (2026-09-16, third version):
-%  physical hypotheses (dark grey) / concepts of turbulence theory (light grey) /
+%  premises = physical hypotheses (dark grey) / concepts of turbulence theory (light grey) /
 %  formal statements of the level-2.5 closure (white). No row abbreviations on the
 %  blocks; the mapping to the note's rows is in the last paragraph. Unit width 1.15 cm,
 %  doubles 2.40, triples 3.65; tier 1 starts at x = 0.6; tier labels at x = -0.3.
@@ -65,6 +65,25 @@
   \draw[#5] (#1,#3) rectangle (#2,#4);
   \node[align=center, font=\tiny, inner sep=0pt, text width=\pbw cm] at ({(#1+#2)/2},{(#3+#4)/2}) {#6};}
 
+
+% ---- the hectometre-scale column (used by the VERTICAL version only; read by scripts/make_pyramid_vertical.py)
+% \hecto{<concept title>}{<what becomes of the concept at Delta = 500 m over the Inn Valley>}; no-op here.
+% Sources: the mountain and grey-zone columns of the note's Table I.1 and the project's own runs.
+\newcommand{\hecto}[2]{}
+\hecto{Locality}{By day eddies span $z_i$: the flux stops answering the local gradient; on slopes it arrives from the slope--valley interface. Holds at night.}
+\hecto{Reynolds averaging}{The cell mean is a filter of width $\Delta$ inside the spectrum: Leonard and cross terms appear; the closed term is a subfilter stress.}
+\hecto{Ergodicity in space}{At night a 500~m cell holds about five integral scales per direction and $\Delta z$ none: the cell statistic is an order-one realisation. By day it holds less than one eddy. On a slope it mixes two flows, slope layer and valley core, and estimates neither.}
+\hecto{Boundary-layer (column) approximation}{Not small: the cross-valley shear of the up-valley jet reaches 20--30\,\% of the vertical shear; slope flows carry $W$ gradients of the order of the wind shear; horizontal flux divergences are of the order of the vertical one, and the Riviera budgets closed only with transport and advection. Seven of nine production terms and the three-dimensional divergences are missing, not negligible.}
+\hecto{Constant-flux layer}{The katabatic jet nose at 2--10~m sits inside the layer; the momentum flux is height-constant in 8--28\,\% of daytime periods.}
+\hecto{Local equilibrium}{Resolved strain by day rotates faster than $l/q$; transitions and intermittency at night are not slow against it: the strain cap is the admission.}
+\hecto{Monin--Obukhov similarity}{A slope has two axes, gravity and the surface normal: two Obukhov lengths, a slope-normal heat flux with a horizontal part. The scaling holds only for some anisotropy classes, and over a hill only in the inner layer. Over the forested slopes the first model level sits inside the roughness sublayer. At Innsbruck the surface is stable 4.7\,\% of the time while the valley air above is often stably stratified.}
+\hecto{Mixing length}{$z_i$ ill-posed under elevated inversions, wall distance ambiguous on a slope; the horizontal eddy set by the valley width: two lengths at least.}
+\hecto{Universal constants}{Fitted to flat neutral and convective layers; the anisotropy classes of complex terrain differ, and the comparison already runs three constant sets. Filter constants are not ensemble constants: $C_\varepsilon$ depends on $l/\Delta$.}
+\hecto{Energy cascade}{$\varepsilon$ is filter-independent while $q^3$ is not: the dissipation length must shrink with the grid; by day the filter cuts into the isotropic range.}
+\hecto{Return to isotropy}{Stable valley turbulence is two-component, pancake-like; the return rate of a pancake need not be that of a convective eddy. Pressure work by slope flows and gravity waves redistributes energy laterally, the least known term of the budget.}
+\hecto{Eddy viscosity}{The grid filter (aspect ratio 25) imprints its anisotropy on the subgrid eddies; the stress axes leave the gradient where slope wind meets valley wind.}
+\hecto{Buoyancy production}{The slope-normal surface heat flux has a horizontal component with no home in the budget; in stable air buoyancy damps $\avg{w^2}$ selectively, the pancake anisotropy; by day resolved thermals carry the horizontal heat flux and its subgrid part stays unrepresented.}
+
 \begin{document}
 {\Large\bfseries The assumptions of a one-dimensional PBL closure, as a pyramid: what rests on what}\\[0.3ex]
 {\small Companion to the assumptions note; three tiers: physical hypotheses, the concepts that follow, the
@@ -91,7 +110,7 @@ dynamical core's numerical dissipation.\par}
   row/.style={draw, line width=0.4pt, fill=white},
   tier/.style={font=\scriptsize\bfseries, rotate=90, anchor=center, text=black!60}]
 % ---- tier labels -----------------------------------------------------------------------------------
-\node[tier] at (-0.3, 0.85) {physics};
+\node[tier] at (-0.3, 0.85) {premises};
 \node[tier] at (-0.3, 2.65) {concepts};
 \node[tier] at (-0.3, 4.75) {formalism};
 % ---- tier 0: physical hypotheses (y 0 -- 1.7); each boundary sits under the concept that spans it --
@@ -161,7 +180,7 @@ the frontier. Nested frames: both schemes; every block the Goger port touches, t
 too, and it alone reaches the eddy viscosity and the K-form.\par}
 
 \vspace{0.4ex}
-{\footnotesize\textbf{Reading.} The ground is the physics; nothing in it names a model. The middle tier is where
+{\footnotesize\textbf{Reading.} The ground holds the premises, hypotheses about the fluid and the flow; nothing in it names a model. The middle tier is where
 the model's vocabulary is born: scale separation gives Reynolds averaging and locality; mixing with homogeneity gives ergodicity in space; homogeneity gives the
 column approximation and, with stationarity, the constant-flux layer; stationarity gives local equilibrium and,
 with similarity, Monin--Obukhov similarity; similarity gives the mixing length and, with small-scale isotropy,
