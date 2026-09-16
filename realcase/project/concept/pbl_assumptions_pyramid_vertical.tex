@@ -77,6 +77,55 @@
 
 
 
+% ---- dependencies the contact rule cannot draw (post-audit list; used by scripts/make_pyramid_graph.py). No-op here.
+\newcommand{\lean}[2]{}
+\lean{Locality}{Mixing}
+\lean{Boundary-layer (column) approximation}{Boussinesq}
+\lean{Monin--Obukhov similarity}{Horizontal homogeneity}
+\lean{Monin--Obukhov similarity}{Axisymmetry}
+\lean{Mixing length}{Horizontal homogeneity}
+\lean{Energy cascade}{Stationarity}
+\lean{Local equilibrium}{Locality}
+\lean{Eddy viscosity}{Locality}
+\lean{Universal constants}{Reynolds averaging}
+\lean{Vertical divergence only}{Scale separation}
+\lean{Wall value of $\qsq$}{Universal constants}
+\lean{Level-2.5 truncation}{Return to isotropy}
+\lean{Level-2.5 truncation}{Universal constants}
+\lean{Level-2.5 truncation}{Boundary-layer (column) approximation}
+\lean{Master length scale}{Axisymmetry}
+\lean{Pressure terms}{Locality}
+\lean{Pressure terms}{Universal constants}
+\lean{K-form fluxes}{Locality}
+\lean{K-form fluxes}{Mixing length}
+\lean{K-form fluxes}{Local equilibrium}
+\lean{Dissipation}{Master length scale}
+\lean{Resolved gradient}{Boundary-layer (column) approximation}
+% ---- scheme quicklook (moons above the formalism tier; scripts/make_moons.py rewrites the strip)
+% \moon{<block title>}{K|P|D x4} in the order MYNN as run, G19 port, 3D-APPROX, 3D-FULL; from Table I.0 of the note:
+% a block is K if all its rows are kept, D if all are dropped, else P. No-op here (data only).
+\newcommand{\moon}[2]{}
+\moon{Resolved gradient}{K K K K}
+\moon{Grid means are ensemble means}{P K P P}
+\moon{Vertical shear only}{K P K D}
+\moon{Vertical divergence only}{K P P D}
+\moon{Wall value of $\qsq$}{K K D D}
+\moon{Level-2.5 truncation}{P P K P}
+\moon{Surface fluxes and first level}{K K K K}
+\moon{Master length scale}{K P K K}
+\moon{Constant set}{K K K K}
+\moon{Dissipation}{K K K K}
+\moon{Pressure terms}{K K K K}
+\moon{K-form fluxes}{P P P D}
+\moon{Buoyancy term}{P P P P}
+% glyphs (the note's), absolute size, colour = scheme identity
+\newcommand{\gK}{\tikz[baseline=-0.6ex]{\fill (0,0) circle (0.11);}}
+\newcommand{\gP}{\tikz[baseline=-0.6ex]{\draw[line width=0.5pt] (0,0) circle (0.11); \fill (0,0) -- (90:0.11) arc (90:270:0.11) -- cycle;}}
+\newcommand{\gD}{\tikz[baseline=-0.6ex]{\draw[line width=0.5pt] (0,0) circle (0.11);}}
+\definecolor{cMYNN}{HTML}{3A6B00}    % MYNN as run
+\definecolor{cAPPROX}{HTML}{9A5AA8}  % 3D-APPROX
+
+
 % vertical block: rectangle + centred text, text width = block width - hpad
 \newcommand{\pbv}[7]{\pgfmathsetmacro{\pbw}{#2-#1-#7}%
   \draw[#5] (#1,#3) rectangle (#2,#4);
@@ -184,7 +233,7 @@ the statements of the level-2.5 closure as written, each resting on the concepts
 primary reliance; the incidence matrix of the note has the full set. Not drawn, because no scheme needs them to
 run: ergodicity in time and Taylor's hypothesis, which carry the observations and the calibration; the
 constraints realizability and Galilean invariance, which bound the algebra rather than carry a block; and the
-dynamical core's numerical dissipation.\par}
+dynamical core's numerical dissipation. The moons above the formalism tier are the quicklook on the four schemes of the concept's first research question, rows from bottom to top \textcolor{cMYNN}{\textbf{MYNN as run}}, \textcolor{cGXIX}{\textbf{G19 port}}, \textcolor{cAPPROX}{\textbf{3D-APPROX}}, \textcolor{cFULL}{\textbf{3D-FULL}}: \gK{} the scheme as run implements the assumption, \gP{} partly, \gD{} drops it; a block takes the status of its rows in the note's Table~I.0, kept only when all are kept, dropped only when all are dropped.\par}
 
 
 \vspace{0.6ex}
