@@ -9,6 +9,7 @@
 %  blocks; the mapping to the note's rows is in the last paragraph. Unit width 1.20 cm,
 %  doubles 2.50, triples 3.80; tier 1 starts at x = 0.6; tier labels at x = -0.3.
 %  Ground order forced by the adjacency chain GAP-HOM-STA-SIM-ISOb-AXI-BOU.
+%  Frames (\hl): purple = 3D closure, red = Goger 2019, nested = both (decisive cells of Table I.0).
 % =============================================================================
 \documentclass[10pt]{article}
 \usepackage{iftex}
@@ -39,6 +40,10 @@
 \newcommand{\dx}{\Delta x}
 % ---- rows the PhD concept turns on (same data as the note's macros.tex) ------
 \definecolor{cKey}{HTML}{7B2D8E}
+\definecolor{cGXIX}{HTML}{990011}   % Goger 2019 port (the note's colour)
+\definecolor{cFULL}{HTML}{7B2D8E}   % Kosovic-Juliano 3D closure (the note's colour)
+% \hl{x0}{x1}{y0}{y1}{colour}{inset}: a frame inside a block, marking a scheme's decisive block
+\newcommand{\hl}[6]{\draw[#5, line width=1.1pt] (#1+#6,#3+#6) rectangle (#2-#6,#4-#6);}
 \newcommand{\setkey}[2]{\expandafter\def\csname key@#1\endcsname{#2}}
 \makeatletter
 \setkey{A1}{1}\setkey{B1}{1}\setkey{B2}{1}\setkey{B3}{1}\setkey{C3}{1}\setkey{C4}{1}\setkey{C6}{1}\setkey{C7}{1}
@@ -48,6 +53,9 @@
 \makeatother
 \newcommand{\pid}[1]{\keymark{#1}\textbf{#1}}
 % \pb{x0}{x1}{y0}{y1}{style}{text}: a block from (x0,y0) to (x1,y1), text centred
+\newcommand{\pbf}[7]{\pgfmathsetmacro{\pbw}{#2-#1-#7}%
+  \draw[#5] (#1,#3) rectangle (#2,#4);
+  \node[align=center, font=\tiny, inner sep=0pt, text width=\pbw cm] at ({(#1+#2)/2},{(#3+#4)/2}) {#6};}
 \newcommand{\pb}[6]{\pgfmathsetmacro{\pbw}{#2-#1-0.20}%
   \draw[#5] (#1,#3) rectangle (#2,#4);
   \node[align=center, font=\tiny, inner sep=0pt, text width=\pbw cm] at ({(#1+#2)/2},{(#3+#4)/2}) {#6};}
@@ -80,7 +88,7 @@ dynamical core's numerical dissipation.\par}
 % ---- tier labels -----------------------------------------------------------------------------------
 \node[tier] at (-0.3, 0.85) {physics};
 \node[tier] at (-0.3, 2.65) {concepts};
-\node[tier] at (-0.3, 4.65) {formalism};
+\node[tier] at (-0.3, 4.75) {formalism};
 % ---- tier 0: physical hypotheses (y 0 -- 1.7); each boundary sits under the concept that spans it --
 \pb{0}{3.75}{0}{1.7}{ground}{\textbf{Scale separation}\\ a spectral gap between the energy-containing eddies and the mean flow: a finite integral scale, \mbox{$\Delta \gg l$}}
 \pb{3.85}{8.95}{0}{1.7}{ground}{\textbf{Horizontal homogeneity}\\ statistics invariant under horizontal translation: \mbox{$\pd{\avg{\cdot}}{x} = \pd{\avg{\cdot}}{y} = 0$} for every mean and every moment}
@@ -90,10 +98,10 @@ dynamical core's numerical dissipation.\par}
 \pb{23.35}{25.20}{0}{1.7}{ground}{\textbf{Axisymmetry}\\ one preferred axis, gravity, along the surface normal; no handedness}
 \pb{25.30}{27.10}{0}{1.7}{ground}{\textbf{Boussinesq}\\ buoyancy the only density effect, $\beta$ fixed; incompressible}
 % ---- tier 1: concepts (y 1.7 -- 3.6); 8 singles of 1.20, 3 doubles of 2.50, 2 triples of 3.80 -----
-\pb{0.60}{1.80}{1.7}{3.6}{hyp}{\textbf{Locality}\\ the flux answers the local gradient: $l \ll$ its scale}
+\pb{0.60}{1.80}{1.7}{3.6}{hyp}{\textbf{Locality}\\ the flux answers the local gradient, $l \ll$ its scale}
 \pb{1.90}{3.10}{1.7}{3.6}{hyp}{\textbf{Reynolds averaging}\\ mean plus fluctuation; the averaging rules hold}
 \pb{3.20}{4.40}{1.7}{3.6}{hyp}{\textbf{Ergodicity in space}\\ many decorrelated eddies per cell, alike across it}
-\pb{4.50}{8.30}{1.7}{3.6}{hyp}{\textbf{Boundary-layer (column) approximation}\\ every mean and every moment varies in $z$ only; $W = 0$}
+\pbf{4.50}{8.30}{1.7}{3.6}{hyp}{\textbf{Boundary-layer (column) approximation}\\ every mean and every moment varies in $z$ only; $W = 0$}{0.44}
 \pb{8.40}{9.60}{1.7}{3.6}{hyp}{\textbf{Constant-flux layer}\\ near the ground the fluxes do not vary with height}
 \pb{9.70}{10.90}{1.7}{3.6}{hyp}{\textbf{Local equilibrium}\\ second moments follow the current gradients}
 \pb{11.00}{14.80}{1.7}{3.6}{hyp}{\textbf{Monin--Obukhov similarity}\\ universal flux--profile relations in $z/L_{\mathrm{MO}}$; one Obukhov length, one roughness length}
@@ -101,26 +109,51 @@ dynamical core's numerical dissipation.\par}
 \pb{16.20}{18.70}{1.7}{3.6}{hyp}{\textbf{Universal constants}\\ the rates of return to isotropy and of dissipation are the same numbers in every flow}
 \pb{18.80}{20.00}{1.7}{3.6}{hyp}{\textbf{Kolmogorov cascade}\\ dissipation isotropic, set by the large eddies: $\varepsilon \sim q^3/l$}
 \pb{20.10}{22.60}{1.7}{3.6}{hyp}{\textbf{Return to isotropy}\\ pressure--strain relaxes anisotropy at one rate (Rotta); pressure transport diffusive}
-\pb{22.70}{23.90}{1.7}{3.6}{hyp}{\textbf{Eddy viscosity}\\ a scalar $K \sim l q$: linear, isotropic, one axis}
+\pbf{22.70}{23.90}{1.7}{3.6}{hyp}{\textbf{Eddy viscosity}\\ a scalar $K \sim l q$: linear, isotropic, one axis}{0.30}
 \pb{24.00}{26.50}{1.7}{3.6}{hyp}{\textbf{Buoyancy production}\\ buoyancy acts on TKE through the vertical heat flux alone}
-% ---- tier 2: the formalism (y 3.6 -- 5.7) --------------------------------------------------------------
-\pb{0.68}{1.72}{3.6}{5.7}{row}{\textbf{Resolved gradient}\\ $\Delta z \ll$ the shear layer}
-\pb{1.98}{4.32}{3.6}{5.7}{row}{\textbf{Grid means are ensemble means}\\ the grid spacing appears nowhere; the resolved flow is not turbulent, so its shear feeds production}
-\pb{4.58}{6.30}{3.6}{5.7}{row}{\textbf{Vertical shear production}\\ two of nine terms: the vertical shear of $U$ and $V$; no gradient of $W$}
-\pb{6.50}{8.22}{3.6}{5.7}{row}{\textbf{Vertical divergence only}\\ mean equations and TKE transport in $z$; horizontal mixing by numerics; model surfaces horizontal}
-\pb{8.48}{10.25}{3.6}{5.7}{row}{\textbf{Wall value and surface fluxes}\\ $\qsq = B_1^{2/3} u_*^2$ at the ground; fluxes from bulk transfer at the first level}
-\pb{10.45}{12.25}{3.6}{5.7}{row}{\textbf{Level-2.5 truncation}\\ all moments but $\qsq$ algebraic; stability functions $S_M$, $S_H$ from the level-2 balance; cutoff at $\Rfc$}
-\pb{12.45}{13.55}{3.6}{5.7}{row}{\textbf{First model level}\\ inside the inertial sublayer: $z_0 \ll z_1 \ll z_i$}
-\pb{13.75}{16.02}{3.6}{5.7}{row}{\textbf{Master length scale}\\ $1/L = 1/L_S + 1/L_T + 1/L_B$: wall distance with $\zeta$, one $z_i$ per column, $q/N$; the same $L$ in $K$ and $\varepsilon$}
-\pb{16.28}{17.30}{3.6}{5.7}{row}{\textbf{Constant set}\\ one set, fitted over flat terrain}
-\pb{17.50}{19.92}{3.6}{5.7}{row}{\textbf{Dissipation}\\ $\varepsilon = q^3/(B_1 L)$: isotropic, one rate, diagnosed from the master length}
-\pb{20.18}{21.20}{3.6}{5.7}{row}{\textbf{Pressure terms}\\ Rotta with $A_1$, $C_1$; transport into $S_q$}
-\pb{21.30}{23.88}{3.6}{5.7}{row}{\textbf{K-form fluxes}\\ \mbox{$\avg{uw} = -K_M\,\pd{U}{z}$}, \mbox{$\avg{w\theta} = -K_H\,\pd{\Theta}{z}$}, $K = l q S$: one scalar $K$, the same in every direction, aligned with the gradient; one $K_H$ for every scalar}
-\pb{24.08}{26.42}{3.6}{5.7}{row}{\textbf{Buoyancy term}\\ $P_b = \beta g\,\avg{w\theta_v}$ of unsaturated air, $\beta = 1/300$~K; no horizontal heat flux; $L_B \propto q/N$}
+% ---- tier 2: the formalism (y 3.6 -- 5.9) --------------------------------------------------------------
+\pb{0.68}{1.72}{3.6}{5.9}{row}{\textbf{Resolved gradient}\\ $\Delta z \ll$ the shear layer}
+\pb{1.98}{4.32}{3.6}{5.9}{row}{\textbf{Grid means are ensemble means}\\ the grid spacing appears nowhere; the resolved flow is not turbulent, so its shear feeds production}
+\pbf{4.58}{6.10}{3.6}{5.9}{row}{\textbf{Vertical shear production}\\ two of nine terms: the vertical shear of $U$ and $V$; no gradient of $W$}{0.44}
+\pbf{6.30}{8.22}{3.6}{5.9}{row}{\textbf{Vertical divergence only}\\ mean equations and TKE transport in $z$; horizontal mixing by numerics; model surfaces horizontal}{0.44}
+\pb{8.48}{10.25}{3.6}{5.9}{row}{\textbf{Wall value and surface fluxes}\\ $\qsq = B_1^{2/3} u_*^2$ at the ground; fluxes from bulk transfer at the first level}
+\pbf{10.45}{12.25}{3.6}{5.9}{row}{\textbf{Level-2.5 truncation}\\ all moments but $\qsq$ algebraic; stability functions $S_M$, $S_H$ from the level-2 balance; cutoff at $\Rfc$}{0.44}
+\pb{12.45}{13.55}{3.6}{5.9}{row}{\textbf{First model level}\\ inside the inertial sublayer: $z_0 \ll z_1 \ll z_i$}
+\pbf{13.75}{16.02}{3.6}{5.9}{row}{\textbf{Master length scale}\\ $1/L = 1/L_S + 1/L_T + 1/L_B$: wall distance with $\zeta$, one $z_i$ per column, $q/N$; the same $L$ in $K$ and $\varepsilon$}{0.44}
+\pb{16.28}{17.30}{3.6}{5.9}{row}{\textbf{Constant set}\\ one set, fitted over flat terrain}
+\pb{17.50}{19.92}{3.6}{5.9}{row}{\textbf{Dissipation}\\ $\varepsilon = q^3/(B_1 L)$: isotropic, one rate, diagnosed from the master length}
+\pb{20.18}{21.20}{3.6}{5.9}{row}{\textbf{Pressure terms}\\ Rotta with $A_1$, $C_1$; transport into $S_q$}
+\pbf{21.30}{23.88}{3.6}{5.9}{row}{\textbf{K-form fluxes}\\ \mbox{$\avg{uw} = -K_M\,\pd{U}{z}$}, \mbox{$\avg{w\theta} = -K_H\,\pd{\Theta}{z}$}, $K = l q S$: one scalar $K$, the same in every direction, aligned with the gradient; one $K_H$ for every scalar}{0.30}
+\pb{24.08}{26.42}{3.6}{5.9}{row}{\textbf{Buoyancy term}\\ $P_b = \beta g\,\avg{w\theta_v}$ of unsaturated air, $\beta = 1/300$~K; no horizontal heat flux; $L_B \propto q/N$}
+% ---- decisive blocks of the two schemes run in the comparison (the framed cells of the note's Table I.0) ---
+% purple = Kosovic-Juliano 3D closure (outer), red = Goger 2019 port (inner); both = nested
+\hl{4.50}{8.30}{1.7}{3.6}{cFULL}{0.05}\hl{4.50}{8.30}{1.7}{3.6}{cGXIX}{0.14}     % column approximation
+\hl{4.58}{6.10}{3.6}{5.9}{cFULL}{0.05}\hl{4.58}{6.10}{3.6}{5.9}{cGXIX}{0.14}     % vertical shear production
+\hl{6.30}{8.22}{3.6}{5.9}{cFULL}{0.05}\hl{6.30}{8.22}{3.6}{5.9}{cGXIX}{0.14}     % vertical divergence only
+\hl{10.45}{12.25}{3.6}{5.9}{cFULL}{0.05}\hl{10.45}{12.25}{3.6}{5.9}{cGXIX}{0.14} % level-2.5 truncation (cutoff)
+\hl{13.75}{16.02}{3.6}{5.9}{cFULL}{0.05}\hl{13.75}{16.02}{3.6}{5.9}{cGXIX}{0.14} % master length scale
+\hl{22.70}{23.90}{1.7}{3.6}{cFULL}{0.05}                                          % eddy viscosity (3D only)
+\hl{21.30}{23.88}{3.6}{5.9}{cFULL}{0.05}                                          % K-form fluxes (3D only)
 \end{tikzpicture}
 \end{center}
 
 \vspace{0.6ex}
+{\footnotesize\textbf{Frames.} The blocks each scheme's design turns on, the framed cells of the note's Table~I.0,
+in the note's scheme colours. \textcolor{cGXIX}{\textbf{Red}}, the Goger 2019 port: it adds a horizontal
+shear-production source to the TKE budget (vertical shear production), pays it with the energy the numerical
+horizontal operator would otherwise lose and advects TKE (vertical divergence only), gives the source its own
+horizontal length from the flow, $l_h^2 = U^2 T_{L,u} T_{L,v}$ (master length scale), and adds a source that knows no
+Richardson number to a scheme that keeps the cutoff (level-2.5 truncation); at the concept level it breaks the
+column approximation for production alone and keeps every other block. \textcolor{cFULL}{\textbf{Purple}}, the
+Kosovi\'c--Juliano three-dimensional closure: it drops the column approximation entirely --- nine production
+terms, three-dimensional divergences and TKE transport, metric-corrected gradients, all subgrid mixing from the
+closure --- and replaces the eddy viscosity and the K-form by the solved algebraic stress tensor, so no $K$, no
+alignment, no stability functions and no cutoff; the equilibrium follows from the full strain. It keeps the master
+length scale, one scalar $l$ for the whole tensor: the last one-dimensional block in a three-dimensional scheme, and
+the frontier. Nested frames: both schemes; every block the Goger port touches, the three-dimensional closure touches
+too, and it alone reaches the eddy viscosity and the K-form.\par}
+
+\vspace{0.4ex}
 {\footnotesize\textbf{Reading.} The ground is the physics; nothing in it names a model. The middle tier is where
 the model's vocabulary is born: scale separation gives Reynolds averaging and locality; homogeneity gives the
 column approximation and, with stationarity, the constant-flux layer; stationarity gives local equilibrium and,
