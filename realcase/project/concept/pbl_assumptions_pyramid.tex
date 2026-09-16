@@ -113,7 +113,7 @@ dynamical core's numerical dissipation.\par}
 % ---- tier labels -----------------------------------------------------------------------------------
 \node[tier] at (-0.3, 0.85) {premises};
 \node[tier] at (-0.3, 2.65) {concepts};
-\node[tier] at (-0.3, 4.75) {formalism};
+\node[tier] at (-0.3, 4.85) {formalism};
 % ---- tier 0: physical hypotheses (y 0 -- 1.7); each boundary sits under the concept that spans it --
 % order forced by the adjacency chain SEP-MIX-HOM-STA-SIM-ISOb-AXI-BOU (unit 1.15, gap 0.10, offset 0.6)
 \pb{0}{3.00}{0}{1.7}{ground}{\textbf{Scale separation}\\ a spectral gap between the energy-containing eddies and the mean flow}
@@ -125,42 +125,42 @@ dynamical core's numerical dissipation.\par}
 \pb{23.725}{25.50}{0}{1.7}{ground}{\textbf{Axisymmetry}\\ one preferred axis, gravity, along the surface normal; no handedness}
 \pb{25.60}{27.35}{0}{1.7}{ground}{\textbf{Boussinesq}\\ unsaturated air; buoyancy the only density effect, $\beta$ fixed; incompressible}
 % ---- tier 1: concepts (y 1.7 -- 3.6); 7 singles of 1.15, 4 doubles of 2.40, 2 triples of 3.65 ------
-\pb{0.60}{1.75}{1.7}{3.6}{hyp}{\textbf{Locality}\\ the flux answers the local gradient, $l \ll$ its scale, after many decorrelation times}
+\pb{0.60}{1.75}{1.7}{3.6}{hyp}{\textbf{Locality}\\ the flux answers the local gradient, $l \ll$ its scale, after decorrelation}
 \pb{1.85}{3.00}{1.7}{3.6}{hyp}{\textbf{Reynolds averaging}\\ mean plus fluctuation; the averaging rules hold}
 \pb{3.10}{5.50}{1.7}{3.6}{hyp}{\textbf{Ergodicity in space}\\ the cell mean converges to the ensemble mean: many decorrelated eddies per cell, \mbox{$\Delta \gg l$}, alike across it}
 \pbf{5.60}{9.25}{1.7}{3.6}{hyp}{\textbf{Boundary-layer (column) approximation}\\ every mean and every moment varies in $z$ only; $W = 0$ by continuity}{0.44}
 \pb{9.35}{10.50}{1.7}{3.6}{hyp}{\textbf{Constant-flux layer}\\ fluxes constant with height in the lowest tenth}
 \pb{10.60}{11.75}{1.7}{3.6}{hyp}{\textbf{Local equilibrium}\\ second moments follow the current local gradients}
 \pb{11.85}{15.50}{1.7}{3.6}{hyp}{\textbf{Monin--Obukhov similarity}\\ universal flux--profile relations in $z/L_{\mathrm{MO}}$ over a homogeneous surface, gravity along the surface normal: one Obukhov length, one roughness length}
-\pb{15.60}{16.75}{1.7}{3.6}{hyp}{\textbf{Mixing length}\\ one eddy size from the column's vertical structure: $z$, $z_i$, $N$}
+\pb{15.60}{16.75}{1.7}{3.6}{hyp}{\textbf{Mixing length}\\ one eddy size from the column's vertical structure}
 \pb{16.85}{19.25}{1.7}{3.6}{hyp}{\textbf{Universal constants}\\ the rates of return to isotropy and of dissipation are the same ensemble numbers in every flow}
 \pb{19.35}{20.50}{1.7}{3.6}{hyp}{\textbf{Energy cascade}\\ isotropic dissipation in equilibrium with the large eddies, $\varepsilon \sim q^3/l$}
 \pb{20.60}{23.00}{1.7}{3.6}{hyp}{\textbf{Return to isotropy}\\ pressure--strain relaxes anisotropy at one rate, linear in it (Rotta); pressure transport diffusive}
 \pbf{23.10}{24.25}{1.7}{3.6}{hyp}{\textbf{Eddy viscosity}\\ gradient transport, scalar $K \sim l q$: isotropic, one axis}{0.30}
 \pb{24.35}{26.75}{1.7}{3.6}{hyp}{\textbf{Buoyancy production}\\ buoyancy acts on TKE through the vertical heat flux alone; no redistribution among the stress components}
-% ---- tier 2: the formalism (y 3.6 -- 5.9) --------------------------------------------------------------
-\pb{0.68}{1.67}{3.6}{5.9}{row}{\textbf{Resolved gradient}\\ $\Delta z \ll$ the shear layer}
-\pb{1.93}{5.40}{3.6}{5.9}{row}{\textbf{Grid means are ensemble means}\\ the grid spacing appears nowhere; the resolved flow is not turbulent, so its shear feeds production}
-\pbf{5.68}{6.85}{3.6}{5.9}{row}{\textbf{Vertical shear only}\\ two of nine terms; no gradient of $W$}{0.44}
-\pbf{7.05}{9.17}{3.6}{5.9}{row}{\textbf{Vertical divergence only}\\ mean equations and TKE in $z$ only; TKE not advected; horizontal mixing by numerics at a separate scale, its energy lost to $\qsq$; surfaces horizontal}{0.44}
-\pb{9.43}{10.95}{3.6}{5.9}{row}{\textbf{Wall value of $\qsq$}\\ $\qsq = B_1^{2/3} u_*^2$ at the ground: the neutral level-2 equilibrium of the constant-flux layer}
-\pbf{11.15}{13.05}{3.6}{5.9}{row}{\textbf{Level-2.5 truncation}\\ all moments but $\qsq$ algebraic; $S_M$, $S_H$ from the level-2 balance in the vertical Ri alone; cutoff at $\Rfc$}{0.44}
-\pb{13.25}{14.70}{3.6}{5.9}{row}{\textbf{Surface fluxes and first level}\\ bulk transfer between the ground and $z_1$, inside the inertial sublayer: $z_0 \ll z_1 \ll z_i$}
-\pbf{14.90}{17.20}{3.6}{5.9}{row}{\textbf{Master length scale}\\ $1/L = 1/L_S + 1/L_T + 1/L_B$ with universal coefficients: wall distance with $\zeta$, one $z_i$ per column, $q/N$; the same $L$ in $K$ and $\varepsilon$; blind to terrain and grid}{0.44}
-\pb{17.40}{18.40}{3.6}{5.9}{row}{\textbf{Constant set}\\ one set, fitted over flat terrain}
-\pb{18.60}{20.42}{3.6}{5.9}{row}{\textbf{Dissipation}\\ $\varepsilon = q^3/(B_1 L)$: isotropic, one rate, diagnosed from the master length}
-\pb{20.68}{21.70}{3.6}{5.9}{row}{\textbf{Pressure terms}\\ Rotta with $A_1$, $C_1$; transport into $S_q$}
-\pbf{21.90}{24.23}{3.6}{5.9}{row}{\textbf{K-form fluxes}\\ \mbox{$\avg{uw} = -K_M\,U_z$}, \mbox{$\avg{w\theta} = -K_H\,\Theta_z$}, $K = l q S$: one scalar $K$, the same in every direction, aligned with the gradient; one $K_H$ for every scalar}{0.30}
-\pb{24.43}{26.67}{3.6}{5.9}{row}{\textbf{Buoyancy term}\\ $P_b = \beta g\,\avg{w\theta_v}$ of unsaturated air, $\beta = 1/300$~K; no horizontal heat flux; $L_B \propto q/N$}
+% ---- tier 2: the formalism (y 3.6 -- 6.1) --------------------------------------------------------------
+\pb{0.68}{1.67}{3.6}{6.1}{row}{\textbf{Resolved gradient}\\ $\Delta z \ll$ the shear layer}
+\pb{1.93}{5.40}{3.6}{6.1}{row}{\textbf{Grid means are ensemble means}\\ the grid spacing appears nowhere; the resolved flow is not turbulent, so its shear feeds production}
+\pbf{5.68}{6.85}{3.6}{6.1}{row}{\textbf{Vertical shear only}\\ two of nine terms; no gradient of $W$}{0.44}
+\pbf{7.05}{9.17}{3.6}{6.1}{row}{\textbf{Vertical divergence only}\\ mean equations and TKE in $z$ only; TKE not advected; horizontal mixing by numerics at a separate scale, its energy lost to $\qsq$; surfaces horizontal}{0.44}
+\pb{9.43}{10.95}{3.6}{6.1}{row}{\textbf{Wall value of $\qsq$}\\ $\qsq = B_1^{2/3} u_*^2$ at the ground: the neutral level-2 equilibrium of the constant-flux layer}
+\pbf{11.15}{13.05}{3.6}{6.1}{row}{\textbf{Level-2.5 truncation}\\ all moments but $\qsq$ algebraic; $S_M$, $S_H$ from Rotta's level-2 balance in the vertical Ri; cutoff at $\Rfc$}{0.44}
+\pb{13.25}{14.70}{3.6}{6.1}{row}{\textbf{Surface fluxes and first level}\\ bulk transfer between the ground and $z_1$, inside the inertial sublayer: $z_0 \ll z_1 \ll z_i$}
+\pbf{14.90}{17.20}{3.6}{6.1}{row}{\textbf{Master length scale}\\ $1/L = 1/L_S + 1/L_T + 1/L_B$: wall distance with $\zeta$, one $z_i$ per column, $q/N$ along the vertical; the same $L$ in $K$ and $\varepsilon$; blind to terrain and grid}{0.44}
+\pb{17.40}{18.40}{3.6}{6.1}{row}{\textbf{Constant set}\\ one set, fitted over flat terrain}
+\pb{18.60}{20.42}{3.6}{6.1}{row}{\textbf{Dissipation}\\ $\varepsilon = q^3/(B_1 L)$: isotropic, one rate, diagnosed from the master length}
+\pb{20.68}{21.70}{3.6}{6.1}{row}{\textbf{Pressure terms}\\ Rotta with $A_1$, $C_1$; transport as down-gradient diffusion, $S_q$}
+\pbf{21.90}{24.23}{3.6}{6.1}{row}{\textbf{K-form fluxes}\\ \mbox{$\avg{uw} = -K_M\,U_z$}, \mbox{$\avg{w\theta} = -K_H\,\Theta_z$}, $K = l q S$ with $l$ from the master length and $S$ from the level-2 algebra: one scalar $K$ in every direction, aligned with the gradient; one $K_H$ for all scalars}{0.30}
+\pb{24.43}{26.67}{3.6}{6.1}{row}{\textbf{Buoyancy term}\\ $P_b = \beta g\,\avg{w\theta_v}$ of unsaturated air, $\beta = 1/300$~K; no horizontal heat flux; $L_B \propto q/N$}
 % ---- decisive blocks of the two schemes run in the comparison (the framed cells of the note's Table I.0) ---
 % purple = Kosovic-Juliano 3D closure (outer), red = Goger 2019 port (inner); both = nested
 \hl{5.60}{9.25}{1.7}{3.6}{cFULL}{0.05}\hl{5.60}{9.25}{1.7}{3.6}{cGXIX}{0.14}     % column approximation
-\hl{5.68}{6.85}{3.6}{5.9}{cFULL}{0.05}\hl{5.68}{6.85}{3.6}{5.9}{cGXIX}{0.14}     % vertical shear only
-\hl{7.05}{9.17}{3.6}{5.9}{cFULL}{0.05}\hl{7.05}{9.17}{3.6}{5.9}{cGXIX}{0.14}     % vertical divergence only
-\hl{11.15}{13.05}{3.6}{5.9}{cFULL}{0.05}\hl{11.15}{13.05}{3.6}{5.9}{cGXIX}{0.14} % level-2.5 truncation (cutoff)
-\hl{14.90}{17.20}{3.6}{5.9}{cFULL}{0.05}\hl{14.90}{17.20}{3.6}{5.9}{cGXIX}{0.14} % master length scale
+\hl{5.68}{6.85}{3.6}{6.1}{cFULL}{0.05}\hl{5.68}{6.85}{3.6}{6.1}{cGXIX}{0.14}     % vertical shear only
+\hl{7.05}{9.17}{3.6}{6.1}{cFULL}{0.05}\hl{7.05}{9.17}{3.6}{6.1}{cGXIX}{0.14}     % vertical divergence only
+\hl{11.15}{13.05}{3.6}{6.1}{cFULL}{0.05}\hl{11.15}{13.05}{3.6}{6.1}{cGXIX}{0.14} % level-2.5 truncation (cutoff)
+\hl{14.90}{17.20}{3.6}{6.1}{cFULL}{0.05}\hl{14.90}{17.20}{3.6}{6.1}{cGXIX}{0.14} % master length scale
 \hl{23.10}{24.25}{1.7}{3.6}{cFULL}{0.05}                                          % eddy viscosity (3D only)
-\hl{21.90}{24.23}{3.6}{5.9}{cFULL}{0.05}                                          % K-form fluxes (3D only)
+\hl{21.90}{24.23}{3.6}{6.1}{cFULL}{0.05}                                          % K-form fluxes (3D only)
 \end{tikzpicture}
 \end{center}
 
