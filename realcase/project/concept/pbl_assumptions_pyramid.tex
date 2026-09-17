@@ -26,7 +26,7 @@
     ItalicFont=lmroman10-italic.otf, BoldItalicFont=lmroman10-bolditalic.otf]
 \fi
 \usepackage[british]{babel}
-\usepackage[a4paper,landscape,margin=10mm,top=9mm,bottom=9mm]{geometry}
+\usepackage[a4paper,landscape,margin=10mm,top=7mm,bottom=7mm]{geometry}
 \usepackage{amsmath,amssymb}
 \usepackage{xcolor}
 \usepackage{tikz}
@@ -143,12 +143,12 @@ concepts: the constructs of turbulence theory that follow from the ground and th
 speaks in --- Reynolds averaging, the column approximation, the constant-flux layer, Monin--Obukhov similarity,
 the mixing length, the eddy viscosity, Rotta's return to isotropy, Kolmogorov's cascade. White, the formalism:
 the statements of the level-2.5 closure as written, each resting on the concepts it applies. Each block shows its
-primary reliance; the incidence matrix of the note has the full set. Where a block leans on a parent it cannot touch, its own text names that parent, as in ``$W = 0$ by continuity''; two premises that have no block of their own, a high Reynolds number and unsaturated air, are named inside the premise they qualify. Not drawn, because no scheme needs them to
+primary reliance; the incidence matrix of the note has the full set. Where a block leans on a parent it cannot touch, its own text names that parent, as in ``$W = 0$ by continuity''; the two premises without a block, high Reynolds number and unsaturated air, are named in the premise they qualify. Not drawn, because no scheme needs them to
 run: ergodicity in time and Taylor's hypothesis, which carry the observations and the calibration; the
 constraints realizability and Galilean invariance, which bound the algebra rather than carry a block; and the
 dynamical core's numerical dissipation. Two premises carry channels: homogeneity runs through stationarity and similarity and surfaces as a band on the contact edge, where Monin--Obukhov similarity and the mixing length touch it; mixing runs through scale separation and surfaces under locality. The moons above the formalism tier are the quicklook on the four schemes of the concept's first research question, rows from bottom to top \textcolor{cMYNN}{\textbf{MYNN as run}}, \textcolor{cGXIX}{\textbf{G19 port}}, \textcolor{cAPPROX}{\textbf{3D-APPROX}}, \textcolor{cFULL}{\textbf{3D-FULL}}: \gK{} the scheme as run implements the assumption, \gP{} partly, \gD{} drops it; a block takes the status of its rows in the note's Table~I.0, kept only when all are kept, dropped only when all are dropped.\par}
 
-\vspace{1.0ex}
+\vspace{0.4ex}
 \begin{center}
 \begin{tikzpicture}[x=1cm, y=1cm,
   ground/.style={draw, line width=0.4pt, fill=black!22},
@@ -266,7 +266,7 @@ dynamical core's numerical dissipation. Two premises carry channels: homogeneity
 \end{tikzpicture}
 \end{center}
 
-\vspace{0.6ex}
+\vspace{0.2ex}
 {\footnotesize\textbf{Frames.} The blocks each scheme's design turns on, the framed cells of the note's Table~I.0,
 in the note's scheme colours. \textcolor{cGXIX}{\textbf{Red}}, the Goger 2019 port: it adds a horizontal
 shear-production source to the TKE budget (vertical shear only), pays it with the energy the numerical
@@ -282,7 +282,7 @@ length scale, one scalar $l$ for the whole tensor: the last one-dimensional bloc
 the frontier. Nested frames: both schemes; every block the Goger port touches, the three-dimensional closure touches
 too, and it alone reaches the eddy viscosity and the K-form.\par}
 
-\vspace{0.4ex}
+\vspace{0.1ex}
 {\footnotesize\textbf{Reading.} The ground holds the premises, hypotheses about the fluid and the flow; nothing in it names a model. The middle tier is where
 the model's vocabulary is born: scale separation gives Reynolds averaging and, with mixing reaching it through a channel, locality; mixing with homogeneity gives ergodicity in space; homogeneity gives the
 column approximation and, with stationarity, the constant-flux layer; stationarity gives local equilibrium and, with similarity and with homogeneity reaching it through its channel, Monin--Obukhov similarity; similarity and homogeneity give the mixing length; similarity with small-scale isotropy gives universal constants; small-scale isotropy gives the cascade, the return to isotropy and, with one axis, a scalar
@@ -295,7 +295,7 @@ from the eddy viscosity and its coefficients from the return to isotropy. Terrai
 and in the middle --- homogeneity, the column, the constant-flux layer, one axis --- and the grey zone breaks it
 on the far left; the right third, isotropy and its constants, is the part no scheme in the comparison touches.\par}
 
-\vspace{0.5ex}
+\vspace{0.1ex}
 {\footnotesize\textbf{Correspondence to the note's rows.} Grid means are ensemble means: A1, A2 and the resolved vertical gradient (D4). Vertical shear only: B1, B2. Vertical divergence only: B3, B4, B5, B7. Constant-flux layer with Monin--Obukhov similarity:
 B6, split into the constant-flux layer and Monin--Obukhov similarity. Wall value of $\qsq$: the lower boundary of the TKE equation (D6). Surface fluxes and first level: D3 with the bulk-transfer half of B6. Local fluxes: C1. K-form fluxes: C2, C3 and the mixing of all scalars alike. Master length scale: C4 with the one-length statement of C5. Dissipation: C5. Level-2.5
 truncation: C6, C7. Buoyancy term: C8 with the dry buoyancy flux (D5). Constant set: C9. Pressure terms: C10.
