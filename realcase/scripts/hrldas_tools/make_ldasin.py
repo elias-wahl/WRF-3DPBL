@@ -12,13 +12,13 @@ t0 = np.datetime64(f"{sys.argv[3][:4]}-{sys.argv[3][4:6]}-{sys.argv[3][6:8]}T{sy
 t1 = np.datetime64(f"{sys.argv[4][:4]}-{sys.argv[4][4:6]}-{sys.argv[4][6:8]}T{sys.argv[4][8:10]}") if len(sys.argv) > 4 else None
 VARS = [("T2D", "K"), ("Q2D", "kg kg-1"), ("U2D", "m s-1"), ("V2D", "m s-1"), ("PSFC", "Pa"), ("RAINRATE", "mm s-1"), ("SWDOWN", "W m-2"), ("LWDOWN", "W m-2")]
 ds = xr.open_dataset(src)
-times = ds.time.values
+times = (ds.time.values + np.timedelta64(30, "m")).astype("datetime64[h]")   # round to the hour: a 'days since' axis decodes with us-level jitter (23:00:00.000013 / 22:59:59.99999) that would mislabel a file
 sel = np.ones(len(times), bool)
 if t0 is not None: sel &= times >= t0
 if t1 is not None: sel &= times <= t1
 n = 0
 for it in np.where(sel)[0]:
-    t = times[it]; stamp = str(t)[:13].replace("-", "").replace("T", "")
+    t = times[it]; stamp = str(t)[:13].replace("-", "").replace("T", "")   # times are datetime64[h] -> 'YYYY-MM-DDTHH'
     fn = outdir / f"{stamp}.LDASIN_DOMAIN1"
     if fn.exists(): continue
     with nc.Dataset(fn, "w", format="NETCDF4") as o:
