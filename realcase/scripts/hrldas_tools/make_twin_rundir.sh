@@ -24,7 +24,7 @@ source "$D/branko/realcase/env/vsc5.sh" >/dev/null 2>&1
 rt=$(basename "$RST" | sed -E 's/RESTART\.([0-9]{10})_DOMAIN1/\1/'); ns=$(grep -E "^\s*start_(year|month|day|hour)" "$P/namelist.input" | sed -E 's/.*=\s*([0-9]+).*/\1/' | tr -d '\n')
 [ "$rt" = "$ns" ] || { echo "restart time $rt != namelist start $ns" >&2; exit 1; }
 mkdir -p "$N" "$D/exp/$2"
-n=0; for f in "$P"/*; do [ -L "$f" ] && { ln -s "$(readlink "$f")" "$N/$(basename "$f")"; n=$((n+1)); }; done; echo "=== $n symlinks recreated"
+n=0; for f in "$P"/*; do b=$(basename "$f"); case "$b" in wrfinput_d01|wrfbdy_d01) continue;; esac; [ -L "$f" ] && { ln -s "$(readlink "$f")" "$N/$b"; n=$((n+1)); }; done; echo "=== $n symlinks recreated (wrfinput/wrfbdy are never linked: a parent that links them into a shared real-job dir would be overwritten through the link)"
 [ -e "$N/iofields_full.txt" ] || ln -s "$D/branko/realcase/iofields_full.txt" "$N/iofields_full.txt"
 sed -e "s#$D/exp/$1/#$D/exp/$2/#g" -e 's/^\(\s*iofields_filename\s*=\s*\)"[^"]*"/\1"iofields_full.txt"/' -e 's/^\(\s*output_t_fluxes\s*=\s*\)[0-9]*/\11/' "$P/namelist.input" > "$N/namelist.input"
 for s in submit_wrf.slurm submit_real.slurm; do sed "s/_$1\b/_$2/g" "$P/$s" > "$N/$s"; done

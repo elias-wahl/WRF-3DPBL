@@ -6,6 +6,8 @@ Usage: python hrldas_to_wrfinput.py <wrfinput_d01> <RESTART file> <out_wrfinput>
 import sys, shutil
 import numpy as np, netCDF4 as nc
 src, rst, out = sys.argv[1:4]
+import os
+if os.path.islink(out): sys.exit(f"refusing: {out} is a symlink (writing would clobber {os.path.realpath(out)}); remove the link first")
 shutil.copyfile(src, out)
 r = nc.Dataset(rst); d = nc.Dataset(out, "a")
 land = np.asarray(d["XLAND"][0]) < 1.5
