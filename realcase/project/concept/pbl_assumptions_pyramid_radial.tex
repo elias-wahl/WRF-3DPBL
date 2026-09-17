@@ -93,6 +93,9 @@
 \lean{Level-2.5 truncation}{Universal constants}
 \lean{Level-2.5 truncation}{Boundary-layer (column) approximation}
 \lean{Master length scale}{Axisymmetry}
+\lean{Level-2.5 truncation}{Buoyancy production}
+\lean{Master length scale}{Buoyancy term}
+\lean{Buoyancy term}{K-form fluxes}
 \lean{Pressure terms}{Locality}
 \lean{Pressure terms}{Universal constants}
 \lean{K-form fluxes}{Mixing length}
@@ -181,7 +184,7 @@ the hectometre column are on the pyramid pages.\par}
 \node[nd, fill=white, text width=1.75cm] (n30) at (257.03:12.0) {\textbf{Dissipation}};
 \node[nd, fill=white, text width=1.75cm] (n31) at (223.37:12.0) {\textbf{Pressure terms}};
 \node[nd, fill=white, text width=1.75cm] (n32) at (234.59:12.0) {\textbf{K-form fluxes}};
-\node[nd, fill=white, text width=1.75cm] (n33) at (157.50:12.0) {\textbf{Buoyancy term}};
+\node[nd, fill=white, text width=1.75cm] (n33) at (174.30:12.0) {\textbf{Buoyancy term}};
 \begin{scope}[on background layer]
 \draw[contact] (n8) -- (n0);
 \draw[contact] (n8) -- (n1);
@@ -237,6 +240,9 @@ the hectometre column are on the pyramid pages.\par}
 \draw[lean] (n26) -- (n16);
 \draw[lean] (n26) -- (n11);
 \draw[lean] (n28) -- (n6);
+\draw[lean] (n26) -- (n20);
+\draw[leansame] (n28) -- (n33);
+\draw[leansame] (n33) -- (n32);
 \draw[lean] (n31) -- (n8);
 \draw[lean] (n31) -- (n16);
 \draw[lean] (n32) -- (n15);

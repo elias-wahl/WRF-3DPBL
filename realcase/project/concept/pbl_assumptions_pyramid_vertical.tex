@@ -93,6 +93,9 @@
 \lean{Level-2.5 truncation}{Universal constants}
 \lean{Level-2.5 truncation}{Boundary-layer (column) approximation}
 \lean{Master length scale}{Axisymmetry}
+\lean{Level-2.5 truncation}{Buoyancy production}
+\lean{Master length scale}{Buoyancy term}
+\lean{Buoyancy term}{K-form fluxes}
 \lean{Pressure terms}{Locality}
 \lean{Pressure terms}{Universal constants}
 \lean{K-form fluxes}{Mixing length}
@@ -191,14 +194,14 @@ note's Table~I.0). Rules, reading and the correspondence to the note's rows are 
 \pbv{6.680}{11.980}{17.630}{18.636}{row}{\textbf{Vertical shear only}\\ two of nine terms; no gradient of $W$}{0.56}
 \pbv{6.680}{11.980}{15.635}{17.458}{row}{\textbf{Vertical divergence only}\\ mean equations and TKE in $z$ only; TKE not advected; horizontal mixing by numerics at a separate scale, its energy lost to $\qsq$; surfaces horizontal}{0.56}
 \pbv{6.680}{11.980}{14.104}{15.411}{row}{\textbf{Wall value of $\qsq$}\\ $\qsq = B_1^{2/3} u_*^2$ at the ground: the neutral level-2 equilibrium of the constant-flux layer}{0.30}
-\pbv{6.680}{11.980}{12.298}{13.932}{row}{\textbf{Level-2.5 truncation}\\ all moments but $\qsq$ algebraic; $S_M$, $S_H$ from Rotta's level-2 balance in the vertical Ri; cutoff at $\Rfc$}{0.56}
+\pbv{6.680}{11.980}{12.298}{13.932}{row}{\textbf{Level-2.5 truncation}\\ all moments but $\qsq$ algebraic; $S_M$, $S_H$ from Rotta's balance $P_s + P_b = \varepsilon$ in the vertical Ri; cutoff at $\Rfc$}{0.56}
 \pbv{6.680}{11.980}{10.879}{12.126}{row}{\textbf{Surface fluxes and first level}\\ bulk transfer between the ground and $z_1$, inside the inertial sublayer: $z_0 \ll z_1 \ll z_i$}{0.30}
-\pbv{6.680}{11.980}{8.729}{10.707}{row}{\textbf{Master length scale}\\ $1/L = 1/L_S + 1/L_T + 1/L_B$: wall distance with $\zeta$, one $z_i$ per column, $q/N$ along the vertical; the same $L$ in $K$ and $\varepsilon$; blind to terrain and grid}{0.56}
+\pbv{6.680}{11.980}{8.729}{10.707}{row}{\textbf{Master length scale}\\ $1/L = 1/L_S + 1/L_T + 1/L_B$: wall distance with $\zeta$, one $z_i$ per column, $q/N$ from the buoyancy term; the same $L$ in $K$ and $\varepsilon$; blind to terrain and grid}{0.56}
 \pbv{6.680}{11.980}{7.697}{8.557}{row}{\textbf{Constant set}\\ one set, fitted over flat terrain}{0.30}
 \pbv{6.680}{11.980}{5.960}{7.525}{row}{\textbf{Dissipation}\\ $\varepsilon = q^3/(B_1 L)$: isotropic, one rate, diagnosed from the master length}{0.30}
 \pbv{6.680}{11.980}{4.859}{5.736}{row}{\textbf{Pressure terms}\\ Rotta with $A_1$, $C_1$; transport as down-gradient diffusion, $S_q$}{0.30}
 \pbv{6.680}{11.980}{2.683}{4.687}{row}{\textbf{K-form fluxes}\\ \mbox{$\avg{uw} = -K_M\,U_z$}, \mbox{$\avg{w\theta} = -K_H\,\Theta_z$}, $K = l q S$ with $l$ from the master length and $S$ from the level-2 algebra: one scalar $K$ in every direction, aligned with the gradient; one $K_H$ for all scalars}{0.40}
-\pbv{6.680}{11.980}{0.585}{2.511}{row}{\textbf{Buoyancy term}\\ $P_b = \beta g\,\avg{w\theta_v}$ of unsaturated air, $\beta = 1/300$~K; no horizontal heat flux; $L_B \propto q/N$}{0.30}
+\pbv{6.680}{11.980}{0.585}{2.511}{row}{\textbf{Buoyancy term}\\ $P_b = \beta g\,\avg{w\theta_v}$ of unsaturated air, $\beta = 1/300$~K; no horizontal heat flux; $\avg{w\theta_v}$ from the K-form}{0.30}
 \hlv{2.500}{6.680}{15.566}{18.705}{cFULL}{0.05}
 \hlv{2.500}{6.680}{15.566}{18.705}{cGXIX}{0.14}
 \hlv{6.680}{11.980}{17.630}{18.636}{cFULL}{0.05}
@@ -323,7 +326,7 @@ at the very top; the lower third, isotropy and its constants, is the part no sch
 
 \vspace{0.1ex}
 {\footnotesize\textbf{Correspondence to the note's rows.} Grid means are ensemble means: A1, A2 and the resolved vertical gradient (D4). Vertical shear only: B1, B2. Vertical divergence only: B3, B4, B5, B7. Constant-flux layer with Monin--Obukhov similarity:
-B6, split into the constant-flux layer and Monin--Obukhov similarity. Wall value of $\qsq$: the lower boundary of the TKE equation (D6). Surface fluxes and first level: D3 with the bulk-transfer half of B6. Local fluxes: C1. K-form fluxes: C2, C3 and the mixing of all scalars alike. Master length scale: C4 with the one-length statement of C5. Dissipation: C5. Level-2.5
+B6, split into the constant-flux layer and Monin--Obukhov similarity. Wall value of $\qsq$: the lower boundary of the TKE equation, part of B6. Surface fluxes and first level: D3 with the bulk-transfer half of B6. Local fluxes: C1. K-form fluxes: C2, C3 and the mixing of all scalars alike. Master length scale: C4 with the one-length statement of C5. Dissipation: C5. Level-2.5
 truncation: C6, C7. Buoyancy term: C8 with the dry buoyancy flux (D5). Constant set: C9. Pressure terms: C10.
 Which scheme drops which statement is Table~I.0 of the note.\par}
 
