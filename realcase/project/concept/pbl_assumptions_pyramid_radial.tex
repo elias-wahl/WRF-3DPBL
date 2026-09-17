@@ -16,7 +16,7 @@
     ItalicFont=lmroman10-italic.otf, BoldItalicFont=lmroman10-bolditalic.otf]
 \fi
 \usepackage[british]{babel}
-\usepackage[paperwidth=42cm,paperheight=29.7cm,margin=12mm]{geometry}
+\usepackage[paperwidth=42cm,paperheight=29.7cm,margin=8mm]{geometry}
 \usepackage{amsmath,amssymb}
 \usepackage{xcolor}
 \usepackage{tikz}
@@ -48,6 +48,11 @@
   \if1\csname key@#1\endcsname\textcolor{cKey}{$\blacktriangleright$}\else\textcolor{cKey}{$\triangleright$}\fi\fi}
 \makeatother
 \newcommand{\pid}[1]{\keymark{#1}\textbf{#1}}
+% compound block: \ppart{x0}{x1}{y0}{y1}{title} fills a part, \ppoly{path} draws the outline, \ptext{x0}{x1}{y0}{y1}{text}{hpad} sets text
+\newcommand{\ppart}[5]{\fill[black!22] (#1,#3) rectangle (#2,#4);}
+\newcommand{\ppoly}[1]{\draw[line width=0.4pt] #1;}
+\newcommand{\ptext}[6]{\pgfmathsetmacro{\pbw}{#2-#1-#6}%
+  \node[align=center, font=\tiny, inner sep=0pt, text width=\pbw cm] at ({(#1+#2)/2},{(#3+#4)/2}) {#5};}
 % \pb{x0}{x1}{y0}{y1}{style}{text}: a block from (x0,y0) to (x1,y1), text centred
 \newcommand{\pbf}[7]{\pgfmathsetmacro{\pbw}{#2-#1-#7}%
   \draw[#5] (#1,#3) rectangle (#2,#4);
@@ -86,7 +91,6 @@
 \lean{Locality}{Mixing}
 \lean{Boundary-layer (column) approximation}{Boussinesq}
 \lean{Monin--Obukhov similarity}{Axisymmetry}
-\lean{Mixing length}{Horizontal homogeneity}
 \lean{Energy cascade}{Stationarity}
 \lean{Local equilibrium}{Locality}
 \lean{Eddy viscosity}{Locality}
@@ -146,45 +150,45 @@ dependencies of the audit, dashed within a ring. Frames: \textcolor{cGXIX}{\text
 the hectometre column are on the pyramid pages.\par}
 \begin{center}
 \begin{tikzpicture}[x=1cm, y=1cm]
-\draw[ring] (0,0) circle (4.6);
-\draw[ring] (0,0) circle (8.9);
-\draw[ring] (0,0) circle (12.7);
-\node[tier] at (90:5.35) {};
-\node[tier] at (90:9.65) {};
-\node[tier] at (90:13.45) {};
-\node[nd, fill=black!22, text width=2.15cm] (n0) at (90.00:4.6) {\textbf{Scale separation}};
-\node[nd, fill=black!22, text width=2.15cm] (n1) at (45.00:4.6) {\textbf{Mixing}};
-\node[nd, fill=black!22, text width=2.15cm] (n2) at (0.00:4.6) {\textbf{Horizontal homogeneity}};
-\node[nd, fill=black!22, text width=2.15cm] (n3) at (-45.00:4.6) {\textbf{Stationarity}};
-\node[nd, fill=black!22, text width=2.15cm] (n4) at (-90.00:4.6) {\textbf{Similarity}};
-\node[nd, fill=black!22, text width=2.15cm] (n5) at (-135.00:4.6) {\textbf{Small-scale isotropy}};
-\node[nd, fill=black!22, text width=2.15cm] (n6) at (-180.00:4.6) {\textbf{Axisymmetry}};
-\node[nd, fill=black!22, text width=2.15cm] (n7) at (-225.00:4.6) {\textbf{Boussinesq}};
-\node[nd, fill=black!9, text width=1.75cm] (n8) at (78.78:8.9) {\textbf{Locality}};
-\node[nd, fill=black!9, text width=1.75cm] (n9) at (93.91:8.9) {\textbf{Reynolds averaging}};
-\node[nd, fill=black!9, text width=1.75cm] (n10) at (33.33:8.9) {\textbf{Ergodicity in space}};
-\node[nd, fill=black!9, text width=1.75cm] (n11) at (18.21:8.9) {\textbf{Boundary-layer (column) approximation}};
-\node[nd, fill=black!9, text width=1.75cm] (n12) at (349.99:8.9) {\textbf{Constant-flux layer}};
-\node[nd, fill=black!9, text width=1.75cm] (n13) at (334.86:8.9) {\textbf{Local equilibrium}};
-\node[nd, fill=black!9, text width=1.75cm] (n14) at (308.48:8.9) {\textbf{Monin--Obukhov similarity}};
-\node[nd, fill=black!9, text width=1.75cm] (n15) at (289.29:8.9) {\textbf{Mixing length}};
-\node[nd, fill=black!9, text width=1.75cm] (n16) at (242.48:8.9) {\textbf{Universal constants}};
-\node[nd, fill=black!9, text width=1.75cm] (n17) at (257.61:8.9) {\textbf{Energy cascade}};
-\node[nd, fill=black!9, text width=1.75cm] (n18) at (225.00:8.9) {\textbf{Return to isotropy}};
-\node[nd, fill=black!9, text width=1.75cm] (n19) at (192.51:8.9) {\textbf{Eddy viscosity}};
-\node[nd, fill=black!9, text width=1.75cm] (n20) at (157.50:8.9) {\textbf{Buoyancy production}};
-\node[nd, fill=white, text width=1.75cm] (n21) at (63.62:12.7) {\textbf{Grid means are ensemble means}};
-\node[nd, fill=white, text width=1.75cm] (n22) at (18.21:12.7) {\textbf{Vertical shear only}};
-\node[nd, fill=white, text width=1.75cm] (n23) at (34.89:12.7) {\textbf{Vertical divergence only}};
-\node[nd, fill=white, text width=1.75cm] (n24) at (332.26:12.7) {\textbf{Wall value of $\qsq$}};
-\node[nd, fill=white, text width=1.75cm] (n25) at (319.09:12.7) {\textbf{Level-2.5 truncation}};
-\node[nd, fill=white, text width=1.75cm] (n26) at (308.48:12.7) {\textbf{Surface fluxes and first level}};
-\node[nd, fill=white, text width=1.75cm] (n27) at (273.08:12.7) {\textbf{Master length scale}};
-\node[nd, fill=white, text width=1.75cm] (n28) at (242.48:12.7) {\textbf{Constant set}};
-\node[nd, fill=white, text width=1.75cm] (n29) at (253.44:12.7) {\textbf{Dissipation}};
-\node[nd, fill=white, text width=1.75cm] (n30) at (220.10:12.7) {\textbf{Pressure terms}};
-\node[nd, fill=white, text width=1.75cm] (n31) at (230.70:12.7) {\textbf{K-form fluxes}};
-\node[nd, fill=white, text width=1.75cm] (n32) at (157.50:12.7) {\textbf{Buoyancy term}};
+\draw[ring] (0,0) circle (4.4);
+\draw[ring] (0,0) circle (8.5);
+\draw[ring] (0,0) circle (12.0);
+\node[tier] at (90:5.15) {};
+\node[tier] at (90:9.25) {};
+\node[tier] at (90:12.75) {};
+\node[nd, fill=black!22, text width=2.15cm] (n0) at (90.00:4.4) {\textbf{Scale separation}};
+\node[nd, fill=black!22, text width=2.15cm] (n1) at (45.00:4.4) {\textbf{Mixing}};
+\node[nd, fill=black!22, text width=2.15cm] (n2) at (0.00:4.4) {\textbf{Horizontal homogeneity}};
+\node[nd, fill=black!22, text width=2.15cm] (n3) at (-45.00:4.4) {\textbf{Stationarity}};
+\node[nd, fill=black!22, text width=2.15cm] (n4) at (-90.00:4.4) {\textbf{Similarity}};
+\node[nd, fill=black!22, text width=2.15cm] (n5) at (-135.00:4.4) {\textbf{Small-scale isotropy}};
+\node[nd, fill=black!22, text width=2.15cm] (n6) at (-180.00:4.4) {\textbf{Axisymmetry}};
+\node[nd, fill=black!22, text width=2.15cm] (n7) at (-225.00:4.4) {\textbf{Boussinesq}};
+\node[nd, fill=black!9, text width=1.75cm] (n8) at (78.78:8.5) {\textbf{Locality}};
+\node[nd, fill=black!9, text width=1.75cm] (n9) at (94.62:8.5) {\textbf{Reynolds averaging}};
+\node[nd, fill=black!9, text width=1.75cm] (n10) at (34.05:8.5) {\textbf{Ergodicity in space}};
+\node[nd, fill=black!9, text width=1.75cm] (n11) at (18.21:8.5) {\textbf{Boundary-layer (column) approximation}};
+\node[nd, fill=black!9, text width=1.75cm] (n12) at (350.70:8.5) {\textbf{Constant-flux layer}};
+\node[nd, fill=black!9, text width=1.75cm] (n13) at (334.86:8.5) {\textbf{Local equilibrium}};
+\node[nd, fill=black!9, text width=1.75cm] (n14) at (308.48:8.5) {\textbf{Monin--Obukhov similarity}};
+\node[nd, fill=black!9, text width=1.75cm] (n15) at (274.16:8.5) {\textbf{Mixing length}};
+\node[nd, fill=black!9, text width=1.75cm] (n16) at (242.48:8.5) {\textbf{Universal constants}};
+\node[nd, fill=black!9, text width=1.75cm] (n17) at (258.32:8.5) {\textbf{Energy cascade}};
+\node[nd, fill=black!9, text width=1.75cm] (n18) at (225.00:8.5) {\textbf{Return to isotropy}};
+\node[nd, fill=black!9, text width=1.75cm] (n19) at (192.51:8.5) {\textbf{Eddy viscosity}};
+\node[nd, fill=black!9, text width=1.75cm] (n20) at (157.50:8.5) {\textbf{Buoyancy production}};
+\node[nd, fill=white, text width=1.75cm] (n21) at (64.33:12.0) {\textbf{Grid means are ensemble means}};
+\node[nd, fill=white, text width=1.75cm] (n22) at (18.21:12.0) {\textbf{Vertical shear only}};
+\node[nd, fill=white, text width=1.75cm] (n23) at (34.89:12.0) {\textbf{Vertical divergence only}};
+\node[nd, fill=white, text width=1.75cm] (n24) at (332.60:12.0) {\textbf{Wall value of $\qsq$}};
+\node[nd, fill=white, text width=1.75cm] (n25) at (319.70:12.0) {\textbf{Level-2.5 truncation}};
+\node[nd, fill=white, text width=1.75cm] (n26) at (308.48:12.0) {\textbf{Surface fluxes and first level}};
+\node[nd, fill=white, text width=1.75cm] (n27) at (267.48:12.0) {\textbf{Master length scale}};
+\node[nd, fill=white, text width=1.75cm] (n28) at (242.54:12.0) {\textbf{Constant set}};
+\node[nd, fill=white, text width=1.75cm] (n29) at (253.76:12.0) {\textbf{Dissipation}};
+\node[nd, fill=white, text width=1.75cm] (n30) at (220.10:12.0) {\textbf{Pressure terms}};
+\node[nd, fill=white, text width=1.75cm] (n31) at (231.32:12.0) {\textbf{K-form fluxes}};
+\node[nd, fill=white, text width=1.75cm] (n32) at (157.50:12.0) {\textbf{Buoyancy term}};
 \begin{scope}[on background layer]
 \draw[contact] (n8) -- (n0);
 \draw[contact] (n9) -- (n0);
@@ -228,7 +232,6 @@ the hectometre column are on the pyramid pages.\par}
 \draw[lean] (n8) -- (n1);
 \draw[lean] (n11) -- (n7);
 \draw[lean] (n14) -- (n6);
-\draw[lean] (n15) -- (n2);
 \draw[lean] (n17) -- (n3);
 \draw[leansame] (n13) -- (n8);
 \draw[leansame] (n19) -- (n8);
@@ -258,9 +261,9 @@ the hectometre column are on the pyramid pages.\par}
 \draw[cGXIX, line width=1.1pt] ($(n27.south west)+(-0.16,-0.16)$) rectangle ($(n27.north east)+(0.16,0.16)$);
 \draw[cFULL, line width=1.1pt] ($(n19.south west)+(-0.07,-0.07)$) rectangle ($(n19.north east)+(0.07,0.07)$);
 \draw[cFULL, line width=1.1pt] ($(n31.south west)+(-0.07,-0.07)$) rectangle ($(n31.north east)+(0.07,0.07)$);
-\node[tier, anchor=west] at (-19.0, 13.2) {outer ring: formalism};
-\node[tier, anchor=west] at (-19.0, 12.6) {middle ring: concepts};
-\node[tier, anchor=west] at (-19.0, 12.0) {inner ring: premises};
+\node[tier, anchor=west] at (-19.0, 12.6) {outer ring: formalism};
+\node[tier, anchor=west] at (-19.0, 12.0) {middle ring: concepts};
+\node[tier, anchor=west] at (-19.0, 11.4) {inner ring: premises};
 \end{tikzpicture}
 \end{center}
 \end{document}
