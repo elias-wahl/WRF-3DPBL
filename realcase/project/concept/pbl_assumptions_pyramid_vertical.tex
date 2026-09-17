@@ -83,7 +83,6 @@
 
 % ---- dependencies the contact rule cannot draw (post-audit list; used by scripts/make_pyramid_graph.py). No-op here.
 \newcommand{\lean}[2]{}
-\lean{Locality}{Mixing}
 \lean{Boundary-layer (column) approximation}{Boussinesq}
 \lean{Monin--Obukhov similarity}{Axisymmetry}
 \lean{Energy cascade}{Stationarity}
@@ -98,7 +97,6 @@
 \lean{Master length scale}{Axisymmetry}
 \lean{Pressure terms}{Locality}
 \lean{Pressure terms}{Universal constants}
-\lean{K-form fluxes}{Locality}
 \lean{K-form fluxes}{Mixing length}
 \lean{K-form fluxes}{Local equilibrium}
 \lean{Dissipation}{Master length scale}
@@ -106,6 +104,7 @@
 % \moon{<block title>}{K|P|D x4} in the order MYNN as run, G19 port, 3D-APPROX, 3D-FULL; from Table I.0 of the note:
 % a block is K if all its rows are kept, D if all are dropped, else P. No-op here (data only).
 \newcommand{\moon}[2]{}
+\moon{Local fluxes}{P K K D}
 \moon{Grid means are ensemble means}{P K P P}
 \moon{Vertical shear only}{K P K D}
 \moon{Vertical divergence only}{K P P D}
@@ -167,8 +166,8 @@ correspondence to the note's rows are on the next page.\par}
 \node[font=\scriptsize\bfseries, text=black!60] at (9.830,23.871) {formalism};
 \node[font=\scriptsize\bfseries, text=black!60] at (13.410,23.871) {schemes};
 \node[font=\scriptsize\bfseries, text=black!60, align=center] at (16.745,23.871) {at the hectometre scale};
-\pbv{0.000}{3.000}{20.941}{23.521}{ground}{\textbf{Scale separation}\\ a spectral gap between the energy-containing eddies and the mean flow}{0.30}
-\pbv{0.000}{3.000}{19.866}{20.855}{ground}{\textbf{Mixing}\\ correlations decay within a finite integral scale}{0.30}
+\pbunion{ground}{1.871}{21.801}{1.96}{\textbf{Scale separation}\\ a spectral gap between the eddies and the mean flow}{0.741/3.000/20.941/22.661,0.000/3.000/20.941/23.521}{(0.000,23.521) -- (3.000,23.521) -- (3.000,20.941) -- (0.000,20.941)}
+\pbunion{ground}{1.500}{20.361}{2.70}{\textbf{Mixing}\\ correlations decay within a finite integral scale}{0.000/3.000/19.866/20.855,0.212/0.741/20.855/23.005,0.212/3.000/22.747/23.005,2.382/3.000/22.661/23.005}{(0.212,23.005) -- (3.000,23.005) -- (3.000,22.661) -- (2.382,22.661) -- (2.382,22.747) -- (0.741,22.747) -- (0.741,20.855) -- (3.000,20.855) -- (3.000,19.866) -- (0.000,19.866) -- (0.000,20.855) -- (0.212,20.855)}
 \pbunion{ground}{1.941}{13.373}{1.82}{\textbf{Stationarity}\\ statistics invariant under time translation over the relaxation time $l/q$; the cascade in equilibrium}{0.882/3.000/11.804/14.943,0.000/0.882/11.804/14.943}{(0.000,14.943) -- (3.000,14.943) -- (3.000,11.804) -- (0.000,11.804)}
 \pbunion{ground}{1.500}{9.181}{2.70}{\textbf{Similarity}\\ one universal scaled relation in every flow; the parameter list complete}{0.000/3.000/8.041/10.320,0.000/3.000/10.320/11.718}{(0.000,11.718) -- (3.000,11.718) -- (3.000,8.041) -- (0.000,8.041)}
 \pbunion{ground}{1.500}{17.404}{2.70}{\textbf{Horizontal homogeneity}\\ statistics invariant under horizontal translation: \mbox{$\pd{\avg{\cdot}}{x} = \pd{\avg{\cdot}}{y} = 0$} for every mean and every moment; the same block runs as a channel through stationarity and similarity up to the surface}{0.000/3.000/15.029/19.780,0.212/0.741/10.406/15.029,0.212/3.000/10.406/10.707,2.382/3.000/9.589/10.707}{(0.000,19.780) -- (3.000,19.780) -- (3.000,15.029) -- (0.741,15.029) -- (0.741,10.707) -- (3.000,10.707) -- (3.000,9.589) -- (2.382,9.589) -- (2.382,10.406) -- (0.212,10.406) -- (0.212,15.029) -- (0.000,15.029)}
@@ -188,6 +187,7 @@ correspondence to the note's rows are on the next page.\par}
 \pbv{3.000}{7.180}{3.741}{5.805}{hyp}{\textbf{Return to isotropy}\\ pressure--strain relaxes anisotropy at one rate, linear in it (Rotta); pressure transport diffusive}{0.30}
 \pbv{3.000}{7.180}{2.666}{3.655}{hyp}{\textbf{Eddy viscosity}\\ gradient transport, scalar $K \sim l q$: isotropic, one axis}{0.40}
 \pbv{3.000}{7.180}{0.516}{2.580}{hyp}{\textbf{Buoyancy production}\\ buoyancy acts on TKE through the vertical heat flux alone; no redistribution among the stress components}{0.30}
+\pbv{7.180}{12.480}{22.085}{22.936}{row}{\textbf{Local fluxes}\\ each flux from the local gradient of its own mean}{0.30}
 \pbv{7.180}{12.480}{18.877}{21.861}{row}{\textbf{Grid means are ensemble means}\\ the grid spacing appears nowhere; the resolved flow is not turbulent, so its shear feeds production; the vertical grid resolves the shear layer it differentiates, $\Delta z \ll$ its depth}{0.30}
 \pbv{7.180}{12.480}{17.630}{18.636}{row}{\textbf{Vertical shear only}\\ two of nine terms; no gradient of $W$}{0.56}
 \pbv{7.180}{12.480}{15.635}{17.458}{row}{\textbf{Vertical divergence only}\\ mean equations and TKE in $z$ only; TKE not advected; horizontal mixing by numerics at a separate scale, its energy lost to $\qsq$; surfaces horizontal}{0.56}
@@ -212,6 +212,10 @@ correspondence to the note's rows are on the next page.\par}
 \hlv{7.180}{12.480}{8.729}{10.707}{cGXIX}{0.14}
 \hlv{3.000}{7.180}{2.666}{3.655}{cFULL}{0.05}
 \hlv{7.180}{12.480}{2.683}{4.687}{cFULL}{0.05}
+\node[inner sep=0pt] at (12.900,22.511) {\color{cMYNN}\gP};
+\node[inner sep=0pt] at (13.240,22.511) {\color{cGXIX}\gK};
+\node[inner sep=0pt] at (13.580,22.511) {\color{cAPPROX}\gK};
+\node[inner sep=0pt] at (13.920,22.511) {\color{cFULL}\gD};
 \node[inner sep=0pt] at (12.900,20.369) {\color{cMYNN}\gP};
 \node[inner sep=0pt] at (13.240,20.369) {\color{cGXIX}\gK};
 \node[inner sep=0pt] at (13.580,20.369) {\color{cAPPROX}\gP};
@@ -286,7 +290,7 @@ the statements of the level-2.5 closure as written, each resting on the concepts
 primary reliance; the incidence matrix of the note has the full set. Not drawn, because no scheme needs them to
 run: ergodicity in time and Taylor's hypothesis, which carry the observations and the calibration; the
 constraints realizability and Galilean invariance, which bound the algebra rather than carry a block; and the
-dynamical core's numerical dissipation. Homogeneity is one block with a channel: it runs through stationarity and similarity and surfaces as a band on the contact edge, where Monin--Obukhov similarity and the mixing length touch it. The moons above the formalism tier are the quicklook on the four schemes of the concept's first research question, rows from bottom to top \textcolor{cMYNN}{\textbf{MYNN as run}}, \textcolor{cGXIX}{\textbf{G19 port}}, \textcolor{cAPPROX}{\textbf{3D-APPROX}}, \textcolor{cFULL}{\textbf{3D-FULL}}: \gK{} the scheme as run implements the assumption, \gP{} partly, \gD{} drops it; a block takes the status of its rows in the note's Table~I.0, kept only when all are kept, dropped only when all are dropped.\par}
+dynamical core's numerical dissipation. Two premises carry channels: homogeneity runs through stationarity and similarity and surfaces as a band on the contact edge, where Monin--Obukhov similarity and the mixing length touch it; mixing runs through scale separation and surfaces under locality. The moons above the formalism tier are the quicklook on the four schemes of the concept's first research question, rows from bottom to top \textcolor{cMYNN}{\textbf{MYNN as run}}, \textcolor{cGXIX}{\textbf{G19 port}}, \textcolor{cAPPROX}{\textbf{3D-APPROX}}, \textcolor{cFULL}{\textbf{3D-FULL}}: \gK{} the scheme as run implements the assumption, \gP{} partly, \gD{} drops it; a block takes the status of its rows in the note's Table~I.0, kept only when all are kept, dropped only when all are dropped.\par}
 
 
 \vspace{0.6ex}
@@ -307,7 +311,7 @@ too, and it alone reaches the eddy viscosity and the K-form.\par}
 
 \vspace{0.4ex}
 {\footnotesize\textbf{Reading.} The ground holds the premises, hypotheses about the fluid and the flow; nothing in it names a model. The middle column is where
-the model's vocabulary is born: scale separation gives Reynolds averaging and locality; mixing with homogeneity gives ergodicity in space; homogeneity gives the
+the model's vocabulary is born: scale separation gives Reynolds averaging and, with mixing reaching it through a channel, locality; mixing with homogeneity gives ergodicity in space; homogeneity gives the
 column approximation and, with stationarity, the constant-flux layer; stationarity gives local equilibrium and, with similarity and with homogeneity reaching it through its channel, Monin--Obukhov similarity; similarity and homogeneity give the mixing length; similarity with small-scale isotropy gives universal constants; small-scale isotropy gives the cascade, the return to isotropy and, with one axis, a scalar
 eddy viscosity; one axis and a Boussinesq fluid give buoyancy production through the vertical heat flux. The right
 column is the closure as written, and every one of its statements applies one or two concepts: the truncation
@@ -320,8 +324,7 @@ at the very top; the lower third, isotropy and its constants, is the part no sch
 
 \vspace{0.5ex}
 {\footnotesize\textbf{Correspondence to the note's rows.} Grid means are ensemble means: A1, A2 and the resolved vertical gradient (D4). Vertical shear only: B1, B2. Vertical divergence only: B3, B4, B5, B7. Constant-flux layer with Monin--Obukhov similarity:
-B6, split into the constant-flux layer and Monin--Obukhov similarity. Wall value of $\qsq$: the lower boundary of the TKE equation (D6). Surface fluxes and first level: D3 with the bulk-transfer half of B6. K-form fluxes: C1, C2, C3 and the mixing of
-all scalars alike. Master length scale: C4 with the one-length statement of C5. Dissipation: C5. Level-2.5
+B6, split into the constant-flux layer and Monin--Obukhov similarity. Wall value of $\qsq$: the lower boundary of the TKE equation (D6). Surface fluxes and first level: D3 with the bulk-transfer half of B6. Local fluxes: C1. K-form fluxes: C2, C3 and the mixing of all scalars alike. Master length scale: C4 with the one-length statement of C5. Dissipation: C5. Level-2.5
 truncation: C6, C7. Buoyancy term: C8 with the dry buoyancy flux (D5). Constant set: C9. Pressure terms: C10.
 Which scheme drops which statement is Table~I.0 of the note.\par}
 

@@ -83,7 +83,6 @@
 
 % ---- dependencies the contact rule cannot draw (post-audit list; used by scripts/make_pyramid_graph.py). No-op here.
 \newcommand{\lean}[2]{}
-\lean{Locality}{Mixing}
 \lean{Boundary-layer (column) approximation}{Boussinesq}
 \lean{Monin--Obukhov similarity}{Axisymmetry}
 \lean{Energy cascade}{Stationarity}
@@ -98,7 +97,6 @@
 \lean{Master length scale}{Axisymmetry}
 \lean{Pressure terms}{Locality}
 \lean{Pressure terms}{Universal constants}
-\lean{K-form fluxes}{Locality}
 \lean{K-form fluxes}{Mixing length}
 \lean{K-form fluxes}{Local equilibrium}
 \lean{Dissipation}{Master length scale}
@@ -106,6 +104,7 @@
 % \moon{<block title>}{K|P|D x4} in the order MYNN as run, G19 port, 3D-APPROX, 3D-FULL; from Table I.0 of the note:
 % a block is K if all its rows are kept, D if all are dropped, else P. No-op here (data only).
 \newcommand{\moon}[2]{}
+\moon{Local fluxes}{P K K D}
 \moon{Grid means are ensemble means}{P K P P}
 \moon{Vertical shear only}{K P K D}
 \moon{Vertical divergence only}{K P P D}
@@ -159,8 +158,8 @@ the hectometre column are on the pyramid pages.\par}
 \node[nd, fill=black!22, text width=2.15cm] (n5) at (-135.00:4.4) {\textbf{Small-scale isotropy}};
 \node[nd, fill=black!22, text width=2.15cm] (n6) at (-180.00:4.4) {\textbf{Axisymmetry}};
 \node[nd, fill=black!22, text width=2.15cm] (n7) at (-225.00:4.4) {\textbf{Boussinesq}};
-\node[nd, fill=black!9, text width=1.75cm] (n8) at (78.78:8.5) {\textbf{Locality}};
-\node[nd, fill=black!9, text width=1.75cm] (n9) at (94.62:8.5) {\textbf{Reynolds averaging}};
+\node[nd, fill=black!9, text width=1.75cm] (n8) at (67.50:8.5) {\textbf{Locality}};
+\node[nd, fill=black!9, text width=1.75cm] (n9) at (90.00:8.5) {\textbf{Reynolds averaging}};
 \node[nd, fill=black!9, text width=1.75cm] (n10) at (34.05:8.5) {\textbf{Ergodicity in space}};
 \node[nd, fill=black!9, text width=1.75cm] (n11) at (18.21:8.5) {\textbf{Boundary-layer (column) approximation}};
 \node[nd, fill=black!9, text width=1.75cm] (n12) at (356.01:8.5) {\textbf{Constant-flux layer}};
@@ -170,22 +169,24 @@ the hectometre column are on the pyramid pages.\par}
 \node[nd, fill=black!9, text width=1.75cm] (n16) at (242.48:8.5) {\textbf{Universal constants}};
 \node[nd, fill=black!9, text width=1.75cm] (n17) at (258.32:8.5) {\textbf{Energy cascade}};
 \node[nd, fill=black!9, text width=1.75cm] (n18) at (225.00:8.5) {\textbf{Return to isotropy}};
-\node[nd, fill=black!9, text width=1.75cm] (n19) at (192.51:8.5) {\textbf{Eddy viscosity}};
+\node[nd, fill=black!9, text width=1.75cm] (n19) at (193.71:8.5) {\textbf{Eddy viscosity}};
 \node[nd, fill=black!9, text width=1.75cm] (n20) at (157.50:8.5) {\textbf{Buoyancy production}};
-\node[nd, fill=white, text width=1.75cm] (n21) at (64.33:12.0) {\textbf{Grid means are ensemble means}};
-\node[nd, fill=white, text width=1.75cm] (n22) at (18.21:12.0) {\textbf{Vertical shear only}};
-\node[nd, fill=white, text width=1.75cm] (n23) at (34.89:12.0) {\textbf{Vertical divergence only}};
-\node[nd, fill=white, text width=1.75cm] (n24) at (337.96:12.0) {\textbf{Wall value of $\qsq$}};
-\node[nd, fill=white, text width=1.75cm] (n25) at (319.70:12.0) {\textbf{Level-2.5 truncation}};
-\node[nd, fill=white, text width=1.75cm] (n26) at (308.48:12.0) {\textbf{Surface fluxes and first level}};
-\node[nd, fill=white, text width=1.75cm] (n27) at (285.45:12.0) {\textbf{Master length scale}};
-\node[nd, fill=white, text width=1.75cm] (n28) at (242.54:12.0) {\textbf{Constant set}};
-\node[nd, fill=white, text width=1.75cm] (n29) at (255.46:12.0) {\textbf{Dissipation}};
-\node[nd, fill=white, text width=1.75cm] (n30) at (220.10:12.0) {\textbf{Pressure terms}};
-\node[nd, fill=white, text width=1.75cm] (n31) at (231.32:12.0) {\textbf{K-form fluxes}};
-\node[nd, fill=white, text width=1.75cm] (n32) at (157.50:12.0) {\textbf{Buoyancy term}};
+\node[nd, fill=white, text width=1.75cm] (n21) at (73.24:12.0) {\textbf{Local fluxes}};
+\node[nd, fill=white, text width=1.75cm] (n22) at (62.02:12.0) {\textbf{Grid means are ensemble means}};
+\node[nd, fill=white, text width=1.75cm] (n23) at (18.21:12.0) {\textbf{Vertical shear only}};
+\node[nd, fill=white, text width=1.75cm] (n24) at (34.89:12.0) {\textbf{Vertical divergence only}};
+\node[nd, fill=white, text width=1.75cm] (n25) at (337.96:12.0) {\textbf{Wall value of $\qsq$}};
+\node[nd, fill=white, text width=1.75cm] (n26) at (319.70:12.0) {\textbf{Level-2.5 truncation}};
+\node[nd, fill=white, text width=1.75cm] (n27) at (308.48:12.0) {\textbf{Surface fluxes and first level}};
+\node[nd, fill=white, text width=1.75cm] (n28) at (285.45:12.0) {\textbf{Master length scale}};
+\node[nd, fill=white, text width=1.75cm] (n29) at (245.81:12.0) {\textbf{Constant set}};
+\node[nd, fill=white, text width=1.75cm] (n30) at (257.03:12.0) {\textbf{Dissipation}};
+\node[nd, fill=white, text width=1.75cm] (n31) at (223.37:12.0) {\textbf{Pressure terms}};
+\node[nd, fill=white, text width=1.75cm] (n32) at (234.59:12.0) {\textbf{K-form fluxes}};
+\node[nd, fill=white, text width=1.75cm] (n33) at (157.50:12.0) {\textbf{Buoyancy term}};
 \begin{scope}[on background layer]
 \draw[contact] (n8) -- (n0);
+\draw[contact] (n8) -- (n1);
 \draw[contact] (n9) -- (n0);
 \draw[contact] (n10) -- (n1);
 \draw[contact] (n10) -- (n4);
@@ -206,57 +207,56 @@ the hectometre column are on the pyramid pages.\par}
 \draw[contact] (n19) -- (n6);
 \draw[contact] (n20) -- (n6);
 \draw[contact] (n20) -- (n7);
-\draw[contact] (n21) -- (n9);
-\draw[contact] (n21) -- (n10);
-\draw[contact] (n22) -- (n11);
+\draw[contact] (n21) -- (n8);
+\draw[contact] (n22) -- (n9);
+\draw[contact] (n22) -- (n10);
 \draw[contact] (n23) -- (n11);
-\draw[contact] (n24) -- (n12);
-\draw[contact] (n24) -- (n13);
+\draw[contact] (n24) -- (n11);
+\draw[contact] (n25) -- (n12);
 \draw[contact] (n25) -- (n13);
-\draw[contact] (n25) -- (n14);
+\draw[contact] (n26) -- (n13);
 \draw[contact] (n26) -- (n14);
 \draw[contact] (n27) -- (n14);
-\draw[contact] (n27) -- (n15);
-\draw[contact] (n27) -- (n16);
+\draw[contact] (n28) -- (n14);
+\draw[contact] (n28) -- (n15);
 \draw[contact] (n28) -- (n16);
 \draw[contact] (n29) -- (n16);
-\draw[contact] (n29) -- (n17);
-\draw[contact] (n30) -- (n18);
+\draw[contact] (n30) -- (n16);
+\draw[contact] (n30) -- (n17);
 \draw[contact] (n31) -- (n18);
-\draw[contact] (n31) -- (n19);
-\draw[contact] (n32) -- (n20);
-\draw[lean] (n8) -- (n1);
+\draw[contact] (n32) -- (n18);
+\draw[contact] (n32) -- (n19);
+\draw[contact] (n33) -- (n20);
 \draw[lean] (n11) -- (n7);
 \draw[lean] (n14) -- (n6);
 \draw[lean] (n17) -- (n2);
 \draw[leansame] (n13) -- (n8);
 \draw[leansame] (n19) -- (n8);
 \draw[leansame] (n16) -- (n9);
-\draw[lean] (n23) -- (n0);
-\draw[lean] (n24) -- (n16);
-\draw[lean] (n25) -- (n18);
+\draw[lean] (n24) -- (n0);
 \draw[lean] (n25) -- (n16);
-\draw[lean] (n25) -- (n11);
-\draw[lean] (n27) -- (n6);
-\draw[lean] (n30) -- (n8);
-\draw[lean] (n30) -- (n16);
+\draw[lean] (n26) -- (n18);
+\draw[lean] (n26) -- (n16);
+\draw[lean] (n26) -- (n11);
+\draw[lean] (n28) -- (n6);
 \draw[lean] (n31) -- (n8);
-\draw[lean] (n31) -- (n15);
-\draw[lean] (n31) -- (n13);
-\draw[leansame] (n29) -- (n27);
+\draw[lean] (n31) -- (n16);
+\draw[lean] (n32) -- (n15);
+\draw[lean] (n32) -- (n13);
+\draw[leansame] (n30) -- (n28);
 \end{scope}
 \draw[cFULL, line width=1.1pt] ($(n11.south west)+(-0.07,-0.07)$) rectangle ($(n11.north east)+(0.07,0.07)$);
 \draw[cGXIX, line width=1.1pt] ($(n11.south west)+(-0.16,-0.16)$) rectangle ($(n11.north east)+(0.16,0.16)$);
-\draw[cFULL, line width=1.1pt] ($(n22.south west)+(-0.07,-0.07)$) rectangle ($(n22.north east)+(0.07,0.07)$);
-\draw[cGXIX, line width=1.1pt] ($(n22.south west)+(-0.16,-0.16)$) rectangle ($(n22.north east)+(0.16,0.16)$);
 \draw[cFULL, line width=1.1pt] ($(n23.south west)+(-0.07,-0.07)$) rectangle ($(n23.north east)+(0.07,0.07)$);
 \draw[cGXIX, line width=1.1pt] ($(n23.south west)+(-0.16,-0.16)$) rectangle ($(n23.north east)+(0.16,0.16)$);
-\draw[cFULL, line width=1.1pt] ($(n25.south west)+(-0.07,-0.07)$) rectangle ($(n25.north east)+(0.07,0.07)$);
-\draw[cGXIX, line width=1.1pt] ($(n25.south west)+(-0.16,-0.16)$) rectangle ($(n25.north east)+(0.16,0.16)$);
-\draw[cFULL, line width=1.1pt] ($(n27.south west)+(-0.07,-0.07)$) rectangle ($(n27.north east)+(0.07,0.07)$);
-\draw[cGXIX, line width=1.1pt] ($(n27.south west)+(-0.16,-0.16)$) rectangle ($(n27.north east)+(0.16,0.16)$);
+\draw[cFULL, line width=1.1pt] ($(n24.south west)+(-0.07,-0.07)$) rectangle ($(n24.north east)+(0.07,0.07)$);
+\draw[cGXIX, line width=1.1pt] ($(n24.south west)+(-0.16,-0.16)$) rectangle ($(n24.north east)+(0.16,0.16)$);
+\draw[cFULL, line width=1.1pt] ($(n26.south west)+(-0.07,-0.07)$) rectangle ($(n26.north east)+(0.07,0.07)$);
+\draw[cGXIX, line width=1.1pt] ($(n26.south west)+(-0.16,-0.16)$) rectangle ($(n26.north east)+(0.16,0.16)$);
+\draw[cFULL, line width=1.1pt] ($(n28.south west)+(-0.07,-0.07)$) rectangle ($(n28.north east)+(0.07,0.07)$);
+\draw[cGXIX, line width=1.1pt] ($(n28.south west)+(-0.16,-0.16)$) rectangle ($(n28.north east)+(0.16,0.16)$);
 \draw[cFULL, line width=1.1pt] ($(n19.south west)+(-0.07,-0.07)$) rectangle ($(n19.north east)+(0.07,0.07)$);
-\draw[cFULL, line width=1.1pt] ($(n31.south west)+(-0.07,-0.07)$) rectangle ($(n31.north east)+(0.07,0.07)$);
+\draw[cFULL, line width=1.1pt] ($(n32.south west)+(-0.07,-0.07)$) rectangle ($(n32.north east)+(0.07,0.07)$);
 \node[tier, anchor=west] at (-19.0, 12.6) {outer ring: formalism};
 \node[tier, anchor=west] at (-19.0, 12.0) {middle ring: concepts};
 \node[tier, anchor=west] at (-19.0, 11.4) {inner ring: premises};
