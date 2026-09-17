@@ -1,6 +1,6 @@
 # Open issues / questions — 3D PBL rebase (WRF v4.4 -> v4.8.0)
 
-## A28 — OPEN: the ICON forcing's soil STATE is wrong — temperature 3–7 K too cold below the top centimetres and floor soil moisture 22 vol-% against 31 measured; every run inherits it: the nocturnal ground heat flux is 20–25 W m⁻² short (the air pays), and the daytime sensible heat flux at the floor is 4× the observed (2026-09-15)
+## A28 — STATE PART SETTLED 2026-09-17 (spun-up land state from HRLDAS is production; twin X16s puts the surface energy balance on the observations and shows the pool deficit is atmospheric transport — DECISIONS 2026-09-17 14:45); land-surface PARAMETERS (meadow class, ground–canopy coupling, loam hydraulics) remain open. Original: the ICON forcing's soil STATE is wrong — temperature 3–7 K too cold below the top centimetres and floor soil moisture 22 vol-% against 31 measured; every run inherits it: the nocturnal ground heat flux is 20–25 W m⁻² short (the air pays), and the daytime sensible heat flux at the floor is 4× the observed (2026-09-15)
 
 **Deferred (2026-09-16 11:30):** production spin-up from December with real forcing, W_SNOW in the setup, meadow LU class and loam hydraulics — DECISIONS 11:30.
 
