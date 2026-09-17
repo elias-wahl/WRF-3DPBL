@@ -93,7 +93,7 @@
 \lean{Eddy viscosity}{Mixing length}
 \lean{Return to isotropy}{Horizontal homogeneity}
 \lean{Stability functions and cutoff}{Level-2.5 truncation}
-\lean{Universal constants}{Reynolds averaging}
+\lean{Universal constants}{Reynolds decomposition}
 \lean{Vertical divergence only}{Spectral gap}
 \lean{Wall value of $\qsq$}{Universal constants}
 \lean{Stability functions and cutoff}{Universal constants}
@@ -157,10 +157,9 @@ exactly the blocks it relies on; blocks in one column do not touch. Frames: \tex
 port, \textcolor{cFULL}{\textbf{purple}} the Kosovi\'c--Juliano three-dimensional closure, nested both. Right of the
 formalism, dashed: what becomes of each formal statement in hectometre-scale simulations over complex terrain, here
 $\Delta = 500$~m in the Inn Valley.
-Far right, the four schemes of the concept's first research question, left to right \textcolor{cMYNN}{\textbf{MYNN as
+Far right, the concept's four schemes, left to right \textcolor{cMYNN}{\textbf{MYNN as
 run}}, \textcolor{cGXIX}{\textbf{G19 port}}, \textcolor{cAPPROX}{\textbf{3D-APPROX}}, \textcolor{cFULL}{\textbf{3D-FULL}}:
-\gK{} the scheme as run implements the statement, \gP{} partly, \gD{} drops it (a block takes the status of its rows in the
-note's Table~I.0). Rules, reading and the correspondence to the note's rows are on the next page.\par}
+\gK{} the scheme as run implements the statement, \gP{} partly, \gD{} drops it. Rules and reading on the next page.\par}
 
 \vspace{0.4ex}
 \begin{center}
@@ -176,51 +175,51 @@ note's Table~I.0). Rules, reading and the correspondence to the note's rows are 
 \node[font=\scriptsize\bfseries, text=black!60, align=center] at (14.880,24.021) {hectometre-scale simulations\\ in complex terrain};
 \pbv{0.000}{2.500}{22.274}{23.521}{ground}{\textbf{Spectral gap}\\ a gap between the eddies and the mean flow}{0.30}
 \pbv{0.000}{2.500}{20.941}{22.188}{ground}{\textbf{Mixing}\\ correlations decay within a finite integral scale}{0.30}
-\pbunion{ground}{1.618}{14.620}{1.46}{\textbf{Stationarity}\\ statistics invariant under time translation over the relaxation time $l/q$}{0.735/2.500/13.223/16.018,0.000/0.735/13.223/16.018}{(0.000,16.018) -- (2.500,16.018) -- (2.500,13.223) -- (0.000,13.223)}
-\pbunion{ground}{1.250}{10.600}{2.20}{\textbf{Similarity}\\ one universal scaled relation in every flow; the parameter list complete}{0.000/2.500/9.460/11.739,0.000/2.500/11.739/13.137}{(0.000,13.137) -- (2.500,13.137) -- (2.500,9.460) -- (0.000,9.460)}
-\pbunion{ground}{1.250}{18.479}{2.20}{\textbf{Horizontal homogeneity}\\ statistics invariant under horizontal translation: \mbox{$\partial_x\avg{\cdot} = \partial_y\avg{\cdot} = 0$} for every mean and every moment; the same block runs as a channel through stationarity and similarity up to the surface}{0.000/2.500/16.104/20.855,0.176/0.618/11.825/16.104,0.176/2.500/11.825/12.126,1.985/2.500/11.008/12.126}{(0.000,20.855) -- (2.500,20.855) -- (2.500,16.104) -- (0.618,16.104) -- (0.618,12.126) -- (2.500,12.126) -- (2.500,11.008) -- (1.985,11.008) -- (1.985,11.825) -- (0.176,11.825) -- (0.176,16.104) -- (0.000,16.104)}
-\pbv{0.000}{2.500}{4.945}{9.374}{ground}{\textbf{Small-scale isotropy}\\ at high Reynolds number the small eddies forget the direction of shear and gravity}{0.30}
-\pbv{0.000}{2.500}{3.440}{4.859}{ground}{\textbf{Gradient scale}\\ the eddy small against the scale of the mean gradient}{0.30}
-\pbv{0.000}{2.500}{1.591}{3.354}{ground}{\textbf{Axisymmetric mixing}\\ gravity the one axis; one $K$ along and across the shear; no handedness}{0.30}
-\pbv{0.000}{2.500}{0.043}{1.505}{ground}{\textbf{Boussinesq}\\ unsaturated air; buoyancy the only density effect; incompressible}{0.30}
-\pbv{2.500}{6.680}{22.274}{23.521}{hyp}{\textbf{Reynolds averaging}\\ mean plus fluctuation; the rules of averaging hold because the mean does not vary across the window}{0.30}
+\pbunion{ground}{1.618}{14.491}{1.46}{\textbf{Stationarity}\\ statistics invariant under time translation over the relaxation time $l/q$}{0.735/2.500/12.965/16.018,0.000/0.735/12.965/16.018}{(0.000,16.018) -- (2.500,16.018) -- (2.500,12.965) -- (0.000,12.965)}
+\pbunion{ground}{1.250}{10.342}{2.20}{\textbf{Similarity}\\ one universal scaled relation in every flow; the parameter list complete}{0.000/2.500/9.202/11.481,0.000/2.500/11.481/12.879}{(0.000,12.879) -- (2.500,12.879) -- (2.500,9.202) -- (0.000,9.202)}
+\pbunion{ground}{1.250}{18.479}{2.20}{\textbf{Horizontal homogeneity}\\ statistics invariant under horizontal translation: \mbox{$\partial_x\avg{\cdot} = \partial_y\avg{\cdot} = 0$} for every mean and every moment; the same block runs as a channel through stationarity and similarity up to the surface}{0.000/2.500/16.104/20.855,0.176/0.618/11.567/16.104,0.176/2.500/11.567/11.868,1.985/2.500/10.750/11.868}{(0.000,20.855) -- (2.500,20.855) -- (2.500,16.104) -- (0.618,16.104) -- (0.618,11.868) -- (2.500,11.868) -- (2.500,10.750) -- (1.985,10.750) -- (1.985,11.567) -- (0.176,11.567) -- (0.176,16.104) -- (0.000,16.104)}
+\pbv{0.000}{2.500}{4.687}{9.116}{ground}{\textbf{Small-scale isotropy}\\ at high Reynolds number the small eddies forget the direction of shear and gravity}{0.30}
+\pbv{0.000}{2.500}{3.182}{4.601}{ground}{\textbf{Gradient scale}\\ the eddy small against the scale of the mean gradient}{0.30}
+\pbv{0.000}{2.500}{1.333}{3.096}{ground}{\textbf{Axisymmetric mixing}\\ gravity the one axis; one $K$ along and across the shear; no handedness}{0.30}
+\pbv{0.000}{2.500}{-0.215}{1.247}{ground}{\textbf{Boussinesq}\\ unsaturated air; buoyancy the only density effect; incompressible}{0.30}
+\pbv{2.500}{6.680}{22.274}{23.521}{hyp}{\textbf{Reynolds decomposition}\\ $\avg{a'} = 0$ and $\avg{\avg{a}\,b'} = 0$:\\ true for a window only if\\ the mean does not vary across it}{0.30}
 \pbv{2.500}{6.680}{19.866}{22.188}{hyp}{\textbf{Ergodicity in space}\\ the cell mean converges to the ensemble mean: statistics alike across the cell, correlations decaying within $l$, and many such eddies per cell, \mbox{$\Delta \gg l$}}{0.30}
 \pbv{2.500}{6.680}{16.641}{19.780}{hyp}{\textbf{Boundary-layer (column) approximation}\\ every mean and every moment varies in $z$ only: horizontal gradients are neglected as if the flow around each column were homogeneous; $W = 0$ by continuity}{0.56}
-\pbv{2.500}{6.680}{15.566}{16.555}{hyp}{\textbf{Constant-flux layer}\\ fluxes keep their surface value in the lowest tenth of the layer}{0.30}
-\pbv{2.500}{6.680}{14.018}{15.480}{hyp}{\textbf{Local equilibrium}\\ second moments follow the current local gradients: tendency, advection and transport negligible over $l/q$}{0.30}
-\pbv{2.500}{6.680}{11.610}{13.932}{hyp}{\textbf{Monin--Obukhov similarity}\\ in the constant-flux layer the gradients scaled by $u_*$, $\theta_*$, $z$ are universal functions of $z/L_{\mathrm{MO}}$: no other parameter; over a homogeneous, hence horizontal, surface with one roughness length}{0.30}
-\pbv{2.500}{6.680}{10.535}{11.524}{hyp}{\textbf{Mixing length}\\ one integral scale $l$ per height, set by the column alone}{0.30}
-\pbv{2.500}{6.680}{8.471}{10.449}{hyp}{\textbf{Universal constants}\\ the scaled rates of return to isotropy and of dissipation are pure numbers, the same in every flow: measured once in simple flows, valid everywhere}{0.30}
-\pbv{2.500}{6.680}{7.525}{8.385}{hyp}{\textbf{Energy cascade}\\ isotropic dissipation in equilibrium with the large eddies, $\varepsilon \sim q^3/l$}{0.30}
-\pbv{2.500}{6.680}{5.031}{7.439}{hyp}{\textbf{Return to isotropy}\\ pressure fluctuations scramble the eddies toward isotropy: anisotropy decays at the one rate $q/l$, linear in it (Rotta), computed locally as in homogeneous turbulence away from walls; pressure transport diffusive}{0.30}
-\pbv{2.500}{6.680}{2.451}{3.870}{hyp}{\textbf{Eddy viscosity}\\ local gradient transport with one positive scalar $K \sim l q$, alike along and across the shear}{0.40}
-\pbv{2.500}{6.680}{3.956}{4.859}{hyp}{\textbf{Locality}\\ the flux answers the local gradient, $l \ll$ its scale, after decorrelation}{0.30}
-\pbv{2.500}{6.680}{0.301}{2.322}{hyp}{\textbf{Buoyancy production}\\ gravity acts along one axis: buoyancy exchanges kinetic and potential energy through the vertical heat flux alone; no horizontal heat flux, no redistribution among the stress components}{0.30}
+\pbv{2.500}{6.680}{15.566}{16.555}{hyp}{\textbf{Constant-flux layer}\\ fluxes keep their surface value in the boundary layer's lowest tenth}{0.30}
+\pbv{2.500}{6.680}{13.760}{15.480}{hyp}{\textbf{Local equilibrium}\\ the eddies relax within $l/q$, faster than the flow changes along their path: second moments follow the current local gradients; tendency, advection and transport neglected}{0.30}
+\pbv{2.500}{6.680}{11.352}{13.674}{hyp}{\textbf{Monin--Obukhov similarity}\\ in the constant-flux layer the gradients scaled by $u_*$, $\theta_*$, $z$ are universal functions of $z/L_{\mathrm{MO}}$: no other parameter; over a homogeneous, hence horizontal, surface with one roughness length}{0.30}
+\pbv{2.500}{6.680}{10.277}{11.266}{hyp}{\textbf{Mixing length}\\ one integral scale $l$ per height, set by the column alone}{0.30}
+\pbv{2.500}{6.680}{8.213}{10.191}{hyp}{\textbf{Universal constants}\\ the scaled rates of return to isotropy and of dissipation are pure numbers, the same in every flow: measured once in simple flows, valid everywhere}{0.30}
+\pbv{2.500}{6.680}{7.267}{8.127}{hyp}{\textbf{Energy cascade}\\ isotropic dissipation in equilibrium with the large eddies, $\varepsilon \sim q^3/l$}{0.30}
+\pbv{2.500}{6.680}{4.773}{7.181}{hyp}{\textbf{Return to isotropy}\\ pressure fluctuations scramble the eddies toward isotropy: anisotropy decays at the one rate $q/l$, linear in it (Rotta), computed locally as in homogeneous turbulence away from walls; pressure transport diffusive}{0.30}
+\pbv{2.500}{6.680}{2.193}{3.612}{hyp}{\textbf{Eddy viscosity}\\ local gradient transport with one positive scalar $K \sim l q$, alike along and across the shear}{0.40}
+\pbv{2.500}{6.680}{3.698}{4.601}{hyp}{\textbf{Locality}\\ the flux answers the local gradient, $l \ll$ its scale, after decorrelation}{0.30}
+\pbv{2.500}{6.680}{0.043}{2.064}{hyp}{\textbf{Buoyancy production}\\ gravity acts along one axis: buoyancy exchanges kinetic and potential energy through the vertical heat flux alone; no horizontal heat flux, no redistribution among the stress components}{0.30}
 \pbv{6.680}{11.980}{19.952}{23.108}{row}{\textbf{Grid means are ensemble means}\\ the grid spacing appears nowhere, every eddy inside the cell, $\Delta \gg l,\ z_i$; the resolved flow is not turbulent, so its shear feeds production; the vertical grid resolves the shear layer it differentiates, $\Delta z \ll$ its depth}{0.30}
 \pbv{6.680}{11.980}{18.705}{19.711}{row}{\textbf{Vertical shear only}\\ two of nine terms; no gradient of $W$}{0.56}
 \pbv{6.680}{11.980}{16.710}{18.533}{row}{\textbf{Vertical divergence only}\\ means and TKE in $z$ only; TKE not advected; horizontal mixing by numerics at its own scale, its energy lost, not paid to $\qsq$; surfaces horizontal}{0.40}
 \pbv{6.680}{11.980}{15.179}{16.486}{row}{\textbf{Wall value of $\qsq$}\\ $\qsq = B_1^{2/3} u_*^2$ at the ground: the neutral level-2 equilibrium of the constant-flux layer}{0.30}
-\pbv{6.680}{11.980}{14.018}{15.007}{row}{\textbf{Level-2.5 truncation}\\ all second moments but $\qsq$ algebraic: their tendencies and transport neglected}{0.30}
-\pbv{6.680}{11.980}{12.298}{13.545}{row}{\textbf{Surface fluxes and first level}\\ bulk transfer between the ground and $z_1$, inside the inertial sublayer: $z_0 \ll z_1 \ll z_i$}{0.30}
-\pbv{6.680}{11.980}{10.148}{12.126}{row}{\textbf{Master length scale}\\ $1/L = 1/L_S + 1/L_T + 1/L_B$: wall distance with $\zeta$, one $z_i$ per column, $q/N$ from the buoyancy term; blind to terrain and grid}{0.56}
-\pbv{6.680}{11.980}{8.987}{9.976}{row}{\textbf{Constant set}\\ one set, fitted in neutral and convective air over flat terrain}{0.30}
-\pbv{6.680}{11.980}{7.611}{8.858}{row}{\textbf{One length for $K$ and $\varepsilon$}\\ $\varepsilon = q^3/(B_1 L)$, isotropic, one rate; the same $L$ as in $K = lqS$, from the master length}{0.30}
-\pbv{6.680}{11.980}{6.450}{7.439}{row}{\textbf{Pressure terms}\\ Rotta return, $A_1$; isotropised production, $C_1$; TKE transport down-gradient, $S_q$}{0.30}
-\pbv{6.680}{11.980}{5.031}{6.321}{row}{\textbf{Stability functions and cutoff}\\ $S_M$, $S_H$ from the balance $P_s + P_b = \varepsilon$\\ in the vertical Ri alone; cutoff at $\Rfc$}{0.56}
-\pbv{6.680}{11.980}{2.451}{4.859}{row}{\textbf{K-form fluxes}\\ local and down-gradient, each flux from the gradient of its own mean: \mbox{$\avg{uw} = -K_M\,U_z$}, \mbox{$\avg{w\theta} = -K_H\,\Theta_z$}; one scalar $K$ in every direction, aligned with the gradient; one $K_H$ for all scalars. This closure's $K = lqS$: $l$ from the master length, $S$ from the stability functions}{0.40}
-\pbv{6.680}{11.980}{0.301}{2.279}{row}{\textbf{Buoyancy term}\\ $P_b = \beta g\,\avg{w\theta_v}$ of unsaturated air, $\beta = 1/300$~K; no horizontal heat flux; $\avg{w\theta_v}$ from the K-form}{0.30}
+\pbv{6.680}{11.980}{13.760}{15.007}{row}{\textbf{Level-2.5 truncation}\\ all second moments but $\qsq$ algebraic: their tendencies and transport neglected}{0.30}
+\pbv{6.680}{11.980}{12.040}{13.287}{row}{\textbf{Surface fluxes and first level}\\ bulk transfer between the ground and $z_1$, inside the inertial sublayer: $z_0 \ll z_1 \ll z_i$}{0.30}
+\pbv{6.680}{11.980}{9.890}{11.868}{row}{\textbf{Master length scale}\\ $1/L = 1/L_S + 1/L_T + 1/L_B$: wall distance with $\zeta$, one $z_i$ per column, $q/N$ from the buoyancy term; blind to terrain and grid}{0.56}
+\pbv{6.680}{11.980}{8.729}{9.718}{row}{\textbf{Constant set}\\ one set, fitted in neutral and convective air over flat terrain}{0.30}
+\pbv{6.680}{11.980}{7.353}{8.600}{row}{\textbf{One length for $K$ and $\varepsilon$}\\ $\varepsilon = q^3/(B_1 L)$, isotropic, one rate; the same $L$ as in $K = lqS$, from the master length}{0.30}
+\pbv{6.680}{11.980}{6.192}{7.181}{row}{\textbf{Pressure terms}\\ Rotta return, $A_1$; isotropised production, $C_1$; TKE transport down-gradient, $S_q$}{0.30}
+\pbv{6.680}{11.980}{4.773}{6.063}{row}{\textbf{Stability functions and cutoff}\\ $S_M$, $S_H$ from the balance $P_s + P_b = \varepsilon$\\ in the vertical Ri alone; cutoff at $\Rfc$}{0.56}
+\pbv{6.680}{11.980}{2.193}{4.601}{row}{\textbf{K-form fluxes}\\ local and down-gradient, each flux from the gradient of its own mean: \mbox{$\avg{uw} = -K_M\,U_z$}, \mbox{$\avg{w\theta} = -K_H\,\Theta_z$}; one scalar $K$ in every direction, aligned with the gradient; one $K_H$ for all scalars. This closure's $K = lqS$: $l$ from the master length, $S$ from the stability functions}{0.40}
+\pbv{6.680}{11.980}{0.043}{2.021}{row}{\textbf{Buoyancy term}\\ $P_b = \beta g\,\avg{w\theta_v}$ of unsaturated air, $\beta = 1/300$~K; no horizontal heat flux; $\avg{w\theta_v}$ from the K-form}{0.30}
 \hlv{2.500}{6.680}{16.641}{19.780}{cFULL}{0.05}
 \hlv{2.500}{6.680}{16.641}{19.780}{cGXIX}{0.14}
 \hlv{6.680}{11.980}{18.705}{19.711}{cFULL}{0.05}
 \hlv{6.680}{11.980}{18.705}{19.711}{cGXIX}{0.14}
 \hlv{6.680}{11.980}{16.710}{18.533}{cFULL}{0.05}
 \hlv{6.680}{11.980}{16.710}{18.533}{cGXIX}{0.14}
-\hlv{6.680}{11.980}{5.031}{6.321}{cFULL}{0.05}
-\hlv{6.680}{11.980}{5.031}{6.321}{cGXIX}{0.14}
-\hlv{6.680}{11.980}{10.148}{12.126}{cFULL}{0.05}
-\hlv{6.680}{11.980}{10.148}{12.126}{cGXIX}{0.14}
-\hlv{2.500}{6.680}{2.451}{3.870}{cFULL}{0.05}
-\hlv{6.680}{11.980}{2.451}{4.859}{cFULL}{0.05}
+\hlv{6.680}{11.980}{4.773}{6.063}{cFULL}{0.05}
+\hlv{6.680}{11.980}{4.773}{6.063}{cGXIX}{0.14}
+\hlv{6.680}{11.980}{9.890}{11.868}{cFULL}{0.05}
+\hlv{6.680}{11.980}{9.890}{11.868}{cGXIX}{0.14}
+\hlv{2.500}{6.680}{2.193}{3.612}{cFULL}{0.05}
+\hlv{6.680}{11.980}{2.193}{4.601}{cFULL}{0.05}
 \node[inner sep=0pt] at (17.950,21.530) {\color{cMYNN}\gP};
 \node[inner sep=0pt] at (18.290,21.530) {\color{cGXIX}\gK};
 \node[inner sep=0pt] at (18.630,21.530) {\color{cAPPROX}\gP};
@@ -237,55 +236,55 @@ note's Table~I.0). Rules, reading and the correspondence to the note's rows are 
 \node[inner sep=0pt] at (18.290,15.833) {\color{cGXIX}\gK};
 \node[inner sep=0pt] at (18.630,15.833) {\color{cAPPROX}\gD};
 \node[inner sep=0pt] at (18.970,15.833) {\color{cFULL}\gD};
-\node[inner sep=0pt] at (17.950,14.512) {\color{cMYNN}\gK};
-\node[inner sep=0pt] at (18.290,14.512) {\color{cGXIX}\gK};
-\node[inner sep=0pt] at (18.630,14.512) {\color{cAPPROX}\gK};
-\node[inner sep=0pt] at (18.970,14.512) {\color{cFULL}\gK};
-\node[inner sep=0pt] at (17.950,12.922) {\color{cMYNN}\gK};
-\node[inner sep=0pt] at (18.290,12.922) {\color{cGXIX}\gK};
-\node[inner sep=0pt] at (18.630,12.922) {\color{cAPPROX}\gK};
-\node[inner sep=0pt] at (18.970,12.922) {\color{cFULL}\gK};
-\node[inner sep=0pt] at (17.950,11.137) {\color{cMYNN}\gK};
-\node[inner sep=0pt] at (18.290,11.137) {\color{cGXIX}\gP};
-\node[inner sep=0pt] at (18.630,11.137) {\color{cAPPROX}\gK};
-\node[inner sep=0pt] at (18.970,11.137) {\color{cFULL}\gK};
-\node[inner sep=0pt] at (17.950,9.482) {\color{cMYNN}\gK};
-\node[inner sep=0pt] at (18.290,9.482) {\color{cGXIX}\gK};
-\node[inner sep=0pt] at (18.630,9.482) {\color{cAPPROX}\gK};
-\node[inner sep=0pt] at (18.970,9.482) {\color{cFULL}\gK};
-\node[inner sep=0pt] at (17.950,8.235) {\color{cMYNN}\gK};
-\node[inner sep=0pt] at (18.290,8.235) {\color{cGXIX}\gK};
-\node[inner sep=0pt] at (18.630,8.235) {\color{cAPPROX}\gK};
-\node[inner sep=0pt] at (18.970,8.235) {\color{cFULL}\gK};
-\node[inner sep=0pt] at (17.950,6.945) {\color{cMYNN}\gK};
-\node[inner sep=0pt] at (18.290,6.945) {\color{cGXIX}\gK};
-\node[inner sep=0pt] at (18.630,6.945) {\color{cAPPROX}\gK};
-\node[inner sep=0pt] at (18.970,6.945) {\color{cFULL}\gK};
-\node[inner sep=0pt] at (17.950,5.676) {\color{cMYNN}\gD};
-\node[inner sep=0pt] at (18.290,5.676) {\color{cGXIX}\gP};
-\node[inner sep=0pt] at (18.630,5.676) {\color{cAPPROX}\gK};
-\node[inner sep=0pt] at (18.970,5.676) {\color{cFULL}\gP};
-\node[inner sep=0pt] at (17.950,3.655) {\color{cMYNN}\gP};
-\node[inner sep=0pt] at (18.290,3.655) {\color{cGXIX}\gP};
-\node[inner sep=0pt] at (18.630,3.655) {\color{cAPPROX}\gP};
-\node[inner sep=0pt] at (18.970,3.655) {\color{cFULL}\gD};
-\node[inner sep=0pt] at (17.950,1.290) {\color{cMYNN}\gP};
-\node[inner sep=0pt] at (18.290,1.290) {\color{cGXIX}\gP};
-\node[inner sep=0pt] at (18.630,1.290) {\color{cAPPROX}\gP};
-\node[inner sep=0pt] at (18.970,1.290) {\color{cFULL}\gP};
+\node[inner sep=0pt] at (17.950,14.384) {\color{cMYNN}\gK};
+\node[inner sep=0pt] at (18.290,14.384) {\color{cGXIX}\gK};
+\node[inner sep=0pt] at (18.630,14.384) {\color{cAPPROX}\gK};
+\node[inner sep=0pt] at (18.970,14.384) {\color{cFULL}\gK};
+\node[inner sep=0pt] at (17.950,12.664) {\color{cMYNN}\gK};
+\node[inner sep=0pt] at (18.290,12.664) {\color{cGXIX}\gK};
+\node[inner sep=0pt] at (18.630,12.664) {\color{cAPPROX}\gK};
+\node[inner sep=0pt] at (18.970,12.664) {\color{cFULL}\gK};
+\node[inner sep=0pt] at (17.950,10.879) {\color{cMYNN}\gK};
+\node[inner sep=0pt] at (18.290,10.879) {\color{cGXIX}\gP};
+\node[inner sep=0pt] at (18.630,10.879) {\color{cAPPROX}\gK};
+\node[inner sep=0pt] at (18.970,10.879) {\color{cFULL}\gK};
+\node[inner sep=0pt] at (17.950,9.224) {\color{cMYNN}\gK};
+\node[inner sep=0pt] at (18.290,9.224) {\color{cGXIX}\gK};
+\node[inner sep=0pt] at (18.630,9.224) {\color{cAPPROX}\gK};
+\node[inner sep=0pt] at (18.970,9.224) {\color{cFULL}\gK};
+\node[inner sep=0pt] at (17.950,7.976) {\color{cMYNN}\gK};
+\node[inner sep=0pt] at (18.290,7.976) {\color{cGXIX}\gK};
+\node[inner sep=0pt] at (18.630,7.976) {\color{cAPPROX}\gK};
+\node[inner sep=0pt] at (18.970,7.976) {\color{cFULL}\gK};
+\node[inner sep=0pt] at (17.950,6.687) {\color{cMYNN}\gK};
+\node[inner sep=0pt] at (18.290,6.687) {\color{cGXIX}\gK};
+\node[inner sep=0pt] at (18.630,6.687) {\color{cAPPROX}\gK};
+\node[inner sep=0pt] at (18.970,6.687) {\color{cFULL}\gK};
+\node[inner sep=0pt] at (17.950,5.418) {\color{cMYNN}\gD};
+\node[inner sep=0pt] at (18.290,5.418) {\color{cGXIX}\gP};
+\node[inner sep=0pt] at (18.630,5.418) {\color{cAPPROX}\gK};
+\node[inner sep=0pt] at (18.970,5.418) {\color{cFULL}\gP};
+\node[inner sep=0pt] at (17.950,3.397) {\color{cMYNN}\gP};
+\node[inner sep=0pt] at (18.290,3.397) {\color{cGXIX}\gP};
+\node[inner sep=0pt] at (18.630,3.397) {\color{cAPPROX}\gP};
+\node[inner sep=0pt] at (18.970,3.397) {\color{cFULL}\gD};
+\node[inner sep=0pt] at (17.950,1.032) {\color{cMYNN}\gP};
+\node[inner sep=0pt] at (18.290,1.032) {\color{cGXIX}\gP};
+\node[inner sep=0pt] at (18.630,1.032) {\color{cAPPROX}\gP};
+\node[inner sep=0pt] at (18.970,1.032) {\color{cFULL}\gP};
 \pbh{12.230}{17.530}{19.982}{23.078}{By day much of the kinetic energy at the lowest levels is resolved, the effective resolution is several $\Delta$, and the partition claim waits for a $w$-spectrum below that scale; the resolved shear then enters production twice. At night the eddies shrink far below $\Delta$: the cell holds only a few integral scales and the vertical grid none, the cell statistic is a single realisation, and the stable regime is mesoscale again. On a slope the cell mixes slope layer and valley core.}
 \pbh{12.230}{17.530}{18.735}{19.681}{The jet's cross-valley shear is a sizeable fraction of its vertical shear; in weak drainage flow directional shear sets $u_*$.}
 \pbh{12.230}{17.530}{16.740}{18.503}{Horizontal flux divergences are of the order of the vertical one, and the Riviera budgets closed only with transport and advection; the numerical operator stands where the physical divergence belongs, and the energy it removes vanishes instead of feeding $\qsq$.}
 \pbh{12.230}{17.530}{15.209}{16.456}{The nocturnal sonics record turbulence at the surface where every model goes laminar; the observed friction velocity implies a wall $\qsq$ between the two closures' values.}
-\pbh{12.230}{17.530}{14.048}{14.977}{Transitions outrun $l/q$; the strain cap's footprint measures it.}
-\pbh{12.230}{17.530}{12.328}{13.515}{The katabatic jet maximum sits inside the layer; over forest the first level lies in the roughness sublayer; the momentum flux is rarely height-constant.}
-\pbh{12.230}{17.530}{10.178}{12.096}{$z_i$ is ill-posed under elevated inversions, the wall distance ambiguous on a slope, the horizontal eddy set by the valley width: two lengths. In the cold pool the length, not the fluxes, was the lever; the fork bounds it by a buoyancy limit and a strain cap.}
-\pbh{12.230}{17.530}{9.017}{9.946}{Three constant sets in one comparison; their dissipation constants differ by a factor that rivals the effects to be reported.}
-\pbh{12.230}{17.530}{7.641}{8.828}{$\varepsilon$ is filter-independent while $q^3$ is not, so the dissipation length must shrink with the grid; the inertial-subrange estimate from the sonics needs Taylor's hypothesis and fails in weak-wind nights.}
-\pbh{12.230}{17.530}{6.480}{7.409}{Taking them small is ``a dangerous assumption'' in complex terrain; the Radfeld budget residual is their only observation.}
-\pbh{12.230}{17.530}{5.061}{6.291}{Most nocturnal valley cells lie beyond the critical Richardson number, where the deficit against the control is flat; the approximate closure switches off at $\Rfc$, the others never.}
-\pbh{12.230}{17.530}{2.481}{4.829}{By day the eddies span $z_i$ and heat runs against the local gradient: the plume terms exist for this. Where slope wind turns into valley wind the stress axes leave the gradient and the jet veers with height: $\avg{uv}$ appears, negative production is admissible. The grid filter, aspect ratio 25, imprints its anisotropy on the subgrid eddies; in stable air $K_H/K_M$ falls with Ri.}
-\pbh{12.230}{17.530}{0.331}{2.249}{The slope-normal surface heat flux has a horizontal component with no home in the budget; in stable air buoyancy damps $\avg{w^2}$ selectively; on fog nights the saturated flux follows the moist gradient, which only the control's condensation scheme knows; $\beta = 1/300$~K is a few percent off at valley $\Theta_v$.}
+\pbh{12.230}{17.530}{13.790}{14.977}{Transitions outrun $l/q$; the strain cap's footprint measures it.}
+\pbh{12.230}{17.530}{12.070}{13.257}{The katabatic jet maximum sits inside the layer; over forest the first level lies in the roughness sublayer; the momentum flux is rarely height-constant.}
+\pbh{12.230}{17.530}{9.920}{11.838}{$z_i$ is ill-posed under elevated inversions, the wall distance ambiguous on a slope, the horizontal eddy set by the valley width: two lengths. In the cold pool the length, not the fluxes, was the lever; the fork bounds it by a buoyancy limit and a strain cap.}
+\pbh{12.230}{17.530}{8.759}{9.688}{Three constant sets in one comparison; their dissipation constants differ by a factor that rivals the effects to be reported.}
+\pbh{12.230}{17.530}{7.383}{8.570}{$\varepsilon$ is filter-independent while $q^3$ is not, so the dissipation length must shrink with the grid; the inertial-subrange estimate from the sonics needs Taylor's hypothesis and fails in weak-wind nights.}
+\pbh{12.230}{17.530}{6.222}{7.151}{Taking them small is ``a dangerous assumption'' in complex terrain; the Radfeld budget residual is their only observation.}
+\pbh{12.230}{17.530}{4.803}{6.033}{Most nocturnal valley cells lie beyond the critical Richardson number, where the deficit against the control is flat; the approximate closure switches off at $\Rfc$, the others never.}
+\pbh{12.230}{17.530}{2.223}{4.571}{By day the eddies span $z_i$ and heat runs against the local gradient: the plume terms exist for this. Where slope wind turns into valley wind the stress axes leave the gradient and the jet veers with height: $\avg{uv}$ appears, negative production is admissible. The grid filter, aspect ratio 25, imprints its anisotropy on the subgrid eddies; in stable air $K_H/K_M$ falls with Ri.}
+\pbh{12.230}{17.530}{0.073}{1.991}{The slope-normal surface heat flux has a horizontal component with no home in the budget; in stable air buoyancy damps $\avg{w^2}$ selectively; on fog nights the saturated flux follows the moist gradient, which only the control's condensation scheme knows; $\beta = 1/300$~K is a few percent off at valley $\Theta_v$.}
 \end{tikzpicture}
 \end{center}
 
@@ -293,7 +292,7 @@ note's Table~I.0). Rules, reading and the correspondence to the note's rows are 
 {\footnotesize Every block is an assumption a boundary-layer scheme makes in order to run. A block touches at its
 left exactly the blocks it relies on, and blocks in one column do not touch each other. Three columns. Dark grey, the ground (left column): nine hypotheses about the fluid and the flow that rest on nothing else here; horizontal homogeneity extends under stationarity and rises between stationarity and similarity, with an air gap above the tunnel, so that Monin--Obukhov similarity touches its three premises. Light grey, the
 concepts (middle column): the constructs of turbulence theory that follow from the ground and that every closure of this family
-speaks in --- Reynolds averaging, the column approximation, the constant-flux layer, Monin--Obukhov similarity,
+speaks in --- the Reynolds decomposition, the column approximation, the constant-flux layer, Monin--Obukhov similarity,
 the mixing length, the eddy viscosity, Rotta's return to isotropy, Kolmogorov's cascade. White, the formalism (right column):
 the statements of the level-2.5 closure as written, each resting on the concepts it applies. Each block shows its
 primary reliance; the incidence matrix of the note has the full set. Where a block leans on a parent it cannot touch, its own text names that parent, as in ``$W = 0$ by continuity''; the two premises without a block, high Reynolds number and unsaturated air, are named in the premise they qualify. Not drawn, because no scheme needs them to
@@ -319,7 +318,7 @@ the frontier. Nested frames: both schemes; the three-dimensional closure touches
 
 \vspace{0.1ex}
 {\footnotesize\textbf{Reading.} The ground holds the premises, hypotheses about the fluid and the flow; nothing in it names a model. The middle column is where
-the model's vocabulary is born: the spectral gap gives Reynolds averaging; mixing with homogeneity gives ergodicity in space; the gradient scale gives locality; homogeneity gives the
+the model's vocabulary is born: the spectral gap gives the Reynolds decomposition its rules; mixing with homogeneity gives ergodicity in space; the gradient scale gives locality; homogeneity gives the
 column approximation and, with stationarity, the constant-flux layer; stationarity gives local equilibrium and, with similarity and the homogeneity channel, Monin--Obukhov similarity; similarity and homogeneity give the mixing length; similarity with small-scale isotropy gives universal constants; small-scale isotropy gives the cascade and the return to isotropy; the gradient scale with the axisymmetry of the mixing gives the eddy viscosity; axisymmetric mixing and a Boussinesq fluid give buoyancy production through the vertical heat flux. The right
 column is the closure as written, and every one of its statements applies one or two concepts: the truncation
 applies local equilibrium; the stability functions and the cutoff come from Rotta's return through the level-2 balance; the master length takes its wall branch from Monin--Obukhov similarity, its shape from the mixing length and its coefficients from universality;

@@ -182,10 +182,9 @@ exactly the blocks it relies on; blocks in one column do not touch. Frames: \tex
 port, \textcolor{cFULL}{\textbf{purple}} the Kosovi\'c--Juliano three-dimensional closure, nested both. Right of the
 formalism, dashed: what becomes of each formal statement in hectometre-scale simulations over complex terrain, here
 $\Delta = 500$~m in the Inn Valley.
-Far right, the four schemes of the concept's first research question, left to right \textcolor{cMYNN}{\textbf{MYNN as
+Far right, the concept's four schemes, left to right \textcolor{cMYNN}{\textbf{MYNN as
 run}}, \textcolor{cGXIX}{\textbf{G19 port}}, \textcolor{cAPPROX}{\textbf{3D-APPROX}}, \textcolor{cFULL}{\textbf{3D-FULL}}:
-\gK{} the scheme as run implements the statement, \gP{} partly, \gD{} drops it (a block takes the status of its rows in the
-note's Table~I.0). Rules, reading and the correspondence to the note's rows are on the next page.\par}
+\gK{} the scheme as run implements the statement, \gP{} partly, \gD{} drops it. Rules and reading on the next page.\par}
 
 \vspace{0.4ex}
 \begin{center}
