@@ -95,7 +95,6 @@
 \lean{Locality}{Mixing}
 \lean{Boundary-layer (column) approximation}{Boussinesq}
 \lean{Monin--Obukhov similarity}{Axisymmetry}
-\lean{Mixing length}{Horizontal homogeneity}
 \lean{Energy cascade}{Stationarity}
 \lean{Local equilibrium}{Locality}
 \lean{Eddy viscosity}{Locality}
@@ -150,7 +149,7 @@ the statements of the level-2.5 closure as written, each resting on the concepts
 primary reliance; the incidence matrix of the note has the full set. Not drawn, because no scheme needs them to
 run: ergodicity in time and Taylor's hypothesis, which carry the observations and the calibration; the
 constraints realizability and Galilean invariance, which bound the algebra rather than carry a block; and the
-dynamical core's numerical dissipation. Homogeneity is one block in three parts: its body, a tunnel under stationarity and a pillar rising beside similarity, so that Monin--Obukhov similarity touches it as well; the mixing length cannot be reached, a pillar under it would split similarity. The moons above the formalism tier are the quicklook on the four schemes of the concept's first research question, rows from bottom to top \textcolor{cMYNN}{\textbf{MYNN as run}}, \textcolor{cGXIX}{\textbf{G19 port}}, \textcolor{cAPPROX}{\textbf{3D-APPROX}}, \textcolor{cFULL}{\textbf{3D-FULL}}: \gK{} the scheme as run implements the assumption, \gP{} partly, \gD{} drops it; a block takes the status of its rows in the note's Table~I.0, kept only when all are kept, dropped only when all are dropped.\par}
+dynamical core's numerical dissipation. Homogeneity is one block with a channel: it runs through stationarity and similarity and surfaces as a band on the contact edge, where Monin--Obukhov similarity and the mixing length touch it. The moons above the formalism tier are the quicklook on the four schemes of the concept's first research question, rows from bottom to top \textcolor{cMYNN}{\textbf{MYNN as run}}, \textcolor{cGXIX}{\textbf{G19 port}}, \textcolor{cAPPROX}{\textbf{3D-APPROX}}, \textcolor{cFULL}{\textbf{3D-FULL}}: \gK{} the scheme as run implements the assumption, \gP{} partly, \gD{} drops it; a block takes the status of its rows in the note's Table~I.0, kept only when all are kept, dropped only when all are dropped.\par}
 
 \vspace{1.0ex}
 \begin{center}
@@ -165,12 +164,12 @@ dynamical core's numerical dissipation. Homogeneity is one block in three parts:
 \node[tier] at (-0.3, 4.85) {formalism};
 % ---- tier 0: physical hypotheses (y 0 -- 1.7); each boundary sits under the concept that spans it --
 % order forced by the adjacency chain SEP-MIX-HOM-STA-SIM-ISOb-AXI-BOU (unit 1.15, gap 0.10, offset 0.6);
-% homogeneity is a \pbunion: body, tunnel under stationarity (y < 0.35, stationarity starts at 0.45), pillar 13.45-13.95
 \pb{0}{3.00}{0}{1.7}{ground}{\textbf{Scale separation}\\ a spectral gap between the energy-containing eddies and the mean flow}
 \pb{3.10}{4.25}{0}{1.7}{ground}{\textbf{Mixing}\\ correlations decay within a finite integral scale}
-\pbunion{ground}{7.11}{0.85}{5.3}{\textbf{Horizontal homogeneity}\\ statistics invariant under horizontal translation: \mbox{$\pd{\avg{\cdot}}{x} = \pd{\avg{\cdot}}{y} = 0$} for every mean and every moment}{4.35/9.875/0/1.7,9.875/13.95/0/0.35,13.45/13.95/0/1.7}{(4.35,0) -- (13.95,0) -- (13.95,1.7) -- (13.45,1.7) -- (13.45,0.35) -- (9.875,0.35) -- (9.875,1.7) -- (4.35,1.7)}
-\pb{9.975}{13.35}{0.45}{1.7}{ground}{\textbf{Stationarity}\\ statistics invariant under time translation over the relaxation time $l/q$; the cascade in equilibrium}
-\pb{14.05}{18.00}{0}{1.7}{ground}{\textbf{Similarity}\\ one universal scaled relation in every flow; the parameter list complete}
+\pbunion{ground}{11.8}{1.1}{3.3}{\textbf{Stationarity}\\ statistics invariant under time translation over the relaxation time $l/q$; the cascade in equilibrium}{9.975/13.625/0.5/1.7,9.975/13.625/0/0.5}{(9.975,0) -- (9.975,1.7) -- (13.625,1.7) -- (13.625,0)}
+\pbunion{ground}{16.65}{0.85}{2.5}{\textbf{Similarity}\\ one universal scaled relation in every flow; the parameter list complete}{15.35/18.0/0/1.7,13.725/15.35/0/1.7}{(13.725,0) -- (13.725,1.7) -- (18.0,1.7) -- (18.0,0)}
+% homogeneity is one block: body + a channel through stationarity and similarity that surfaces as a band under Monin-Obukhov and the mixing length; drawn after them so it lies on top
+\pbunion{ground}{7.11}{0.85}{5.3}{\textbf{Horizontal homogeneity}\\ statistics invariant under horizontal translation: \mbox{$\pd{\avg{\cdot}}{x} = \pd{\avg{\cdot}}{y} = 0$} for every mean and every moment; the same block runs as a channel through stationarity and similarity up to the surface}{4.35/9.875/0/1.7,9.875/15.25/0.12/0.42,14.9/15.25/0.12/1.7,14.9/16.2/1.35/1.7}{(4.35,0) -- (4.35,1.7) -- (9.875,1.7) -- (9.875,0.42) -- (14.9,0.42) -- (14.9,1.7) -- (16.2,1.7) -- (16.2,1.35) -- (15.25,1.35) -- (15.25,0.12) -- (9.875,0.12) -- (9.875,0)}
 \pb{18.10}{23.625}{0}{1.7}{ground}{\textbf{Small-scale isotropy}\\ at high Reynolds number the small eddies forget the direction of shear and gravity: Kolmogorov's one dissipation rate, Rotta's return to isotropy at one rate}
 \pb{23.725}{25.50}{0}{1.7}{ground}{\textbf{Axisymmetry}\\ one preferred axis, gravity, along the surface normal; no handedness}
 \pb{25.60}{27.35}{0}{1.7}{ground}{\textbf{Boussinesq}\\ unsaturated air; buoyancy the only density effect, $\beta$ fixed; incompressible}
@@ -283,8 +282,7 @@ too, and it alone reaches the eddy viscosity and the K-form.\par}
 \vspace{0.4ex}
 {\footnotesize\textbf{Reading.} The ground holds the premises, hypotheses about the fluid and the flow; nothing in it names a model. The middle tier is where
 the model's vocabulary is born: scale separation gives Reynolds averaging and locality; mixing with homogeneity gives ergodicity in space; homogeneity gives the
-column approximation and, with stationarity, the constant-flux layer; stationarity gives local equilibrium and, with similarity and with homogeneity reaching it through an extension under stationarity, Monin--Obukhov similarity; similarity gives the mixing length and, with small-scale isotropy,
-universal constants; small-scale isotropy gives the cascade, the return to isotropy and, with one axis, a scalar
+column approximation and, with stationarity, the constant-flux layer; stationarity gives local equilibrium and, with similarity and with homogeneity reaching it through its channel, Monin--Obukhov similarity; similarity and homogeneity give the mixing length; similarity with small-scale isotropy gives universal constants; small-scale isotropy gives the cascade, the return to isotropy and, with one axis, a scalar
 eddy viscosity; one axis and a Boussinesq fluid give buoyancy production through the vertical heat flux. The top
 tier is the closure as written, and every one of its statements applies one or two concepts: the truncation
 applies local equilibrium and takes its stability functions from the surface-layer relations they were fitted
