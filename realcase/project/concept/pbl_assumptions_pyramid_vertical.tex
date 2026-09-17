@@ -100,12 +100,10 @@
 \lean{K-form fluxes}{Mixing length}
 \lean{K-form fluxes}{Local equilibrium}
 \lean{Dissipation}{Master length scale}
-\lean{Resolved gradient}{Boundary-layer (column) approximation}
 % ---- scheme quicklook (moons above the formalism tier; scripts/make_moons.py rewrites the strip)
 % \moon{<block title>}{K|P|D x4} in the order MYNN as run, G19 port, 3D-APPROX, 3D-FULL; from Table I.0 of the note:
 % a block is K if all its rows are kept, D if all are dropped, else P. No-op here (data only).
 \newcommand{\moon}[2]{}
-\moon{Resolved gradient}{K K K K}
 \moon{Grid means are ensemble means}{P K P P}
 \moon{Vertical shear only}{K P K D}
 \moon{Vertical divergence only}{K P P D}
@@ -181,8 +179,7 @@ correspondence to the note's rows are on the next page.\par}
 \pbv{3.740}{7.920}{3.828}{5.940}{hyp}{\textbf{Return to isotropy}\\ pressure--strain relaxes anisotropy at one rate, linear in it (Rotta); pressure transport diffusive}{0.30}
 \pbv{3.740}{7.920}{2.728}{3.740}{hyp}{\textbf{Eddy viscosity}\\ gradient transport, scalar $K \sim l q$: isotropic, one axis}{0.40}
 \pbv{3.740}{7.920}{0.528}{2.640}{hyp}{\textbf{Buoyancy production}\\ buoyancy acts on TKE through the vertical heat flux alone; no redistribution among the stress components}{0.30}
-\pbv{7.920}{13.420}{22.598}{23.470}{row}{\textbf{Resolved gradient}\\ $\Delta z \ll$ the shear layer}{0.30}
-\pbv{7.920}{13.420}{19.316}{22.370}{row}{\textbf{Grid means are ensemble means}\\ the grid spacing appears nowhere; the resolved flow is not turbulent, so its shear feeds production}{0.30}
+\pbv{7.920}{13.420}{19.316}{22.370}{row}{\textbf{Grid means are ensemble means}\\ the grid spacing appears nowhere; the resolved flow is not turbulent, so its shear feeds production; the vertical grid resolves the shear layer it differentiates, $\Delta z \ll$ its depth}{0.30}
 \pbv{7.920}{13.420}{18.040}{19.070}{row}{\textbf{Vertical shear only}\\ two of nine terms; no gradient of $W$}{0.56}
 \pbv{7.920}{13.420}{15.998}{17.864}{row}{\textbf{Vertical divergence only}\\ mean equations and TKE in $z$ only; TKE not advected; horizontal mixing by numerics at a separate scale, its energy lost to $\qsq$; surfaces horizontal}{0.56}
 \pbv{7.920}{13.420}{14.432}{15.770}{row}{\textbf{Wall value of $\qsq$}\\ $\qsq = B_1^{2/3} u_*^2$ at the ground: the neutral level-2 equilibrium of the constant-flux layer}{0.30}
@@ -268,8 +265,8 @@ and in the middle --- homogeneity, the column, the constant-flux layer, one axis
 at the very top; the lower third, isotropy and its constants, is the part no scheme in the comparison touches.\par}
 
 \vspace{0.5ex}
-{\footnotesize\textbf{Correspondence to the note's rows.} Grid means are ensemble means: A1, A2. Vertical shear only: B1, B2. Vertical divergence only: B3, B4, B5, B7. Constant-flux layer with Monin--Obukhov similarity:
-B6, split because one block cannot touch three foundations. Wall value of $\qsq$: the lower boundary of the TKE equation (D6). Surface fluxes and first level: D3 with the bulk-transfer half of B6. Resolved gradient: D4. K-form fluxes: C1, C2, C3 and the mixing of
+{\footnotesize\textbf{Correspondence to the note's rows.} Grid means are ensemble means: A1, A2 and the resolved vertical gradient (D4). Vertical shear only: B1, B2. Vertical divergence only: B3, B4, B5, B7. Constant-flux layer with Monin--Obukhov similarity:
+B6, split because one block cannot touch three foundations. Wall value of $\qsq$: the lower boundary of the TKE equation (D6). Surface fluxes and first level: D3 with the bulk-transfer half of B6. K-form fluxes: C1, C2, C3 and the mixing of
 all scalars alike. Master length scale: C4 with the one-length statement of C5. Dissipation: C5. Level-2.5
 truncation: C6, C7. Buoyancy term: C8 with the dry buoyancy flux (D5). Constant set: C9. Pressure terms: C10.
 Which scheme drops which statement is Table~I.0 of the note.\par}
