@@ -19,6 +19,12 @@ Elias is an atmospheric scientist, fluent in turbulence closures; he wants the
 - **Define every variable on first use**: full name, what it physically is,
   units — "`q_sq`, twice the turbulence kinetic energy, m² s⁻²".
 - **Concise; tables for comparisons.** Answer what was asked; offer detail.
+- **Every model-vs-observation number carries its method** (Elias 2026-09-17): which cell(s) and why (height, aspect,
+  land use vs the station), which model quantity (`T2`/`U10` diagnostic, first level ~9 m, or interpolated to the sensor
+  height), any reduction/downscaling, sensor height, time matching — and the confidence that follows. Rules: `KNOWN_ISSUES.md`
+  **E59** (terrain-matched cells, the cell's own fall line, pressure differences only at fixed heights with box means);
+  prefer `proc` virtual instruments over nearest-cell scripts.
+- **Rate every analysis 1–10** for how good it is for the project, research and model separately when they differ.
 - **Separate measured from inferred**, and retract a number the moment its
   method fails a sanity check. Record retractions, do not quietly drop them.
 - **No internal labels in prose** (commit-group letters, "Tier 1", "X2", agent
