@@ -1427,6 +1427,7 @@ Do NOT expect one fix to serve both.
 
 **Rule.** Before submitting or chaining, `squeue -u $USER` and `ls -lat` the run-dir parent for submissions and directories you did not make; cancel duplicates that write into shared directories, leave their directories, and say so in the record. Only one session should hold a run directory at a time.
 
+**Recurrence 2026-09-17 09:34–09:35:** two sessions each took the other's winter HRLDAS chain for the duplicate; one cancelled the *running* chain, the other the pending copy — both gone. **Rule extended:** the duplicate is the later-submitted, still-pending chain (`scontrol show job` → `SubmitTime`, `JobState`); never cancel a RUNNING job in favour of a pending copy; before `scancel`, write what you are about to cancel and why into the run directory's log; leave `SESSION_LOCK.txt` (session name, time, job IDs) in every run directory you hold and read it before touching one.
 ## E55 — the first LDASOUT file of an HRLDAS segment (`SKIP_FIRST_OUTPUT = .false.`) carries −9999 in the flux fields (HFX, LH, GRDFLX, …) while the state fields (SOIL_T, SOIL_M, TG) and FSA/FIRA are valid; averaged in, it halves every flux mean (Kolsass 13–14 UT smoke mean read −4937 W m⁻²) (2026-09-16)
 
 **Rule.** Mask values below −9000 before averaging HRLDAS output (`hrldas_check.py` does), or start every flux window at the second file. The state in the first file is the initial state and is valid.
