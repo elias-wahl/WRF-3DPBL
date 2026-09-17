@@ -3,11 +3,14 @@
 grid (lat/lon/HSURF), soil axes, variable set and units, time contiguity (no gap, no overlap), NaNs at the junction, and the
 physical continuity at the junction (last hour of A vs first hour of B) at the i-Box sites and as domain statistics.
 Usage: python check_series_join.py <seriesA.nc> <seriesB.nc> [<wrfinput or setup file>]"""
-import sys, numpy as np, netCDF4 as nc, pandas as pd
+import sys, numpy as np, netCDF4 as nc   # WRF-env python: no pandas here (E56)
 A, B = nc.Dataset(sys.argv[1]), nc.Dataset(sys.argv[2]); ok = True
 def chk(cond, msg):
     global ok; ok &= bool(cond); print(("  [ok  ] " if cond else "  [FAIL] ") + msg)
-tA = nc.num2date(A["time"][:], A["time"].units); tB = nc.num2date(B["time"][:], B["time"].units)
+def ndt(v):   # "days|hours|seconds since <iso>" -> numpy datetime64[s] (no cftime/pandas dependence)
+    unit, _, base = v.units.partition(" since "); fac = {"days": 86400, "hours": 3600, "seconds": 1}[unit.strip()]
+    return np.datetime64(base.strip().replace(" ", "T")) + (np.asarray(v[:], dtype="f8") * fac).round().astype("timedelta64[s]")
+tA = ndt(A["time"]); tB = ndt(B["time"])
 print(f"A: {sys.argv[1].split('/')[-1]}  {tA[0]} -> {tA[-1]}  ({len(tA)} h)\nB: {sys.argv[2].split('/')[-1]}  {tB[0]} -> {tB[-1]}  ({len(tB)} h)")
 chk(np.array_equal(A["lat"][:], B["lat"][:]) and np.array_equal(A["lon"][:], B["lon"][:]), "identical lat/lon grids")
 chk(np.array_equal(A["HSURF"][:], B["HSURF"][:]), "identical HSURF")
@@ -15,15 +18,15 @@ chk(np.array_equal(A["soil_depth"][:], B["soil_depth"][:]) and np.array_equal(A[
 core = ["T2D", "Q2D", "U2D", "V2D", "PSFC", "RAINRATE", "SWDOWN", "LWDOWN", "TG", "SNOWH", "SNOWC", "TSOIL", "WSOIL"]
 chk(all(v in A.variables and v in B.variables for v in core), "all forcing/state variables present in both")
 chk(all(getattr(A[v], "units", None) == getattr(B[v], "units", None) for v in core), "identical units: " + ", ".join(f"{v}={getattr(A[v],'units','?')}" for v in core[:8]))
-dt_h = (pd.Timestamp(str(tB[0])) - pd.Timestamp(str(tA[-1]))).total_seconds() / 3600
+dt_h = (tB[0] - tA[-1]) / np.timedelta64(1, "h")
 chk(abs(dt_h - 1.0) < 1e-6, f"B starts exactly one hour after A ends (gap = {dt_h:.2f} h)")
-dA = np.diff([pd.Timestamp(str(x)).value for x in tA]) / 3.6e12; dB = np.diff([pd.Timestamp(str(x)).value for x in tB]) / 3.6e12
+dA = np.diff(tA) / np.timedelta64(1, "h"); dB = np.diff(tB) / np.timedelta64(1, "h")
 chk(np.allclose(dA, 1) and np.allclose(dB, 1), "both series hourly without internal gaps")
 extra = sorted(set(A.variables) - set(B.variables)); print(f"  variables only in A: {extra}")
 init = [v for v in A.variables if v.endswith("_init")]
 if init:
     t0 = str(tA[0])[:13]; note = getattr(A, "initial_state", "")
-    chk(t0.replace("-", "").replace(" ", "T")[:13] in note.replace("-", "") or t0[:10].replace("-", "") in note.replace("-", ""), f"_init fields declared for the first hour ({t0}): '{note[:90]}'")
+    chk(t0 in note, f"_init fields declared for the first hour ({t0}): '{note[:90]}'")
     for v in init: chk(not np.isnan(np.asarray(A[v][:], dtype="f8")).any(), f"{v} NaN-free")
     if "SNEQV_init" in A.variables and "RHOSNOW_init" in A.variables:
         sn, se, rh = np.asarray(A["SNOWH"][0]), np.asarray(A["SNEQV_init"][:]), np.asarray(A["RHOSNOW_init"][:]); m = sn > 0.01
