@@ -71,24 +71,22 @@
 
 
 % ---- the hectometre-scale column (used by the VERTICAL version only; read by scripts/make_pyramid_vertical.py)
-% \hecto{<concept title>}{<what becomes of the concept at Delta = 500 m over the Inn Valley>}; no-op here.
+% \hecto{<formal statement title>}{<what becomes of it at Delta = 500 m over the Inn Valley>}; no-op here.
 % Sources: the mountain and grey-zone columns of the note's Table I.1 and the project's own runs.
 \newcommand{\hecto}[2]{}
-\hecto{Locality}{By day eddies span $z_i$ and the flux stops answering the local gradient; on slopes it arrives from the interface. Holds at night.}
-\hecto{Reynolds averaging}{The cell mean is a filter of width $\Delta$ inside the spectrum: Leonard and cross terms appear; the closed term is a subfilter stress.}
-\hecto{Ergodicity in space}{At night a 500~m cell holds about five integral scales per direction and $\Delta z$ none: the cell statistic is an order-one realisation. By day it holds less than one eddy. On a slope it mixes two flows, slope layer and valley core, and estimates neither.}
-\hecto{Boundary-layer (column) approximation}{Not small: the cross-valley shear of the up-valley jet reaches 20--30\,\% of the vertical shear; slope flows carry $W$ gradients of the order of the wind shear; horizontal flux divergences are of the order of the vertical one, and the Riviera budgets closed only with transport and advection. Seven of nine production terms and the three-dimensional divergences are missing, not negligible.}
-\hecto{Constant-flux layer}{The katabatic jet nose at 2--10~m sits inside the layer; the momentum flux is height-constant in 8--28\,\% of daytime periods.}
-\hecto{Local equilibrium}{Resolved strain by day rotates faster than $l/q$; transitions and intermittency at night are not slow against it.}
-\hecto{Monin--Obukhov similarity}{A slope has two axes, gravity and the surface normal: two Obukhov lengths, a slope-normal heat flux with a horizontal part. The scaling holds only for some anisotropy classes, and over a hill only in the inner layer. Over the forested slopes the first model level sits inside the roughness sublayer. At Innsbruck the surface is stable 4.7\,\% of the time while the valley air above is often stably stratified.}
-\hecto{Mixing length}{$z_i$ ill-posed under elevated inversions, wall distance ambiguous on a slope; the valley width sets the horizontal eddy: two lengths.}
-\hecto{Universal constants}{Fitted to flat neutral and convective layers; the anisotropy classes of complex terrain differ, and the comparison already runs three constant sets. Filter constants are not ensemble constants: $C_\varepsilon$ depends on $l/\Delta$.}
-\hecto{Energy cascade}{$\varepsilon$ is filter-independent, $q^3$ is not: the dissipation length must shrink with the grid; by day the filter cuts into the isotropic range.}
-\hecto{Return to isotropy}{Stable valley turbulence is two-component, pancake-like; the return rate of a pancake need not be that of a convective eddy. Pressure work by slope flows and gravity waves redistributes energy laterally, the least known term of the budget.}
-\hecto{Eddy viscosity}{The grid filter, aspect ratio 25, imprints its anisotropy on the subgrid eddies; the stress axes turn where slope meets valley wind.}
-\hecto{Buoyancy production}{The slope-normal surface heat flux has a horizontal component with no home in the budget; in stable air buoyancy damps $\avg{w^2}$ selectively, the pancake anisotropy; by day resolved thermals carry the horizontal heat flux and its subgrid part stays unrepresented.}
-
-
+\hecto{Local fluxes}{By day the eddies span $z_i$ and heat runs against the local gradient: the plume terms exist for this. Holds at night.}
+\hecto{Grid means are ensemble means}{By day 85--91\,\% of the kinetic energy at 43~m is resolved, the effective resolution is $6$--$8\Delta$, 3--4~km, and the partition claim waits for a $w$-spectrum below that scale; the resolved shear then enters production twice. At night $l \approx 100$~m: a 500~m cell holds five integral scales per direction and $\Delta z$ none, the cell statistic is an order-one realisation, and the stable regime is mesoscale again. On a slope the cell mixes slope layer and valley core.}
+\hecto{Vertical shear only}{The jet's cross-valley shear reaches 20--30\,\% of the vertical shear; in weak drainage flow directional shear sets $u_*$.}
+\hecto{Vertical divergence only}{Horizontal flux divergences are of the order of the vertical one, and the Riviera budgets closed only with transport and advection; the numerical operator stands where the physical divergence belongs, and the energy it removes vanishes instead of feeding $\qsq$.}
+\hecto{Wall value of $\qsq$}{Sonic $\qsq$ of 0.13--0.41~m$^2$\,s$^{-2}$ all night at seven i-Box sites while every model goes laminar; the observed $u_*$ implies a wall $\qsq$ of 0.03--0.17, between the two closures.}
+\hecto{Level-2.5 truncation}{69\,\% of the nocturnal valley cells sit above $\mathrm{Ri} = 0.3$, where the deficit against the control is flat; the approximate closure switches off at $\Rfc = 0.19$, the control and the full closure never. Transitions outrun $l/q$; the strain cap's footprint measures it.}
+\hecto{Surface fluxes and first level}{The katabatic jet nose at 2--10~m sits inside the layer; over forest the first level lies in the roughness sublayer; flux height-constant in 8--28\,\% of daytime periods.}
+\hecto{Master length scale}{$z_i$ is ill-posed under elevated inversions, the wall distance ambiguous on a slope, the horizontal eddy set by the valley width: two lengths. In the cold pool the length, not the fluxes, was the lever; the fork bounds it by a buoyancy limit and a strain cap.}
+\hecto{Constant set}{Three constant sets in one comparison; $B_1 = 24$ against 16.6 is a factor 1.45 in $\varepsilon$ at equal $q$ and $l$.}
+\hecto{Dissipation}{$\varepsilon$ is filter-independent while $q^3$ is not, so the dissipation length must shrink with the grid; the inertial-subrange estimate from the sonics needs Taylor's hypothesis and fails in the weak-wind nights, $\sigma_u/U$ of order one.}
+\hecto{Pressure terms}{Taking them small is ``a dangerous assumption'' in complex terrain; the Radfeld budget residual is their only observation.}
+\hecto{K-form fluxes}{Where slope wind turns into valley wind the stress axes leave the gradient and the jet veers with height: $\avg{uv}$ appears, negative production is admissible. The grid filter, aspect ratio 25, imprints its anisotropy on the subgrid eddies; in stable air $K_H/K_M$ falls with Ri.}
+\hecto{Buoyancy term}{The slope-normal surface heat flux has a horizontal component with no home in the budget; in stable air buoyancy damps $\avg{w^2}$ selectively; on fog nights the saturated flux follows the moist gradient, which only the control's condensation scheme knows; $\beta = 1/300$~K is 2--5\,\% off.}
 
 % ---- dependencies the contact rule cannot draw (post-audit list; used by scripts/make_pyramid_graph.py). No-op here.
 \newcommand{\lean}[2]{}
@@ -166,13 +164,13 @@ dynamical core's numerical dissipation. Two premises carry channels: homogeneity
 \pbunion{ground}{2.0}{1.06}{1.8}{\textbf{Scale separation}\\ a spectral gap between the eddies and the mean flow}{1.0/3.0/0.42/1.7,0/3.0/0/1.7}{(0,0) -- (0,1.7) -- (3.0,1.7) -- (3.0,0)}
 % mixing is one block: body + a channel through the bottom of scale separation that surfaces as a band under locality's left part
 \pbunion{ground}{3.675}{0.85}{0.95}{\textbf{Mixing}\\ correlations decay within a finite integral scale}{3.10/4.25/0/1.7,0.6/3.10/0.12/0.42,0.6/0.9/0.12/1.7,0.6/1.0/1.35/1.7}{(0.6,0.12) -- (0.6,1.7) -- (1.0,1.7) -- (1.0,1.35) -- (0.9,1.35) -- (0.9,0.42) -- (3.10,0.42) -- (3.10,1.7) -- (4.25,1.7) -- (4.25,0) -- (3.10,0) -- (3.10,0.12)}
-\pbunion{ground}{11.8}{1.1}{3.3}{\textbf{Stationarity}\\ statistics invariant under time translation over the relaxation time $l/q$; the cascade in equilibrium}{9.975/13.625/0.5/1.7,9.975/13.625/0/0.5}{(9.975,0) -- (9.975,1.7) -- (13.625,1.7) -- (13.625,0)}
+\pbunion{ground}{11.8}{1.1}{3.3}{\textbf{Stationarity}\\ statistics invariant under time translation over the relaxation time $l/q$}{9.975/13.625/0.5/1.7,9.975/13.625/0/0.5}{(9.975,0) -- (9.975,1.7) -- (13.625,1.7) -- (13.625,0)}
 \pbunion{ground}{16.65}{0.85}{2.5}{\textbf{Similarity}\\ one universal scaled relation in every flow; the parameter list complete}{15.35/18.0/0/1.7,13.725/15.35/0/1.7}{(13.725,0) -- (13.725,1.7) -- (18.0,1.7) -- (18.0,0)}
 % homogeneity is one block: body + a channel through stationarity and similarity that surfaces as a band under Monin-Obukhov and the mixing length; drawn after them so it lies on top
 \pbunion{ground}{7.11}{0.85}{5.3}{\textbf{Horizontal homogeneity}\\ statistics invariant under horizontal translation: \mbox{$\pd{\avg{\cdot}}{x} = \pd{\avg{\cdot}}{y} = 0$} for every mean and every moment; the same block runs as a channel through stationarity and similarity up to the surface}{4.35/9.875/0/1.7,9.875/15.25/0.12/0.42,14.9/15.25/0.12/1.7,14.9/16.2/1.35/1.7}{(4.35,0) -- (4.35,1.7) -- (9.875,1.7) -- (9.875,0.42) -- (14.9,0.42) -- (14.9,1.7) -- (16.2,1.7) -- (16.2,1.35) -- (15.25,1.35) -- (15.25,0.12) -- (9.875,0.12) -- (9.875,0)}
-\pb{18.10}{23.625}{0}{1.7}{ground}{\textbf{Small-scale isotropy}\\ at high Reynolds number the small eddies forget the direction of shear and gravity: Kolmogorov's one dissipation rate, Rotta's return to isotropy at one rate}
+\pb{18.10}{23.625}{0}{1.7}{ground}{\textbf{Small-scale isotropy}\\ at high Reynolds number the small eddies forget the direction of shear and gravity}
 \pb{23.725}{25.50}{0}{1.7}{ground}{\textbf{Axisymmetry}\\ one preferred axis, gravity, along the surface normal; no handedness}
-\pb{25.60}{27.35}{0}{1.7}{ground}{\textbf{Boussinesq}\\ unsaturated air; buoyancy the only density effect, $\beta$ fixed; incompressible}
+\pb{25.60}{27.35}{0}{1.7}{ground}{\textbf{Boussinesq}\\ unsaturated air; buoyancy the only density effect; incompressible}
 % ---- tier 1: concepts (y 1.7 -- 3.6); 7 singles of 1.15, 4 doubles of 2.40, 2 triples of 3.65 ------
 \pb{0.60}{1.75}{1.7}{3.6}{hyp}{\textbf{Locality}\\ the flux answers the local gradient, $l \ll$ its scale, after decorrelation}
 \pb{1.85}{3.00}{1.7}{3.6}{hyp}{\textbf{Reynolds averaging}\\ mean plus fluctuation; the averaging rules hold}
