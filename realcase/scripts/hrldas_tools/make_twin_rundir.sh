@@ -26,6 +26,11 @@ n=0; for f in "$P"/*; do [ -L "$f" ] && { ln -s "$(readlink "$f")" "$N/$(basenam
 [ -e "$N/iofields_full.txt" ] || ln -s "$D/branko/realcase/iofields_full.txt" "$N/iofields_full.txt"
 sed -e "s#$D/exp/$1/#$D/exp/$2/#g" -e 's/^\(\s*iofields_filename\s*=\s*\)"[^"]*"/\1"iofields_full.txt"/' -e 's/^\(\s*output_t_fluxes\s*=\s*\)[0-9]*/\11/' "$P/namelist.input" > "$N/namelist.input"
 for s in submit_wrf.slurm submit_real.slurm; do sed "s/_$1\b/_$2/g" "$P/$s" > "$N/$s"; done
+# E49 guard: a parent run dir built before 2026-09-12 carries a submit_wrf.slurm without the output-dir mkdir -- WRF then runs to
+# the end writing nothing (X16s job 8637042, 2.5 h of 5 nodes lost). Insert the line if missing, and create the dir here as well.
+grep -q 'mkdir -p "${WRF_OUTPUT_ROOT:?}/temp/branko"' "$N/submit_wrf.slurm" || sed -i '/^\[ -f wrfinput_d01 \]/i mkdir -p "${WRF_OUTPUT_ROOT:?}/temp/branko" || exit 1   # E49: without it WRF still reports SUCCESS while every write fails (-1021)' "$N/submit_wrf.slurm"
+grep -q 'mkdir -p "${WRF_OUTPUT_ROOT:?}/temp/branko"' "$N/submit_wrf.slurm" || { echo "!!! could not insert the E49 mkdir into $N/submit_wrf.slurm -- add it by hand" >&2; exit 1; }
+mkdir -p "$D/exp/$2/temp/branko"
 sed "s#vsc5_$1.sh#vsc5_$2.sh#" "$P/env.sh" > "$N/env.sh"
 echo "=== copying wrfbdy_d01"; cp "$P/wrfbdy_d01" "$N/wrfbdy_d01"
 echo "=== wrfinput_d01 <- $RST"; python3 "$HERE/hrldas_to_wrfinput.py" "$P/wrfinput_d01" "$RST" "$N/wrfinput_d01" || exit 1

@@ -1402,6 +1402,8 @@ Do NOT expect one fix to serve both.
 **Cause.** A run directory built by hand (copy of X16b's dir with a new `WRF_OUTPUT_ROOT`) skipped the `mkdir -p "$WRF_OUTPUT_ROOT/temp/branko"` that `setup_rundir.sh` (line 108) performs; nothing in `submit_wrf.slurm` created it, and WRF's netCDF open failure is a warning, not an abort.
 **Rule.** `submit_wrf.slurm` (template and X16w's copy) now runs `mkdir -p "${WRF_OUTPUT_ROOT:?}/temp/branko" || exit 1` before `wrf.exe`. For any hand-built run dir: `ls -d $WRF_OUTPUT_ROOT/temp/branko` before `sbatch`, and `grep -c open_hist_w rsl.error.0000` must be 0 at the first frame. The empty archive is kept as `exp/X16w/wrf_output/8599103_nooutput`.
 
+
+**Recurrence 2026-09-17 (X16s, job 8637042):** a run dir built by copying an older run dir (`make_twin_rundir.sh` from X16b, 2026-09-10) inherited a `submit_wrf.slurm` without the `mkdir`; 2.5 h of 5 nodes produced no output. **Rule extended:** before any `sbatch submit_wrf.slurm`, `grep -c 'mkdir -p "${WRF_OUTPUT_ROOT:?}/temp/branko"' submit_wrf.slurm` must be 1 (the builder now inserts it and creates the dir); never trust a SLURM script copied from a run dir older than the last template fix — diff it against `realcase/scripts/submit_wrf.slurm`.
 ## E50 — the i-Box ECPY `mean_t{1,2,3}` is SONIC temperature: an acoustic virtual temperature with per-sensor offsets of 1–3 K, not a thermometer; absolute θ comparisons must use the ventilated `ta_avg`/`t_air_*`/`taact_avg` of the RAW tables (2026-09-15)
 
 **Symptom.** Model − sonic θ at Eggen −1.2 K and at StanserJoch/Arbeser −3.7 K (DECISIONS 2026-09-15 ~10:30) became +0.03 K and −1.2 K with the ventilated sensors (~12:30). Differences and variances from the sonic are fine; levels are not.
