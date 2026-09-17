@@ -2,7 +2,9 @@
 # Build a WRF twin run directory that differs from its parent ONLY in the land state (from an HRLDAS restart) and the output root.
 #
 #   hrldas/tools/make_twin_rundir.sh <PARENT_NAME> <NEW_NAME> <HRLDAS RESTART file>
-#   e.g.  make_twin_rundir.sh X16b X16s $DATA/hrldas_runs/spinup2025_july/LDASOUT/RESTART.2025071721_DOMAIN1
+#   e.g.  make_twin_rundir.sh X16b X16s $DATA/hrldas_runs/spinup_winter_july/LDASOUT/RESTART.2025071721_DOMAIN1
+#   PRODUCTION LAND STATE (Elias 2026-09-17, DECISIONS 14:55): the winter-start spin-up restarts in hrldas_runs/spinup_winter_july/LDASOUT
+#   (hourly 15 Jul 21 UT -> 18 Jul 00 UT; daily 21 UT restarts in spinup_winter/LDASOUT). Every future WRF run starts from one of these.
 #
 # Parent = branko_runs/innval_pbl3d_<PARENT_NAME>; new dir = branko_runs/innval_pbl3d_<NEW_NAME>; env file
 # branko/realcase/env/vsc5_<NEW_NAME>.sh must exist (WRF_OUTPUT_ROOT=exp/<NEW_NAME>). Every symlink of the parent is recreated,
