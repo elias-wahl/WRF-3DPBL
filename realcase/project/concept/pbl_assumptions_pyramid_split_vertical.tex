@@ -189,16 +189,16 @@ note's Table~I.0). Rules, reading and the correspondence to the note's rows are 
 \pbv{2.500}{6.680}{3.913}{4.902}{hyp}{\textbf{Eddy viscosity}\\ gradient transport, scalar $K \sim l q$: isotropic, one axis}{0.40}
 \pbv{2.500}{6.680}{2.924}{3.827}{hyp}{\textbf{Locality}\\ the flux answers the local gradient, $l \ll$ its scale, after decorrelation}{0.30}
 \pbv{2.500}{6.680}{0.516}{2.580}{hyp}{\textbf{Buoyancy production}\\ buoyancy acts on TKE through the vertical heat flux alone; no redistribution among the stress components}{0.30}
-\pbv{6.680}{11.980}{19.952}{22.936}{row}{\textbf{Grid means are ensemble means}\\ the grid spacing appears nowhere; the resolved flow is not turbulent, so its shear feeds production; the vertical grid resolves the shear layer it differentiates, $\Delta z \ll$ its depth}{0.30}
+\pbv{6.680}{11.980}{19.952}{22.936}{row}{\textbf{Grid means are ensemble means}\\ the grid spacing appears nowhere, every eddy inside the cell, $\Delta \gg l,\ z_i$; the resolved flow is not turbulent, so its shear feeds production; the vertical grid resolves the shear layer it differentiates, $\Delta z \ll$ its depth}{0.30}
 \pbv{6.680}{11.980}{18.705}{19.711}{row}{\textbf{Vertical shear only}\\ two of nine terms; no gradient of $W$}{0.56}
-\pbv{6.680}{11.980}{16.710}{18.533}{row}{\textbf{Vertical divergence only}\\ mean equations and TKE in $z$ only; TKE not advected; horizontal mixing by numerics at a separate scale, its energy lost to $\qsq$; surfaces horizontal}{0.56}
+\pbv{6.680}{11.980}{16.710}{18.533}{row}{\textbf{Vertical divergence only}\\ means and TKE in $z$ only; TKE not advected; horizontal mixing by numerics at its own scale, its energy lost, not paid to $\qsq$; surfaces horizontal}{0.40}
 \pbv{6.680}{11.980}{15.179}{16.486}{row}{\textbf{Wall value of $\qsq$}\\ $\qsq = B_1^{2/3} u_*^2$ at the ground: the neutral level-2 equilibrium of the constant-flux layer}{0.30}
 \pbv{6.680}{11.980}{13.373}{15.007}{row}{\textbf{Level-2.5 truncation}\\ all moments but $\qsq$ algebraic; $S_M$, $S_H$ from Rotta's balance $P_s + P_b = \varepsilon$ in the vertical Ri; cutoff at $\Rfc$}{0.56}
 \pbv{6.680}{11.980}{11.954}{13.201}{row}{\textbf{Surface fluxes and first level}\\ bulk transfer between the ground and $z_1$, inside the inertial sublayer: $z_0 \ll z_1 \ll z_i$}{0.30}
 \pbv{6.680}{11.980}{9.804}{11.782}{row}{\textbf{Master length scale}\\ $1/L = 1/L_S + 1/L_T + 1/L_B$: wall distance with $\zeta$, one $z_i$ per column, $q/N$ from the buoyancy term; the same $L$ in $K$ and $\varepsilon$; blind to terrain and grid}{0.56}
-\pbv{6.680}{11.980}{8.772}{9.632}{row}{\textbf{Constant set}\\ one set, fitted over flat terrain}{0.30}
-\pbv{6.680}{11.980}{7.035}{8.600}{row}{\textbf{Dissipation}\\ $\varepsilon = q^3/(B_1 L)$: isotropic, one rate, diagnosed from the master length}{0.30}
-\pbv{6.680}{11.980}{5.934}{6.811}{row}{\textbf{Pressure terms}\\ Rotta with $A_1$, $C_1$; transport as down-gradient diffusion, $S_q$}{0.30}
+\pbv{6.680}{11.980}{8.643}{9.632}{row}{\textbf{Constant set}\\ one set, fitted in neutral and convective air over flat terrain}{0.30}
+\pbv{6.680}{11.980}{7.052}{8.471}{row}{\textbf{Dissipation}\\ $\varepsilon = q^3/(B_1 L)$: isotropic, one rate, diagnosed from the master length}{0.30}
+\pbv{6.680}{11.980}{5.891}{6.880}{row}{\textbf{Pressure terms}\\ Rotta return, $A_1$; isotropised production, $C_1$; TKE transport down-gradient, $S_q$}{0.30}
 \pbv{6.680}{11.980}{2.924}{5.762}{row}{\textbf{K-form fluxes}\\ local and down-gradient, each flux from the gradient of its own mean; \mbox{$\avg{uw} = -K_M\,U_z$}, \mbox{$\avg{w\theta} = -K_H\,\Theta_z$}, $K = l q S$ with $l$ from the master length and $S$ from the level-2 algebra: one scalar $K$ in every direction, aligned with the gradient; one $K_H$ for all scalars}{0.40}
 \pbv{6.680}{11.980}{0.585}{2.511}{row}{\textbf{Buoyancy term}\\ $P_b = \beta g\,\avg{w\theta_v}$ of unsaturated air, $\beta = 1/300$~K; no horizontal heat flux; $\avg{w\theta_v}$ from the K-form}{0.30}
 \hlv{2.500}{6.680}{16.641}{19.780}{cFULL}{0.05}
@@ -241,18 +241,18 @@ note's Table~I.0). Rules, reading and the correspondence to the note's rows are 
 \node[inner sep=0pt] at (18.290,10.793) {\color{cGXIX}\gP};
 \node[inner sep=0pt] at (18.630,10.793) {\color{cAPPROX}\gK};
 \node[inner sep=0pt] at (18.970,10.793) {\color{cFULL}\gK};
-\node[inner sep=0pt] at (17.950,9.202) {\color{cMYNN}\gK};
-\node[inner sep=0pt] at (18.290,9.202) {\color{cGXIX}\gK};
-\node[inner sep=0pt] at (18.630,9.202) {\color{cAPPROX}\gK};
-\node[inner sep=0pt] at (18.970,9.202) {\color{cFULL}\gK};
-\node[inner sep=0pt] at (17.950,7.817) {\color{cMYNN}\gK};
-\node[inner sep=0pt] at (18.290,7.817) {\color{cGXIX}\gK};
-\node[inner sep=0pt] at (18.630,7.817) {\color{cAPPROX}\gK};
-\node[inner sep=0pt] at (18.970,7.817) {\color{cFULL}\gK};
-\node[inner sep=0pt] at (17.950,6.373) {\color{cMYNN}\gK};
-\node[inner sep=0pt] at (18.290,6.373) {\color{cGXIX}\gK};
-\node[inner sep=0pt] at (18.630,6.373) {\color{cAPPROX}\gK};
-\node[inner sep=0pt] at (18.970,6.373) {\color{cFULL}\gK};
+\node[inner sep=0pt] at (17.950,9.137) {\color{cMYNN}\gK};
+\node[inner sep=0pt] at (18.290,9.137) {\color{cGXIX}\gK};
+\node[inner sep=0pt] at (18.630,9.137) {\color{cAPPROX}\gK};
+\node[inner sep=0pt] at (18.970,9.137) {\color{cFULL}\gK};
+\node[inner sep=0pt] at (17.950,7.762) {\color{cMYNN}\gK};
+\node[inner sep=0pt] at (18.290,7.762) {\color{cGXIX}\gK};
+\node[inner sep=0pt] at (18.630,7.762) {\color{cAPPROX}\gK};
+\node[inner sep=0pt] at (18.970,7.762) {\color{cFULL}\gK};
+\node[inner sep=0pt] at (17.950,6.386) {\color{cMYNN}\gK};
+\node[inner sep=0pt] at (18.290,6.386) {\color{cGXIX}\gK};
+\node[inner sep=0pt] at (18.630,6.386) {\color{cAPPROX}\gK};
+\node[inner sep=0pt] at (18.970,6.386) {\color{cFULL}\gK};
 \node[inner sep=0pt] at (17.950,4.343) {\color{cMYNN}\gP};
 \node[inner sep=0pt] at (18.290,4.343) {\color{cGXIX}\gP};
 \node[inner sep=0pt] at (18.630,4.343) {\color{cAPPROX}\gP};
@@ -268,9 +268,9 @@ note's Table~I.0). Rules, reading and the correspondence to the note's rows are 
 \pbh{12.230}{17.530}{13.403}{14.977}{Most nocturnal valley cells lie beyond the critical Richardson number, where the deficit against the control is flat; the approximate closure switches off at $\Rfc$, the others never. Transitions outrun $l/q$; the strain cap's footprint measures it.}
 \pbh{12.230}{17.530}{11.984}{13.171}{The katabatic jet maximum sits inside the layer; over forest the first level lies in the roughness sublayer; the momentum flux is rarely height-constant.}
 \pbh{12.230}{17.530}{9.834}{11.752}{$z_i$ is ill-posed under elevated inversions, the wall distance ambiguous on a slope, the horizontal eddy set by the valley width: two lengths. In the cold pool the length, not the fluxes, was the lever; the fork bounds it by a buoyancy limit and a strain cap.}
-\pbh{12.230}{17.530}{8.802}{9.602}{Three constant sets in one comparison; their dissipation constants differ by a factor that rivals the effects to be reported.}
-\pbh{12.230}{17.530}{7.065}{8.570}{$\varepsilon$ is filter-independent while $q^3$ is not, so the dissipation length must shrink with the grid; the inertial-subrange estimate from the sonics needs Taylor's hypothesis and fails in weak-wind nights.}
-\pbh{12.230}{17.530}{5.964}{6.781}{Taking them small is ``a dangerous assumption'' in complex terrain; the Radfeld budget residual is their only observation.}
+\pbh{12.230}{17.530}{8.673}{9.602}{Three constant sets in one comparison; their dissipation constants differ by a factor that rivals the effects to be reported.}
+\pbh{12.230}{17.530}{7.082}{8.441}{$\varepsilon$ is filter-independent while $q^3$ is not, so the dissipation length must shrink with the grid; the inertial-subrange estimate from the sonics needs Taylor's hypothesis and fails in weak-wind nights.}
+\pbh{12.230}{17.530}{5.921}{6.850}{Taking them small is ``a dangerous assumption'' in complex terrain; the Radfeld budget residual is their only observation.}
 \pbh{12.230}{17.530}{2.954}{5.732}{Where slope wind turns into valley wind the stress axes leave the gradient and the jet veers with height: $\avg{uv}$ appears, negative production is admissible. The grid filter, aspect ratio 25, imprints its anisotropy on the subgrid eddies; in stable air $K_H/K_M$ falls with Ri.}
 \pbh{12.230}{17.530}{0.615}{2.481}{The slope-normal surface heat flux has a horizontal component with no home in the budget; in stable air buoyancy damps $\avg{w^2}$ selectively; on fog nights the saturated flux follows the moist gradient, which only the control's condensation scheme knows; $\beta = 1/300$~K is a few percent off at valley $\Theta_v$.}
 \end{tikzpicture}
@@ -313,10 +313,10 @@ applies local equilibrium and takes its stability functions from the surface-lay
 to; the master length takes its wall branch from Monin--Obukhov similarity, its shape from the mixing length and its coefficients from universality;
 the dissipation takes its form from the cascade and its constant from universality; the K-form takes its locality from locality, its scalar from the eddy viscosity and its coefficients from the return to isotropy. Terrain breaks the ground at the top
 and in the middle --- homogeneity, the column, the constant-flux layer, one axis --- and the grey zone breaks it
-at the very top; the lower third, isotropy and its constants, is the part no scheme in the comparison touches.\par}
+at the very top; the lower third, isotropy and its constants, no scheme in the comparison touches.\par}
 
 \vspace{0.1ex}
-{\footnotesize\textbf{Correspondence to the note's rows.} Grid means are ensemble means: A1, A2 and the resolved vertical gradient (D4). Vertical shear only: B1, B2. Vertical divergence only: B3, B4, B5, B7. Constant-flux layer and Monin--Obukhov similarity: the two halves of B6. Wall value of $\qsq$: the lower boundary of the TKE equation, part of B6. Surface fluxes and first level: D3 with the bulk-transfer half of B6. K-form fluxes: C1, C2, C3 and the mixing of all scalars alike. Master length scale: C4 with the one-length statement of C5. Dissipation: C5. Level-2.5
+{\footnotesize\textbf{Correspondence to the note's rows.} Grid means are ensemble means: A1, A2, D4. Vertical shear only: B1, B2. Vertical divergence only: B3, B4, B5, B7. Constant-flux layer and Monin--Obukhov similarity: the two halves of B6. Wall value of $\qsq$: the lower boundary of the TKE equation, part of B6. Surface fluxes and first level: D3 with the bulk-transfer half of B6. K-form fluxes: C1, C2, C3 and the mixing of all scalars alike. Master length scale: C4 with the one-length statement of C5. Dissipation: C5. Level-2.5
 truncation: C6, C7. Buoyancy term: C8 with the dry buoyancy flux (D5). Constant set: C9. Pressure terms: C10.\par}
 
 \end{document}

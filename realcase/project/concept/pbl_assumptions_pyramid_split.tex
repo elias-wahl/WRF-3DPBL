@@ -198,16 +198,16 @@ dynamical core's numerical dissipation. Homogeneity carries a channel: it runs t
 \pb{24.35}{26.75}{1.7}{3.6}{hyp}{\textbf{Buoyancy production}\\ buoyancy acts on TKE through the vertical heat flux alone; no redistribution among the stress components}
 % ---- tier 2: the formalism (y 3.6 -- 6.1) --------------------------------------------------------------
 
-\pb{0.68}{4.15}{3.6}{6.1}{row}{\textbf{Grid means are ensemble means}\\ the grid spacing appears nowhere; the resolved flow is not turbulent, so its shear feeds production; the vertical grid resolves the shear layer it differentiates, $\Delta z \ll$ its depth}
+\pb{0.68}{4.15}{3.6}{6.1}{row}{\textbf{Grid means are ensemble means}\\ the grid spacing appears nowhere, every eddy inside the cell, $\Delta \gg l,\ z_i$; the resolved flow is not turbulent, so its shear feeds production; the vertical grid resolves the shear layer it differentiates, $\Delta z \ll$ its depth}
 \pbf{4.43}{5.6}{3.6}{6.1}{row}{\textbf{Vertical shear only}\\ two of nine terms; no gradient of $W$}{0.44}
-\pbf{5.8}{7.92}{3.6}{6.1}{row}{\textbf{Vertical divergence only}\\ mean equations and TKE in $z$ only; TKE not advected; horizontal mixing by numerics at a separate scale, its energy lost to $\qsq$; surfaces horizontal}{0.44}
+\pbf{5.8}{7.92}{3.6}{6.1}{row}{\textbf{Vertical divergence only}\\ means and TKE in $z$ only; TKE not advected; horizontal mixing by numerics at its own scale, its energy lost, not paid to $\qsq$; surfaces horizontal}{0.36}
 \pb{8.18}{9.7}{3.6}{6.1}{row}{\textbf{Wall value of $\qsq$}\\ $\qsq = B_1^{2/3} u_*^2$ at the ground: the neutral level-2 equilibrium of the constant-flux layer}
 \pbf{9.9}{11.8}{3.6}{6.1}{row}{\textbf{Level-2.5 truncation}\\ all moments but $\qsq$ algebraic; $S_M$, $S_H$ from Rotta's balance $P_s + P_b = \varepsilon$ in the vertical Ri; cutoff at $\Rfc$}{0.44}
 \pb{12}{13.45}{3.6}{6.1}{row}{\textbf{Surface fluxes and first level}\\ bulk transfer between the ground and $z_1$, inside the inertial sublayer: $z_0 \ll z_1 \ll z_i$}
 \pbf{13.65}{15.95}{3.6}{6.1}{row}{\textbf{Master length scale}\\ $1/L = 1/L_S + 1/L_T + 1/L_B$: wall distance with $\zeta$, one $z_i$ per column, $q/N$ from the buoyancy term; the same $L$ in $K$ and $\varepsilon$; blind to terrain and grid}{0.44}
-\pb{16.15}{17.15}{3.6}{6.1}{row}{\textbf{Constant set}\\ one set, fitted over flat terrain}
-\pb{17.35}{19.17}{3.6}{6.1}{row}{\textbf{Dissipation}\\ $\varepsilon = q^3/(B_1 L)$: isotropic, one rate, diagnosed from the master length}
-\pb{19.43}{20.45}{3.6}{6.1}{row}{\textbf{Pressure terms}\\ Rotta with $A_1$, $C_1$; transport as down-gradient diffusion, $S_q$}
+\pb{16.15}{17.30}{3.6}{6.1}{row}{\textbf{Constant set}\\ one set, fitted in neutral and convective air over flat terrain}
+\pb{17.50}{19.15}{3.6}{6.1}{row}{\textbf{Dissipation}\\ $\varepsilon = q^3/(B_1 L)$: isotropic, one rate, diagnosed from the master length}
+\pb{19.35}{20.50}{3.6}{6.1}{row}{\textbf{Pressure terms}\\ Rotta return, $A_1$; isotropised production, $C_1$; TKE transport down-gradient, $S_q$}
 \pbf{20.65}{23.95}{3.6}{6.1}{row}{\textbf{K-form fluxes}\\ local and down-gradient, each flux from the gradient of its own mean; \mbox{$\avg{uw} = -K_M\,U_z$}, \mbox{$\avg{w\theta} = -K_H\,\Theta_z$}, $K = l q S$ with $l$ from the master length and $S$ from the level-2 algebra: one scalar $K$ in every direction, aligned with the gradient; one $K_H$ for all scalars}{0.30}
 
 \pb{24.43}{26.67}{3.6}{6.1}{row}{\textbf{Buoyancy term}\\ $P_b = \beta g\,\avg{w\theta_v}$ of unsaturated air, $\beta = 1/300$~K; no horizontal heat flux; $\avg{w\theta_v}$ from the K-form}
@@ -241,18 +241,18 @@ dynamical core's numerical dissipation. Homogeneity carries a channel: it runs t
 \node[inner sep=0pt] at (14.800,6.80) {\color{cGXIX}\gP};
 \node[inner sep=0pt] at (14.800,7.15) {\color{cAPPROX}\gK};
 \node[inner sep=0pt] at (14.800,7.50) {\color{cFULL}\gK};
-\node[inner sep=0pt] at (16.650,6.45) {\color{cMYNN}\gK};
-\node[inner sep=0pt] at (16.650,6.80) {\color{cGXIX}\gK};
-\node[inner sep=0pt] at (16.650,7.15) {\color{cAPPROX}\gK};
-\node[inner sep=0pt] at (16.650,7.50) {\color{cFULL}\gK};
-\node[inner sep=0pt] at (18.260,6.45) {\color{cMYNN}\gK};
-\node[inner sep=0pt] at (18.260,6.80) {\color{cGXIX}\gK};
-\node[inner sep=0pt] at (18.260,7.15) {\color{cAPPROX}\gK};
-\node[inner sep=0pt] at (18.260,7.50) {\color{cFULL}\gK};
-\node[inner sep=0pt] at (19.940,6.45) {\color{cMYNN}\gK};
-\node[inner sep=0pt] at (19.940,6.80) {\color{cGXIX}\gK};
-\node[inner sep=0pt] at (19.940,7.15) {\color{cAPPROX}\gK};
-\node[inner sep=0pt] at (19.940,7.50) {\color{cFULL}\gK};
+\node[inner sep=0pt] at (16.725,6.45) {\color{cMYNN}\gK};
+\node[inner sep=0pt] at (16.725,6.80) {\color{cGXIX}\gK};
+\node[inner sep=0pt] at (16.725,7.15) {\color{cAPPROX}\gK};
+\node[inner sep=0pt] at (16.725,7.50) {\color{cFULL}\gK};
+\node[inner sep=0pt] at (18.325,6.45) {\color{cMYNN}\gK};
+\node[inner sep=0pt] at (18.325,6.80) {\color{cGXIX}\gK};
+\node[inner sep=0pt] at (18.325,7.15) {\color{cAPPROX}\gK};
+\node[inner sep=0pt] at (18.325,7.50) {\color{cFULL}\gK};
+\node[inner sep=0pt] at (19.925,6.45) {\color{cMYNN}\gK};
+\node[inner sep=0pt] at (19.925,6.80) {\color{cGXIX}\gK};
+\node[inner sep=0pt] at (19.925,7.15) {\color{cAPPROX}\gK};
+\node[inner sep=0pt] at (19.925,7.50) {\color{cFULL}\gK};
 \node[inner sep=0pt] at (22.300,6.45) {\color{cMYNN}\gP};
 \node[inner sep=0pt] at (22.300,6.80) {\color{cGXIX}\gP};
 \node[inner sep=0pt] at (22.300,7.15) {\color{cAPPROX}\gP};
