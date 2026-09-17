@@ -48,11 +48,6 @@
   \if1\csname key@#1\endcsname\textcolor{cKey}{$\blacktriangleright$}\else\textcolor{cKey}{$\triangleright$}\fi\fi}
 \makeatother
 \newcommand{\pid}[1]{\keymark{#1}\textbf{#1}}
-% compound block: \ppart{x0}{x1}{y0}{y1}{title} fills a part, \ppoly{path} draws the outline, \ptext{x0}{x1}{y0}{y1}{text}{hpad} sets text
-\newcommand{\ppart}[5]{\fill[black!22] (#1,#3) rectangle (#2,#4);}
-\newcommand{\ppoly}[1]{\draw[line width=0.4pt] #1;}
-\newcommand{\ptext}[6]{\pgfmathsetmacro{\pbw}{#2-#1-#6}%
-  \node[align=center, font=\tiny, inner sep=0pt, text width=\pbw cm] at ({(#1+#2)/2},{(#3+#4)/2}) {#5};}
 % \pb{x0}{x1}{y0}{y1}{style}{text}: a block from (x0,y0) to (x1,y1), text centred
 \newcommand{\pbf}[7]{\pgfmathsetmacro{\pbw}{#2-#1-#7}%
   \draw[#5] (#1,#3) rectangle (#2,#4);
@@ -91,6 +86,7 @@
 \lean{Locality}{Mixing}
 \lean{Boundary-layer (column) approximation}{Boussinesq}
 \lean{Monin--Obukhov similarity}{Axisymmetry}
+\lean{Mixing length}{Horizontal homogeneity}
 \lean{Energy cascade}{Stationarity}
 \lean{Local equilibrium}{Locality}
 \lean{Eddy viscosity}{Locality}
@@ -171,7 +167,7 @@ the hectometre column are on the pyramid pages.\par}
 \node[nd, fill=black!9, text width=1.75cm] (n12) at (350.70:8.5) {\textbf{Constant-flux layer}};
 \node[nd, fill=black!9, text width=1.75cm] (n13) at (334.86:8.5) {\textbf{Local equilibrium}};
 \node[nd, fill=black!9, text width=1.75cm] (n14) at (308.48:8.5) {\textbf{Monin--Obukhov similarity}};
-\node[nd, fill=black!9, text width=1.75cm] (n15) at (274.16:8.5) {\textbf{Mixing length}};
+\node[nd, fill=black!9, text width=1.75cm] (n15) at (289.29:8.5) {\textbf{Mixing length}};
 \node[nd, fill=black!9, text width=1.75cm] (n16) at (242.48:8.5) {\textbf{Universal constants}};
 \node[nd, fill=black!9, text width=1.75cm] (n17) at (258.32:8.5) {\textbf{Energy cascade}};
 \node[nd, fill=black!9, text width=1.75cm] (n18) at (225.00:8.5) {\textbf{Return to isotropy}};
@@ -183,7 +179,7 @@ the hectometre column are on the pyramid pages.\par}
 \node[nd, fill=white, text width=1.75cm] (n24) at (332.60:12.0) {\textbf{Wall value of $\qsq$}};
 \node[nd, fill=white, text width=1.75cm] (n25) at (319.70:12.0) {\textbf{Level-2.5 truncation}};
 \node[nd, fill=white, text width=1.75cm] (n26) at (308.48:12.0) {\textbf{Surface fluxes and first level}};
-\node[nd, fill=white, text width=1.75cm] (n27) at (267.48:12.0) {\textbf{Master length scale}};
+\node[nd, fill=white, text width=1.75cm] (n27) at (273.08:12.0) {\textbf{Master length scale}};
 \node[nd, fill=white, text width=1.75cm] (n28) at (242.54:12.0) {\textbf{Constant set}};
 \node[nd, fill=white, text width=1.75cm] (n29) at (253.76:12.0) {\textbf{Dissipation}};
 \node[nd, fill=white, text width=1.75cm] (n30) at (220.10:12.0) {\textbf{Pressure terms}};
@@ -232,6 +228,7 @@ the hectometre column are on the pyramid pages.\par}
 \draw[lean] (n8) -- (n1);
 \draw[lean] (n11) -- (n7);
 \draw[lean] (n14) -- (n6);
+\draw[lean] (n15) -- (n2);
 \draw[lean] (n17) -- (n3);
 \draw[leansame] (n13) -- (n8);
 \draw[leansame] (n19) -- (n8);
