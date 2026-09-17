@@ -99,6 +99,15 @@
 \lean{Boundary-layer (column) approximation}{Boussinesq}
 \lean{Energy cascade}{Stationarity}
 \lean{Local equilibrium}{Locality}
+\lean{Local equilibrium}{Horizontal homogeneity}
+\lean{Monin--Obukhov similarity}{Constant-flux layer}
+\lean{Mixing length}{Mixing}
+\lean{Locality}{Mixing}
+\lean{Energy cascade}{Mixing}
+\lean{Eddy viscosity}{Locality}
+\lean{Eddy viscosity}{Mixing length}
+\lean{Return to isotropy}{Horizontal homogeneity}
+\lean{Stability functions and cutoff}{Level-2.5 truncation}
 \lean{Universal constants}{Reynolds averaging}
 \lean{Vertical divergence only}{Spectral gap}
 \lean{Wall value of $\qsq$}{Universal constants}
@@ -183,20 +192,20 @@ dynamical core's numerical dissipation. Homogeneity carries a channel: it runs t
 
 % ---- tier 1: concepts (y 1.7 -- 3.6); 7 singles of 1.15, 4 doubles of 2.40, 2 triples of 3.65 ------
 
-\pb{0.4}{1.45}{1.7}{3.6}{hyp}{\textbf{Reynolds averaging}\\ mean plus fluctuation; the averaging rules hold}
-\pb{1.55}{4.25}{1.7}{3.6}{hyp}{\textbf{Ergodicity in space}\\ the cell mean converges to the ensemble mean: many decorrelated eddies per cell, \mbox{$\Delta \gg l$}, alike across it}
-\pbf{4.35}{8}{1.7}{3.6}{hyp}{\textbf{Boundary-layer (column) approximation}\\ every mean and every moment varies in $z$ only; $W = 0$ by continuity}{0.44}
-\pb{8.1}{9.25}{1.7}{3.6}{hyp}{\textbf{Constant-flux layer}\\ fluxes constant with height in the lowest tenth}
-\pb{9.35}{11.05}{1.7}{3.6}{hyp}{\textbf{Local equilibrium}\\ second moments follow the current local gradients}
-\pb{11.15}{13.85}{1.7}{3.6}{hyp}{\textbf{Monin--Obukhov similarity}\\ universal flux--profile relations in $z/L_{\mathrm{MO}}$ over a homogeneous, hence horizontal, surface: one Obukhov length, one roughness length}
-\pb{13.95}{15.1}{1.7}{3.6}{hyp}{\textbf{Mixing length}\\ one eddy size from the column's vertical structure}
-\pb{15.2}{17.5}{1.7}{3.6}{hyp}{\textbf{Universal constants}\\ the rates of return to isotropy and of dissipation are the same ensemble numbers in every flow}
+\pb{0}{1.45}{1.7}{3.6}{hyp}{\textbf{Reynolds averaging}\\ mean plus fluctuation; the rules of averaging hold because the mean does not vary across the window}
+\pb{1.55}{4.25}{1.7}{3.6}{hyp}{\textbf{Ergodicity in space}\\ the cell mean converges to the ensemble mean: statistics alike across the cell, correlations decaying within $l$, and many such eddies per cell, \mbox{$\Delta \gg l$}}
+\pbf{4.35}{8}{1.7}{3.6}{hyp}{\textbf{Boundary-layer (column) approximation}\\ every mean and every moment varies in $z$ only: horizontal gradients are neglected as if the flow around each column were homogeneous; $W = 0$ by continuity}{0.44}
+\pb{8.1}{9.25}{1.7}{3.6}{hyp}{\textbf{Constant-flux layer}\\ fluxes keep their surface value in the lowest tenth of the layer}
+\pb{9.35}{11.05}{1.7}{3.6}{hyp}{\textbf{Local equilibrium}\\ second moments follow the current local gradients: tendency, advection and transport negligible over $l/q$}
+\pb{11.15}{13.85}{1.7}{3.6}{hyp}{\textbf{Monin--Obukhov similarity}\\ in the constant-flux layer the gradients scaled by $u_*$, $\theta_*$, $z$ are universal functions of $z/L_{\mathrm{MO}}$: no other parameter; over a homogeneous, hence horizontal, surface with one roughness length}
+\pb{13.95}{15.1}{1.7}{3.6}{hyp}{\textbf{Mixing length}\\ one integral scale $l$ per height, set by the column alone}
+\pb{15.2}{17.5}{1.7}{3.6}{hyp}{\textbf{Universal constants}\\ the scaled rates of return to isotropy and of dissipation are pure numbers, the same in every flow: measured once in simple flows, valid everywhere}
 \pb{17.6}{18.6}{1.7}{3.6}{hyp}{\textbf{Energy cascade}\\ isotropic dissipation in equilibrium with the large eddies, $\varepsilon \sim q^3/l$}
-\pb{18.7}{21.5}{1.7}{3.6}{hyp}{\textbf{Return to isotropy}\\ pressure--strain relaxes anisotropy at one rate, linear in it (Rotta); pressure transport diffusive}
-\pbf{22.85}{24.5}{1.7}{3.6}{hyp}{\textbf{Eddy viscosity}\\ gradient transport with one scalar $K \sim l q$, the same along and across the shear}{0.30}
+\pb{18.7}{21.5}{1.7}{3.6}{hyp}{\textbf{Return to isotropy}\\ pressure fluctuations scramble the eddies toward isotropy: anisotropy decays at the one rate $q/l$, linear in it (Rotta), computed locally as in homogeneous turbulence away from walls; pressure transport diffusive}
+\pbf{22.85}{24.5}{1.7}{3.6}{hyp}{\textbf{Eddy viscosity}\\ local gradient transport with one positive scalar $K \sim l q$, alike along and across the shear}{0.30}
 \pb{21.7}{22.75}{1.7}{3.6}{hyp}{\textbf{Locality}\\ the flux answers the local gradient, $l \ll$ its scale, after decorrelation}
 
-\pb{24.65}{27}{1.7}{3.6}{hyp}{\textbf{Buoyancy production}\\ buoyancy acts on TKE through the vertical heat flux alone; no redistribution among the stress components}
+\pb{24.65}{27}{1.7}{3.6}{hyp}{\textbf{Buoyancy production}\\ gravity acts along one axis: buoyancy exchanges kinetic and potential energy through the vertical heat flux alone; no horizontal heat flux, no redistribution among the stress components}
 % ---- tier 2: the formalism (y 3.6 -- 6.1) --------------------------------------------------------------
 
 \pb{0.48}{4.15}{3.6}{6.1}{row}{\textbf{Grid means are ensemble means}\\ the grid spacing appears nowhere, every eddy inside the cell, $\Delta \gg l,\ z_i$; the resolved flow is not turbulent, so its shear feeds production; the vertical grid resolves the shear layer it differentiates, $\Delta z \ll$ its depth}
