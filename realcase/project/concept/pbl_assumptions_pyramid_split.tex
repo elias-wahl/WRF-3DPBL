@@ -6,6 +6,8 @@
 %  2026-09-17: ONLY THE VERTICAL TWIN IS MAINTAINED (Elias). Block extents along the ground are sized for the vertical
 %  page (extent x 0.86 = block height there); built directly, this landscape page has overflowing texts.
 %  Shift coordinates with scripts/pyramid_remap.py, never by hand.
+%  2026-09-18: small-scale isotropy split at x = 20.2/20.3 into itself and the premise Weak anisotropy (Mellor & Yamada 1982,
+%  p. 854: terms of order a^2 eliminated, a_ij^2 ~ 0.15 "not overly small"); Return to isotropy stands on both.
 %  Companion to pbl_assumptions_table.tex (rows A1-C10 = Table I.1; D3-D8 added here).
 %  Build: source ~/miniconda3/bin/activate tex && tectonic pbl_assumptions_pyramid.tex
 %  Layout rule: a block touches at its bottom exactly the blocks it relies on; blocks
@@ -84,7 +86,7 @@
 \hecto{Vertical shear only}{The jet's cross-valley shear is a sizeable fraction of its vertical shear; in weak drainage flow directional shear sets $u_*$.}
 \hecto{Vertical divergence only}{Horizontal flux divergences are of the order of the vertical one, and the Riviera budgets closed only with transport and advection; the numerical operator stands where the physical divergence belongs, and the energy it removes vanishes instead of feeding $\qsq$.}
 \hecto{Wall value of $\qsq$}{The nocturnal sonics record turbulence at the surface where every model goes laminar; the observed friction velocity implies a wall $\qsq$ between the two closures' values.}
-\hecto{Level-2.5 truncation}{Transitions outrun $l/q$; the strain cap's footprint measures it.}
+\hecto{Level-2.5 truncation}{The closure's own ordering justifies the step in stable and slightly unstable air, not toward free convection. Transitions outrun $l/q$; the strain cap's footprint measures it.}
 \hecto{Stability functions and cutoff}{Most nocturnal valley cells lie beyond the critical Richardson number, where the deficit against the control is flat; the approximate closure switches off at $\Rfc$, the others never.}
 \hecto{Surface fluxes and first level}{The katabatic jet maximum sits inside the layer; over forest the first level lies in the roughness sublayer; the momentum flux is rarely height-constant.}
 \hecto{Master length scale}{$z_i$ is ill-posed under elevated inversions, the wall distance ambiguous on a slope, the horizontal eddy set by the valley width: two lengths. In the cold pool the length, not the fluxes, was the lever; the fork bounds it by a buoyancy limit and a strain cap.}
@@ -108,6 +110,8 @@
 \lean{Eddy viscosity}{Mixing length}
 \lean{Return to isotropy}{Horizontal homogeneity}
 \lean{Stability functions and cutoff}{Level-2.5 truncation}
+\lean{Level-2.5 truncation}{Weak anisotropy}
+\lean{Buoyancy production}{Return to isotropy}
 \lean{Universal constants}{Reynolds decomposition}
 \lean{Vertical divergence only}{Spectral gap}
 \lean{Wall value of $\qsq$}{Universal constants}
@@ -152,7 +156,7 @@
 
 \vspace{0.6ex}
 {\footnotesize Every block is an assumption a boundary-layer scheme makes in order to run. A block touches at its
-bottom exactly the blocks it relies on, and blocks on one level do not touch each other. Three tiers. Dark grey, the ground: nine hypotheses about the fluid and the flow that rest on nothing else here; horizontal homogeneity extends under stationarity and rises between stationarity and similarity, with an air gap above the tunnel, so that Monin--Obukhov similarity touches its three premises. Light grey, the
+bottom exactly the blocks it relies on, and blocks on one level do not touch each other. Three tiers. Dark grey, the ground: ten hypotheses about the fluid and the flow that rest on nothing else here; horizontal homogeneity extends under stationarity and rises between stationarity and similarity, with an air gap above the tunnel, so that Monin--Obukhov similarity touches its three premises. Light grey, the
 concepts: the constructs of turbulence theory that follow from the ground and that every closure of this family
 speaks in --- the Reynolds decomposition, the column approximation, the constant-flux layer, Monin--Obukhov similarity,
 the mixing length, the eddy viscosity, Rotta's return to isotropy, Kolmogorov's cascade. White, the formalism:
@@ -184,7 +188,8 @@ dynamical core's numerical dissipation. Homogeneity carries a channel: it runs t
 \pbunion{ground}{15.3}{0.85}{2.5}{\textbf{Similarity}\\ one universal scaled relation in every flow; the parameter list complete}{14/16.65/0/1.7,12.375/14/0/1.7}{(12.375,0) -- (12.375,1.7) -- (16.65,1.7) -- (16.65,0)}
 % homogeneity is one block: body + a channel through stationarity and similarity that surfaces as a band under Monin-Obukhov and the mixing length; drawn after them so it lies on top
 \pbunion{ground}{5.86}{0.85}{5.3}{\textbf{Horizontal homogeneity}\\ statistics invariant under horizontal translation: \mbox{$\partial_x\avg{\cdot} = \partial_y\avg{\cdot} = 0$} for every mean and every moment; the same block runs as a channel through stationarity and similarity up to the surface}{3.1/8.625/0/1.7,8.625/13.9/0.12/0.42,13.55/13.9/0.12/1.7,13.55/14.85/1.35/1.7}{(3.1,0) -- (3.1,1.7) -- (8.625,1.7) -- (8.625,0.42) -- (13.55,0.42) -- (13.55,1.7) -- (14.85,1.7) -- (14.85,1.35) -- (13.9,1.35) -- (13.9,0.12) -- (8.625,0.12) -- (8.625,0)}
-\pb{16.75}{21.9}{0}{1.7}{ground}{\textbf{Small-scale isotropy}\\ at high Reynolds number the small eddies forget the direction of shear and gravity}
+\pb{16.75}{20.2}{0}{1.7}{ground}{\textbf{Small-scale isotropy}\\ at high Reynolds number the small eddies forget the direction of shear and gravity}
+\pb{20.3}{21.9}{0}{1.7}{ground}{\textbf{Weak anisotropy}\\ the energy-containing eddies depart only weakly from isotropy}
 \pb{22}{23.65}{0}{1.7}{ground}{\textbf{Gradient scale}\\ the eddy small against the scale of the mean gradient}
 \pb{23.75}{25.8}{0}{1.7}{ground}{\textbf{Axisymmetric mixing}\\ gravity the one axis; one $K$ along and across the shear; no handedness}
 \pb{25.9}{27.6}{0}{1.7}{ground}{\textbf{Boussinesq}\\ unsaturated air; buoyancy the only density effect; incompressible}
@@ -201,18 +206,18 @@ dynamical core's numerical dissipation. Homogeneity carries a channel: it runs t
 \pb{14.25}{15.4}{1.7}{3.6}{hyp}{\textbf{Mixing length}\\ one integral scale $l$ per height, set by the column alone}
 \pb{15.5}{17.8}{1.7}{3.6}{hyp}{\textbf{Universal constants}\\ the scaled rates of return to isotropy and of dissipation are pure numbers, the same in every flow: measured once in simple flows, valid everywhere}
 \pb{17.9}{18.9}{1.7}{3.6}{hyp}{\textbf{Energy cascade}\\ isotropic dissipation in equilibrium with the large eddies, $\varepsilon \sim q^3/l$}
-\pb{19}{21.8}{1.7}{3.6}{hyp}{\textbf{Return to isotropy}\\ pressure fluctuations scramble the eddies toward isotropy: anisotropy decays at the one rate $q/l$, linear in it (Rotta), computed locally as in homogeneous turbulence away from walls; pressure transport diffusive}
+\pb{19}{21.8}{1.7}{3.6}{hyp}{\textbf{Return to isotropy}\\ pressure fluctuations scramble the eddies toward isotropy: anisotropy decays at the one rate $q/l$, linear in it, because it is small (Rotta), computed locally as in homogeneous turbulence away from walls; pressure transport diffusive}
 \pbf{23.15}{24.8}{1.7}{3.6}{hyp}{\textbf{Eddy viscosity}\\ local gradient transport with one positive scalar $K \sim l q$, alike along and across the shear}{0.30}
 \pb{22}{23.05}{1.7}{3.6}{hyp}{\textbf{Locality}\\ the flux answers the local gradient, $l \ll$ its scale, after decorrelation}
 
-\pb{24.95}{27.3}{1.7}{3.6}{hyp}{\textbf{Buoyancy production}\\ gravity acts along one axis: buoyancy exchanges kinetic and potential energy through the vertical heat flux alone; no horizontal heat flux, no redistribution among the stress components}
+\pb{24.95}{27.3}{1.7}{3.6}{hyp}{\textbf{Buoyancy production}\\ gravity acts along one axis: the vertical heat flux alone exchanges kinetic and potential energy, all of it in $\avg{w^2}$; its sharing among the components is left to the return to isotropy; no horizontal heat flux}
 % ---- tier 2: the formalism (y 3.6 -- 6.1) --------------------------------------------------------------
 
 \pb{0.48}{4.15}{3.6}{6.1}{row}{\textbf{Grid means are ensemble means}\\ the grid spacing appears nowhere, every eddy inside the cell, $\Delta \gg l,\ z_i$; the resolved flow is not turbulent, so its shear feeds production; the vertical grid resolves the shear layer it differentiates, $\Delta z \ll$ its depth}
 \pbf{4.43}{5.6}{3.6}{6.1}{row}{\textbf{Vertical shear only}\\ two of nine terms; no gradient of $W$}{0.44}
 \pbf{5.8}{7.92}{3.6}{6.1}{row}{\textbf{Vertical divergence only}\\ means and TKE in $z$ only; TKE not advected; horizontal mixing by numerics at its own scale, its energy lost, not paid to $\qsq$; surfaces horizontal}{0.36}
 \pb{8.18}{9.7}{3.6}{6.1}{row}{\textbf{Wall value of $\qsq$}\\ $\qsq = B_1^{2/3} u_*^2$ at the ground: the neutral level-2 equilibrium of the constant-flux layer}
-\pb{9.9}{11.35}{3.6}{6.1}{row}{\textbf{Level-2.5 truncation}\\ all second moments but $\qsq$ algebraic: their tendencies and transport neglected}
+\pb{9.9}{11.35}{3.6}{6.1}{row}{\textbf{Level-2.5 truncation}\\ all second moments but $\qsq$ algebraic: their tendencies and transport neglected, to leading order in the anisotropy}
 \pb{11.9}{13.35}{3.6}{6.1}{row}{\textbf{Surface fluxes and first level}\\ bulk transfer between the ground and $z_1$, inside the inertial sublayer: $z_0 \ll z_1 \ll z_i$}
 \pbf{13.55}{15.85}{3.6}{6.1}{row}{\textbf{Master length scale}\\ $1/L = 1/L_S + 1/L_T + 1/L_B$: wall distance with $\zeta$, one $z_i$ per column, $q/N$ from the buoyancy term; blind to terrain and grid}{0.44}
 \pb{16.05}{17.2}{3.6}{6.1}{row}{\textbf{Constant set}\\ one set, fitted in neutral and convective air over flat terrain}
@@ -309,7 +314,7 @@ the frontier. Nested frames: both schemes; the three-dimensional closure touches
 \vspace{0.1ex}
 {\footnotesize\textbf{Reading.} The ground holds the premises, hypotheses about the fluid and the flow; nothing in it names a model. The middle tier is where
 the model's vocabulary is born: the spectral gap gives the Reynolds decomposition its rules; mixing with homogeneity gives ergodicity in space; the gradient scale gives locality; homogeneity gives the
-column approximation and, with stationarity, the constant-flux layer; stationarity gives local equilibrium and, with similarity and the homogeneity channel, Monin--Obukhov similarity; similarity and homogeneity give the mixing length; similarity with small-scale isotropy gives universal constants; small-scale isotropy gives the cascade and the return to isotropy; the gradient scale with the axisymmetry of the mixing gives the eddy viscosity; axisymmetric mixing and a Boussinesq fluid give buoyancy production through the vertical heat flux. The top
+column approximation and, with stationarity, the constant-flux layer; stationarity gives local equilibrium and, with similarity and the homogeneity channel, Monin--Obukhov similarity; similarity and homogeneity give the mixing length; similarity with small-scale isotropy gives universal constants; small-scale isotropy gives the cascade and, with the weak anisotropy of the energy-containing eddies, the return to isotropy; the gradient scale with the axisymmetry of the mixing gives the eddy viscosity; axisymmetric mixing and a Boussinesq fluid give buoyancy production through the vertical heat flux. The top
 tier is the closure as written, and every one of its statements applies one or two concepts: the truncation
 applies local equilibrium; the stability functions and the cutoff come from Rotta's return through the level-2 balance; the master length takes its wall branch from Monin--Obukhov similarity, its shape from the mixing length and its coefficients from universality;
 the one-length statement takes its form from the cascade and its constant from universality; the K-form takes its locality from locality and its scalar from the eddy viscosity, and this closure's $K = lqS$ borrows $l$ from the master length and $S$ from the stability functions. Terrain breaks the ground on the left

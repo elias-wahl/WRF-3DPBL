@@ -130,9 +130,15 @@ ROWS = [
       (r"K-form's ``one $K_H$ for all scalars'': scalar similarity (all scalars mix alike) is a hypothesis of its own; no premise states it.", 4)]),
     ("Small-scale isotropy",
      r"At high Reynolds number the eddies much smaller than the energy-containing ones have lost the memory of the orientation of shear and gravity (Kolmogorov's local isotropy). It makes the dissipation a scalar, $\varepsilon_{ij} = \tfrac{2}{3}\delta_{ij}\varepsilon$ ($\varepsilon$ dissipation rate, m$^2$\,s$^{-3}$), and gives the pressure scrambling an isotropic target. In strongly stable air the largest overturning scale (Ozmidov) sinks toward the dissipative scales and the premise itself weakens.",
-     C + r" (contact): Universal constants (right part: small-scale processes are flow-independent); Energy cascade; Return to isotropy. High Reynolds number, a premise without a block, is named here.",
-     [(r"Two claims about the \emph{large} eddies are easily read into this premise and are not in it: their anisotropy is weak (row 19), and they have one size in every direction (carried by Similarity, row 16). The block could say ``the small eddies only''. (Scored 7 as a missing premise on 2026-09-18; retracted the same day.)", 3),
+     C + r" (contact): Universal constants (right part: small-scale processes are flow-independent); Energy cascade; Return to isotropy (left part: the isotropic target, the scalar $\varepsilon$). High Reynolds number, a premise without a block, is named here. Since 2026-09-18 the statement about the \emph{large} eddies is its own premise, row 6b.",
+     [(r"One size of the large eddies in every direction is in neither isotropy premise; it lives in the Mixing length (row 16). Mellor and Yamada state it as a bare closure assumption (``perhaps their greatest weakness''), not as a consequence of similarity. (Scored 7 as a missing premise on 2026-09-18; retracted the same day.)", 3),
       (r"The right third of the ground carries six concepts and five formal blocks but ``no scheme in the comparison touches it'': nothing on the page says whether it holds at night.", 3)]),
+    ("Weak anisotropy",
+     r"The stress tensor of the energy-containing eddies departs only weakly from the isotropic one: in $\langle u_i u_j\rangle = (\delta_{ij}/3 + a_{ij})\,q^2$ the anisotropy $a_{ij}$ is small. It is the expansion parameter of the Mellor--Yamada hierarchy: terms of order $a^2$ are eliminated, and the authors add that $a_{ij}^2 \approx 0.15$ ``is not overly small'' (1982, p.~854). Large eddies cannot be isotropic --- no flux would remain --- only nearly so. Fails in shear-dominated and stable air: two-component (pancake) and one-component states, the anisotropy classes of Stiperski. New 2026-09-18, split off Small-scale isotropy.",
+     C + r" (contact): Return to isotropy (right part: ``linear in it, because it is small''). " + B + r" (text): Level-2.5 truncation (``to leading order in the anisotropy''). All four schemes keep it, the full 3D closure included.",
+     [(r"When it fails the realizability clipping catches the algebra; realizability is excluded from the page by rule, so the failure has no visible consequence.", 4),
+      (r"Universal constants / Constant set $\leftarrow$ Weak anisotropy: the constants are fitted to near-isotropic turbulence; a pancake's rates differ.", 4),
+      (r"Pressure terms: the isotropisation-of-production term is exact in the isotropic limit only; inherited through Return to isotropy, not named.", 3)]),
     ("Gradient scale",
      r"The eddy is small against the distance over which the mean gradient changes (Corrsin's condition), so the expansion of the mean field across an eddy stops at the first term: flux $\propto$ local gradient. Fails in the convective layer ($l \sim z_i \sim$ gradient scale: heat flux against the gradient) and at a jet maximum (the gradient changes sign within one eddy).",
      C + r" (contact): Locality; Eddy viscosity (left part: gradient transport).",
@@ -205,9 +211,8 @@ ROWS = [
       (r"$\leftarrow$ Similarity (dimensional argument) and $\leftarrow$ Mixing length (the same $l$): rows 5, 16.", 4)]),
     ("Return to isotropy",
      r"Pressure fluctuations redistribute energy among the components without changing its sum; Rotta: the anisotropy decays toward zero at the one rate $q/l$, linearly. ``Computed locally'': pressure obeys a Poisson equation and is non-local; the model keeps the local term and omits the reflection at the ground (wall echo). Pressure transport of energy is lumped into a diffusive transport.",
-     S + r": Small-scale isotropy. " + L + r" (text): Horizontal homogeneity. " + C + r": Pressure terms; Stability functions and cutoff.",
-     [(r"$\leftarrow$ Buoyancy: the pressure scrambling also acts on buoyancy-produced anisotropy (the rapid buoyancy part, constants $C_2$, $C_3$ in the control). Neither this text nor Pressure terms has it, yet it is the path by which stratification damps $\langle w^2\rangle$.", 6),
-      (r"Weak anisotropy of the energy-containing eddies (stress anisotropy $\ll 1$), the expansion parameter of the Mellor--Yamada hierarchy behind Rotta's linear form and the level truncation, has no premise: only the clause ``linear in it''. Pancake turbulence in stable air violates it.", 5),
+     S + r": Small-scale isotropy (the isotropic target) and Weak anisotropy (the linear form). " + L + r" (text): Horizontal homogeneity. " + C + r": Pressure terms; Stability functions and cutoff. " + B + r" (text): Buoyancy production (the sharing of buoyancy's $\langle w^2\rangle$ among the components).",
+     [(r"The \emph{buoyancy part} of the pressure terms (constants $C_2$, $C_3$ in the control; ``higher-order terms'' left out by Mellor and Yamada 1982, p.~853) is still in neither this text nor Pressure terms; the slow return of buoyancy-made anisotropy is now named from the Buoyancy production side.", 5),
       (r"Level-2.5 truncation $\leftarrow$ Return to isotropy: the algebraic system is solvable because Rotta's form is linear; the truncation now stands on Local equilibrium alone.", 3),
       (r"$\leftarrow$ Universal constants / Similarity: ``the one rate''.", 3)]),
     ("Locality",
@@ -222,8 +227,8 @@ ROWS = [
       (r"Positivity $\leftrightarrow$ realizability: excluded by rule.", 1)]),
     ("Buoyancy production",
      r"$P_b = \beta g \langle w\theta_v\rangle$ ($\beta$ thermal expansion coefficient, K$^{-1}$; $g$ gravity): buoyancy exchanges kinetic and potential energy through the vertical heat flux alone --- a sink in stable air. The place where stratification enters the pyramid.",
-     S + r": Axisymmetric mixing (one axis) and Boussinesq. " + C + r": Buoyancy term. " + B + r": Stability functions ($P_b$ in the balance).",
-     [(r"The clause ``no redistribution among the stress components'' contradicts the level-2.5 algebra, in which buoyancy acts on $\langle w^2\rangle$ and the pressure terms spread it (the $G_H$ dependence of the stability functions). Open flag of the concept audit; a wrong clause is worse than a missing link.", 7),
+     S + r": Axisymmetric mixing (one axis) and Boussinesq. " + L + r" (text): Return to isotropy (``its sharing among the components''). " + C + r": Buoyancy term. " + B + r": Stability functions ($P_b$ in the balance).",
+     [(r"Corrected 2026-09-18 (was 7): the clause ``no redistribution among the stress components'' is replaced by ``all of it in $\langle w^2\rangle$; its sharing \dots left to the return to isotropy''. Left over: the note's row for this block still says ``neither redistributes energy among the stress components''.", 3),
       (r"$\leftarrow$ Horizontal homogeneity / Column approximation: ``no horizontal heat flux'' (rows 3, 12).", 6),
       (r"Monin--Obukhov similarity $\leftarrow$ Buoyancy production ($L_{\mathrm{MO}}$).", 3)]),
     # ------------------------------------------------------------------ formalism
@@ -252,7 +257,7 @@ ROWS = [
       (r"$\leftarrow$ One length for $K$ and $\varepsilon$: the $\varepsilon$ of the balance is $q^3/(B_1 L)$.", 3)]),
     ("Level-2.5 truncation",
      r"Of all second moments only $q^2$ keeps a prognostic equation; stresses, heat fluxes and the temperature variance are algebraic, their tendencies, advection and transport neglected. (Level 3 keeps the temperature variance prognostic and with it a heat flux against the gradient.) All four schemes keep it.",
-     S + r": Local equilibrium. " + B + r": Stability functions and cutoff.",
+     S + r": Local equilibrium. " + L + r" (text): Weak anisotropy (``to leading order in the anisotropy''). " + B + r": Stability functions and cutoff.",
      [(r"K-form fluxes $\leftarrow$ Truncation: the down-gradient heat flux is a consequence of making $\langle\theta^2\rangle$ algebraic; the chain runs through the stability functions only.", 4),
       (r"$\leftarrow$ Return to isotropy (row 19) and $\leftarrow$ Column approximation (row 12).", 3)]),
     ("Surface fluxes and first level",
@@ -347,28 +352,33 @@ w(r"""% GENERATED by scripts/make_pyramid_block_table.py from @SRC@ -- do not ed
 \vspace{0.6ex}
 Source: \texttt{pbl\_assumptions\_pyramid\_split.tex} (texts copied by script, verbatim). Rows run as on the vertical page: top to bottom within a column, premises, then concepts, then formalism. Row numbers are for dictating notes (``row 22, second gap'').\par
 \vspace{0.4ex}
-\textbf{Column 3} names what the page shows: \textbf{Stands on}/\textbf{Carries} = a drawn contact (derived from the block coordinates); \textbf{Leans on}/\textbf{Leaned on by} = a dependence the contact rule cannot draw, recorded in the source (26 entries); ``text'' = the child's wording names it, ``by symbol'' = only a symbol does, ``source only'' = recorded but invisible on the page. \textbf{Column 4} names what is neither drawn nor recorded, or is recorded but invisible, with a severity in the box: 1--2 bookkeeping; 3--4 a reader misses a real dependence of secondary weight; 5--6 the dependence decides how the block behaves over terrain or in stable air and the page hides it; 7+ the page says or implies something false. A gap that concerns two blocks is scored at both and cross-referenced.\par
+\textbf{Column 3} names what the page shows: \textbf{Stands on}/\textbf{Carries} = a drawn contact (derived from the block coordinates); \textbf{Leans on}/\textbf{Leaned on by} = a dependence the contact rule cannot draw, recorded in the source (28 entries); ``text'' = the child's wording names it, ``by symbol'' = only a symbol does, ``source only'' = recorded but invisible on the page. \textbf{Column 4} names what is neither drawn nor recorded, or is recorded but invisible, with a severity in the box: 1--2 bookkeeping; 3--4 a reader misses a real dependence of secondary weight; 5--6 the dependence decides how the block behaves over terrain or in stable air and the page hides it; 7+ the page says or implies something false. A gap that concerns two blocks is scored at both and cross-referenced.\par
 \vspace{0.4ex}
 \textbf{Symbols:} $l$ mixing length (m); $q$ square root of twice the turbulence kinetic energy (m\,s$^{-1}$), $q^2$ (m$^2$\,s$^{-2}$); $\varepsilon$ dissipation rate (m$^2$\,s$^{-3}$); $K$, $K_M$, $K_H$ eddy diffusivity, for momentum, for heat (m$^2$\,s$^{-1}$); $S_M$, $S_H$ stability functions (dimensionless); $P_s$, $P_b$ shear and buoyancy production (m$^2$\,s$^{-3}$); Ri gradient Richardson number, $R_{fc}$ critical flux Richardson number; $u_*$ friction velocity; $L_{\mathrm{MO}}$ Obukhov length; $z_i$ boundary-layer depth; $\Delta$, $\Delta z$ horizontal and vertical grid spacing; $N$ buoyancy frequency; $A_1 \dots C_3$ closure constants.\par
 \vspace{0.6ex}
 \textbf{The gaps that matter most} (details in the rows):
-\textbf{7} --- the clause ``no redistribution among the stress components'' contradicts the level-2.5 algebra (row 22).
-\textbf{6} --- ``no horizontal heat flux'' never touches or names homogeneity (rows 3, 22, 35); the eddy viscosity is derived in this family, not assumed (row 21); the buoyancy part of the pressure terms is absent (rows 19, 32); the stability functions show one of six parents (row 33).
-\textbf{5} --- Grid means is the root of the formal tier but drawn as a leaf (23); shear production takes its stress from the K-form (24); the wall value takes $u_*$ from the surface scheme (26, 28); the column approximation reaches the master length and the K-form unseen (12); the constants are calibrated on Monin--Obukhov (15, 30); the loop $l \leftrightarrow q$ cannot be drawn (29); the cutoff is a steady-state claim (4, 33); the closure's daytime length violates the gradient-scale premise (7); weak anisotropy of the large eddies has no premise (19). \emph{Retracted 2026-09-18:} ``one scalar length has no premise'' (was 7) --- Similarity carries it; now a missing clause, 4 (rows 6, 16, 29).\par
+\textbf{7} --- none left: the redistribution clause of Buoyancy production was corrected on 2026-09-18 (row 22).
+\textbf{6} --- ``no horizontal heat flux'' never touches or names homogeneity (rows 3, 22, 35); the eddy viscosity is derived in this family, not assumed (row 21); the buoyancy part of the pressure terms is absent (rows 19, 32; 5 in row 19 since the slow part is named); the stability functions show one of six parents (row 33).
+\textbf{5} --- Grid means is the root of the formal tier but drawn as a leaf (23); shear production takes its stress from the K-form (24); the wall value takes $u_*$ from the surface scheme (26, 28); the column approximation reaches the master length and the K-form unseen (12); the constants are calibrated on Monin--Obukhov (15, 30); the loop $l \leftrightarrow q$ cannot be drawn (29); the cutoff is a steady-state claim (4, 33); the closure's daytime length violates the gradient-scale premise (7). \emph{Added 2026-09-18:} the premise Weak anisotropy, row 6b, split off Small-scale isotropy (Mellor and Yamada 1982, p.~854). \emph{Retracted 2026-09-18:} ``one scalar length has no premise'' (was 7) --- Similarity carries it; now a missing clause, 4 (rows 6, 16, 29).\par
 \vspace{0.8ex}
 """.replace("@SRC@", SRC))
 
-w(r"\begin{longtable}{|P{4mm}|P{34mm}|P{46mm}|P{43mm}|P{51mm}|P{41mm}|}")
+w(r"\begin{longtable}{|P{5mm}|P{34mm}|P{46mm}|P{43mm}|P{51mm}|P{40mm}|}")
 w(r"\hline\rowcolor{black!12}\textbf{\#} & \textbf{1\quad Exact text in the block} & \textbf{2\quad What it says, in detail} & \textbf{3\quad Existing connections} & \textbf{4\quad Missing connections \hfill severity} & \textbf{5\quad Notes (Elias)} \\ \hline\endhead")
 tier = -1
-for n, (r, b) in enumerate(zip(ROWS, blocks), 1):
+n = 0
+for r, b in zip(ROWS, blocks):
+    # rows keep the numbers of the first issue (2026-09-18 morning); blocks added later get a letter
+    new = b["title"] == "Weak anisotropy"
+    n += 0 if new else 1
+    lab = "6b" if new else str(n)
     t = TIER[b["style"]]
     if t != tier:
         tier = t
         w(r"\multicolumn{6}{|l|}{\cellcolor{black!%d}\textbf{%s}} \\ \hline" % ((30, 14, 5)[t], TIERNAME[t]))
     text = b["text"].replace(r"\\", r"\newline ")
     missing = "".join(r"\mi{%s}{%d}" % (m, s) for m, s in r[3])
-    w(r"\textbf{%d} & %s & %s & %s & %s & \rule[-26mm]{0pt}{1mm} \\ \hline" % (n, text, r[1], r[2], missing))
+    w(r"\textbf{%s} & %s & %s & %s & %s & \rule[-26mm]{0pt}{1mm} \\ \hline" % (lab, text, r[1], r[2], missing))
 w(r"\end{longtable}")
 w(r"\end{document}")
 open(OUT, "w").write("\n".join(out) + "\n")
