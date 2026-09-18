@@ -10,7 +10,7 @@ g=nc.Dataset(fr[0]); la,lo,hg=[np.asarray(g[k][0]) for k in ("XLAT","XLONG","HGT
 Z={"RIM":lonb&(la>47.68)&(la<47.80),"KARW":lonb&(la>47.42)&(la<47.58),"CREST":lonb&(la>47.27)&(la<47.42)&(hg>1800),"LEE":lonb&(la>47.25)&(la<47.40)&(dhdy>np.tan(np.radians(8.5)))&(hg>800)&(hg<2000),"FLOOR":lonb&(la>47.22)&(la<47.40)&(hg<700)}
 jj,ii=np.where(lonb&(la>47.20)&(la<47.82)); J=slice(jj.min(),jj.max()+1); I=slice(ii.min(),ii.max()+1); hgs=hg[J,I]; Zs={k:m[J,I] for k,m in Z.items()}
 def lay(z,x,m,a,b):
-    agl=z[:,m]-hgs[m][None]; w=(agl>=a)&(agl<b); return float((x[:,m]*w).sum()/max(w.sum(),1))
+    n=min(z.shape[0],x.shape[0]); agl=z[:n,m]-hgs[m][None]; w=(agl>=a)&(agl<b); return float((x[:n,m]*w).sum()/max(w.sum(),1))
 print(f"{run}: zone cells", {k:int(m.sum()) for k,m in Zs.items()})
 for k in Zs:
     print(f"\n=== {k}:  UT | v 0-50 | v 50-150 | v 300-600 | w@50-300 cm/s | theta 0-300 | q_sq 0-300 | UST | HFX")
