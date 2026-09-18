@@ -71,7 +71,27 @@ Elias is an atmospheric scientist, fluent in turbulence closures; he wants the
    in the WRFlux θ budget was a −9999 albedo (U3), found in an hour from the
    restart file after a day of physics hypotheses.
 
-## Read these first, in this order
+## Current state pointer (updated 2026-09-18) — read this block first
+
+0. **`PASSOVER_2026-09-16.md`** (top block: queue + state) supersedes `HANDOVER_2026-08-20.md`; then the newest `DECISIONS.md`
+   entries, `branko/OPEN_ISSUES.md` **A28–A30**, `branko/KNOWN_ISSUES.md` **E49–E60**.
+1. The assistant's memory holds a findings ledger (`findings-evening-bias-northerly`), a run catalogue and a twin-run recipe —
+   consult them before proposing a mechanism or building a run.
+2. **Lead problem (2026-09-18):** in the afternoon a shallow (0–150 m AGL) northerly over-runs the northern-range crests and
+   descends the sunlit lee slope to the valley floor by 16–17 UT, in BOTH closures, on either terrain, also on day 2 of a run;
+   ICON and the stations (Stanser Joch sonic) do not have it. It kills the up-valley wind and seeds the evening/night warm bias
+   (+3.3 K at 0–100 m by 01 UT in every lineage). Excluded by runs: closure, roughness up to 0.2 m, land-cover heat partition,
+   sixth-order filter, soil, start time, terrain data set, cross-range and along-valley pressure force. Open: a momentum sink
+   acting through depth over the range (ICON carries sub-grid orography fields; WRF has no form drag at 500 m).
+3. **Standing rules since August:** every run starts from the winter-spun-up HRLDAS land state; full output streams; every
+   model-vs-obs number carries its method (E59); every analysis is rated 1–10; twins via
+   `realcase/scripts/clone_twin_rundir.sh` (never edit `NoahmpTable.TBL` through the run-dir symlink, E60); judges hang on
+   `afterany`; wall time for 5 × 128 with full output: 2 h sim → 1:00, 5 h → 2:10, 8 h → 3:15.
+
+*The two sections below ("Read these first", "Where the science stands (2026-08-22)") are the AUGUST state, kept for history
+and for the standing do-nots; where they conflict with this block, this block wins.*
+
+## Read these first, in this order (August 2026 — history)
 
 0. **`HANDOVER_2026-08-20.md`** — current state; the **2026-08-22 session-end block at the
    top** (segmented 23 h run in flight, what X7 showed), then the 2026-08-21 night block
