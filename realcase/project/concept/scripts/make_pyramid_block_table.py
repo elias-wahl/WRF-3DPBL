@@ -131,7 +131,7 @@ ROWS = [
     ("Small-scale isotropy",
      r"At high Reynolds number the eddies much smaller than the energy-containing ones have lost the memory of the orientation of shear and gravity (Kolmogorov's local isotropy). It makes the dissipation a scalar, $\varepsilon_{ij} = \tfrac{2}{3}\delta_{ij}\varepsilon$ ($\varepsilon$ dissipation rate, m$^2$\,s$^{-3}$), and gives the pressure scrambling an isotropic target. In strongly stable air the largest overturning scale (Ozmidov) sinks toward the dissipative scales and the premise itself weakens.",
      C + r" (contact): Universal constants (right part: small-scale processes are flow-independent); Energy cascade; Return to isotropy. High Reynolds number, a premise without a block, is named here.",
-     [(r"Isotropy of the \emph{energy-containing} eddies: one scalar length and one scalar $K$ for all directions assume it; this premise covers the small eddies only and no other premise covers the large ones. See rows 16, 29.", 7),
+     [(r"Two claims about the \emph{large} eddies are easily read into this premise and are not in it: their anisotropy is weak (row 19), and they have one size in every direction (carried by Similarity, row 16). The block could say ``the small eddies only''. (Scored 7 as a missing premise on 2026-09-18; retracted the same day.)", 3),
       (r"The right third of the ground carries six concepts and five formal blocks but ``no scheme in the comparison touches it'': nothing on the page says whether it holds at night.", 3)]),
     ("Gradient scale",
      r"The eddy is small against the distance over which the mean gradient changes (Corrsin's condition), so the expansion of the mean field across an eddy stops at the first term: flux $\propto$ local gradient. Fails in the convective layer ($l \sim z_i \sim$ gradient scale: heat flux against the gradient) and at a jet maximum (the gradient changes sign within one eddy).",
@@ -189,7 +189,7 @@ ROWS = [
     ("Mixing length",
      r"One length $l$ per height characterises the energy-containing eddies, a universal function of the column's own properties (height above ground, boundary-layer depth, stratification). ``One'': a scalar, the same for every direction and every moment. ``Column alone'': it knows nothing of valley width, distance to the slope, or the grid.",
      S + r": Horizontal homogeneity (band of the channel) and Similarity. " + L + r" (text): Mixing (``integral scale''); the column (``set by the column alone'', not in the lean list). " + C + r": Master length scale (middle part). " + B + r": Eddy viscosity ($K \sim lq$).",
-     [(r"Isotropy of the energy-containing eddies: ``one'' length for all directions has no premise beneath it (row 6).", 7),
+     [(r"``One'' length for every direction and every moment, up to fixed constants, is Similarity's complete parameter list applied to the eddy size; it fails when a second length enters (valley width). The text says ``one'', not ``in every direction'': a missing clause, not a missing premise (retracted from 7).", 4),
       (r"Energy cascade and Return to isotropy use the \emph{same} $l$ ($\varepsilon \sim q^3/l$, rate $q/l$) and touch nothing of this block; only the formal block ``One length'' says so.", 4),
       (r"$\leftarrow$ Column approximation: in the text only.", 2)]),
     ("Universal constants",
@@ -207,6 +207,7 @@ ROWS = [
      r"Pressure fluctuations redistribute energy among the components without changing its sum; Rotta: the anisotropy decays toward zero at the one rate $q/l$, linearly. ``Computed locally'': pressure obeys a Poisson equation and is non-local; the model keeps the local term and omits the reflection at the ground (wall echo). Pressure transport of energy is lumped into a diffusive transport.",
      S + r": Small-scale isotropy. " + L + r" (text): Horizontal homogeneity. " + C + r": Pressure terms; Stability functions and cutoff.",
      [(r"$\leftarrow$ Buoyancy: the pressure scrambling also acts on buoyancy-produced anisotropy (the rapid buoyancy part, constants $C_2$, $C_3$ in the control). Neither this text nor Pressure terms has it, yet it is the path by which stratification damps $\langle w^2\rangle$.", 6),
+      (r"Weak anisotropy of the energy-containing eddies (stress anisotropy $\ll 1$), the expansion parameter of the Mellor--Yamada hierarchy behind Rotta's linear form and the level truncation, has no premise: only the clause ``linear in it''. Pancake turbulence in stable air violates it.", 5),
       (r"Level-2.5 truncation $\leftarrow$ Return to isotropy: the algebraic system is solvable because Rotta's form is linear; the truncation now stands on Local equilibrium alone.", 3),
       (r"$\leftarrow$ Universal constants / Similarity: ``the one rate''.", 3)]),
     ("Locality",
@@ -264,7 +265,7 @@ ROWS = [
     ("Master length scale",
      r"Harmonic sum of a wall length $L_S$ ($\kappa z$ with a stability correction in $\zeta = z/L_{\mathrm{MO}}$), a turbulent length $L_T$ ($\propto$ the $q$-weighted mean height, of the order of $z_i$) and a buoyancy length $L_B = q/N$ ($N$ buoyancy frequency, s$^{-1}$). One scalar for all directions and all moments; blind to terrain and grid. Schemes: control kept, Goger port partly (own horizontal length for its source), both 3D variants kept.",
      S + r": Monin--Obukhov similarity (wall branch), Mixing length (shape), Universal constants (sliver). " + L + r" (text): Buoyancy term ($q/N$). " + B + r": One length for $K$ and $\varepsilon$; K-form fluxes. " + F + r": both; ``the frontier''.",
-     [(r"One scalar length for the whole stress tensor presumes isotropic energy-containing eddies: no premise, no concept says it --- and it is the one block the 3D closure keeps.", 7),
+     [(r"One scalar length for the whole stress tensor: carried by Similarity through the Mixing length (row 16), so no premise is missing; but the one block the 3D closure keeps says nowhere that its claim is directional (retracted from 7).", 4),
       (r"$\leftarrow$ Column approximation (row 12).", 5),
       (r"Loop $l \leftrightarrow q$: $L_T$ and $L_B$ depend on $q$, $q$ on $l$ through production and dissipation. The page has no block for the $q^2$ budget and a contact rule cannot show a loop; the nocturnal runaway lived in this loop.", 5),
       (r"$\leftarrow$ Spectral gap, Stationarity (rows 1, 4).", 3)]),
@@ -351,9 +352,9 @@ Source: \texttt{pbl\_assumptions\_pyramid\_split.tex} (texts copied by script, v
 \textbf{Symbols:} $l$ mixing length (m); $q$ square root of twice the turbulence kinetic energy (m\,s$^{-1}$), $q^2$ (m$^2$\,s$^{-2}$); $\varepsilon$ dissipation rate (m$^2$\,s$^{-3}$); $K$, $K_M$, $K_H$ eddy diffusivity, for momentum, for heat (m$^2$\,s$^{-1}$); $S_M$, $S_H$ stability functions (dimensionless); $P_s$, $P_b$ shear and buoyancy production (m$^2$\,s$^{-3}$); Ri gradient Richardson number, $R_{fc}$ critical flux Richardson number; $u_*$ friction velocity; $L_{\mathrm{MO}}$ Obukhov length; $z_i$ boundary-layer depth; $\Delta$, $\Delta z$ horizontal and vertical grid spacing; $N$ buoyancy frequency; $A_1 \dots C_3$ closure constants.\par
 \vspace{0.6ex}
 \textbf{The gaps that matter most} (details in the rows):
-\textbf{7} --- one scalar length for the whole stress tensor has no premise beneath it (rows 6, 16, 29); the clause ``no redistribution among the stress components'' contradicts the level-2.5 algebra (row 22).
+\textbf{7} --- the clause ``no redistribution among the stress components'' contradicts the level-2.5 algebra (row 22).
 \textbf{6} --- ``no horizontal heat flux'' never touches or names homogeneity (rows 3, 22, 35); the eddy viscosity is derived in this family, not assumed (row 21); the buoyancy part of the pressure terms is absent (rows 19, 32); the stability functions show one of six parents (row 33).
-\textbf{5} --- Grid means is the root of the formal tier but drawn as a leaf (23); shear production takes its stress from the K-form (24); the wall value takes $u_*$ from the surface scheme (26, 28); the column approximation reaches the master length and the K-form unseen (12); the constants are calibrated on Monin--Obukhov (15, 30); the loop $l \leftrightarrow q$ cannot be drawn (29); the cutoff is a steady-state claim (4, 33); the closure's daytime length violates the gradient-scale premise (7).\par
+\textbf{5} --- Grid means is the root of the formal tier but drawn as a leaf (23); shear production takes its stress from the K-form (24); the wall value takes $u_*$ from the surface scheme (26, 28); the column approximation reaches the master length and the K-form unseen (12); the constants are calibrated on Monin--Obukhov (15, 30); the loop $l \leftrightarrow q$ cannot be drawn (29); the cutoff is a steady-state claim (4, 33); the closure's daytime length violates the gradient-scale premise (7); weak anisotropy of the large eddies has no premise (19). \emph{Retracted 2026-09-18:} ``one scalar length has no premise'' (was 7) --- Similarity carries it; now a missing clause, 4 (rows 6, 16, 29).\par
 \vspace{0.8ex}
 """.replace("@SRC@", SRC))
 
