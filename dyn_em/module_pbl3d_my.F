@@ -115,6 +115,18 @@
       ! says they should. MYNN bounds its equivalent to [8, 400] m. Default 0 keeps the
       ! previous behaviour bit for bit.
     real,    public    :: L0_MIN
+      ! Cap on the master length scale from the explicit-diffusion stability limit
+      ! (pbl3d_dn_max; 0 disables, the default, bit for bit). The closure's vertical flux
+      ! divergences are handed to the dynamics forward in time, so its own vertical mixing is
+      ! only stable while the diffusion number K dt / dz^2 stays below 1/2. With K ~ q l / 2
+      ! (the estimate that separated the crashing pbl3d_l_opt = 2 run, max 1.2 and 2.4 % of the
+      ! lowest twelve levels above 0.5, from production, max 0.3; OPEN_ISSUES A24/A25) the cap is
+      !   l <= DN_MAX dz^2 / (0.5 q dt),   dz = the thinner of the two layers at the face.
+      ! It is numerical, not physical: it binds only where a long l meets a thin layer (heated
+      ! crests, refined near-ground levels) and leaves the bulk untouched (median dn ~ 0.1).
+      ! DT_DN is the model time step, set by the driver each call.
+    real,    public    :: DN_MAX = 0.0
+    real,    save      :: DT_DN  = 0.0
       ! Acceptance threshold on the raw condition number of the moist 4x4 flux system
       ! (pbl3d_moist_cond_max; 0 disables = previous behaviour bit for bit). Why it is
       ! needed: the moist system has a determinant pole on the unstable side (N tau ~ 0.27
@@ -264,6 +276,8 @@
         ! Calculate scale-aware tapering function
       call Calc_scale_aware (config_flags%pbl3d_scale_aware, dx, dy, msftx, msfty, pblh, Psig_bl, ids, ide, jds, jde, kds, kde, &
           ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+
+      DT_DN = dt   ! for the diffusion-number cap on l (DN_MAX); unused when DN_MAX = 0
 
       if (config_flags%pbl3d_opt < 2) then  ! PBL approx analytical solution only
         call Calc_fluxes_pbl_approx (config_flags, ss, Psig_bl, l_master, l_boulac, l0_asym, du_dz, dv_dz, dthetav_dz, dqv_dz, &
@@ -435,9 +449,21 @@
       real, parameter :: alpha_3 = 1.0
       real, parameter :: alpha_4 = 100.0
       real, parameter :: cns = 2.7
+        ! pbl3d_l_opt = 5: the operational MYNN-EDMF mixing length (bl_mynn_mixlength = 1,
+        ! module_bl_mynnedmf.F mym_length, values for dx < 4 km over land) WITHOUT the parts
+        ! that have no counterpart here: the l0 integral keeps this module's turbulent-excess
+        ! weighting instead of MYNN's truncation at the PBL height (ill posed over complex
+        ! terrain, see the l0 comment below), there is no mass-flux (EDMF) buoyancy length, no
+        ! BouLac blend above the PBL, and the convective enhancement alpha_3 is not tapered with
+        ! z / PBLH. l = Min (l_s / (1 + l_s(z - 4 m) / l0), l_b, l_f), l0 bounded to [8, 400] m.
+        ! The closure constants stay those of pbl3d_constants, so the same l does not give
+        ! MYNN's diffusivity. Needs pbl3d_dn_max > 0 at heated crests (A25).
+      real, parameter :: A1_OP = 0.23, A2_OP = 0.3, A3_OP = 5.0, A4_OP = 15.0, CNS_OP = 3.5
+      real, parameter :: L0_OP_MIN = 8.0, L0_OP_MAX = 400.0, QKW_ELB_MIN = 0.05, BV_MIN = 0.001
       real :: l0, l0_num, l0_den, qdz
       real :: q, q_dz, dz_wall, q_min
       real :: l_s, l_b, l_f, zet, kz, N, q_c
+      real :: l_sm, z_m, q_b, stab_fn
 
       logical, parameter :: DEBUG = .false.
 
@@ -493,6 +519,8 @@
             l0 = alpha * l0_num / l0_den
           else if (pbl3d_l_opt == 2) then  ! MYNN alpha
             l0 = alpha_1 * l0_num / l0_den
+          else if (pbl3d_l_opt == 5) then  ! operational MYNN alpha and bounds
+            l0 = Min (Max (A1_OP * l0_num / l0_den, L0_OP_MIN), L0_OP_MAX)
           end if
             ! Floor on l0 (see L0_MIN at the top of the module). Applied to l0 alone: the
             ! kappa z blend below and the buoyancy limit after it still bind, so this
@@ -502,6 +530,8 @@
           l0_asym(i, j) = l0
           if (pbl3d_l_opt == 2) then
             q_c = (G_OVER_TREF * Max (wthv(i, kts, j), 0.0) * l0) ** ( 1.0 / 3.0 )
+          else if (pbl3d_l_opt == 5) then   ! MYNN: vflx = fltv - 0.005
+            q_c = (G_OVER_TREF * Max (wthv(i, kts, j) - 0.005, 0.0) * l0) ** ( 1.0 / 3.0 )
           end if
 
           do k = kts, ktf
@@ -559,6 +589,32 @@
               l_master(i, k, j) = MIN( (l_s * l0 * l_b) / (l_s * l0 + l_s * l_b + l0 * l_b), l_f )
               l_boulac(i, k, j) = l_master(i, k, j)  ! here we are just filling in dissipation boulac length scale
 
+            else if (pbl3d_l_opt == 5) then
+               ! Operational MYNN form (see A1_OP above). Surface length with the z - 4 m offset in
+               ! the blend, as mym_length does.
+              kz  = KARMAN * z_at_walls_1d(k)
+              z_m = Max (KARMAN, z_at_walls_1d(k) - 4.0)
+              zet = rmol(i, j) * z_at_walls_1d(k)
+              if (rmol(i, j) > 0.0) then
+                stab_fn = 1.0 / (1.0 + CNS_OP * Min (zet, 1.0))
+              else
+                stab_fn = (1.0 - A4_OP * zet) ** 0.2
+              end if
+              l_s  = kz * stab_fn
+              l_sm = KARMAN * z_m * stab_fn
+              if (dthetav_dz(i, k, j) > 0.0) then
+                N   = Max (Sqrt (G_OVER_TREF * dthetav_dz(i, k, j)), BV_MIN)
+                q_b = Max (Sqrt (q_sq(i, k, j)), QKW_ELB_MIN)
+                l_b = A2_OP * q_b / N * ( 1.0 + A3_OP * Sqrt (q_c / (N * l0)) )
+                l_b = Min (l_b, z_at_walls_1d(k))
+                l_f = q_b / N
+              else
+                l_b = 1.0E10
+                l_f = l_b
+              end if
+              l_master(i, k, j) = Min (l_s / (1.0 + l_sm / l0), l_b, l_f)
+              l_boulac(i, k, j) = l_master(i, k, j)
+
             end if
           end do
           l_master(i, kte, j) = l_master(i, ktf, j)
@@ -592,6 +648,43 @@
         end subroutine Debug_l_master_algebra
 
     end subroutine Calc_l_master_algebra
+
+
+    subroutine Cap_l_diffusion_number (pbl3d_l_opt, q_sq, dz, l_master, l_boulac, &
+              ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+
+        ! Caps the master length scale at faces so that the explicit vertical mixing stays below
+        ! the diffusion number DN_MAX: l <= DN_MAX dz^2 / (0.5 q DT_DN). See DN_MAX at the top of
+        ! the module. For the single-length options (1, 2, 5) the dissipation length follows.
+
+      implicit none
+
+      integer,                                     intent (in)    :: pbl3d_l_opt
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: q_sq, dz
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (inout) :: l_master, l_boulac
+      integer,                                     intent (in)    :: ids, ide, jds, jde, kds, kde, &
+                                                                     ims, ime, jms, jme, kms, kme, &
+                                                                     its, ite, jts, jte, kts, kte
+      integer :: i, j, k, ktf
+      real    :: dz_min, l_cap
+
+      if (DN_MAX <= 0.0 .or. DT_DN <= 0.0) return
+      ktf = Min (kte, kde - 1)
+
+      do j = jts, Min (jte, jde - 1)
+        do k = kts + 1, ktf
+          do i = its, Min (ite, ide - 1)
+            dz_min = Min (dz(i, k, j), dz(i, k - 1, j))
+            l_cap  = DN_MAX * dz_min * dz_min / (0.5 * Max (Sqrt (q_sq(i, k, j)), 1.0E-6) * DT_DN)
+            if (l_master(i, k, j) > l_cap) then
+              l_master(i, k, j) = l_cap
+              if (pbl3d_l_opt < 3 .or. pbl3d_l_opt == 5) l_boulac(i, k, j) = l_cap
+            end if
+          end do
+        end do
+      end do
+
+    end subroutine Cap_l_diffusion_number
 
 
     subroutine Calc_l_messinger_master_algebra (pbl3d_l0_opt, q_sq, dz, rdzw, rmol, wthv, dthetav_dz, l_master, &
@@ -909,7 +1002,7 @@
       end if
 
         ! Diagnose master length scale at faces
-      if (config_flags%pbl3d_l_opt < 3) then
+      if (config_flags%pbl3d_l_opt < 3 .or. config_flags%pbl3d_l_opt == 5) then
         call Calc_l_master_algebra (config_flags%pbl3d_l_opt, config_flags%pbl3d_l0_opt, q_sq, dz, rdzw, rmol, turb_flux_wtheta_v, dthetav_dz, l_master, &
             l_boulac, l0_asym, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
       else if (config_flags%pbl3d_l_opt == 3) then
@@ -920,6 +1013,10 @@
         call Calc_l_messinger_master_algebra (config_flags%pbl3d_l0_opt, q_sq, dz, rdzw, rmol, turb_flux_wtheta_v, dthetav_dz, l_master, &
             l_boulac, l0_asym, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
       end if
+
+        ! Diffusion-number cap on l (numerical; off unless pbl3d_dn_max > 0)
+      if (DN_MAX > 0.0) call Cap_l_diffusion_number (config_flags%pbl3d_l_opt, q_sq, dz, l_master, l_boulac, &
+          ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
         ! Apply scale-aware tapering
       call Make_scale_aware (Psig_bl, l_master, l_boulac, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
@@ -1221,7 +1318,7 @@
       end if
 
         ! Diagnose master length scale at faces
-      if (config_flags%pbl3d_l_opt < 3) then
+      if (config_flags%pbl3d_l_opt < 3 .or. config_flags%pbl3d_l_opt == 5) then
         call Calc_l_master_algebra (config_flags%pbl3d_l_opt, config_flags%pbl3d_l0_opt, q_sq, dz, rdzw, rmol, turb_flux_wtheta_v, dthetav_dz, l_master, &
             l_boulac, l0_asym, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
       else if (config_flags%pbl3d_l_opt == 3) then
@@ -1232,6 +1329,10 @@
         call Calc_l_messinger_master_algebra (config_flags%pbl3d_l0_opt, q_sq, dz, rdzw, rmol, turb_flux_wtheta_v, dthetav_dz, l_master, &
             l_boulac, l0_asym, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
       end if
+
+        ! Diffusion-number cap on l (numerical; off unless pbl3d_dn_max > 0)
+      if (DN_MAX > 0.0) call Cap_l_diffusion_number (config_flags%pbl3d_l_opt, q_sq, dz, l_master, l_boulac, &
+          ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
         ! Apply scale-aware tapering
       call Make_scale_aware (Psig_bl, l_master, l_boulac, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
@@ -1565,7 +1666,7 @@
       do j = j_start, j_end
         do k = kts, kte
           do i = i_start, i_end
-            if (l_opt < 3) then
+            if (l_opt < 3 .or. l_opt == 5) then
               l_dissip(i, k, j) = l_master(i, k, j)
             else
               l_dissip(i, k, j) = l_boulac(i, k, j)
@@ -4406,7 +4507,7 @@
     subroutine Set_init_turb_state_my (restart, pbl3d_constants,                &
               pbl3d_nsteps, pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt,  &
               pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt,                  &
-              pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_moist_cond_max,                  &
+              pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_dn_max, pbl3d_moist_cond_max,                  &
               pbl3d_sq, pbl3d_sfc_qsq_bc, pbl3d_sq_implicit, pbl3d_t2_scalar, pbl3d_sfc_qsq_zmax,   &
               ids, ide, jds, jde, kds, kde,                                     &
               ims, ime, jms, jme, kms, kme,                                     &
@@ -4440,7 +4541,7 @@
       logical, intent(in) :: restart
       integer, intent(in) :: pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt, pbl3d_nsteps
       integer, intent(in) :: pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt
-      real,    intent(in) :: pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_moist_cond_max
+      real,    intent(in) :: pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_dn_max, pbl3d_moist_cond_max
       real,    intent(in) :: pbl3d_sq, pbl3d_sfc_qsq_zmax
       integer, intent(in) :: pbl3d_sfc_qsq_bc, pbl3d_sq_implicit, pbl3d_t2_scalar
       character (len = 160) :: msg
@@ -4515,6 +4616,9 @@
         ! Floor on the asymptotic length scale (see L0_MIN at the top of the module).
         ! Zero or negative disables it, which is the pre-2026-08-20 behaviour.
       L0_MIN = Max (pbl3d_l0_min, 0.0)
+
+        ! Diffusion-number cap on l (see DN_MAX at the top of the module); 0 disables it.
+      DN_MAX = Max (pbl3d_dn_max, 0.0)
 
         ! 0 (the default) disables the moist condition-number acceptance entirely.
       MOIST_COND_MAX = Max (pbl3d_moist_cond_max, 0.0)
@@ -4664,11 +4768,11 @@
               ims = ims, ime = ime, jms = jms, jme = jme, kms = kms, kme = kme,                                 &
               its = its, ite = ite, jts = jts, jte = jte, kts = kts, kte = kte, q_sq_face = q_sq, sm = sm, rif = rif)
 
-          if (pbl3d_l_opt < 3) then
+          if (pbl3d_l_opt < 3 .or. pbl3d_l_opt == 5) then
             call Calc_l_master_algebra (pbl3d_l_opt, pbl3d_l0_opt, q_sq, dz, rdzw, rmol, turb_flux_wtheta_v, dthetav_dz, &
                 l_master, l_boulac_init, l0_asym, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme,          &
                 its, ite, jts, jte, kts, kte)
-          else if (pbl3d_l_opt > 3) then
+          else if (pbl3d_l_opt == 4) then
             call Calc_l_messinger_master_algebra (pbl3d_l0_opt, q_sq, dz, rdzw, rmol, turb_flux_wtheta_v, dthetav_dz, &
                 l_master, l_boulac_init, l0_asym, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme,        &
                 its, ite, jts, jte, kts, kte)

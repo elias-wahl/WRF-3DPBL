@@ -6632,7 +6632,7 @@
 
     subroutine Init_pbl3d (restart, pbl3d_opt, pbl3d_sfc_opt, pbl3d_l_opt, pbl3d_prog, pbl3d_constants, &
               pbl3d_nsteps, pbl3d_sk_eps_max, pbl3d_n_tau_max,                                                        &
-              pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt, pbl3d_l0_min, pbl3d_moist_cond_max,          &
+              pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt, pbl3d_l0_min, pbl3d_dn_max, pbl3d_moist_cond_max,          &
               pbl3d_sq, pbl3d_sfc_qsq_bc, pbl3d_sq_implicit, pbl3d_t2_scalar, pbl3d_sfc_qsq_zmax, l0_asym,                                &
               fnm, fnp, dnw, ph, phb, t_2, qv, thetav, alt, u, v, ust, hfx, qfx, rmol, &
               q_sq, q_sq_prog, q_sq_vdiff, q_sq_hdiff, q_sq_shear, q_sq_buoyancy, q_sq_dissip,                       &
@@ -6659,7 +6659,7 @@
       logical, intent(in) :: restart
       integer, intent(in) :: pbl3d_opt, pbl3d_sfc_opt, pbl3d_l_opt, pbl3d_prog, pbl3d_nsteps
       integer, intent(in) :: pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt
-      real,    intent(in) :: pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_moist_cond_max
+      real,    intent(in) :: pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_dn_max, pbl3d_moist_cond_max
       real,    intent(in) :: pbl3d_sq, pbl3d_sfc_qsq_zmax
       integer, intent(in) :: pbl3d_sfc_qsq_bc, pbl3d_sq_implicit, pbl3d_t2_scalar
       real, dimension(ims:ime, jms:jme),          intent(inout) :: l0_asym
@@ -6691,7 +6691,7 @@
       call Set_init_turb_state_driver (restart, pbl3d_constants,            &
           pbl3d_nsteps, pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt,  &
           pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt,                  &
-          pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_moist_cond_max,                  &
+          pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_dn_max, pbl3d_moist_cond_max,                  &
           pbl3d_sq, pbl3d_sfc_qsq_bc, pbl3d_sq_implicit, pbl3d_t2_scalar, pbl3d_sfc_qsq_zmax,                                       &
           ids, ide, jds, jde, kds, kde,                                     &
           ims, ime, jms, jme, kms, kme,                                     &
@@ -6713,7 +6713,7 @@
     subroutine Set_init_turb_state_driver (restart, pbl3d_constants,            &
               pbl3d_nsteps, pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt,  &
               pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt,                  &
-              pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_moist_cond_max,                  &
+              pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_dn_max, pbl3d_moist_cond_max,                  &
               pbl3d_sq, pbl3d_sfc_qsq_bc, pbl3d_sq_implicit, pbl3d_t2_scalar, pbl3d_sfc_qsq_zmax,                                       &
               ids, ide, jds, jde, kds, kde,                                     &
               ims, ime, jms, jme, kms, kme,                                     &
@@ -6744,7 +6744,7 @@
       logical, intent(in) :: restart
       integer, intent(in) :: pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt, pbl3d_nsteps
       integer, intent(in) :: pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt
-      real,    intent(in) :: pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_moist_cond_max
+      real,    intent(in) :: pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_dn_max, pbl3d_moist_cond_max
       real,    intent(in) :: pbl3d_sq, pbl3d_sfc_qsq_zmax
       integer, intent(in) :: pbl3d_sfc_qsq_bc, pbl3d_sq_implicit, pbl3d_t2_scalar
       real, dimension(ims:ime, jms:jme),          intent(inout) :: l0_asym
@@ -6808,7 +6808,7 @@
 
         ! Call MY model to set initial state
       call Set_init_turb_state_my (restart, pbl3d_constants, pbl3d_nsteps, pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt, &
-          pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt, pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_moist_cond_max, &
+          pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt, pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_dn_max, pbl3d_moist_cond_max, &
           pbl3d_sq, pbl3d_sfc_qsq_bc, pbl3d_sq_implicit, pbl3d_t2_scalar, pbl3d_sfc_qsq_zmax, ids, ide, &
           jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, itf, jtf, ktf, i_start, i_end, j_start, j_end, &
           fnm, fnp, dnw, ph, phb, rdzw, z_at_mass, dz, t_2, qv, alt, u, v, ust, hfx, qfx, rmol, rho, du_dz, dv_dz, dthetav_dz, dqv_dz, &

@@ -462,6 +462,14 @@ def check(nl):
         elif l0min > 50:
             note(WARN, "pbl3d_l0_min=%g m exceeds the asymptotic length of a typical stable "
                        "boundary layer; the floor would set l0 almost everywhere" % l0min)
+        dnmax = g("pbl3d_dn_max", float, 0.0)
+        if dnmax < 0:
+            note(FATAL, "pbl3d_dn_max must be >= 0 (0 disables the diffusion-number cap on l)")
+        elif dnmax > 0.5:
+            note(WARN, "pbl3d_dn_max=%g is above the explicit stability limit 0.5; 0.4 is the suggested value" % dnmax)
+        if g("pbl3d_l_opt", int, 1) in (2, 5) and dnmax == 0:
+            note(WARN, "pbl3d_l_opt=2/5 (MYNN-form length) crashed a heated crest within 14 min without "
+                       "a diffusion-number cap (OPEN_ISSUES A25); set pbl3d_dn_max = 0.4")
         sq = g("pbl3d_sq", float, 0.2)
         if sq <= 0:
             note(FATAL, "pbl3d_sq must be > 0 (0.2 = MY82; it is the coefficient of the q^2 vertical diffusivity)")
