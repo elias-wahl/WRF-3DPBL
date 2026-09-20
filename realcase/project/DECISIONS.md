@@ -7,6 +7,36 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-09-21, 07:15 (clock) — ELIAS'S STABILITY GATE BEATS THE MOMENTUM-ONLY DESIGN: GATING THE FILTER ON STATIC STABILITY ACROSS THE STENCIL GIVES 95 % OF THE UNTAPERED ACTION IN THE AFTERNOON AND THE PRODUCTION TAPER'S COST EXACTLY AT MIDNIGHT, WITH ALL FIELDS STILL FILTERED ALIKE. AND THE 6–12 Δx BAND IS 61 % TERRAIN-LOCKED — IT IS A REAL CIRCULATION, SO NO FILTER SHOULD CHASE IT.** Scripts `wrf3dpbl-diag/filter_slopeopt_cost.py` (gate modes), `band_coherence.py`; logs `exp/x16_judge/filter_stability_gate.log`, `filter_stability_gate2.log`, `band_coherence.log`.
+
+**(1) The gate, and why it is better than untapering momentum only.** Instead of exempting a *variable*, gate on the thing that actually causes the damage — the static stability. `slopedamp = (1−b)·1 + b·max(1−Δz/dzthresh, 0)` with `b = clip((∂θ/∂z)/crit, 0, 1)`: full filter in well-mixed air, the production taper in stratified air, all variables treated alike so **field consistency is preserved** and the 09-21 05:30 objection to the momentum-only design disappears. The gate must be evaluated on the **most stable cell in the 6-wide 5th-difference stencil**, not on the pair: with a pair-mean gate the night cost was still −0.222 K h⁻¹ on steep slopes, because a weakly stratified cell can have an inversion among its stencil neighbours. With the stencil maximum:
+
+| steep slopes, 0–50 m, K h⁻¹ | production taper | no taper | gate 1 K km⁻¹ | gate 2 | gate 5 |
+|---|---|---|---|---|---|
+| **13:30** (onset, ∂θ/∂z = −23 K km⁻¹) | −0.001 | **−0.191** | **−0.186** | **−0.187** | −0.187 |
+| **00:00** (night, ∂θ/∂z = +17 K km⁻¹) | **−0.069** | −1.292 | **−0.070** | **−0.070** | −0.073 |
+
+**95 % of the untapered filter action in the afternoon, and the production taper's cost to the third decimal at midnight.** Crest 0–300 m at 00 UT: taper −0.002, gate2 −0.003. Valley floor: identical to production. The threshold is not delicate — 1, 2 and 5 K km⁻¹ give the same answer, because the diurnal contrast is a factor 40 (−23 against +17 K km⁻¹), not a factor 2. At `diff_6th_factor = 0.5` the gate still holds (night −0.291 against the taper's −0.069, i.e. 1.2× the longwave cooling) while quadrupling the afternoon action.
+
+**Implementation:** one gate expression in `sixth_order_diffusion`, the stencil stability passed in or recomputed there, behind `diff_6th_slopeopt = 3` with a namelist threshold; **no Registry change** for the option itself, one new real for the threshold. Default-off, bit for bit.
+
+**(2) The 6–12 Δx band is not noise, so the filter is the wrong tool for it.** Stationarity test on X22's thirteen 5-minute frames, v on a constant-height surface, second half of the window:
+
+| band | variance | terrain-locked share | r(5 min) | r(10 min) | r(20 min) |
+|---|---|---|---|---|---|
+| 2–6 Δx | 0.268 | 62.8 % | 0.708 | 0.597 | 0.471 |
+| **6–12 Δx** | 0.332 | **61.1 %** | **0.691** | 0.554 | **0.434** |
+| 12–24 Δx | 0.683 | 76.9 % | 0.835 | 0.740 | 0.660 |
+| > 24 Δx | 0.531 | 78.6 % | 0.877 | 0.772 | 0.649 |
+
+6–12 Δx (3–6 km) is **61 % terrain-locked and still correlated at 0.43 after twenty minutes** — that is a real, terrain-forced circulation, not grid noise, and 3–6 km is at or above WRF's effective resolution. **Raising `diff_6th_factor` to chase it is therefore not justified**; the amplitude error there is physics (most plausibly the horizontal mixing at the grey scale) or a resolution-dependent amplitude that has to be accepted.
+
+**An important nuance for the band we *do* filter.** 2–6 Δx is also 63 % terrain-locked with r(5 min) = 0.71 — it is not white noise either. **Terrain-locked is not the same as physical**: below the effective resolution the model cannot represent the flow, so a terrain-locked response there is the *grid's* systematic artefact rather than a random one. That is precisely what a scale-selective filter should remove, and it is why ICON — same terrain, steeper — sits at 0.208 in that band against WRF's 0.271.
+
+**Revised plan.** Implement the stability gate (not the momentum-only untaper, which is now superseded), re-run the offline cost to confirm the night column returns to production values, then the 13→22 UT twin. Do **not** raise `diff_6th_factor` to chase 6–12 Δx. Rating: 9/10 research (a better design than ours, tested offline in an hour, plus a measurement that stops the next escalation before it is attempted), 8/10 model (a defensible, default-off change with the cost provably equal to production's where it matters, and a clear statement of what it will and will not fix).
+
+---
+
 **2026-09-21, 05:30 (clock) — TWO CHECKS ON THE PROPOSED FILTER CHANGE: IT TARGETS THE SPURIOUS SIGNAL, NOT THE BACKGROUND FLOW, AND THE EXISTING TAPER ALREADY CONFINES IT TO THE RANGE. BUT FILTERING MOMENTUM WITHOUT θ BREAKS FIELD CONSISTENCY AND THAT RISK IS UNQUANTIFIED.** Logs `exp/x16_judge/filter_targets_spurious.log`, and the slopedamp map below.
 
 **(1) The filter is inactive until the spurious band exists.** Offline momentum tendency on steep slopes (|∇h| > 0.2), 0–300 m, untapered, m s⁻¹ h⁻¹: **13:00 mean −0.081, rms 5.76; 13:30 mean −0.244, rms 24.13; 14:00 −0.235, rms 21.38.** At 13:00 — when WRF is still identical to ICON and the 2–6 Δx band has not filled — the untapered filter does almost nothing (2 % of the real ADV_H of 3.6 m s⁻¹ h⁻¹). Its rms rises **4.2×** across the same 30 minutes in which the spurious variance doubles. It is removing the spurious signal, not adding drag to the background flow. At factor 0.5 the same pattern holds (−0.33 at 13:00 against −0.97 at 13:30).
