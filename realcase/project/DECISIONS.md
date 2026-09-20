@@ -7,6 +7,33 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-09-21, 14:05 (clock) — BOTH GATES PASSED AND THE PAIR IS QUEUED: THE REBUILT BINARY IS BIT-FOR-BIT IDENTICAL TO X22 ON DEFAULTS (332 VARIABLES), AND WITH BOTH OPTIONS ON THE CHANGE IS 3.7× LARGER ON STEEP TERRAIN THAN ON FLAT. X26 (CONTROL) AND X27 (BOTH OPTIONS) RUN 13→22 UT WITH A SLURM-RESIDENT JUDGE BEHIND THEM.** Jobs 8653060 (X26), 8653061 (X27), 8653062 (judge, `afterany` on both). Gate jobs 8653047/8653048; logs in the run dirs and `exp/x16_judge/`.
+
+**Gate 1 — the mandatory rebuild check.** New binary, production defaults, against X22 on the old binary at the **same 5-node decomposition** (E14 forbids comparing across layouts): `IDENTICAL (332 compared; only in A: 0, only in B: 0)`. The Registry addition, the new θ argument and the optional-argument rework leave the default path untouched.
+
+**Gate 2 — the options act, and where they should.** `diff_6th_slopeopt = 3` + `pbl3d_lh_opt = 1` against defaults on the same binary, |Δ| at 13:05 after ten simulated minutes:
+
+| | median | p99 | max | **p99 steep** (\|∇h\| > 0.2) | **p99 flat** (< 0.05) |
+|---|---|---|---|---|---|
+| T2, K | 0.086 | 1.12 | 4.54 | **1.30** | **0.35** |
+| U10, m s⁻¹ | 0.092 | 1.01 | 4.06 | 1.13 | 0.42 |
+| PSFC, Pa | 0.18 | 2.84 | 12.4 | 3.30 | 0.74 |
+| θ, k = 0–9, K | 0.013 | 0.78 | 4.99 | — | — |
+
+**3.7× larger on steep terrain than on flat**, every maximum on a steep cell (T2's at slope 0.39, 1597 m; U10's at slope 0.39, 1829 m), no NaN or Inf. That is the footprint both options should have and neither an inert switch nor a domain-wide perturbation.
+
+**Two build failures on the way, both mine and both in the plumbing.** (1) I replaced all five `sixth_order_diffusion` call sites blindly, but the fifth is in `rk_scalar_tend`, which has no θ in scope — `Symbol 't' has no IMPLICIT type`. (2) Making `th_in` OPTIONAL in the *middle* of a positional list shifted every later argument at that call site — `Rank mismatch in argument 'th_in' (rank-3 and scalar)`, then cascading mismatches on `rdy` and `msfvy`. Fixed by moving `th_in` to the end of the dummy list and passing it by keyword at the four momentum/θ sites; moisture, TKE and chemistry omit it and keep the production taper, which is the conservative side for a passive scalar.
+
+**The pair.** X26 = production defaults, X27 = both options; namelist diff is exactly those two keys. Both **cold-start** from the same 13 UT `wrfinput` (the X22 lineage, `restart = .false.`), so they begin identical by construction. 9 h, 30-min history, WRFlux means at 30 min, 5 nodes × 4:00 on **`zen3_2048`** (6 pending against 1232 on the default lane). ~370 GB each; the filesystem is at 93 % with 476 TB free.
+
+**Attribution without a third run.** The two switches act on different bands and we have separate offline predictions: 2–6 Δx belongs to the filter gate (ICON 0.208, production 0.271) and 6–12 Δx to the length (ICON 0.194, production 0.382). If only one band moves, the attribution follows.
+
+**The judge (8653062)** runs inside SLURM so it survives the session and reports on a crash too: the two bands at 1800 m; the crest/floor break-in 14–18 UT (ICON floor v = −1.5 m s⁻¹ at 17 UT against production's −7.5); the lee barrier against ICON's +1.79 K; the crest flux and TKE partition; and the damage control the stability gate exists for — the nocturnal θ structure over the slopes at 20–22 UT.
+
+**Standing caveat for reading the result:** ICON is the yardstick, not the target. It is itself ~2× the observed Stanser Joch wind and too weak at Arbeser, so landing on ICON is a milestone, not success. Rating: 7/10 research (verification, not discovery, but the bit-for-bit gate is what makes everything downstream trustworthy), 8/10 model (two default-off options built, verified inert by default and terrain-selective when on, with the experiment and its judge queued).
+
+---
+
 **2026-09-21, 12:10 (clock) — IMPLEMENTED ON BRANCH `3dpbl_lh_and_filtergate`: `diff_6th_slopeopt = 3` (STABILITY-GATED FILTER TAPER) AND `pbl3d_lh_opt = 1` (HORIZONTAL RESTORATION OF THE GREY-ZONE TAPER). BOTH DEFAULT TO THE PREVIOUS BEHAVIOUR BIT FOR BIT. REBUILD RUNNING ON THE LOGIN NODE (PID IN `.build_login.pid`).** Commit `9e8780f0d`.
 
 **Behavioural footprint.** Nothing changes by default: `diff_6th_slopeopt` keeps its default 0 and the production namelist's value 1 is untouched; `pbl3d_lh_opt` defaults to 0. Both new paths are entered only when the namelist asks for them.
