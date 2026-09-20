@@ -2111,7 +2111,23 @@ repeated. Depends on the WRFlux second moments (plan Part 1) for a temporal reso
 
 ---
 
-**A31 (2026-09-20) — the crest overturning is resolved; it is NOT too strong, and it is not the lever.**
+**A31 — CLOSED 2026-09-21 02:20. The northerly break-in is spurious 2-6 dx variance generated over
+steep slopes where the sixth-order filter is tapered off.**
+
+See DECISIONS 2026-09-21 02:20. At 13:00 UT WRF and ICON are identical in wind, cross-range gradient
+and spectrum. In the next 15 minutes WRF more than doubles its v variance at 2-6 dx (0.194 -> 0.408
+m2/s2) and adds 71 % at 6-12 dx, below its own effective resolution (~6-7 dx); ICON's 2-6 dx variance
+FALLS over the whole hour. The gradient |grad v| sharpens 57 %, -v dv/dy doubles, and the northerly
+accelerates 2.6x faster than ICON's. Terrain and blocking are excluded: X12mta (WRF on ICON's terrain)
+reproduces ICON's Nh/U = 2.04 and z_d = 512 m exactly and still breaks in, with the LARGEST small-scale
+variance of the set. The filter twin X21b (`diff_6th_slopeopt = 0`) removes 18-23 % of the 2-6 dx band,
+landing on ICON's value, and cuts -v dv/dy from -6.4 to -4.1.
+
+**Lever:** `diff_6th_slopeopt = 0` (and a `diff_6th_factor` scan, since 0.12 was tuned for the tapered
+configuration). No code change. **Confirmation run needed:** the full 13->22 UT afternoon and evening
+(X21b ran only 13->15), judged on the 17 UT floor break-in, the lee barrier and the 01 UT bias.
+
+*Superseded framing below, kept for the reasoning trail.*
 
 **RETRACTED IN PART 2026-09-20 21:30 (see DECISIONS).** The "too strong" half is wrong: total sigma_w
 agrees with ICON to 16 % and the total momentum flux to ~5 % once the subgrid part is included
