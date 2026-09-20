@@ -7,6 +7,33 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-09-21, 04:05 (clock) — THE OFFLINE COST TEST VETOES THE OBVIOUS RUN AND HANDS BACK A BETTER DESIGN: UNTAPERING THE FILTER COSTS ALMOST NOTHING IN THE AFTERNOON BUT −1.2 K h⁻¹ ON STEEP SLOPES AT MIDNIGHT, FIVE TIMES THE LONGWAVE COOLING. THE COST IS ENTIRELY IN θ AND THE BENEFIT IS ENTIRELY IN MOMENTUM — SO UNTAPER u, v, w AND LEAVE θ ALONE.** No runs. Script `wrf3dpbl-diag/filter_slopeopt_cost.py`; logs `exp/x16_judge/filter_slopeopt_cost.log`, `filter_slopeopt_cost_V.log`. Exact offline port of `sixth_order_diffusion` (monotonic branch) under four taper laws, on frames at 14, 19, 22 and 00 UT.
+
+**Why the night is the danger.** The filter acts along η surfaces. Over steep terrain those surfaces change height fast, so a horizontal 5th difference also samples the *vertical* structure: the grid-scale roughness of the terrain imprints grid-scale structure on the height of the η surface, and the filter removes it as though it were a field extremum. The spurious tendency scales as (∂θ/∂z) × (grid-scale roughness of the η-surface height). In the afternoon mixed layer ∂θ/∂z over the crests is ~0.6 K km⁻¹; in the nocturnal slope inversion it is 15–17 K km⁻¹. A run that fixes the afternoon continues into exactly that period.
+
+**Systematic θ tendency on steep slopes (|∇h| > 0.2), 0–50 m AGL, K h⁻¹ — the damaging, signed error:**
+
+| | ∂θ/∂z, K km⁻¹ | taper (production) | no taper (X21b) | inverted | inverted, factor 0.5 |
+|---|---|---|---|---|---|
+| 14 UT | −22.1 | +0.007 | −0.211 | −0.218 | −0.910 |
+| 19 UT | +8.9 | −0.034 | −0.611 | −0.577 | −2.405 |
+| 22 UT | +15.2 | −0.059 | −1.135 | −1.077 | −4.486 |
+| **00 UT** | **+16.8** | **−0.069** | **−1.292** | **−1.223** | **−5.096** |
+
+Yardstick, the longwave cooling rate over the crest 0–300 m layer: +0.278 / −0.153 / −0.205 / **−0.236** K h⁻¹.
+
+**Three readings.** (1) **The production taper is essentially free** — −0.001 to −0.069 K h⁻¹ at every hour. It is doing its job well. (2) **In the afternoon the cost of untapering is acceptable**: −0.22 K h⁻¹ against real terms of several K h⁻¹ (lee-slope ADV_Z −3.8, SGS +2.6), i.e. about 5 %. (3) **At night it is fatal**: −1.22 K h⁻¹ is **five times the longwave cooling**, and at factor 0.5 it is −5.1 K h⁻¹, more than twenty times — in precisely the hours where the warm bias we are chasing lives. **This vetoes the S1 run as proposed** (X21b extended to 13→22 UT): X21b ran only 13→15 UT and therefore never paid the night cost.
+
+**Momentum behaves completely differently.** The same reconstruction applied to v, m s⁻¹ per hour, steep slopes 0–300 m: taper −0.009 (14 UT) and +0.005 (00 UT); untapered **−0.225 (14 UT) and −0.211 (00 UT)**; factor 0.5, −0.94 and −0.88. **Flat across the diurnal cycle**, because ∂v/∂z does not sharpen at night the way ∂θ/∂z does. Against the real horizontal advection of ≈ 10 × 10⁻⁴ m s⁻² = 3.6 m s⁻¹ h⁻¹, the untapered cost is **~6 %**.
+
+**Therefore: untaper the momentum variables only.** `sixth_order_diffusion` is called once per variable and already receives `name` ('u', 'v', 'w', or a scalar), so `diff_6th_slopeopt = 2` can mean "no slope taper for u, v, w; production taper for θ and moisture" — two lines, behind a switch that defaults to current behaviour bit for bit, and **no Registry change** (`diff_6th_slopeopt` is a plain integer, `Registry.EM_COMMON:3037`), so a 12-minute `./compile -j 1 em_real` rather than a reconfigure. The θ cost is then **zero by construction**, and the benefit is retained, because the spurious 2–6 Δx variance measured on 09-21 is in the *wind* field and it is filtering v that removes it.
+
+**A second finding that changes the inverted taper.** `inv` and `none` come out nearly identical in every row (00 UT steep slope −1.223 vs −1.292; valley floor +0.222 vs +0.239). The reason: `dzthresh = diff_6th_thresh × g × dx = 50 m` while the **domain-median height difference between adjacent cells is 42 m**, so `min(Δz/50, 1) ≈ 0.84` even on nominally flat ground. **The inverted taper as specified barely discriminates.** To use terrain as the discriminator at all, `diff_6th_thresh` must go to 0.3–0.5 (dzthresh 150–250 m), giving ~0.25 on flat ground against 0.5–1.0 over the crests. That makes the inverted taper a secondary refinement behind the momentum/scalar split, not the primary lever.
+
+**Revised plan.** (a) Implement `diff_6th_slopeopt = 2` as the momentum-only untaper, default-off, 12-minute recompile. (b) Re-run the offline θ and v cost with it to confirm the θ column returns exactly to the production values. (c) Then the afternoon-plus-evening twin 13→22 UT, judged on the 2–6 and 6–12 Δx variance (targets 0.208 and 0.194), the 17 UT floor break-in, the lee barrier and the 01 UT bias — with the θ structure now protected by construction. (d) `diff_6th_factor` 0.5 remains available for momentum only, at a 25 % cost against the real advection, if 6–12 Δx has to be reached. Rating: 9/10 research (a free test that vetoed a wrong run before it was submitted, isolated the cost to one variable and one time of day, and produced a strictly better design from the same switch), 8/10 model (a two-line change with the cost provably zero on the damaging side, and a measured 6 % on the other).
+
+---
+
 **2026-09-21, 02:20 (clock) — FOUND IT. IN THE 15 MINUTES AFTER 13:00 WRF MORE THAN DOUBLES ITS CROSS-RANGE WIND VARIANCE AT 2–6 Δx, IN THE BAND BELOW ITS OWN EFFECTIVE RESOLUTION, WHERE THE SIXTH-ORDER FILTER IS SWITCHED OFF OVER STEEP SLOPES. ICON NEVER DOES. THE SHARPENED GRADIENT DOUBLES −v ∂v/∂y, AND EVERYTHING ELSE FOLLOWS. TERRAIN AND BLOCKING ARE EXCLUDED BY THE ICON-TERRAIN RUN; THE FILTER TWIN REMOVES EXACTLY THE SPURIOUS BAND.** Scripts `wrf3dpbl-diag/advh_and_blocking.py`, `gradient_scale_onset.py`, `range_budget_onset.py`; logs `exp/x16_judge/advh_and_blocking.log`, `advh_and_blocking_runs.log`, `gradient_scale_onset.log`, `range_budget_onset_runs.log`. Runs: production (X22/X17a, 5-min), **X12mta = WRF on ICON's terrain** (30-min, terrain within 30 m rms of ICON's against 90 m for geogrid), **X21a/X21b** = the `diff_6th_slopeopt` twin, and ICON.
 
 **(1) It is the gradient, not the wind, and it is the cross-range part.** ADV_H = −(u ∂v/∂x + v ∂v/∂y) over the range box at 1800 m ASL, 10⁻⁴ m s⁻²: the −u ∂v/∂x part is the **same** in both models (WRF −1.1 → −2.9, ICON −2.0 → −2.8); the whole difference is **−v ∂v/∂y**, WRF −1.6 → −10.1 → −8.0 against ICON −1.6 → −2.8. And ADV_H ≈ |U|·|∇v| decomposes as (wind ratio 1.22) × (**gradient ratio 1.51**) = 1.85, against the measured 1.95.
