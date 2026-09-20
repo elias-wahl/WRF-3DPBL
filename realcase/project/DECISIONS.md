@@ -7,6 +7,32 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-09-21, 00:40 (clock) — THE ONSET HOUR, BUDGETED ON TRUE CONSTANT-HEIGHT SURFACES: THE ONE TERM THAT DIFFERS IS HORIZONTAL ADVECTION OF MOMENTUM, TWICE ICON'S OVER THE RANGE AT 1800–2000 m ASL. PRESSURE FORCE, CORIOLIS AND SUBGRID STRESS ALL MATCH.** Script `wrf3dpbl-diag/range_budget_onset.py`; log `exp/x16_judge/range_budget_onset.log`. Range box 47.35–47.45° N, 11.30–11.85° E; WRF from X22's 5-minute frames 13:00–14:00, ICON at 13 and 14 UT; cells masked to those whose terrain lies below the surface (1059 at 1800 m, 1464 at 2000 m). Terms in 10⁻⁴ m s⁻², negative accelerates the northerly.
+
+**Why this frame.** On a true constant-height (ASL) surface the pressure force is a plain horizontal gradient — no cancelling terrain term, no 1-in-165 residual — and the advection split carries no (∂z/∂y)∂/∂z contamination. Both halves of the E61 trap are absent, which is why the range box at 1800–2200 m was chosen: most of it lies above the terrain.
+
+**1800 m ASL, the hour in which the excess is made:**
+
+| | WRF 13:15 | WRF 13:30 | WRF 13:45 | **WRF 14:00** | ICON 13:00 | **ICON 14:00** |
+|---|---|---|---|---|---|---|
+| ADV_H | −5.9 | −7.2 | **−12.4** | **−10.9** | −3.6 | **−5.6** |
+| ADV_V | −0.6 | +0.9 | +3.8 | +4.0 | +2.0 | −1.4 |
+| PGF | +8.4 | +1.5 | +4.0 | −0.1 | +14.0 | +3.0 |
+| COR | −3.5 | −3.6 | −3.9 | −4.1 | −2.9 | −3.7 |
+| SGS | — | +0.6 | — | +2.4 | +1.4 | +1.9 |
+| sum | −1.5 | −7.8 | −8.4 | −8.7 | +11.0 | −5.9 |
+| dv/dt | −1.6 | −3.6 | −9.3 | −3.6 | — | −1.7 |
+| residual | −0.1 | +4.2 | −0.9 | **+5.1** | — | **+4.2** |
+| v (m s⁻¹) | −2.45 | −2.78 | −3.62 | **−3.94** | −2.33 | **−2.95** |
+
+WRF's meridional wind goes −2.30 → −3.94 m s⁻¹ in the hour; ICON's −2.33 → −2.95. **Same start, 2.6× the acceleration.** Of the five terms, four agree: the pressure force declines from a brake of +8…+14 to ~0 in both, Coriolis is −4.1 against −3.7, the subgrid stress is +2.4 against +1.9, and vertical advection is small. **Horizontal advection is −10.9 in WRF against −5.6 in ICON** — a difference of 5.3 × 10⁻⁴ m s⁻², i.e. 1.9 m s⁻¹ per hour, which is the size of the excess that appears. The same holds at 2000 m (−10.9 vs −5.0) and weakens by 2200 m (−6.6 vs −4.7).
+
+**On the closure.** The budget closes to ±5 × 10⁻⁴ m s⁻², comparable to some terms, so no single absolute number is strong. But **the residual is the same in both models** (+5.1 against +4.2), so the model-to-model comparison of terms is much firmer than the absolute closure: the difference of residuals is 0.9 × 10⁻⁴ against an ADV_H difference of 5.3.
+
+**Reading.** The excess northerly is made by the resolved nonlinear advection term, not by any force and not by the closure. Horizontal advection of momentum is self-amplifying once a core exists — but at 13:00 the two models are identical in both v (−2.30 vs −2.33) and ADV_H (−2.7 vs −3.6), so the amplification starts from parity and runs away in WRF over the following 45 minutes. Two ways that happens at fixed wind speed: a **sharper cross-range gradient ∂v/∂y** (a more concentrated northerly core), or a **different geometry of the u ∂v/∂x part** across the range. Separating them is the next measurement and needs no new data: ∂v/∂y and ∂v/∂x over the same box and hour, both models, alongside the wind itself. It also connects to the one intervention that ever moved the lee current, X21b's filter over steep slopes, which acts on exactly the resolved gradients that this term multiplies. Rating: 8/10 research (the onset hour is budgeted in a clean frame, four of five terms match and the fifth carries the whole difference, with the closure caveat stated), 5/10 model (it names the term but not yet the reason, and the term is resolved dynamics rather than a switch).
+
+---
+
 **2026-09-20, 23:15 (clock) — THE TWO MODELS ARE IDENTICAL AT 13 UT AND THE ENTIRE DIFFERENCE IS GENERATED OVER THE RANGE, AT AND JUST BELOW CREST LEVEL, IN THE SINGLE HOUR 13–14 UT. IT IS NOT IMPORTED FROM THE FORELAND AND IT IS NOT THE PRESSURE FORCE, WHICH IS EQUAL OR LARGER IN ICON AT EVERY HEIGHT.** Scripts `wrf3dpbl-diag/crest_momentum_budget.py`, `cross_range_pgf_boxes.py`; logs `exp/x16_judge/crest_momentum_budget.log`, `cross_range_pgf_boxes.log`, `northerly_onset_boxes.log`.
 
 **(1) A local pressure-gradient difference appeared in the budget and is an artefact — caught before it was announced.** The crest-column budget gave PGF = −18.3 / −20.1 / −14.2 × 10⁻⁴ m s⁻² at 100 / 150 / 250 m for X17a against ICON's −9.6 / −7.1 / −3.0, which would have overturned the 09-18 exclusion. But that term is the residual of two slope-proportional terms cancelling to 1 part in 165–880, and **ICON's terrain on this grid is 39 % steeper**, so its residual is the less trustworthy. Redone the **E59** way — fixed heights above sea level, box means, foreland box (47.55–47.70° N) minus Inn-valley box (47.20–47.30° N), 39 km apart:
