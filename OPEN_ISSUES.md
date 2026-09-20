@@ -2111,8 +2111,22 @@ repeated. Depends on the WRFlux second moments (plan Part 1) for a temporal reso
 
 ---
 
-**A31 (2026-09-20) — the crest overturning is resolved, too strong, and nothing in WRF's
-parameterisation stack reaches it.**
+**A31 (2026-09-20) — the crest overturning is resolved; it is NOT too strong, and it is not the lever.**
+
+**RETRACTED IN PART 2026-09-20 21:30 (see DECISIONS).** The "too strong" half is wrong: total sigma_w
+agrees with ICON to 16 % and the total momentum flux to ~5 % once the subgrid part is included
+(KNOWN_ISSUES E63). Across nine WRF runs the crest flux is anti-correlated with the floor plunge
+(X25 lowest flux, worst plunge; X21b highest flux, weakest crest wind). The crest momentum flux is
+neither anomalous nor controlling. What remains open is below.
+
+**The real gap.** Same cross-range pressure force as ICON, same total downward momentum flux, and a
+surface stress that X23 pushed past ICON's (0.390 vs 0.25 N/m2) -- yet the 100 m crest wind is still
+6.25 vs 4.57 m/s. The crest column does not balance, and the term never measured cleanly is
+HORIZONTAL ADVECTION of momentum into it (the 09-18 budget closed to 1/3 there). Next: a term-by-term
+crest-column momentum budget from FVX/FVY/FVZ_ADV_MEAN_2ND, with ICON's horizontal advection computed
+from its u, v on the same grid.
+
+*Superseded framing below, kept for the reasoning trail.*
 
 State after the three non-run diagnostics (`DECISIONS.md` 2026-09-20 14:30). The vertical flux of
 meridional momentum over the northern-range crests is carried by a terrain-locked circulation whose

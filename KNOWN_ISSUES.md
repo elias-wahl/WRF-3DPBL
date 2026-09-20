@@ -1489,3 +1489,20 @@ has a crest median of **473 m** on this grid, against a resolved terrain standar
 inside a 5.5 km box: the field comes from a ~10 km-scale data set and is simply interpolated down, so at
 dx = 500 m it describes orography the grid already resolves. Switching `gwd_opt` on here is a factor-2
 double count, not a missing physical drag.
+
+**E63 (2026-09-20) — never compare a resolved quantity across two models at 500 m without its subgrid partner.**
+
+The mirror of the 2026-08-22 rule ("judge the convective regime by subgrid q² *and* resolved, never
+subgrid alone"). Comparing WRF's **resolved** crest vertical-velocity variance with ICON's gave
+σ_w′ 1.8× larger at every height, and the resolved momentum flux 1.5× larger — both read as a WRF
+defect for a day. Adding the subgrid part dissolved them: total σ_w agrees to 16 % (WRF resolves
+76–82 % of it, ICON 27–42 %) and the total momentum flux to ~5 % at any ordinary mixing length.
+At dx = 500 m over 1 km relief the resolved/subgrid split is the *first* thing that differs between
+a 3D closure and a 1D TKE scheme, so a resolved-only comparison measures the partition, not the flow.
+
+**Rule.** Any cross-model comparison of a turbulent second moment states both parts and the total.
+Where the other model's subgrid term is not archived (ICON's GRIBs carry `tke` but no momentum flux),
+bound it — `<v'w'>_sgs = -K_m dv/dz`, `K_m = S_m l q`, `q = sqrt(2 TKE)`, `S_m ≈ 0.39` — and scan the
+length scale rather than quoting the resolved number alone. Validate the estimator wherever both
+exist: in the 3D closure `W2_SGS_MEAN / ((2/3) TKE)` is 0.96–1.21.
+(`wrf3dpbl-diag/crest_w_partition.py`, `exp/x16_judge/icon_sgs_flux_bound.log`.)

@@ -7,6 +7,42 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-09-20, 21:30 (clock) — RETRACTION. THE 1.8× IN σ_w AND THE 1.5× IN THE RESOLVED CREST FLUX ARE A GREY-ZONE PARTITION, NOT A DIFFERENCE: TOTAL σ_w AGREES TO 16 % AND THE TOTAL MOMENTUM FLUX TO ~5 %. AND ACROSS NINE WRF RUNS THE CREST FLUX DOES NOT CONTROL THE PLUNGE — IT IS ANTI-CORRELATED WITH IT. THE CREST MOMENTUM FLUX IS NEITHER ANOMALOUS NOR THE LEVER.** Elias raised the partition objection; it is the same argument that rescued the 2026-08-22 convective q² deficit, and the rule written then ("compare subgrid *and* resolved, never subgrid alone") applies in reverse here — never resolved alone. Scripts `wrf3dpbl-diag/crest_w_partition.py`, logs `exp/x16_judge/crest_w_partition.log`, `icon_sgs_flux_bound.log`.
+
+**(1) Total vertical-velocity variance agrees.** σ_w = √(σ_w′² + ⟨w′²⟩_sgs) over the crest cells, 14/15/16 UT. Subgrid is **measured** for the 3D closure (`W2_SGS_MEAN`) and estimated as (2/3)·TKE for MYNN (`QKE`/2) and ICON (its own `tke`); the estimator is validated where both exist — `W2_SGS_MEAN`/((2/3)TKE) = 1.21 / 1.20 / 1.13 / 1.03 / 0.96 for X17a, so it is good to ±20 % and if anything **under**-states ICON.
+
+| σ_w total, m s⁻¹ (resolved share) | 25 m | 100 m | 150 m | 250 m | 400 m |
+|---|---|---|---|---|---|
+| X17a 3D closure | 1.36 (82 %) | 1.37 (76 %) | 1.32 (77 %) | 1.22 (77 %) | 1.09 (77 %) |
+| X17m MYNN twin | 1.53 (71 %) | 1.46 (66 %) | 1.41 (63 %) | 1.32 (60 %) | 1.21 (57 %) |
+| X24m MYNN + roughness | 1.47 (52 %) | 1.46 (53 %) | 1.42 (52 %) | 1.34 (50 %) | 1.24 (49 %) |
+| X25 long length scale | 1.30 (61 %) | 1.52 (48 %) | 1.51 (46 %) | 1.44 (44 %) | 1.30 (44 %) |
+| **ICON 1D TKE** | **1.03 (42 %)** | **1.18 (32 %)** | **1.19 (28 %)** | **1.12 (27 %)** | **0.96 (32 %)** |
+
+WRF/ICON on the **total** is 1.32 / 1.16 / 1.11 / 1.09 / 1.14 — against 1.85 / 1.80 / 1.84 / 1.84 / 1.77 on the resolved part alone. The difference is **where the variance sits**: WRF resolves 76–82 % of it, ICON 27–42 %. That is the grey zone at 500 m, not a defect.
+
+**(2) The total momentum flux agrees too.** ICON's subgrid momentum flux is the one term its GRIBs do not carry, so it is bounded: ⟨v′w′⟩_sgs = −K_m ∂v/∂z with K_m = S_m l q, q = √(2 TKE) from ICON's own field, S_m = 0.39 (neutral Mellor–Yamada), l scanned. ICON's crest shear is −2.90 × 10⁻³ s⁻¹ at 100 m with TKE 1.41 m² s⁻².
+
+| total flux, m² s⁻² | 100 m | 150 m | 250 m | 400 m |
+|---|---|---|---|---|
+| WRF X17a (resolved + **measured** subgrid) | 0.324 | 0.303 | 0.220 | 0.101 |
+| ICON resolved alone | 0.215 | 0.234 | 0.217 | 0.148 |
+| ICON total, l = 30 m | 0.272 | 0.281 | 0.257 | 0.160 |
+| **ICON total, l = 50 m** | **0.310** | **0.312** | **0.284** | **0.168** |
+| ICON total, l = 80 m | 0.367 | 0.360 | 0.324 | 0.180 |
+
+WRF's own subgrid flux is ~0 above 100 m (measured `VW_SGS_MEAN` = 0.002, −0.025, −0.046, −0.044), so WRF's total *is* its resolved flux. At any ordinary daytime mixing length the two models deliver **the same total momentum flux** into the crest column.
+
+**(3) And it is not the lever anyway.** Resolved crest flux at 100 m across the run set: X21b **0.475**, X20 0.418, X17m 0.330, X21a 0.329, X17a 0.322, X19a 0.312, X23 0.294, X24m 0.289, X25 **0.134**. Against the outcome: X25 has the **lowest** flux and the **worst** floor plunge (−9.6 m s⁻¹ at 17 UT against X17's −7.5, X23's −6.0, ICON's −1.5), while X21b has the **highest** flux and the **weakest** crest wind (−3.9 m s⁻¹ at 15 UT against its own twin X21a's −4.6). The crest momentum flux and the descent are uncorrelated to anti-correlated across nine runs.
+
+**What is retracted.** The causal framing built on 2026-09-20 09:15 → 19:40 — that the crest jet is fed by a resolved terrain-locked pump which WRF over-produces, and that this is where WRF differs from ICON. **The measurements stand** (the partition within WRF, the 19 Δx scale, the r/σ decomposition, the terrain-slope and wind numbers); the inference from them does not. Also withdrawn: "ICON damps the terrain-forced vertical motion to 0.43 of its kinematic value while WRF passes 0.72–0.80" — that compares resolved w in one model with resolved w in the other and is the same partition artefact.
+
+**What survives, untouched.** The lee-barrier result (the resolved descent destroys the barrier, the closure maintains it — 14:30 entry) is about the descent itself, not the crest flux. The evening mechanism (adiabatic warming by the plunging flow, +7 → +22 K h⁻¹ at 17–18 UT, floor ADV_H +4.3) stands. The numerics exclusions (the circulation is at 19 Δx; the coordinate error is 19 % at 24 m and 2–9 % above; `hybrid_opt` cannot reach the layer) stand. And the plain fact stands: **WRF's crest wind at 100 m is 6.25 m s⁻¹ against ICON's 4.57, and roughness reaches the 10 m wind and not the 100 m wind** (X23: U₁₀ 4.18 ≈ ICON's 4.0, V₁₀₀ still 5.83).
+
+**Where that leaves it.** Same cross-range pressure force as ICON (09-18), same total downward momentum flux (this entry), and a surface stress that can be pushed past ICON's (X23: 0.390 against 0.25 N m⁻²) — and the 100 m crest wind is still 37 % too strong. The terms that balance the crest column therefore do not balance, and the one never measured cleanly is **horizontal advection of momentum into the crest column** (the 09-18 budget closed only to ⅓ there). That is the next measurement: a term-by-term crest-column momentum budget from the WRFlux momentum fluxes (`FVX/FVY/FVZ_ADV_MEAN_2ND`), with ICON's horizontal advection computed from its own u, v on the same grid. Rating: 8/10 research (a retraction that removes a whole false trail in one measurement, with the partition estimator validated and a cross-run consistency check), 3/10 model (it undoes two days of apparent progress and names one untested term).
+
+---
+
 **2026-09-20, 19:40 (clock) — THE WHOLE DIFFERENCE IS σ_w: WRF'S RESOLVED VERTICAL VELOCITY OVER THE CRESTS IS 1.8× ICON'S AT EVERY HEIGHT, FOR THE SAME KINEMATIC TERRAIN FORCING AND OVER *GENTLER* TERRAIN. THE HORIZONTAL PERTURBATION MATCHES AND ICON'S v′–w′ CORRELATION IS HIGHER. RAISING ROUGHNESS FIXES THE 10 m WIND AND NOT THE 100 m WIND.** No runs. Script `wrf3dpbl-diag/crest_flux_scaling.py`; logs `exp/x16_judge/crest_flux_scaling.log`, `remap_smoothing_control.log`. Crest cells as before, X17a/X23/X24m/X25 and ICON all sampled at 14, 15, 16 UT so the sampling is matched.
 
 **(1) The scaling test is a null — and the apparent collapse is a coincidence.** The efficiency E = ⟨v′w′⟩(100 m) / (V₁₀₀² |∇h|), with V₁₀₀ the crest-mean wind speed at 100 m AGL and |∇h| the crest-mean terrain slope, comes out **X17a 0.0338, X23 0.0356, X24m 0.0315, ICON 0.0313** — a 15 % spread (X25 is the outlier at 0.0153). But the collapse is three compensating factors, not a law: ICON has a **39 % steeper** slope (|∇h| 0.336 vs 0.241 — its crests are also 63 m higher and carry more small-scale height variance) and a **27 % weaker** wind (V₁₀₀ 4.57 vs 6.25 m s⁻¹). Do not read E as physics.
