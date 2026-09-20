@@ -2128,8 +2128,19 @@ it is not a grey-zone partition and no body force is hiding the transport. WRF's
 2–3× ICON's and the gap closes with height — 3.3× at 25 m, 2.1× at 100 m, 1.8× at 150 m, 1.5× at
 250 m, **0.94× at 400 m**. ICON's flux falls away towards the ground (0.244 at 150 m → 0.110 at 25 m)
 while WRF's stays high (0.441 → 0.364). **The "momentum sink through depth over the range" hypothesis
-is retired**; the difference is confined to the lowest ~250 m. The open question is now: what stops
-the resolved overturning from reaching into the surface layer in ICON, and why does WRF let it?
+is retired**; the difference is confined to the lowest ~250 m. **REFINED 2026-09-20 19:40 — it is sigma_w, uniformly with height, not a near-surface effect.**
+Decomposing <v'w'> = r sigma_v' sigma_w': sigma_w' is 1.8x larger in WRF at EVERY height
+(1.20 vs 0.67 m/s at 100 m), sigma_v' matches within 10 %, and ICON's v'-w' correlation is
+higher everywhere above 25 m (0.28 vs 0.21 at 100 m, rising to 0.40 at 400 m while WRF's falls
+to 0.17). Normalised by the kinematic terrain forcing V|grad h| -- which is the SAME in both,
+1.51 vs 1.54 m/s, ICON's 39 % steeper slope offsetting its 27 % weaker wind -- WRF realises
+0.72-0.80 of it and ICON only 0.43. A control rules out the CDO remap: ICON's terrain came
+through the same path and is steeper, with more small-scale variance, than WRF's.
+**The question is now: why is WRF's resolved vertical velocity over steep terrain twice ICON's
+for the same forcing?**  Note also that raising roughness reaches 10 m and not 100 m (X23: crest
+U10 4.18 vs ICON ~4.0, but V100 5.83 vs 4.57), and that X25 halves the flux by decorrelating
+v' and w' (r 0.111) without touching sigma_w' -- and its lee plunge was the worst of the set, so
+cutting the crest flux is not sufficient.
 X25 reaches ICON's subgrid TKE (1.13–1.51 vs 1.09–1.86 m² s⁻²) and is still 1.4–1.5× ICON in resolved
 flux, so the closure's energy level is not the lever. Candidates: the lowest-level vertical spacing over
 steep terrain (X13 crashed, A24), the surface-layer scheme's treatment of the flux delivered from above,
