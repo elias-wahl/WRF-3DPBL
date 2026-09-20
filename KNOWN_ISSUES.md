@@ -1461,3 +1461,31 @@ Do NOT expect one fix to serve both.
 **Rule.** For slope and crest sites pick the model cell by terrain, not by distance: within 5 × 5 cells, aspect within 60° of the station's, then the closest height; project winds on the *cell's own* fall line (HGT gradient), never on the station's aspect; drop sites whose landform is unresolved (Eggen's terrace). State cell height, fall line and distance with every site comparison. Valley-floor stations: closest height within 1.5 km. The proper route is `proc`'s `VirtualStation.get_var_at(name, height)`; quick scripts must at least follow this rule (`exp/x16_judge/drainage_matched_cells.log`).
 
 **E59 addendum (2026-09-17 20:50):** horizontal pressure differences between sites must be taken at fixed heights from the model column with box means (5 × 5 cells); `PSFC` of single cells reduced with `T2` fluctuates by ±0.5 hPa between half-hourly frames in a convective afternoon and produced a false 'WRF has 35 % of the observed along-valley pressure gradient' (retracted within the hour).
+
+---
+
+**E61 (2026-09-20) — the η-coordinate split of resolved advection is meaningless on steep slopes; use a constant-height frame.**
+
+The WRFlux θ budget closes fine in total, but its split into horizontal and vertical advection is
+computed on η surfaces. Over the lee slope of the northern range (slope > 0.10) the two parts come out
+as **+849.9 and −850.5 K h⁻¹**, cancelling to a physical −0.56 K h⁻¹ — because the η-vertical flux
+carries the whole terrain-following part of the horizontal transport. Reading either column on its own,
+or their ratio, is meaningless there; on the valley floor the same split gives +1017 / −1017.
+This is what "the budget closes to ⅓ except on the lee slope" (2026-09-18) was really recording.
+
+**Rule.** On slopes, report `adv` as a total from the WRFlux terms, and if the split is needed, redo it
+in a physical frame on constant-height surfaces with the model's own winds — `ADV_Z = −w ∂θ/∂z`,
+`ADV_H = −u ∂θ/∂x − v ∂θ/∂y` — keeping the subgrid term from `FTZ_SGS_MEAN`
+(`wrf3dpbl-diag/lee_barrier_physical.py`; the η-frame version is `lee_barrier_theta_budget.py` and is
+kept only to show the degeneracy).
+
+**E62 (2026-09-20) — `met_em` has no vertical velocity, and `VAR` double-counts resolved terrain at 500 m.**
+
+Two traps when reaching for ICON as the reference. (a) The metgrid files carry 84 fields — UU, VV, TT,
+RH, PRES/PRESSURE, GHT, the soil block and the sub-grid orography block (VAR, VAR_SSO, OA1–4, OL1–4) —
+but **no w**. Any ICON-side vertical-flux comparison needs the native GRIBs (`icon-data` skill), not
+`met_em`. (b) `VAR`, the sub-grid orographic standard deviation that WRF's `gwd_opt` drag is built on,
+has a crest median of **473 m** on this grid, against a resolved terrain standard deviation of **236 m**
+inside a 5.5 km box: the field comes from a ~10 km-scale data set and is simply interpolated down, so at
+dx = 500 m it describes orography the grid already resolves. Switching `gwd_opt` on here is a factor-2
+double count, not a missing physical drag.

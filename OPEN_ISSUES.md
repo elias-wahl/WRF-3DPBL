@@ -2108,3 +2108,33 @@ cap `pbl3d_sk_eps_max = 6` (load-bearing at night) clips shear production where 
 check not yet done: fraction of `PBL3D_T1_RATIO < 0.999` cells by Ri_g and time of day from a 1-min
 stream-23 segment 16→20 UTC. Fix candidate: `pbl3d_limiter_opt = 2` (exists, never run), night check
 repeated. Depends on the WRFlux second moments (plan Part 1) for a temporal resolved TKE.
+
+---
+
+**A31 (2026-09-20) — the crest overturning is resolved, too strong, and nothing in WRF's
+parameterisation stack reaches it.**
+
+State after the three non-run diagnostics (`DECISIONS.md` 2026-09-20 14:30). The vertical flux of
+meridional momentum over the northern-range crests is carried by a terrain-locked circulation whose
+cross-range wavelength is **19 Δx (9.5 km)** and along-range **40 Δx (20 km)**; under 1.2 % of the flux
+sits below 4 Δx. It is therefore a properly resolved mountain-scale overturning, not grid noise, and it
+is not reachable by the closure (three configurations, K_m varied ~4.4×), by surface drag (Cd₁₀ raised
+to ICON's 16–20 × 10⁻³), by the vertical coordinate (`hybrid_opt` changes B(η) by < 0.1 % below 150 m
+AGL over a 3621 m crest) or by `gwd_opt` (E62b: `VAR` double-counts resolved terrain at 500 m).
+
+**What would discriminate, in order.**
+1. **ICON's own w over the crests from native GRIBs** — the same box-mean v′w′ partition and the same
+   spectrum. If ICON's resolved flux is ~0.1 m² s⁻² against WRF's 0.44 with its subgrid carrying the
+   rest, this is a grey-zone partition and the answer is a body force; if ICON's resolved flux is also
+   ~0.4, the crest is the wrong place to look and the difference is downstream. Needs `icon-data`
+   (E62a: `met_em` has no w).
+2. **Why X21b worked.** Keeping the 6th-order filter on over steep slopes took 25–30 % off the lee
+   current, but a 6th-order filter does essentially nothing at 19 Δx. Either the filter acts on the
+   *slope-layer* current rather than the crest overturning, or the taper is doing something other than
+   scale-selective damping. Measure the filter's momentum tendency offline in both configurations
+   (`filter_tend_offline.py` is the θ version).
+3. Vertical resolution over the crest (X13 crashed, A24): the flux divergence peaks at 25–150 m, which
+   is 8 model levels here.
+
+**Not to be retried:** closure constants, roughness, land-cover heat partition, `hybrid_opt`, `gwd_opt`
+as shipped.
