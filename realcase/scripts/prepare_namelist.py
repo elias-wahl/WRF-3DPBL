@@ -404,6 +404,10 @@ def check(nl):
                        "directory rather than the shared output tree" % (key, v))
 
     # -- 3D PBL hard requirements (module_check_a_mundo.F) -----------------
+    if g("diff_6th_slopeopt", int, 0) == 3 and g("diff_6th_opt", int, 0) == 0:
+        note(FATAL, "diff_6th_slopeopt=3 gates the sixth-order filter's slope taper on "
+                    "static stability, but diff_6th_opt=0 switches the filter off entirely")
+
     p3 = g("pbl3d_opt", int, 0)
     if p3 != 0:
         if g("bl_pbl_physics", int, 0) != 0:
@@ -424,6 +428,9 @@ def check(nl):
                 note(FATAL, "pbl3d_opt=-1 needs km_opt=4 (got %s)" % g("km_opt", int))
         if g("pbl3d_sk_eps_max", float, 6.0) <= 0:
             note(FATAL, "pbl3d_sk_eps_max must be > 0")
+        if g("pbl3d_lh_opt", int, 0) == 1 and g("pbl3d_scale_aware", int, 1) != 1:
+            note(WARN, "pbl3d_lh_opt=1 restores the length the grey-zone taper removed, so it "
+                       "is a no-op with pbl3d_scale_aware=0 (nothing was removed)")
         ntau = g("pbl3d_n_tau_max", float, 0.53)
         if ntau <= 0:
             note(FATAL, "pbl3d_n_tau_max must be > 0")

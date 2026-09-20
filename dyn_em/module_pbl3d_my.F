@@ -1254,6 +1254,14 @@
       integer :: ib, ibit
       real    :: sk_max, ntau_min, ntau_max, cond_max_seen
 
+        ! pbl3d_lh_opt = 1: horizontal restoration of the grey-zone taper (see below).
+        ! S_M_NEUTRAL_LH is the neutral Mellor-Yamada momentum stability function, so that
+        ! K_h = S_M * q * l has the same form the scheme uses elsewhere; PR_INV_LH = 1
+        ! keeps the horizontal Prandtl number at unity, which is what a grid-scale
+        ! horizontal closure assumes and avoids inventing a second constant.
+      real, parameter :: S_M_NEUTRAL_LH = 0.39, PR_INV_LH = 1.0
+      real    :: lh_extra, kh_extra
+
       character (4) :: my_level
       character (len = 256) :: wrf_err_message
 
@@ -1420,6 +1428,46 @@
                 ! above, and wherever Tier 1 did not bind (dg_t1_ratio = 1).
               l_master(i, k, j) = l_master(i, k, j) * dg_t1_ratio
               l_boulac(i, k, j) = l_boulac(i, k, j) * dg_t1_ratio
+
+                ! ---------------------------------------------------------------------
+                ! pbl3d_lh_opt = 1: restore, in the HORIZONTAL only, the mixing that the
+                ! grey-zone taper removed.
+                !
+                ! Make_scale_aware multiplies l_master by Psig_bl, and Diagnose_fluxes
+                ! then uses that single length for all nine gradient components -- so the
+                ! taper cuts the horizontal sub-grid mixing exactly as hard as the
+                ! vertical. That is the wrong physics for the grey zone: the taper is
+                ! justified because VERTICAL transport becomes resolved as dx shrinks,
+                ! while the horizontal sub-grid mixing at dx = 500 m should still be set
+                ! by the grid scale. Leaving it tapered is what leaves a resolved 3-6 km
+                ! terrain-locked circulation essentially undamped (DECISIONS 2026-09-21).
+                !
+                ! The length restored is exactly what the taper took,
+                !     l_h = l_master * (1 - Psig_bl) / Psig_bl ,
+                ! so there is no new constant and nothing is added when the taper is
+                ! inactive (Psig_bl = 1) or when pbl3d_scale_aware = 0. The resulting
+                ! horizontal eddy viscosity K_h = S_M_NEUTRAL * q * l_h is applied ONLY to
+                ! the horizontal gradient components, as a down-gradient addition on top
+                ! of the algebraic solve. It deliberately does not enter the q^2 budget:
+                ! the solve already pays for the transport it represents, and crediting
+                ! q^2 twice is the error that pbl3d_sf_pair was written to remove (A10).
+              if (config_flags%pbl3d_lh_opt == 1 .and. Psig_bl(i, j) > 1.0e-3            &
+                  .and. Psig_bl(i, j) < 0.999) then
+                lh_extra = l_master(i, k, j) * ( 1.0 - Psig_bl(i, j) ) / Psig_bl(i, j)
+                kh_extra = S_M_NEUTRAL_LH * Sqrt ( Max (q_sq(i, k, j), 0.0) ) * lh_extra
+                turb_flux_u2(i, k, j) = turb_flux_u2(i, k, j) - 2.0 * kh_extra * du_dx(i, k, j)
+                turb_flux_v2(i, k, j) = turb_flux_v2(i, k, j) - 2.0 * kh_extra * dv_dy(i, k, j)
+                turb_flux_uv(i, k, j) = turb_flux_uv(i, k, j)                             &
+                                      - kh_extra * ( du_dy(i, k, j) + dv_dx(i, k, j) )
+                turb_flux_utheta_v(i, k, j) = turb_flux_utheta_v(i, k, j)                 &
+                                      - kh_extra * PR_INV_LH * dthetav_dx(i, k, j)
+                turb_flux_vtheta_v(i, k, j) = turb_flux_vtheta_v(i, k, j)                 &
+                                      - kh_extra * PR_INV_LH * dthetav_dy(i, k, j)
+                turb_flux_uqv(i, k, j) = turb_flux_uqv(i, k, j)                           &
+                                      - kh_extra * PR_INV_LH * dqv_dx(i, k, j)
+                turb_flux_vqv(i, k, j) = turb_flux_vqv(i, k, j)                           &
+                                      - kh_extra * PR_INV_LH * dqv_dy(i, k, j)
+              end if
 
                 ! Summary bin: 1 unstable, 2 near neutral, 3 stable
               if (dg_n_tau < -0.05) then

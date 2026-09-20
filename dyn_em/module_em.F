@@ -1149,7 +1149,7 @@ SUBROUTINE rk_tendency ( config_flags, rk_step,                           &
                                        u_tend_damp, save_utend,       &
                                        config_flags, c1h, c2h,        &
                                        diff_6th_opt, diff_6th_factor, &
-                                       phb, ph,                       &
+                                       phb, ph, t,                    &
                                        rdx, rdy,                      &
                                        msftx, msfty,                  &
                                        msfux, msfuy,                  &
@@ -1162,7 +1162,7 @@ SUBROUTINE rk_tendency ( config_flags, rk_step,                           &
                                        v_tend_damp, save_vtend,       &
                                        config_flags, c1h, c2h,        &
                                        diff_6th_opt, diff_6th_factor, &
-                                       phb, ph,                       &
+                                       phb, ph, t,                    &
                                        rdx, rdy,                      &
                                        msftx, msfty,                  &
                                        msfux, msfuy,                  &
@@ -1176,7 +1176,7 @@ SUBROUTINE rk_tendency ( config_flags, rk_step,                           &
                                        w_tend_damp, save_wtend,       &
                                        config_flags, c1f, c2f,        &
                                        diff_6th_opt, diff_6th_factor, &
-                                       phb, ph,                       &
+                                       phb, ph, t,                    &
                                        rdx, rdy,                      &
                                        msftx, msfty,                  &
                                        msfux, msfuy,                  &
@@ -1189,7 +1189,7 @@ SUBROUTINE rk_tendency ( config_flags, rk_step,                           &
                                        t_tend_damp, save_ttend,       &
                                        config_flags, c1h, c2h,        &
                                        diff_6th_opt, diff_6th_factor, &
-                                       phb, ph,                       &
+                                       phb, ph, t,                    &
                                        rdx, rdy,                      &
                                        msftx, msfty,                  &
                                        msfux, msfuy,                  &
@@ -1741,7 +1741,7 @@ SUBROUTINE rk_scalar_tend ( scs, sce, config_flags,          &
                                           q_tend_damp, save_qtend,       &
                                           config_flags, c1h, c2h,        &
                                           diff_6th_opt, diff_6th_factor, &
-                                          phb, ph,                       &
+                                          phb, ph, t,                    &
                                           rdx, rdy,                      &
                                           msftx, msfty,                  &
                                           msfux, msfuy,                  &

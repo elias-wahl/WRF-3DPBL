@@ -6449,7 +6449,7 @@ END SUBROUTINE set_tend
                                         diff_tend, save_tend,            &
                                         config_flags, c1, c2,            &
                                         diff_6th_opt, diff_6th_factor,   &
-                                        phb, ph,                         &
+                                        phb, ph, th_in,                  &
                                         rdx, rdy,                        &
                                         msftx, msfty,                    &
                                         msfux, msfuy,                    &
@@ -6493,7 +6493,12 @@ END SUBROUTINE set_tend
 
     REAL, DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(IN)  &
     :: ph, phb
- 
+
+!  Perturbation potential temperature, used only by diff_6th_slopeopt = 3 to gate the
+!  slope taper on static stability. Unused for every other value of diff_6th_slopeopt.
+    REAL, DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(IN)  &
+    :: th_in
+
     REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN)  &
     :: MUT
 
@@ -6539,6 +6544,17 @@ END SUBROUTINE set_tend
     REAL  &
     :: dzmax_p0, dzmax_p1, dx, dy, slopedamp_p0, slopedamp_p1, dzthresh
 
+!  diff_6th_slopeopt = 3: static-stability gate on the slope taper.
+!  stab(i,k,j) is d(theta)/dz in K/m on mass levels; stabcrit is the namelist threshold
+!  converted from K/km. blend = 0 in well-mixed air (filter at full strength even on a
+!  slope) and 1 in stratified air (the production taper). The gate is evaluated on the
+!  MOST STABLE cell of the six-point 5th-difference stencil, because a weakly stratified
+!  cell with an inversion among its neighbours must still be protected.
+    REAL, DIMENSION( ims:ime, kms:kme, jms:jme ) :: stab
+    REAL :: stabcrit, sblend_p0, sblend_p1, taper_p0, taper_p1, zlo, zhi
+    INTEGER :: kstab
+    LOGICAL :: do_stabgate
+
     LOGICAL  &
     :: specified
 
@@ -6554,6 +6570,28 @@ END SUBROUTINE set_tend
 ! diffusion for a given coefficient.
 
     diff_6th_coef = diff_6th_factor * 0.015625 / ( 2.0 * dt )  
+
+!  Static-stability field for the diff_6th_slopeopt = 3 gate. Built once per call; the
+!  cost is one vertical difference per cell and it is skipped entirely otherwise.
+    do_stabgate = ( config_flags%diff_6th_slopeopt .EQ. 3 )
+    stabcrit = MAX( config_flags%diff_6th_stabthresh, 1.0E-6 ) * 0.001
+    IF ( do_stabgate ) THEN
+      stab = 0.0
+      DO j = MAX(jts-3,jds), MIN(jte+3,jde-1)
+      DO k = kts, MIN(kte,kde-1)
+      DO i = MAX(its-3,ids), MIN(ite+3,ide-1)
+        zlo = 0.5 * ( phb(i,MAX(k-1,kts),j) + ph(i,MAX(k-1,kts),j)   &
+                    + phb(i,k,j)           + ph(i,k,j)           ) / 9.81
+        zhi = 0.5 * ( phb(i,MIN(k+1,MIN(kte,kde-1)),j) + ph(i,MIN(k+1,MIN(kte,kde-1)),j) &
+                    + phb(i,k,j)                       + ph(i,k,j)                     ) / 9.81
+        IF ( zhi - zlo .GT. 1.0 ) THEN
+          stab(i,k,j) = ( th_in(i,MIN(k+1,MIN(kte,kde-1)),j) - th_in(i,MAX(k-1,kts),j) )  &
+                        / ( zhi - zlo )
+        END IF
+      END DO
+      END DO
+      END DO
+    END IF
 
 ! End: Translate diffusion factor.
 !------------------------------------------------------------------------------
@@ -6732,8 +6770,22 @@ END SUBROUTINE set_tend
            dzmax_p0 = ABS(phb(i  ,k,j) - phb(i-1,k,j))*msfux(i,j)
            dzmax_p1 = ABS(phb(i+1,k,j) - phb(i  ,k,j))*msfux(i+1,j)
          END IF
-         slopedamp_p0 = MAX(1.- (dzmax_p0/dzthresh) , 0.)
-         slopedamp_p1 = MAX(1.- (dzmax_p1/dzthresh) , 0.)
+         taper_p0 = MAX(1.- (dzmax_p0/dzthresh) , 0.)
+         taper_p1 = MAX(1.- (dzmax_p1/dzthresh) , 0.)
+         IF ( do_stabgate ) THEN
+!  Gate the taper on static stability, on the most stable cell of the 5th-difference
+!  stencil (faces p0 and p1 span i-3..i+2 and i-2..i+3 respectively).
+           kstab = MIN( k, MIN(kte,kde-1) )
+           sblend_p0 = MAX( 0., MIN( 1.,                                            &
+                       MAXVAL( stab(MAX(i-3,ids):MIN(i+2,ide-1),kstab,j) ) / stabcrit ) )
+           sblend_p1 = MAX( 0., MIN( 1.,                                            &
+                       MAXVAL( stab(MAX(i-2,ids):MIN(i+3,ide-1),kstab,j) ) / stabcrit ) )
+           slopedamp_p0 = ( 1. - sblend_p0 ) + sblend_p0 * taper_p0
+           slopedamp_p1 = ( 1. - sblend_p1 ) + sblend_p1 * taper_p1
+         ELSE
+           slopedamp_p0 = taper_p0
+           slopedamp_p1 = taper_p1
+         ENDIF
       ENDIF
 
 ! Apply 6th-order diffusion in x direction.
@@ -6814,8 +6866,20 @@ END SUBROUTINE set_tend
            dzmax_p0 = ABS(phb(i,k,j  ) - phb(i,k,j-1))*msfvy(i,j  )
            dzmax_p1 = ABS(phb(i,k,j+1) - phb(i,k,j  ))*msfvy(i,j+1)
          END IF
-         slopedamp_p0 = MAX(1.- (dzmax_p0/dzthresh) , 0.)
-         slopedamp_p1 = MAX(1.- (dzmax_p1/dzthresh) , 0.)
+         taper_p0 = MAX(1.- (dzmax_p0/dzthresh) , 0.)
+         taper_p1 = MAX(1.- (dzmax_p1/dzthresh) , 0.)
+         IF ( do_stabgate ) THEN
+           kstab = MIN( k, MIN(kte,kde-1) )
+           sblend_p0 = MAX( 0., MIN( 1.,                                            &
+                       MAXVAL( stab(i,kstab,MAX(j-3,jds):MIN(j+2,jde-1)) ) / stabcrit ) )
+           sblend_p1 = MAX( 0., MIN( 1.,                                            &
+                       MAXVAL( stab(i,kstab,MAX(j-2,jds):MIN(j+3,jde-1)) ) / stabcrit ) )
+           slopedamp_p0 = ( 1. - sblend_p0 ) + sblend_p0 * taper_p0
+           slopedamp_p1 = ( 1. - sblend_p1 ) + sblend_p1 * taper_p1
+         ELSE
+           slopedamp_p0 = taper_p0
+           slopedamp_p1 = taper_p1
+         ENDIF
       ENDIF
 
 ! Apply 6th-order diffusion in y direction.

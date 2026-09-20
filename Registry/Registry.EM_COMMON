@@ -1280,6 +1280,7 @@ rconfig  integer   pbl3d_t2_scalar      namelist,dynamics          1        0   
 rconfig  integer   pbl3d_sf_pair        namelist,dynamics    max_domains      0      -     "pbl3d_sf_pair"        "PBL3D: 1 = credit q^2 with the horizontal-pairing production divided by the slope factor the momentum tendency uses (energy-consistent); 0 = untapered" ""
 rconfig  integer   pbl3d_scalar_mix     namelist,dynamics    max_domains      0      -     "pbl3d_scalar_mix"     "PBL3D scalar turbulent mixing" ""
 rconfig  integer   pbl3d_scale_aware    namelist,dynamics    max_domains      1      -     "pbl3d_scale_aware"    "PBL3D scale-aware tapering" ""
+rconfig  integer   pbl3d_lh_opt         namelist,dynamics    max_domains      0      -     "pbl3d_lh_opt"         "PBL3D horizontal mixing: 0 = off (single tapered length, previous behaviour), 1 = restore in the horizontal only the length the grey-zone taper removed" ""
 rconfig  integer   flux_limiter_w       namelist,dynamics    max_domains      0      -     "flux_limiter_w"       "Flux limiter on vertical advection of w" ""
 
 rconfig  integer   pbl3d_used           derived                    1          0      -     "pbl3d_used"           "turn on if any variation of PBL3D is used"
@@ -3036,6 +3037,7 @@ rconfig   real    diff_6th_factor         namelist,dynamics     max_domains    0
 rconfig   integer diff_6th_opt            namelist,dynamics     max_domains    0      irh   "diff_6th_opt" "switch for 6th-order numerical diffusion"
 rconfig   integer diff_6th_slopeopt       namelist,dynamics     max_domains    0      irh   "diff_6th_slopeopt" "switch for 6th-order numerical diffusion - terrain-slope tapering"
 rconfig   real    diff_6th_thresh         namelist,dynamics     max_domains    0.10    ih    "diff_6th_thresh" "slope threshold (m/m) that turns off 6th order diff is steep terrain"
+rconfig   real    diff_6th_stabthresh     namelist,dynamics     max_domains    2.0     ih    "diff_6th_stabthresh" "diff_6th_slopeopt=3: d(theta)/dz in K/km above which the slope taper applies in full; below it the filter runs at full strength on slopes too"
 rconfig   integer use_theta_m             namelist,dynamics	1              1       rh    "use_theta_m" "theta_m = theta (1 + 1.61 Qv); 0-no, 1=yes"     ""
 rconfig   integer use_q_diabatic          namelist,dynamics     1              0       rh    "use_q_diabatic" "account for q diabatic terms in advection "     ""
 rconfig   real    c_s                     namelist,dynamics     max_domains    0.25    h    "c_s"         "Smagorinsky coeff"      ""
