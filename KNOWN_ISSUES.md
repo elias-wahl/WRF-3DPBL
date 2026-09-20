@@ -1506,3 +1506,19 @@ bound it — `<v'w'>_sgs = -K_m dv/dz`, `K_m = S_m l q`, `q = sqrt(2 TKE)`, `S_m
 length scale rather than quoting the resolved number alone. Validate the estimator wherever both
 exist: in the 3D closure `W2_SGS_MEAN / ((2/3) TKE)` is 0.96–1.21.
 (`wrf3dpbl-diag/crest_w_partition.py`, `exp/x16_judge/icon_sgs_flux_bound.log`.)
+
+**E61 addendum (2026-09-20 23:15) — the trap has a second half, and it reaches the pressure force.**
+
+(a) *Advection.* Moving the budget off eta surfaces onto **constant-height-above-ground** surfaces is
+not enough. On such a surface `d/dy|_AGL = d/dy|_z + (dz/dy) d/dz`, and over these crests
+`dz/dy = 0.145` with `dv/dz ~ 3e-3 /s`, so the contamination is ~22e-4 m/s2 — the size of every term
+in the momentum budget. Only the TOTAL advection is frame-robust; quote the split only on true
+constant-height (ASL) surfaces, which over a range exist only above the highest terrain in the box.
+
+(b) *Pressure force.* The local PGF `-(1/rho) dp/dy|_s - g dz/dy|_s` is the residual of two
+slope-proportional terms cancelling to 1 part in 165-880, so it is **not comparable between two
+models whose terrain differs** — ICON's is 39 % steeper on this grid. Evaluated that way ICON's
+crest PGF came out 2-3x smaller than WRF's; by the E59 method (fixed heights ASL, box means either
+side of the range) the two are equal and ICON's is slightly the larger below 2000 m. Cross-model
+pressure forces are taken by the E59 method, never from a local terrain-following gradient.
+(`wrf3dpbl-diag/cross_range_pgf_boxes.py`, `exp/x16_judge/cross_range_pgf_boxes.log`.)

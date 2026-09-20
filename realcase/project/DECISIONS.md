@@ -7,6 +7,38 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-09-20, 23:15 (clock) — THE TWO MODELS ARE IDENTICAL AT 13 UT AND THE ENTIRE DIFFERENCE IS GENERATED OVER THE RANGE, AT AND JUST BELOW CREST LEVEL, IN THE SINGLE HOUR 13–14 UT. IT IS NOT IMPORTED FROM THE FORELAND AND IT IS NOT THE PRESSURE FORCE, WHICH IS EQUAL OR LARGER IN ICON AT EVERY HEIGHT.** Scripts `wrf3dpbl-diag/crest_momentum_budget.py`, `cross_range_pgf_boxes.py`; logs `exp/x16_judge/crest_momentum_budget.log`, `cross_range_pgf_boxes.log`, `northerly_onset_boxes.log`.
+
+**(1) A local pressure-gradient difference appeared in the budget and is an artefact — caught before it was announced.** The crest-column budget gave PGF = −18.3 / −20.1 / −14.2 × 10⁻⁴ m s⁻² at 100 / 150 / 250 m for X17a against ICON's −9.6 / −7.1 / −3.0, which would have overturned the 09-18 exclusion. But that term is the residual of two slope-proportional terms cancelling to 1 part in 165–880, and **ICON's terrain on this grid is 39 % steeper**, so its residual is the less trustworthy. Redone the **E59** way — fixed heights above sea level, box means, foreland box (47.55–47.70° N) minus Inn-valley box (47.20–47.30° N), 39 km apart:
+
+| −(1/ρ)∂p/∂y, ×10⁻⁴ m s⁻² | 1000 m | 1500 m | 2000 m | 2500 m | 3000 m |
+|---|---|---|---|---|---|
+| X17a | −14.5 | −7.4 | −1.2 | +4.7 | +8.6 |
+| X23 | −15.6 | −8.4 | −1.9 | +4.4 | +8.8 |
+| X25 | −15.8 | −8.6 | −1.9 | +4.5 | +8.8 |
+| **ICON** | **−15.6** | **−10.5** | **−3.8** | +2.4 | +7.4 |
+
+**The cross-range force is the same, and below 2000 m ICON's is slightly the larger.** The 09-18 exclusion stands. Local PGF on a terrain-following surface is not comparable between models with different terrain — added to `KNOWN_ISSUES.md` **E61**, together with the second half of the same trap: the horizontal/vertical split of advection on a *constant-height-above-ground* surface is contaminated too, because ∂/∂y|_AGL = ∂/∂y|_z + (∂z/∂y)∂/∂z and with ∂z/∂y = 0.145 and ∂v/∂z ≈ 3 × 10⁻³ s⁻¹ the contamination is ≈ 22 × 10⁻⁴ m s⁻², the size of the terms themselves. **Only the total advection is frame-robust**: over the crests at 100–150 m it is **+10 to +15 × 10⁻⁴ m s⁻² in WRF (a brake on the northerly) against −3.5 to −1.8 in ICON**.
+
+**(2) The onset, and it relocates the problem.** Box-mean meridional wind v (m s⁻¹, negative = northerly) at fixed heights ASL in three boxes across the flow — foreland 47.55–47.70° N, the range 47.35–47.45° N, the Inn valley 47.20–47.30° N, all 11.30–11.85° E. WRF excess over ICON:
+
+| excess, m s⁻¹ | 13 UT | 14 UT | 15 UT | 16 UT | 17 UT |
+|---|---|---|---|---|---|
+| foreland 2000 m | +0.00 | **+0.40** | +0.20 | +0.07 | +0.17 |
+| foreland 1500 m | −0.00 | −0.48 | −0.94 | −1.06 | −0.63 |
+| foreland 1000 m | −0.06 | −0.69 | −1.37 | −1.23 | −0.81 |
+| **range 2000 m** | +0.01 | **−0.96** | −1.33 | −1.42 | −0.58 |
+| **range 1500 m** | −0.27 | **−1.05** | **−2.00** | −1.98 | −1.05 |
+| range 1000 m | +0.19 | +0.27 | −0.24 | −1.24 | **−3.15** |
+| Inn valley 1500 m | −0.01 | −1.37 | −0.91 | −1.39 | −0.76 |
+| Inn valley 1000 m | −0.00 | +0.18 | −0.50 | −1.15 | **−2.42** |
+
+**At 13 UT the two models are the same everywhere** — every box, every height, |excess| ≤ 0.27 m s⁻¹. The run is still on its forcing. **Within the next hour the excess appears over the range at 1500 and 2000 m ASL (−1.05 and −0.96) while the foreland at 2000 m is untouched (+0.40)** — so it is generated locally over the range, not advected in from the north. It then grows to −2.0 at 1500 m by 15 UT and only afterwards descends into the 1000 m layer over the range (−3.15 by 17 UT) and into the Inn valley (−2.42). That descent is the break-in and the plunge already characterised.
+
+**Reading.** Three things are now fixed. The difference is **local** (over the range, not the foreland), it is **fast** (one hour from a state identical to ICON's), and it is **not the pressure force**. It first appears at and just below crest level, 1500–2000 m ASL, in the hour in which the lee up-slope layer is flushed (13:05–13:30, X22). Everything downstream — the crest jet, the lee descent, the barrier collapse, the evening adiabatic warming — follows from that hour. The next measurement is therefore a momentum budget of the range box at 1500–2000 m ASL through 13:00–14:00 at 5-minute resolution (X22) against ICON at 13 and 14 UT, on **true constant-height surfaces**, which exist across most of that box and avoid both halves of the E61 frame trap. Rating: 8/10 research (it localises the defect in space, height and to a single hour, confirms the pressure force is not it by the robust method, and catches an artefact before it became a claim), 5/10 model (a precise target and a clean experimental window, but still no lever).
+
+---
+
 **2026-09-20, 21:30 (clock) — RETRACTION. THE 1.8× IN σ_w AND THE 1.5× IN THE RESOLVED CREST FLUX ARE A GREY-ZONE PARTITION, NOT A DIFFERENCE: TOTAL σ_w AGREES TO 16 % AND THE TOTAL MOMENTUM FLUX TO ~5 %. AND ACROSS NINE WRF RUNS THE CREST FLUX DOES NOT CONTROL THE PLUNGE — IT IS ANTI-CORRELATED WITH IT. THE CREST MOMENTUM FLUX IS NEITHER ANOMALOUS NOR THE LEVER.** Elias raised the partition objection; it is the same argument that rescued the 2026-08-22 convective q² deficit, and the rule written then ("compare subgrid *and* resolved, never subgrid alone") applies in reverse here — never resolved alone. Scripts `wrf3dpbl-diag/crest_w_partition.py`, logs `exp/x16_judge/crest_w_partition.log`, `icon_sgs_flux_bound.log`.
 
 **(1) Total vertical-velocity variance agrees.** σ_w = √(σ_w′² + ⟨w′²⟩_sgs) over the crest cells, 14/15/16 UT. Subgrid is **measured** for the 3D closure (`W2_SGS_MEAN`) and estimated as (2/3)·TKE for MYNN (`QKE`/2) and ICON (its own `tke`); the estimator is validated where both exist — `W2_SGS_MEAN`/((2/3)TKE) = 1.21 / 1.20 / 1.13 / 1.03 / 0.96 for X17a, so it is good to ±20 % and if anything **under**-states ICON.
