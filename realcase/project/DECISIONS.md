@@ -7,6 +7,33 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-09-21, 10:30 (clock) — THE 3DTKE SCHEME IN THE goger19 TREE HAS THE RIGHT CONCEPT FOR OUR HORIZONTAL MIXING: SEPARATE HORIZONTAL AND VERTICAL LENGTHS, AND A HORIZONTAL DIFFUSIVITY THAT BLENDS A DEFORMATION CLOSURE WITH A TKE CLOSURE BY A HONNERT-TYPE GREY-ZONE FUNCTION. THE GRID SCALE ENTERS AS THE FILTER WIDTH OF THE DEFORMATION CLOSURE, NOT AS A TUNED LENGTH — WHICH ANSWERS THE OBJECTION TO HARD-CODING l_h = Δx. THREE DEFECTS FOUND IN IT, ONE OF THEM A REAL BUG.** Source `goger19WRF/dyn_em/module_diffusion_em.F`, the `km_opt = 5` block (marked `!!!XZ`; Goger's own diff touches MYNN, the surface layer, the PBL driver and the Registry, not this block).
+
+**The concept.** `mlen_h = √(dx·dy)` map-factor corrected for the horizontal, `mlen_v = min(Δz, 0.76 q/N)` for the vertical — **two separate lengths throughout**. Two horizontal diffusivities: a deformation one, `xkmh_s = c_s² mlen_h² |D|` with |D| the **two-dimensional** horizontal deformation only, and a TKE one, `xkmh_t = c_k q mlen_h`. They are blended by a Honnert-type partition function of Δx/h_PBL, and the vertical diffusivity is blended the same way between a mesoscale length (`0.4 q dlk`) and an LES length (`c_k q mlen_v`). So Δx is used where it belongs — as the filter width of a deformation closure — and the diffusivity itself responds to the flow through |D| and q.
+
+**Defect 1 (a real bug).** `xkmh(i,k,j) = pth1·xkmh_s + (1−pth1)·xkmh_t` blends the horizontal **momentum** diffusivity with `pthl`, the partition function for the **heat** flux. It should be `pu`, the momentum one, which is computed on the line above (`pu1`) and then used only for the vertical. `pu` and `pthl` are distinct fits (different coefficients and exponents, `module_diffusion_em.F:5489` and `:5517`). *Honest magnitude:* at our Δx/h_PBL = 500/828 = 0.60 they evaluate to 0.767 and 0.771, so under 1 %; at Δx/h = 0.2 it is 0.369 against 0.400, about 8 %. A correctness bug with a small quantitative footprint at this resolution — worth fixing in a port, not a reason to distrust the results.
+
+**Defect 2 (dimensional).** `xkmh_s = min(xkmh_s, 10.·mlen_h)` compares a diffusivity (m² s⁻¹) with ten times a length (m). At Δx = 500 m the cap is 5000 against a typical `xkmh_s` of ~23 m² s⁻¹, so it never bites here — latent, but it would at fine Δx or in strong deformation, and it is not a CFL-type limit (that would be ∝ mlen_h²/dt).
+
+**Defect 3 (inconsistency, and it bites us).** The terrain correction for `diff_opt = 2` — divide by α² where α = |∇z|·Δx/Δz — is applied **only to the deformation part** `xkmh_s`, never to the TKE part `xkmh_t`. The cross-η over-mixing argument it embodies applies to any horizontal diffusivity. And for us it works the wrong way: with a coordinate slope of 0.145, Δx = 500 m and Δz ≈ 30 m near the ground, α ≈ 2.4 and α² ≈ 5.8, so the correction cuts the deformation diffusivity sixfold **exactly over the steep terrain where we want more damping**.
+
+**What it would buy, at the crest at 14 UT** (TKE ≈ 0.5 m² s⁻², |D| ≈ 1.45 × 10⁻³ s⁻¹, Δ = 500 m, c_s = 0.25, c_k = 0.15, partition 0.77), with τ = λ²/(4π²K) at λ = 4 km:
+
+| | K_h, m² s⁻¹ | τ at 4 km |
+|---|---|---|
+| pbl3d today (tapered isotropic l_master = 30 m) | 12 | **9.6 h** |
+| 3DTKE concept, as written with the α correction | 15 | 7.4 h |
+| 3DTKE concept without the α correction | **30** | **3.8 h** |
+| ICON | 65–130 | 0.9–1.7 h |
+
+So porting the concept roughly halves the damping timescale at 3–6 km, or better if the α correction is reconsidered — a real improvement, still short of ICON, and crucially **flow-responsive rather than a hard-coded length**.
+
+**And the α correction is the same problem as the filter's slope taper.** Both exist because horizontal mixing along η surfaces over steep terrain mixes across height; both are switched off or cut down precisely where we need them. **The stability gate (09-21 07:15) applies to both**: gate the terrain correction on static stability so it acts in stratified air and relaxes in well-mixed air. That would be one idea covering the numerical filter and the physical horizontal mixing together.
+
+**Plan.** Port the 3DTKE horizontal concept into pbl3d as a default-off option — separate horizontal and vertical lengths, horizontal K blended between deformation and TKE forms by the **momentum** partition function — fixing defects 1 and 2 in the port rather than inheriting them, and gating the terrain correction on stability instead of applying it unconditionally. Rating: 8/10 research (the right concept found, its numbers worked out for our case, and three defects identified including one genuine bug with its magnitude honestly bounded), 7/10 model (a defensible replacement for the hard-coded length, with a known ceiling and a clean link to the filter work).
+
+---
+
 **2026-09-21, 09:00 (clock) — THE MECHANISM THAT LIMITS THE 6–12 Δx CIRCULATION IS EDDY VISCOSITY ACTING ON ITS OWN SHEAR, AND WRF GIVES IT AWAY: THE GREY-ZONE SCALE-AWARE TAPER CUTS THE MASTER MIXING LENGTH, WHICH IN THIS SCHEME IS ISOTROPIC, SO IT CUTS THE *HORIZONTAL* MIXING TOO. THE FIX IS TO TAPER THE VERTICAL LENGTH ONLY.** Log `exp/x16_judge/band_vs_mixing.log`; source `branko/dyn_em/module_pbl3d_my.F`.
 
 **(1) Measured: only the runs that raised the mixing move the band.** 6–12 Δx variance of v at 1800 m ASL, 14:00, m² s⁻²: production **0.382**; **X25** (`pbl3d_l_opt = 5`, mixing length 30 → 76 m, subgrid TKE 1.0 → 3.0, i.e. ICON's level) **0.246, −36 %**; **X24m** (MYNN, TKE 3.3) **0.254, −33 %**; **X23** (roughness raised to ICON's, mixing unchanged) **0.451 — higher than production**; ICON **0.194**. Surface drag does nothing to the band; subgrid mixing takes it two-thirds of the way to ICON. (2–6 Δx behaves the same: X25 0.152, below ICON's 0.208.)
