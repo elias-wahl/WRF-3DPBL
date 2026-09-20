@@ -2122,8 +2122,21 @@ is not reachable by the closure (three configurations, K_m varied ~4.4×), by su
 to ICON's 16–20 × 10⁻³), by the vertical coordinate (`hybrid_opt` changes B(η) by < 0.1 % below 150 m
 AGL over a 3621 m crest) or by `gwd_opt` (E62b: `VAR` double-counts resolved terrain at 500 m).
 
-**What would discriminate, in order.**
-1. **ICON's own w over the crests from native GRIBs** — the same box-mean v′w′ partition and the same
+**UPDATE 2026-09-20 17:10 — step 1 is done and it changes the question.** ICON has the same
+terrain-locked overturning at the same wavelength (9.5 vs 10.9 Δx; 0.8 % of its flux below 4 Δx), so
+it is not a grey-zone partition and no body force is hiding the transport. WRF's downward flux is
+2–3× ICON's and the gap closes with height — 3.3× at 25 m, 2.1× at 100 m, 1.8× at 150 m, 1.5× at
+250 m, **0.94× at 400 m**. ICON's flux falls away towards the ground (0.244 at 150 m → 0.110 at 25 m)
+while WRF's stays high (0.441 → 0.364). **The "momentum sink through depth over the range" hypothesis
+is retired**; the difference is confined to the lowest ~250 m. The open question is now: what stops
+the resolved overturning from reaching into the surface layer in ICON, and why does WRF let it?
+X25 reaches ICON's subgrid TKE (1.13–1.51 vs 1.09–1.86 m² s⁻²) and is still 1.4–1.5× ICON in resolved
+flux, so the closure's energy level is not the lever. Candidates: the lowest-level vertical spacing over
+steep terrain (X13 crashed, A24), the surface-layer scheme's treatment of the flux delivered from above,
+and how w is allowed to behave in the first few levels above a 30° slope.
+
+**Superseded — what would have discriminated, in order.**
+1. ~~**ICON's own w over the crests from native GRIBs**~~ — DONE, see the update above. — the same box-mean v′w′ partition and the same
    spectrum. If ICON's resolved flux is ~0.1 m² s⁻² against WRF's 0.44 with its subgrid carrying the
    rest, this is a grey-zone partition and the answer is a body force; if ICON's resolved flux is also
    ~0.4, the crest is the wrong place to look and the difference is downstream. Needs `icon-data`
