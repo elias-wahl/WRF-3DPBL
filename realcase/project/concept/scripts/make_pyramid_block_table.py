@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Block-by-block review table of the split pyramid (2026-09-18, for the reMarkable).
+"""Block-by-block review table of the split pyramid (2026-09-18, for the reMarkable; 2026-09-21 after Elias's tablet notes).
 
 Reads the block texts VERBATIM from pbl_assumptions_pyramid_split.tex (the source of the vertical working
 document), derives the drawn contacts from the block geometry and prints them for checking, and writes
@@ -106,12 +106,11 @@ ROWS = [
       (r"Spectral gap $\leftrightarrow$ Gradient scale: two halves of one hypothesis at opposite ends of the ground; only a caption sentence says they belong together.", 2)]),
     ("Mixing",
      r"Velocity correlations decay: beyond a finite integral length (in space) and integral time (along a particle path) an eddy has forgotten its origin. This makes a sum over many eddies converge, and it turns eddy transport into diffusion (Taylor's 1921 limit). Waves have scale separation \emph{without} mixing: in the stable night motions stay correlated over long distances and carry no scalar --- then this is the premise that fails.",
-     C + r" (contact): Ergodicity in space, left part --- independent samples need decorrelation. " + B + r" (text): Locality (``after decorrelation''), Mixing length (``one integral scale''). " + B + r" (source list only): Energy cascade.",
-     [(r"Energy cascade $\leftarrow$ Mixing is recorded in the source, but no word of the cascade's text says it: on the page the link does not exist.", 3),
-      (r"Local equilibrium $\leftarrow$ Mixing: relaxation within $l/q$ presumes a finite Lagrangian memory; in wavy stable air the memory is long and the algebraic moments lag.", 4),
+     C + r" (contact): Ergodicity in space, left part --- independent samples need decorrelation. " + B + r" (text): Locality (``after decorrelation''), Mixing length (``one integral scale''), Energy cascade (``integral-scale eddies''; in the source list only until 2026-09-21, made text at Elias's note).",
+     [(r"Local equilibrium $\leftarrow$ Mixing: relaxation within $l/q$ presumes a finite Lagrangian memory; in wavy stable air the memory is long and the algebraic moments lag.", 4),
       (r"Eddy viscosity $\leftarrow$ Mixing: gradient transport \emph{is} the diffusive limit; reachable only in two steps through Locality.", 3)]),
     ("Horizontal homogeneity",
-     r"Every statistic --- each mean and each moment --- is invariant under horizontal translation, so every horizontal derivative of a statistic vanishes. Taken strictly it also forces a horizontal, uniform surface. The premise that terrain breaks first: slope, valley axis and land-use mosaic give horizontal gradients of the order of the vertical ones. Drawn as one block with a channel under stationarity so that it reaches two concepts on the far side.",
+     r"Every statistic --- each mean and each moment --- is invariant under horizontal translation, so every horizontal derivative of a statistic vanishes. Taken strictly it also forces a horizontal, uniform surface. The premise that terrain breaks first: slope, valley axis and land-use mosaic give horizontal gradients of the order of the vertical ones. Drawn as one block with a channel under stationarity so that it reaches two concepts on the far side --- a fact of the drawing, struck from the block text on 2026-09-21 (Elias: ``no need to write out'').",
      C + r" (contact): Ergodicity in space (statistics alike across the cell); Column approximation (its direct application); Constant-flux layer (no horizontal flux divergence); through the channel Monin--Obukhov similarity (homogeneous surface) and Mixing length ($l$ set by the column). " + B + r" (text): Local equilibrium (advection of second moments neglected); Return to isotropy (``as in homogeneous turbulence away from walls'').",
      [(r"Buoyancy production $\leftarrow$ Homogeneity: ``no horizontal heat flux'' holds only over a horizontal surface; on a slope the surface-normal heat flux has a horizontal component. The block stands on Axisymmetric mixing + Boussinesq and never names homogeneity.", 6),
       (r"Universal constants / Constant set $\leftarrow$ Homogeneity: ``simple flows'', ``flat terrain'' \emph{are} homogeneous flows; present only as those words.", 4),
@@ -206,7 +205,7 @@ ROWS = [
       (r"Stability functions $\leftarrow$ Universal constants: recorded, not visible in the text.", 2)]),
     ("Energy cascade",
      r"Energy enters at the scale $l$, is handed down the inertial subrange without loss and is dissipated isotropically at the small end. In equilibrium the dissipation equals the supply by the large eddies, $\varepsilon \sim q^3/l$: the dissipation known from large-eddy quantities. Needs high Reynolds number and a stationary spectrum. In stable air part of the energy goes to potential energy and waves.",
-     S + r": Small-scale isotropy. " + L + r" (text): Stationarity (``in equilibrium''); (source only) Mixing. " + C + r": One length for $K$ and $\varepsilon$ (right part).",
+     S + r": Small-scale isotropy. " + L + r" (text): Stationarity (``in equilibrium''), Mixing (``integral-scale eddies'', text since 2026-09-21; the block was widened by 0.3 units for the line). " + C + r": One length for $K$ and $\varepsilon$ (right part).",
      [(r"Grid means $\leftrightarrow$ Cascade: when $\Delta$ falls inside the energy-containing range the subgrid $q$ no longer scales $\varepsilon$ ($\varepsilon$ is filter-independent, $q^3$ is not). Only the hectometre text says it.", 4),
       (r"$\leftarrow$ Similarity (dimensional argument) and $\leftarrow$ Mixing length (the same $l$): rows 5, 16.", 4)]),
     ("Return to isotropy",
@@ -348,7 +347,7 @@ w(r"""% GENERATED by scripts/make_pyramid_block_table.py from @SRC@ -- do not ed
 \setlength{\LTpre}{0pt}\setlength{\LTpost}{0pt}
 \begin{document}
 \fontsize{7.6}{9.1}\selectfont
-{\large\bfseries The split vertical pyramid, block by block: text, meaning, connections, gaps}\hfill 2026-09-18\par
+{\large\bfseries The split vertical pyramid, block by block: text, meaning, connections, gaps}\hfill 2026-09-21\par
 \vspace{0.6ex}
 Source: \texttt{pbl\_assumptions\_pyramid\_split.tex} (texts copied by script, verbatim). Rows run as on the vertical page: top to bottom within a column, premises, then concepts, then formalism. Row numbers are for dictating notes (``row 22, second gap'').\par
 \vspace{0.4ex}
@@ -359,7 +358,7 @@ Source: \texttt{pbl\_assumptions\_pyramid\_split.tex} (texts copied by script, v
 \textbf{The gaps that matter most} (details in the rows):
 \textbf{7} --- none left: the redistribution clause of Buoyancy production was corrected on 2026-09-18 (row 22).
 \textbf{6} --- ``no horizontal heat flux'' never touches or names homogeneity (rows 3, 22, 35); the eddy viscosity is derived in this family, not assumed (row 21); the buoyancy part of the pressure terms is absent (rows 19, 32; 5 in row 19 since the slow part is named); the stability functions show one of six parents (row 33).
-\textbf{5} --- Grid means is the root of the formal tier but drawn as a leaf (23); shear production takes its stress from the K-form (24); the wall value takes $u_*$ from the surface scheme (26, 28); the column approximation reaches the master length and the K-form unseen (12); the constants are calibrated on Monin--Obukhov (15, 30); the loop $l \leftrightarrow q$ cannot be drawn (29); the cutoff is a steady-state claim (4, 33); the closure's daytime length violates the gradient-scale premise (7). \emph{Added 2026-09-18:} the premise Weak anisotropy, row 6b, split off Small-scale isotropy (Mellor and Yamada 1982, p.~854). \emph{Retracted 2026-09-18:} ``one scalar length has no premise'' (was 7) --- Similarity carries it; now a missing clause, 4 (rows 6, 16, 29).\par
+\textbf{5} --- Grid means is the root of the formal tier but drawn as a leaf (23); shear production takes its stress from the K-form (24); the wall value takes $u_*$ from the surface scheme (26, 28); the column approximation reaches the master length and the K-form unseen (12); the constants are calibrated on Monin--Obukhov (15, 30); the loop $l \leftrightarrow q$ cannot be drawn (29); the cutoff is a steady-state claim (4, 33); the closure's daytime length violates the gradient-scale premise (7). \emph{Added 2026-09-18:} the premise Weak anisotropy, row 6b, split off Small-scale isotropy (Mellor and Yamada 1982, p.~854). \emph{Retracted 2026-09-18:} ``one scalar length has no premise'' (was 7) --- Similarity carries it; now a missing clause, 4 (rows 6, 16, 29). \emph{Applied 2026-09-21} from the tablet notes on the first issue: the cascade names the integral scale in its block (rows 2, 17), the layout clause is struck from Horizontal homogeneity (row 3); the vertical page rebuilt, contacts unchanged.\par
 \vspace{0.8ex}
 """.replace("@SRC@", SRC))
 
