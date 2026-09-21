@@ -138,7 +138,7 @@ for c, ps in per_child.items():
         if n >= MAXTRI: dropped.append((c, p)); continue
         cx, cy, dx, dy = CORNER[n][1](cb["rect"]); pb = by_title[p]
         tri.append(f"\\filldraw[fill={pb['col']}, draw=black, line width=0.3pt] ({cx:.3f},{cy:.3f}) -- ({cx + dx:.3f},{cy:.3f}) -- ({cx:.3f},{cy + dy:.3f}) -- cycle;"
-                   f" \\node[inner sep=0pt, font=\\fontsize{{4}}{{4.5}}\\selectfont\\bfseries] at ({cx + 0.30 * dx:.3f},{cy + 0.30 * dy:.3f}) {{{pb["code"]}}}; % {c} <- {p} ({CORNER[n][0]})")
+                   f" \\node[inner sep=0pt, font=\\fontsize{{4}}{{4.5}}\\selectfont\\bfseries] at ({cx + 0.30 * dx:.3f},{cy + 0.30 * dy:.3f}) {{{pb['code']}}}; % {c} <- {p} ({CORNER[n][0]})")
 for c, p in dropped: print(f"  not drawn (fourth or later lean): {c} <- {p}")
 # rewrite the lines
 out = []
