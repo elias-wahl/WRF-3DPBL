@@ -6449,14 +6449,15 @@ END SUBROUTINE set_tend
                                         diff_tend, save_tend,            &
                                         config_flags, c1, c2,            &
                                         diff_6th_opt, diff_6th_factor,   &
-                                        phb, ph, th_in,                  &
+                                        phb, ph,                         &
                                         rdx, rdy,                        &
                                         msftx, msfty,                    &
                                         msfux, msfuy,                    &
                                         msfvx, msfvy,                    &
                                         ids, ide, jds, jde, kds, kde,    &
                                         ims, ime, jms, jme, kms, kme,    &
-                                        its, ite, jts, jte, kts, kte )
+                                        its, ite, jts, jte, kts, kte,    &
+                                        th_in )
                                                                                 
 ! History:       14 Nov 2006   Name of variable changed by Jason Knievel
 !                07 Jun 2006   Revised and generalized by Jason Knievel  
@@ -6495,8 +6496,11 @@ END SUBROUTINE set_tend
     :: ph, phb
 
 !  Perturbation potential temperature, used only by diff_6th_slopeopt = 3 to gate the
-!  slope taper on static stability. Unused for every other value of diff_6th_slopeopt.
-    REAL, DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(IN)  &
+!  slope taper on static stability. OPTIONAL: rk_scalar_tend has no theta field in scope,
+!  so the moisture, TKE and chemistry calls omit it and keep the production taper. That is
+!  the conservative side for a passive scalar, and the gate's purpose -- letting momentum
+!  and theta be filtered over slopes in well-mixed air -- is unaffected.
+    REAL, DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(IN), OPTIONAL  &
     :: th_in
 
     REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN)  &
@@ -6573,7 +6577,7 @@ END SUBROUTINE set_tend
 
 !  Static-stability field for the diff_6th_slopeopt = 3 gate. Built once per call; the
 !  cost is one vertical difference per cell and it is skipped entirely otherwise.
-    do_stabgate = ( config_flags%diff_6th_slopeopt .EQ. 3 )
+    do_stabgate = ( config_flags%diff_6th_slopeopt .EQ. 3 ) .AND. PRESENT( th_in )
     stabcrit = MAX( config_flags%diff_6th_stabthresh, 1.0E-6 ) * 0.001
     IF ( do_stabgate ) THEN
       stab = 0.0
