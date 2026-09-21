@@ -80,37 +80,40 @@
 \hecto{Buoyancy term}{The slope-normal surface heat flux has a horizontal component with no home in the budget; in stable air buoyancy damps $\avg{w^2}$ selectively; on fog nights the saturated flux follows the moist gradient, which only the control's condensation scheme knows; $\beta = 1/300$~K is a few percent off at valley $\Theta_v$.}
 
 % ---- dependencies the contact rule cannot draw (post-audit list; used by scripts/make_pyramid_graph.py). No-op here.
-\newcommand{\lean}[2]{}
+\newcommand{\lean}[3][2]{}  % \lean[weight]{child}{parent}; weight 3 load-bearing, 2 real (default), 1 bookkeeping
 % grouped by child; the order within a child is the importance of the parent (2026-09-21, Elias): the colour page
-% draws the first three as corner triangles, bottom left first, then counter-clockwise; the block's text names the same.
-\lean{Boundary-layer (column) approximation}{Boussinesq}
-\lean{Energy cascade}{Stationarity}
-\lean{Energy cascade}{Mixing}
-\lean{Local equilibrium}{Locality}
-\lean{Local equilibrium}{Horizontal homogeneity}
-\lean{Monin--Obukhov similarity}{Constant-flux layer}
-\lean{Mixing length}{Mixing}
-\lean{Locality}{Mixing}
-\lean{Eddy viscosity}{Mixing length}
-\lean{Eddy viscosity}{Locality}
-\lean{Return to isotropy}{Horizontal homogeneity}
-\lean{Stability functions and cutoff}{Local equilibrium}
-\lean{Stability functions and cutoff}{Buoyancy production}
-\lean{Stability functions and cutoff}{Boundary-layer (column) approximation}
-\lean{Stability functions and cutoff}{Level-2.5 truncation}
-\lean{Stability functions and cutoff}{Universal constants}
-\lean{Level-2.5 truncation}{Weak anisotropy}
-\lean{Buoyancy production}{Return to isotropy}
-\lean{Universal constants}{Reynolds decomposition}
-\lean{Vertical divergence only}{Spectral gap}
-\lean{Wall value of $\qsq$}{Universal constants}
-\lean{Master length scale}{Buoyancy term}
-\lean{Buoyancy term}{K-form fluxes}
-\lean{Pressure terms}{Universal constants}
-\lean{Pressure terms}{Locality}
-\lean{One length for $K$ and $\varepsilon$}{Master length scale}
-\lean{K-form fluxes}{Master length scale}
-\lean{K-form fluxes}{Stability functions and cutoff}
+% draws the first three of weight >= 2 as corner marks, bottom left first, then counter-clockwise; the block's text names the same.
+% Weights (Elias 2026-09-21): 3 load-bearing (thick border), 2 real, 1 bookkeeping (listed, not drawn).
+\lean[2]{Boundary-layer (column) approximation}{Boussinesq}
+\lean[3]{Energy cascade}{Stationarity}
+\lean[2]{Energy cascade}{Mixing}
+\lean[2]{Local equilibrium}{Locality}
+\lean[2]{Local equilibrium}{Horizontal homogeneity}
+\lean[2]{Monin--Obukhov similarity}{Horizontal homogeneity}
+\lean[2]{Monin--Obukhov similarity}{Constant-flux layer}
+\lean[2]{Mixing length}{Horizontal homogeneity}
+\lean[2]{Mixing length}{Mixing}
+\lean[2]{Locality}{Mixing}
+\lean[2]{Eddy viscosity}{Mixing length}
+\lean[1]{Eddy viscosity}{Locality}
+\lean[2]{Return to isotropy}{Horizontal homogeneity}
+\lean[3]{Stability functions and cutoff}{Local equilibrium}
+\lean[3]{Stability functions and cutoff}{Buoyancy production}
+\lean[2]{Stability functions and cutoff}{Boundary-layer (column) approximation}
+\lean[1]{Stability functions and cutoff}{Level-2.5 truncation}
+\lean[1]{Stability functions and cutoff}{Universal constants}
+\lean[2]{Level-2.5 truncation}{Weak anisotropy}
+\lean[2]{Buoyancy production}{Return to isotropy}
+\lean[1]{Universal constants}{Reynolds decomposition}
+\lean[1]{Vertical divergence only}{Spectral gap}
+\lean[1]{Wall value of $\qsq$}{Universal constants}
+\lean[3]{Master length scale}{Buoyancy term}
+\lean[3]{Buoyancy term}{K-form fluxes}
+\lean[1]{Pressure terms}{Universal constants}
+\lean[1]{Pressure terms}{Locality}
+\lean[3]{One length for $K$ and $\varepsilon$}{Master length scale}
+\lean[3]{K-form fluxes}{Master length scale}
+\lean[3]{K-form fluxes}{Stability functions and cutoff}
 % ---- scheme quicklook (moons above the formalism tier; scripts/make_moons.py rewrites the strip)
 % \moon{<block title>}{K|P|D x4} in the order MYNN as run, G19 port, 3D-APPROX, 3D-FULL; from Table I.0 of the note:
 % a block is K if all its rows are kept, D if all are dropped, else P. No-op here (data only).
@@ -179,9 +182,9 @@ run}}, \textcolor{cGXIX}{\textbf{G19 port}}, \textcolor{cAPPROX}{\textbf{3D-APPR
 \node[font=\scriptsize\bfseries, text=black!60, align=center] at (14.880,24.021) {hectometre-scale simulations\\ in complex terrain};
 \pbv{0.000}{2.500}{22.274}{23.521}{ground}{\textbf{Spectral gap}\\ a gap between the eddies and the mean flow}{0.30}
 \pbv{0.000}{2.500}{20.941}{22.188}{ground}{\textbf{Mixing}\\ correlations decay within a finite integral scale}{0.30}
-\pbunion{ground}{1.618}{14.491}{1.46}{\textbf{Stationarity}\\ statistics invariant under time translation over the relaxation time $l/q$}{0.735/2.500/12.965/16.018,0.000/0.735/12.965/16.018}{(0.000,16.018) -- (2.500,16.018) -- (2.500,12.965) -- (0.000,12.965)}
-\pbunion{ground}{1.250}{10.342}{2.20}{\textbf{Similarity}\\ one universal scaled relation in every flow; the parameter list complete}{0.000/2.500/9.202/11.481,0.000/2.500/11.481/12.879}{(0.000,12.879) -- (2.500,12.879) -- (2.500,9.202) -- (0.000,9.202)}
-\pbunion{ground}{1.250}{18.479}{2.20}{\textbf{Horizontal homogeneity}\\ statistics invariant under horizontal translation: \mbox{$\partial_x\avg{\cdot} = \partial_y\avg{\cdot} = 0$} for every mean and every moment}{0.000/2.500/16.104/20.855,0.176/0.618/11.567/16.104,0.176/2.500/11.567/11.868,1.985/2.500/10.750/11.868}{(0.000,20.855) -- (2.500,20.855) -- (2.500,16.104) -- (0.618,16.104) -- (0.618,11.868) -- (2.500,11.868) -- (2.500,10.750) -- (1.985,10.750) -- (1.985,11.567) -- (0.176,11.567) -- (0.176,16.104) -- (0.000,16.104)}
+\pbv{0.000}{2.500}{12.965}{16.018}{ground}{\textbf{Stationarity}\\ statistics invariant under time translation over the relaxation time $l/q$}{0.30}
+\pbv{0.000}{2.500}{9.202}{12.879}{ground}{\textbf{Similarity}\\ one universal scaled relation in every flow; the parameter list complete}{0.30}
+\pbv{0.000}{2.500}{16.104}{20.855}{ground}{\textbf{Horizontal homogeneity}\\ statistics invariant under horizontal translation: \mbox{$\partial_x\avg{\cdot} = \partial_y\avg{\cdot} = 0$} for every mean and every moment}{0.30}
 \pbv{0.000}{2.500}{5.891}{9.116}{ground}{\textbf{Small-scale isotropy}\\ at high Reynolds number the small eddies forget the direction of shear and gravity}{0.30}
 \pbv{0.000}{2.500}{4.429}{5.805}{ground}{\textbf{Weak anisotropy}\\ the energy-containing eddies depart only weakly from isotropy}{0.30}
 \pbv{0.000}{2.500}{2.924}{4.343}{ground}{\textbf{Gradient scale}\\ the eddy small against the scale of the mean gradient}{0.30}
@@ -295,7 +298,7 @@ run}}, \textcolor{cGXIX}{\textbf{G19 port}}, \textcolor{cAPPROX}{\textbf{3D-APPR
 
 \newpage
 {\footnotesize Every block is an assumption a boundary-layer scheme makes in order to run. A block touches at its
-left exactly the blocks it relies on, and blocks in one column do not touch each other. Three columns. Dark grey, the ground (left column): ten hypotheses about the fluid and the flow that rest on nothing else here; horizontal homogeneity extends under stationarity and rises between stationarity and similarity, with an air gap above the tunnel, so that Monin--Obukhov similarity touches its three premises. Light grey, the
+left exactly the blocks it relies on, and blocks in one column do not touch each other. Three columns. Dark grey, the ground (left column): ten hypotheses about the fluid and the flow that rest on nothing else here; Monin--Obukhov similarity and the mixing length lean on homogeneity by text; the channel that carried it to them in earlier versions is gone (2026-09-21). Light grey, the
 concepts (middle column): the constructs of turbulence theory that follow from the ground and that every closure of this family
 speaks in --- the Reynolds decomposition, the column approximation, the constant-flux layer, Monin--Obukhov similarity,
 the mixing length, the eddy viscosity, Rotta's return to isotropy, Kolmogorov's cascade. White, the formalism (right column):
@@ -303,7 +306,7 @@ the statements of the level-2.5 closure as written, each resting on the concepts
 primary reliance; the incidence matrix of the note has the full set. Where a block leans on a parent it cannot touch, its own text names that parent, as in ``$W = 0$ by continuity''; the two premises without a block, high Reynolds number and unsaturated air, are named in the premise they qualify. Not drawn, because no scheme needs them to
 run: ergodicity in time and Taylor's hypothesis, which carry the observations and the calibration; the
 constraints realizability and Galilean invariance, which bound the algebra rather than carry a block; and the
-dynamical core's numerical dissipation. Homogeneity carries a channel: it runs through stationarity and similarity and surfaces as a band on the contact edge, where Monin--Obukhov similarity and the mixing length touch it. Scale separation appears as its two conditions, the spectral gap at the left under the averaging and the gradient scale at the right under gradient transport. The K-form stands on locality and the eddy viscosity alone, and the eddy viscosity on the gradient scale and the axisymmetry of the mixing; how this closure builds its $K = lqS$ is not part of the K-form: $l$ is the master length, $S$ the stability functions, which stand on Rotta's return, and $q$ the prognostic energy. Strict horizontal homogeneity already makes the surface horizontal, so the axisymmetry premise keeps only what homogeneity does not give: one $K$ along and across the shear. The moons at the far right are the quicklook on the four schemes of the concept's first research question, left to right \textcolor{cMYNN}{\textbf{MYNN as run}}, \textcolor{cGXIX}{\textbf{G19 port}}, \textcolor{cAPPROX}{\textbf{3D-APPROX}}, \textcolor{cFULL}{\textbf{3D-FULL}}: \gK{} the scheme as run implements the assumption, \gP{} partly, \gD{} drops it; a block takes the status of its rows in the note's Table~I.0, kept only when all are kept, dropped only when all are dropped.\par}
+dynamical core's numerical dissipation. Each recorded lean carries a weight: 3 load-bearing, 2 real, 1 bookkeeping; the colour-coded page draws the first two kinds as corner marks. Scale separation appears as its two conditions, the spectral gap at the left under the averaging and the gradient scale at the right under gradient transport. The K-form stands on locality and the eddy viscosity alone, and the eddy viscosity on the gradient scale and the axisymmetry of the mixing; how this closure builds its $K = lqS$ is not part of the K-form: $l$ is the master length, $S$ the stability functions, which stand on Rotta's return, and $q$ the prognostic energy. Strict horizontal homogeneity already makes the surface horizontal, so the axisymmetry premise keeps only what homogeneity does not give: one $K$ along and across the shear. The moons at the far right are the quicklook on the four schemes of the concept's first research question, left to right \textcolor{cMYNN}{\textbf{MYNN as run}}, \textcolor{cGXIX}{\textbf{G19 port}}, \textcolor{cAPPROX}{\textbf{3D-APPROX}}, \textcolor{cFULL}{\textbf{3D-FULL}}: \gK{} the scheme as run implements the assumption, \gP{} partly, \gD{} drops it; a block takes the status of its rows in the note's Table~I.0, kept only when all are kept, dropped only when all are dropped.\par}
 
 
 \vspace{0.2ex}
@@ -324,7 +327,7 @@ the frontier. Nested frames: both schemes; the three-dimensional closure touches
 \vspace{0.1ex}
 {\footnotesize\textbf{Reading.} The ground holds the premises, hypotheses about the fluid and the flow; nothing in it names a model. The middle column is where
 the model's vocabulary is born: the spectral gap gives the Reynolds decomposition its rules; mixing with homogeneity gives ergodicity in space; the gradient scale gives locality; homogeneity gives the
-column approximation and, with stationarity, the constant-flux layer; stationarity gives local equilibrium and, with similarity and the homogeneity channel, Monin--Obukhov similarity; similarity and homogeneity give the mixing length; similarity with small-scale isotropy gives universal constants; small-scale isotropy gives the cascade and, with the weak anisotropy of the energy-containing eddies, the return to isotropy; the gradient scale with the axisymmetry of the mixing gives the eddy viscosity; axisymmetric mixing and a Boussinesq fluid give buoyancy production through the vertical heat flux. The right
+column approximation and, with stationarity, the constant-flux layer; stationarity gives local equilibrium and, with similarity, Monin--Obukhov similarity (homogeneity by text); similarity gives the mixing length (homogeneity and mixing by text); similarity with small-scale isotropy gives universal constants; small-scale isotropy gives the cascade and, with the weak anisotropy of the energy-containing eddies, the return to isotropy; the gradient scale with the axisymmetry of the mixing gives the eddy viscosity; axisymmetric mixing and a Boussinesq fluid give buoyancy production through the vertical heat flux. The right
 column is the closure as written, and every one of its statements applies one or two concepts: the truncation
 applies local equilibrium; the stability functions and the cutoff come from Rotta's return through the level-2 balance; the master length takes its wall branch from Monin--Obukhov similarity, its shape from the mixing length and its coefficients from universality;
 the one-length statement takes its form from the cascade and its constant from universality; the K-form takes its locality from locality and its scalar from the eddy viscosity, and this closure's $K = lqS$ borrows $l$ from the master length and $S$ from the stability functions. Terrain breaks the ground at the top

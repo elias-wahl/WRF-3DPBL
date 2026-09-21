@@ -123,23 +123,41 @@ for i, b in enumerate(blocks):
     b["col"] = f"blk{i}"
     defs.append(f"\\definecolor{{blk{i}}}{{rgb}}{{{r:.4f},{g:.4f},{bl:.4f}}} % {b['title']}")
 # leans -> triangles
-leans = []
+leans = []; weight = {}          # (child, parent) -> 3 load-bearing, 2 real, 1 bookkeeping (listed, not drawn)
 for ln in lines:
-    if ln.startswith("\\lean{"):
-        (c, p), _ = take_args(ln, len("\\lean"), 2); leans.append((c, p))
+    m = re.match(r"\\lean(?:\[(\d)\])?\{", ln)
+    if m:
+        (c, p), _ = take_args(ln, m.end() - 1, 2); leans.append((c, p)); weight[(c, p)] = int(m.group(1) or 2)
 missing = [n for c, p in leans for n in (c, p) if n not in by_title]
 assert not missing, missing
-tri = []; per_child = {}; dropped = []
+tri = []; per_child = {}; dropped = []; weak = []
 for c, p in leans: per_child.setdefault(c, []).append(p)
-CORNER = [("BL", lambda r: (r[0], r[2], LEG, LEG)), ("BR", lambda r: (r[1], r[2], -LEG, LEG)), ("TR", lambda r: (r[1], r[3], -LEG, -LEG))]
+# corner slots in the order of importance: bottom left, bottom right, top right. (x, y, sx, sy): corner and inward signs
+SLOT = [lambda r: (r[0], r[2], 1, 1), lambda r: (r[1], r[2], -1, 1), lambda r: (r[1], r[3], -1, -1)]
+AW, AH = 0.50, 0.40                     # arrowhead (same column) base and height
 for c, ps in per_child.items():
-    cb = by_title[c]
-    for n, p in enumerate(ps):
+    cb = by_title[c]; n = 0
+    for p in ps:
+        if weight[(c, p)] < 2: weak.append((c, p)); continue
         if n >= MAXTRI: dropped.append((c, p)); continue
-        cx, cy, dx, dy = CORNER[n][1](cb["rect"]); pb = by_title[p]
-        tri.append(f"\\filldraw[fill={pb['col']}, draw=black, line width=0.3pt] ({cx:.3f},{cy:.3f}) -- ({cx + dx:.3f},{cy:.3f}) -- ({cx:.3f},{cy + dy:.3f}) -- cycle;"
-                   f" \\node[inner sep=0pt, font=\\fontsize{{4}}{{4.5}}\\selectfont\\bfseries] at ({cx + 0.30 * dx:.3f},{cy + 0.30 * dy:.3f}) {{{pb['code']}}}; % {c} <- {p} ({CORNER[n][0]})")
+        cx, cy, sx, sy = SLOT[n](cb["rect"]); pb = by_title[p]; n += 1
+        lw = "0.9pt" if weight[(c, p)] == 3 else "0.3pt"
+        if pb["tier"] < cb["tier"]:      # previous column: right-angled corner triangle
+            path = f"({cx:.3f},{cy:.3f}) -- ({cx + sx * LEG:.3f},{cy:.3f}) -- ({cx:.3f},{cy + sy * LEG:.3f})"
+            lx, ly = cx + sx * 0.30 * LEG, cy + sy * 0.30 * LEG; kind = "corner"
+        else:                            # same column: arrowhead pointing up or down the column to the parent
+            up = (pb["rect"][2] + pb["rect"][3]) / 2 > (cb["rect"][2] + cb["rect"][3]) / 2
+            bx0, bx1 = (cx, cx + sx * AW) if sx > 0 else (cx + sx * AW, cx)
+            if sy > 0:                   # bottom slot: base on the bottom edge, or apex on it when pointing down
+                base_y, apex_y = (cy, cy + AH) if up else (cy + AH, cy)
+            else:                        # top slot
+                base_y, apex_y = (cy - AH, cy) if up else (cy, cy - AH)
+            path = f"({bx0:.3f},{base_y:.3f}) -- ({bx1:.3f},{base_y:.3f}) -- ({(bx0 + bx1) / 2:.3f},{apex_y:.3f})"
+            lx, ly = (bx0 + bx1) / 2, base_y + (apex_y - base_y) * 0.30; kind = "arrow " + ("up" if up else "down")
+        tri.append(f"\\filldraw[fill={pb['col']}, draw=black, line width={lw}] {path} -- cycle;"
+                   f" \\node[inner sep=0pt, font=\\fontsize{{4}}{{4.5}}\\selectfont\\bfseries] at ({lx:.3f},{ly:.3f}) {{{pb['code']}}}; % {c} <- {p} ({kind}, weight {weight[(c, p)]})")
 for c, p in dropped: print(f"  not drawn (fourth or later lean): {c} <- {p}")
+print(f"  {len(tri)} marks drawn, {sum(1 for c, p in leans if weight[(c, p)] == 3)} load-bearing, {len(weak)} bookkeeping leans listed only")
 # rewrite the lines
 out = []
 for k, ln in enumerate(lines):
@@ -166,13 +184,13 @@ doc = doc.replace("\\end{tikzpicture}", "% ---- shortcut tabs ----\n" + "\n".joi
 doc = doc.replace("\\begin{document}", "% ---- block colours (OKLCH: hue by vertical position, lightness by column) ----\n" + "\n".join(defs) + "\n\\begin{document}", 1)
 # page-1 legend
 old = re.search(r"\{\\footnotesize Left, dark grey: the premises.*?Rules and reading on the next page\.\\par\}", doc, re.S).group(0)
-new = (r"{\footnotesize Left the premises, middle the concepts, right the formal statements of the level-2.5 closure; a block touches at its "
-       r"left exactly the blocks it relies on. \textbf{Colour names a place}: hue by height on the page, red at the top to violet at the bottom, "
-       r"the shade lightening from left to right; the grey tab is the block's shortcut (P, C, F from the top). \textbf{A corner triangle} marks a "
-       r"dependence no contact can show, in the colour and with the shortcut of the block depended on: the most important at the bottom left, then "
-       r"counter-clockwise, three at most. Dashed: the formal statements at $\Delta = 500$~m in the Inn Valley; far right the schemes \textcolor{cMYNN}{\textbf{MYNN as run}}, "
-       r"\textcolor{cGXIX}{\textbf{G19 port}}, \textcolor{cAPPROX}{\textbf{3D-APPROX}}, \textcolor{cFULL}{\textbf{3D-FULL}}: \gK{} implements, "
-       r"\gP{} partly, \gD{} drops. Rules, reading, triangles overleaf.\par}")
+new = (r"{\footnotesize Left the premises, middle the concepts, right the formal statements of the level-2.5 closure. \textbf{Colour names a place}: "
+       r"hue by height on the page, red at the top to violet at the bottom, the shade lightening from left to right; the grey tab is the block's "
+       r"shortcut (P, C, F from the top). \textbf{A corner mark} is a dependence no contact can show, in the colour and with the shortcut of the block "
+       r"depended on: a triangle for the previous column, an arrowhead up or down for the same column, a thick border if load-bearing; the most "
+       r"important at the bottom left, then counter-clockwise, three at most. Dashed: the formal statements at $\Delta = 500$~m; far right the schemes "
+       r"\textcolor{cMYNN}{\textbf{MYNN as run}}, \textcolor{cGXIX}{\textbf{G19 port}}, \textcolor{cAPPROX}{\textbf{3D-APPROX}}, "
+       r"\textcolor{cFULL}{\textbf{3D-FULL}}: \gK{} implements, \gP{} partly, \gD{} drops. Rules, reading, marks overleaf.\par}")
 doc = doc.replace(old, new)
 doc = doc.replace("\\usepackage[a4paper,margin=9mm,top=9mm,bottom=9mm]{geometry}", "\\usepackage[a4paper,margin=6mm,top=9mm,bottom=9mm]{geometry}")
 assert "margin=6mm" in doc
@@ -184,10 +202,12 @@ fr = re.search(r"\\vspace\{0\.2ex\}\n\{\\footnotesize\\textbf\{Frames\.\}.*?\\pa
 assert fr
 order = sorted(per_child, key=lambda c: (-by_title[c]["tier"], -(by_title[c]["rect"][2] + by_title[c]["rect"][3])))
 code = lambda t: f"{by_title[t]['code']} {t}"
-items = "; ".join(f"\\textbf{{{code(c)}}}: " + ", ".join(code(p) + (" (not drawn)" if (c, p) in dropped else "") for p in per_child[c]) for c in order)
-trip = (r"\vspace{0.2ex}" "\n" r"{\footnotesize\textbf{Triangles.} The dependences recorded in the source that no contact can show, by the block that "
-        r"carries the triangle (formalism first, top of the page first), in the order of importance, bottom left first, then counter-clockwise; "
-        r"the block leaned on gives the triangle its colour; a fourth or fifth lean is listed but not drawn: " + items + r". "
+tag = lambda c, p: " (load-bearing)" if weight[(c, p)] == 3 else " (bookkeeping, not drawn)" if weight[(c, p)] == 1 else " (not drawn: fourth)" if (c, p) in dropped else ""
+items = "; ".join(f"\\textbf{{{code(c)}}}: " + ", ".join(code(p) + tag(c, p) for p in per_child[c]) for c in order)
+trip = (r"\vspace{0.2ex}" "\n" r"{\footnotesize\textbf{Marks.} The dependences recorded in the source that no contact can show, by the block that "
+        r"carries the mark (formalism first, top of the page first), in the order of importance, bottom left first, then counter-clockwise; "
+        r"the block leaned on gives the mark its colour and shortcut; a corner triangle points to the previous column, an arrowhead up or down "
+        r"the same column; a thick border marks a load-bearing dependence, a bookkeeping one is listed but not drawn: " + items + r". "
         r"The scheme frames of the other pages are left off this one.\par}")
 doc = doc[:fr.start()] + trip + doc[fr.end():]
 doc = doc.replace("VERTICAL version\n%  GENERATED by scripts/make_pyramid_vertical.py from",
