@@ -3,12 +3,14 @@
 GENERATED vertical file (default pbl_assumptions_pyramid_split_vertical.tex) -- run make_pyramid_vertical.py first.
 
   * every block gets its own fill: the hue runs through the rainbow from the top of the page to the bottom
-    (block centre), the shade darkens from the premises (left) to the formalism (right) -- a colour names a place;
+    (block centre), the shade lightens from the premises (left) to the formalism (right) -- a colour names a place;
   * the scheme frames (Goger port red, 3D closure purple) are dropped;
-  * every recorded lean (\\lean{child}{parent}, the dependences the contact rule cannot draw) becomes a filled
-    corner triangle in the CHILD block, in the PARENT's colour: left corners point to the previous column, right
-    corners to the same column; upper corners to a parent above, lower corners to one below; several in one corner
-    stack along the edge.
+  * a grey tab in every block's top-left corner carries its shortcut: P1.. premises, C1.. concepts, F1.. formal
+    statements, numbered from the top of the page;
+  * the recorded leans (\\lean{child}{parent}, the dependences the contact rule cannot draw; in the master ordered by
+    importance within a child) become filled corner triangles in the CHILD block, in the PARENT's colour: at most
+    three, the most important at the bottom left, then counter-clockwise (bottom right, top right); each carries the
+    parent's shortcut.
 Colours in OKLCH (perceptually even lightness steps), gamut-clipped by lowering the chroma.
 Usage: python3 scripts/make_pyramid_colour.py [VERTICAL.tex]   -> VERTICAL_colour.tex ; then tectonic it.
 """
@@ -16,11 +18,14 @@ import re, sys, pathlib, math
 
 SRC = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else pathlib.Path("pbl_assumptions_pyramid_split_vertical.tex")
 DST = SRC.with_name(SRC.stem + "_colour.tex")
-LIGHT = {"ground": 0.93, "hyp": 0.82, "row": 0.70}   # OKLab L per column: light left, dark right
+LIGHT = {"ground": 0.70, "hyp": 0.82, "row": 0.93}   # OKLab L per column: dark left, light right (Elias 2026-09-21)
 CHROMA = 0.11
 HUE0, HUE1 = 25.0, 320.0                              # top of the page -> bottom (red -> violet)
-LEG = 0.26                                            # triangle leg (cm)
-GAP = 0.05                                            # between stacked triangles
+LEG = 0.40                                            # triangle leg (cm); holds the parent's shortcut
+TABW, TABH = 0.46, 0.25                               # shortcut tab (cm)
+MAXTRI = 3
+PREFIX = {"ground": "P", "hyp": "C", "row": "F"}
+PX1, NEWPX1 = 2.5, 3.0     # the premise column is widened for the tabs (the page margins pay: 9 mm -> 6 mm)
 TIER = {"ground": 0, "hyp": 1, "row": 2}
 
 def take_args(s, i, n):
@@ -59,19 +64,55 @@ def colour(L, h):
 
 src = SRC.read_text()
 lines = src.split("\n")
+
+# ---- widen the premise column: x <= PX1 scaled, everything right of it shifted; contacts are preserved ----
+def rx(x):
+    x = float(x); return x * NEWPX1 / PX1 if x <= PX1 + 1e-6 else x + (NEWPX1 - PX1)
+fmt = lambda v: f"{v:.3f}"
+in_pic = False
+for k, ln in enumerate(lines):
+    if ln.startswith("\\begin{tikzpicture}"): in_pic = True; continue
+    if ln.startswith("\\end{tikzpicture}"): in_pic = False
+    if not in_pic: continue
+    if ln.startswith("\\pbv{") or ln.startswith("\\pbh{"):
+        name = ln[:ln.index("{")]; a, end = take_args(ln, len(name), 4)
+        a[0], a[1] = fmt(rx(a[0])), fmt(rx(a[1]))
+        ln = name + "".join("{" + x + "}" for x in a) + ln[end:]
+    elif ln.startswith("\\pbunion{"):
+        a, end = take_args(ln, len("\\pbunion"), 7)
+        a[1] = fmt(rx(a[1])); a[3] = f"{float(a[3]) * NEWPX1 / PX1:.2f}"
+        a[5] = ",".join("/".join([fmt(rx(q[0])), fmt(rx(q[1])), q[2], q[3]]) for q in (pc.split("/") for pc in a[5].split(",")))
+        a[6] = re.sub(r"\(([-\d.]+),([-\d.]+)\)", lambda m: f"({fmt(rx(m.group(1)))},{m.group(2)})", a[6])
+        ln = "\\pbunion" + "".join("{" + x + "}" for x in a) + ln[end:]
+    elif ln.startswith("\\node"):
+        ln = re.sub(r" at \(([-\d.]+),([-\d.]+)\)", lambda m: f" at ({fmt(rx(m.group(1)))},{m.group(2)})", ln)
+    lines[k] = ln
 blocks = []          # dict(title, tier, rect=(x0,x1,y0,y1) of the body, line index)
 for k, ln in enumerate(lines):
     if ln.startswith("\\pbv{"):
         a, _ = take_args(ln, len("\\pbv"), 7)
         x0, x1, y0, y1 = map(float, a[:4]); style, text = a[4], a[5]
-        blocks.append(dict(title=re.match(r"\\textbf\{(.*?)\}", text).group(1), tier=TIER[style], rect=(x0, x1, y0, y1), k=k, kind="pbv"))
+        blocks.append(dict(title=re.match(r"\\textbf\{(.*?)\}", text).group(1), tier=TIER[style], rect=(x0, x1, y0, y1), k=k, kind="pbv",
+                           tab=(x0, y1), top=y1))
     elif ln.startswith("\\pbunion{"):
         a, _ = take_args(ln, len("\\pbunion"), 7)
         style, text = a[0], a[4]
-        x0, x1, y0, y1 = map(float, a[5].split(",")[0].split("/"))
-        blocks.append(dict(title=re.match(r"\\textbf\{(.*?)\}", text).group(1), tier=TIER[style], rect=(x0, x1, y0, y1), k=k, kind="pbunion"))
+        pcs = [tuple(map(float, pc.split("/"))) for pc in a[5].split(",")]
+        x0, x1, y0, y1 = pcs[0]
+        top = max(pcs, key=lambda q: q[3])                       # the topmost piece carries the tab
+        blocks.append(dict(title=re.match(r"\\textbf\{(.*?)\}", text).group(1), tier=TIER[style], rect=(x0, x1, y0, y1), k=k, kind="pbunion",
+                           tab=(top[0], top[3]), top=top[3]))
 ytop = max(b["rect"][3] for b in blocks); ybot = min(b["rect"][2] for b in blocks)
 by_title = {b["title"]: b for b in blocks}
+# shortcuts: P/C/F + rank from the top of the page within the column
+for st, pre in PREFIX.items():
+    col = sorted((b for b in blocks if b["tier"] == TIER[st]), key=lambda b: -b["top"])
+    for n, b in enumerate(col, 1): b["code"] = f"{pre}{n}"
+tabs = []
+for b in blocks:
+    tx, ty = b["tab"]
+    tabs.append(f"\\fill[black!16] ({tx:.3f},{ty - TABH:.3f}) rectangle ({tx + TABW:.3f},{ty:.3f}); \\draw[black!60, line width=0.25pt] ({tx:.3f},{ty - TABH:.3f}) rectangle ({tx + TABW:.3f},{ty:.3f});"
+                f" \\node[inner sep=0pt, font=\\fontsize{{5.5}}{{6}}\\selectfont\\bfseries] at ({tx + TABW / 2:.3f},{ty - TABH / 2:.3f}) {{{b['code']}}}; % {b['title']}")
 # colours
 defs = []
 for i, b in enumerate(blocks):
@@ -88,25 +129,17 @@ for ln in lines:
         (c, p), _ = take_args(ln, len("\\lean"), 2); leans.append((c, p))
 missing = [n for c, p in leans for n in (c, p) if n not in by_title]
 assert not missing, missing
-tri = []; used = {}     # (block, corner) -> count
-per_child = {}
-for c, p in leans:
-    cb, pb = by_title[c], by_title[p]
-    x0, x1, y0, y1 = cb["rect"]
-    ycc, ycp = (y0 + y1) / 2, (pb["rect"][2] + pb["rect"][3]) / 2
-    side = "L" if pb["tier"] < cb["tier"] else "R"
-    vert = "T" if ycp > ycc else "B"
-    n = used.get((c, side + vert), 0); used[(c, side + vert)] = n + 1
-    off = n * (LEG + GAP)
-    cx = (x0 + off) if side == "L" else (x1 - off)
-    cy = y1 if vert == "T" else y0
-    dx = LEG if side == "L" else -LEG
-    dy = -LEG if vert == "T" else LEG
-    tri.append(f"\\filldraw[fill={pb['col']}, draw=black, line width=0.3pt] ({cx:.3f},{cy:.3f}) -- ({cx + dx:.3f},{cy:.3f}) -- ({cx:.3f},{cy + dy:.3f}) -- cycle; % {c} <- {p}")
-    per_child.setdefault(c, []).append(p)
-assert cb  # noqa
-for (c, corner), n in used.items():
-    if n > 1: print(f"  stacked {n} in corner {corner} of {c}")
+tri = []; per_child = {}; dropped = []
+for c, p in leans: per_child.setdefault(c, []).append(p)
+CORNER = [("BL", lambda r: (r[0], r[2], LEG, LEG)), ("BR", lambda r: (r[1], r[2], -LEG, LEG)), ("TR", lambda r: (r[1], r[3], -LEG, -LEG))]
+for c, ps in per_child.items():
+    cb = by_title[c]
+    for n, p in enumerate(ps):
+        if n >= MAXTRI: dropped.append((c, p)); continue
+        cx, cy, dx, dy = CORNER[n][1](cb["rect"]); pb = by_title[p]
+        tri.append(f"\\filldraw[fill={pb['col']}, draw=black, line width=0.3pt] ({cx:.3f},{cy:.3f}) -- ({cx + dx:.3f},{cy:.3f}) -- ({cx:.3f},{cy + dy:.3f}) -- cycle;"
+                   f" \\node[inner sep=0pt, font=\\fontsize{{4}}{{4.5}}\\selectfont\\bfseries] at ({cx + 0.30 * dx:.3f},{cy + 0.30 * dy:.3f}) {{{pb["code"]}}}; % {c} <- {p} ({CORNER[n][0]})")
+for c, p in dropped: print(f"  not drawn (fourth or later lean): {c} <- {p}")
 # rewrite the lines
 out = []
 for k, ln in enumerate(lines):
@@ -129,28 +162,32 @@ doc = doc.replace(r"\renewcommand{\pbunion}[7]{\foreach \ux/\uX/\uy/\uY in {#6} 
 assert doc.count("\\fill[#1]") == 1
 doc = doc.replace("  hecto/.style={draw=black!55, dashed, line width=0.4pt, fill=white}]",
                   "  bk/.style={draw, line width=0.4pt},\n  hecto/.style={draw=black!55, dashed, line width=0.4pt, fill=white}]")
-doc = doc.replace("\\end{tikzpicture}", "% ---- corner triangles: the recorded leans, child block, parent colour ----\n" + "\n".join(tri) + "\n\\end{tikzpicture}", 1)
+doc = doc.replace("\\end{tikzpicture}", "% ---- shortcut tabs ----\n" + "\n".join(tabs) + "\n% ---- corner triangles: the recorded leans, child block, parent colour ----\n" + "\n".join(tri) + "\n\\end{tikzpicture}", 1)
 doc = doc.replace("\\begin{document}", "% ---- block colours (OKLCH: hue by vertical position, lightness by column) ----\n" + "\n".join(defs) + "\n\\begin{document}", 1)
 # page-1 legend
 old = re.search(r"\{\\footnotesize Left, dark grey: the premises.*?Rules and reading on the next page\.\\par\}", doc, re.S).group(0)
-new = (r"{\footnotesize Left the premises, middle the concepts of turbulence theory, right the formal statements of the level-2.5 closure; "
-       r"a block touches at its left exactly the blocks it relies on. \textbf{Colour names a place}: the hue by height on the page, red at the top "
-       r"to violet at the bottom, the shade darkening from left to right. \textbf{A corner triangle} marks a dependence no contact can show, in "
-       r"the colour of the block depended on: left corners point to the previous column, right corners to the same column, upper to a block above, "
-       r"lower to one below. Dashed: each formal statement at $\Delta = 500$~m over the Inn Valley; far right the schemes "
-       r"\textcolor{cMYNN}{\textbf{MYNN as run}}, \textcolor{cGXIX}{\textbf{G19 port}}, \textcolor{cAPPROX}{\textbf{3D-APPROX}}, "
-       r"\textcolor{cFULL}{\textbf{3D-FULL}}, \gK{} implements, \gP{} partly, \gD{} drops. Rules, reading and the list of triangles overleaf.\par}")
+new = (r"{\footnotesize Left the premises, middle the concepts, right the formal statements of the level-2.5 closure; a block touches at its "
+       r"left exactly the blocks it relies on. \textbf{Colour names a place}: hue by height on the page, red at the top to violet at the bottom, "
+       r"the shade lightening from left to right; the grey tab is the block's shortcut (P, C, F from the top). \textbf{A corner triangle} marks a "
+       r"dependence no contact can show, in the colour and with the shortcut of the block depended on: the most important at the bottom left, then "
+       r"counter-clockwise, three at most. Dashed: the formal statements at $\Delta = 500$~m in the Inn Valley; far right the schemes \textcolor{cMYNN}{\textbf{MYNN as run}}, "
+       r"\textcolor{cGXIX}{\textbf{G19 port}}, \textcolor{cAPPROX}{\textbf{3D-APPROX}}, \textcolor{cFULL}{\textbf{3D-FULL}}: \gK{} implements, "
+       r"\gP{} partly, \gD{} drops. Rules, reading, triangles overleaf.\par}")
 doc = doc.replace(old, new)
-doc = doc.replace("Dark grey, the ground (left column): ", "The ground (left column, lightest shade): ")
+doc = doc.replace("\\usepackage[a4paper,margin=9mm,top=9mm,bottom=9mm]{geometry}", "\\usepackage[a4paper,margin=6mm,top=9mm,bottom=9mm]{geometry}")
+assert "margin=6mm" in doc
+doc = doc.replace("Dark grey, the ground (left column): ", "The ground (left column, darkest shade): ")
 doc = doc.replace("Light grey, the\nconcepts (middle column):", "The\nconcepts (middle column, middle shade):")
-doc = doc.replace("White, the formalism (right column):", "The formalism (right column, darkest shade):")
+doc = doc.replace("White, the formalism (right column):", "The formalism (right column, lightest shade):")
 # the Frames paragraph -> the list of triangles
 fr = re.search(r"\\vspace\{0\.2ex\}\n\{\\footnotesize\\textbf\{Frames\.\}.*?\\par\}", doc, re.S)
 assert fr
 order = sorted(per_child, key=lambda c: (-by_title[c]["tier"], -(by_title[c]["rect"][2] + by_title[c]["rect"][3])))
-items = "; ".join(f"\\textbf{{{c}}}: {', '.join(per_child[c])}" for c in order)
+code = lambda t: f"{by_title[t]['code']} {t}"
+items = "; ".join(f"\\textbf{{{code(c)}}}: " + ", ".join(code(p) + (" (not drawn)" if (c, p) in dropped else "") for p in per_child[c]) for c in order)
 trip = (r"\vspace{0.2ex}" "\n" r"{\footnotesize\textbf{Triangles.} The dependences recorded in the source that no contact can show, by the block that "
-        r"carries the triangle (formalism first, top of the page first; the block leaned on in the triangle's colour on the page): " + items + r". "
+        r"carries the triangle (formalism first, top of the page first), in the order of importance, bottom left first, then counter-clockwise; "
+        r"the block leaned on gives the triangle its colour; a fourth or fifth lean is listed but not drawn: " + items + r". "
         r"The scheme frames of the other pages are left off this one.\par}")
 doc = doc[:fr.start()] + trip + doc[fr.end():]
 doc = doc.replace("VERTICAL version\n%  GENERATED by scripts/make_pyramid_vertical.py from",

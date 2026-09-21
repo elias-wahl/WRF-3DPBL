@@ -101,31 +101,33 @@
 
 % ---- dependencies the contact rule cannot draw (post-audit list; used by scripts/make_pyramid_graph.py). No-op here.
 \newcommand{\lean}[2]{}
+% grouped by child; the order within a child is the importance of the parent (2026-09-21, Elias): the colour page
+% draws the first three as corner triangles, bottom left first, then counter-clockwise; the block's text names the same.
 \lean{Boundary-layer (column) approximation}{Boussinesq}
 \lean{Energy cascade}{Stationarity}
+\lean{Energy cascade}{Mixing}
 \lean{Local equilibrium}{Locality}
 \lean{Local equilibrium}{Horizontal homogeneity}
 \lean{Monin--Obukhov similarity}{Constant-flux layer}
 \lean{Mixing length}{Mixing}
 \lean{Locality}{Mixing}
-\lean{Energy cascade}{Mixing}
-\lean{Eddy viscosity}{Locality}
 \lean{Eddy viscosity}{Mixing length}
+\lean{Eddy viscosity}{Locality}
 \lean{Return to isotropy}{Horizontal homogeneity}
+\lean{Stability functions and cutoff}{Local equilibrium}
+\lean{Stability functions and cutoff}{Buoyancy production}
+\lean{Stability functions and cutoff}{Boundary-layer (column) approximation}
 \lean{Stability functions and cutoff}{Level-2.5 truncation}
+\lean{Stability functions and cutoff}{Universal constants}
 \lean{Level-2.5 truncation}{Weak anisotropy}
 \lean{Buoyancy production}{Return to isotropy}
 \lean{Universal constants}{Reynolds decomposition}
 \lean{Vertical divergence only}{Spectral gap}
 \lean{Wall value of $\qsq$}{Universal constants}
-\lean{Stability functions and cutoff}{Universal constants}
-\lean{Stability functions and cutoff}{Boundary-layer (column) approximation}
-\lean{Stability functions and cutoff}{Buoyancy production}
-\lean{Stability functions and cutoff}{Local equilibrium}
 \lean{Master length scale}{Buoyancy term}
 \lean{Buoyancy term}{K-form fluxes}
-\lean{Pressure terms}{Locality}
 \lean{Pressure terms}{Universal constants}
+\lean{Pressure terms}{Locality}
 \lean{One length for $K$ and $\varepsilon$}{Master length scale}
 \lean{K-form fluxes}{Master length scale}
 \lean{K-form fluxes}{Stability functions and cutoff}

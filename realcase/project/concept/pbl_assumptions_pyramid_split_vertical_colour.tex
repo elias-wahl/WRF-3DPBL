@@ -17,7 +17,7 @@
     ItalicFont=lmroman10-italic.otf, BoldItalicFont=lmroman10-bolditalic.otf]
 \fi
 \usepackage[british]{babel}
-\usepackage[a4paper,margin=9mm,top=9mm,bottom=9mm]{geometry}
+\usepackage[a4paper,margin=6mm,top=9mm,bottom=9mm]{geometry}
 \usepackage{amsmath,amssymb}
 \usepackage{xcolor}
 \usepackage{tikz}
@@ -81,31 +81,33 @@
 
 % ---- dependencies the contact rule cannot draw (post-audit list; used by scripts/make_pyramid_graph.py). No-op here.
 \newcommand{\lean}[2]{}
+% grouped by child; the order within a child is the importance of the parent (2026-09-21, Elias): the colour page
+% draws the first three as corner triangles, bottom left first, then counter-clockwise; the block's text names the same.
 \lean{Boundary-layer (column) approximation}{Boussinesq}
 \lean{Energy cascade}{Stationarity}
+\lean{Energy cascade}{Mixing}
 \lean{Local equilibrium}{Locality}
 \lean{Local equilibrium}{Horizontal homogeneity}
 \lean{Monin--Obukhov similarity}{Constant-flux layer}
 \lean{Mixing length}{Mixing}
 \lean{Locality}{Mixing}
-\lean{Energy cascade}{Mixing}
-\lean{Eddy viscosity}{Locality}
 \lean{Eddy viscosity}{Mixing length}
+\lean{Eddy viscosity}{Locality}
 \lean{Return to isotropy}{Horizontal homogeneity}
+\lean{Stability functions and cutoff}{Local equilibrium}
+\lean{Stability functions and cutoff}{Buoyancy production}
+\lean{Stability functions and cutoff}{Boundary-layer (column) approximation}
 \lean{Stability functions and cutoff}{Level-2.5 truncation}
+\lean{Stability functions and cutoff}{Universal constants}
 \lean{Level-2.5 truncation}{Weak anisotropy}
 \lean{Buoyancy production}{Return to isotropy}
 \lean{Universal constants}{Reynolds decomposition}
 \lean{Vertical divergence only}{Spectral gap}
 \lean{Wall value of $\qsq$}{Universal constants}
-\lean{Stability functions and cutoff}{Universal constants}
-\lean{Stability functions and cutoff}{Boundary-layer (column) approximation}
-\lean{Stability functions and cutoff}{Buoyancy production}
-\lean{Stability functions and cutoff}{Local equilibrium}
 \lean{Master length scale}{Buoyancy term}
 \lean{Buoyancy term}{K-form fluxes}
-\lean{Pressure terms}{Locality}
 \lean{Pressure terms}{Universal constants}
+\lean{Pressure terms}{Locality}
 \lean{One length for $K$ and $\varepsilon$}{Master length scale}
 \lean{K-form fluxes}{Master length scale}
 \lean{K-form fluxes}{Stability functions and cutoff}
@@ -149,16 +151,16 @@
   \node[align=left, font=\fontsize{6.5}{7.6}\selectfont, inner sep=0pt, text width=\pbw cm] at ({(#1+#2)/2},{(#3+#4)/2}) {#5};}
 
 % ---- block colours (OKLCH: hue by vertical position, lightness by column) ----
-\definecolor{blk0}{rgb}{0.9978,0.8786,0.8520} % Spectral gap
-\definecolor{blk1}{rgb}{0.9901,0.8850,0.8309} % Mixing
-\definecolor{blk2}{rgb}{0.7796,0.9775,0.6880} % Stationarity
-\definecolor{blk3}{rgb}{0.5816,0.9961,0.9530} % Similarity
-\definecolor{blk4}{rgb}{0.9945,0.8999,0.6849} % Horizontal homogeneity
-\definecolor{blk5}{rgb}{0.7851,0.9388,0.9949} % Small-scale isotropy
-\definecolor{blk6}{rgb}{0.8539,0.9169,0.9878} % Weak anisotropy
-\definecolor{blk7}{rgb}{0.8771,0.9080,0.9911} % Gradient scale
-\definecolor{blk8}{rgb}{0.9057,0.8959,0.9975} % Axisymmetric mixing
-\definecolor{blk9}{rgb}{0.9476,0.8784,0.9986} % Boussinesq
+\definecolor{blk0}{rgb}{0.8545,0.5175,0.4467} % Spectral gap
+\definecolor{blk1}{rgb}{0.8376,0.5372,0.3721} % Mixing
+\definecolor{blk2}{rgb}{0.4972,0.6827,0.4078} % Stationarity
+\definecolor{blk3}{rgb}{0.1978,0.7068,0.6660} % Similarity
+\definecolor{blk4}{rgb}{0.7368,0.6027,0.2739} % Horizontal homogeneity
+\definecolor{blk5}{rgb}{0.2402,0.6799,0.8125} % Small-scale isotropy
+\definecolor{blk6}{rgb}{0.4113,0.6377,0.8811} % Weak anisotropy
+\definecolor{blk7}{rgb}{0.5139,0.6074,0.8911} % Gradient scale
+\definecolor{blk8}{rgb}{0.6180,0.5734,0.8709} % Axisymmetric mixing
+\definecolor{blk9}{rgb}{0.7075,0.5427,0.8189} % Boussinesq
 \definecolor{blk10}{rgb}{0.9958,0.6757,0.6067} % Reynolds decomposition
 \definecolor{blk11}{rgb}{0.9853,0.6948,0.4904} % Ergodicity in space
 \definecolor{blk12}{rgb}{0.8762,0.7579,0.4257} % Boundary-layer (column) approximation
@@ -172,25 +174,25 @@
 \definecolor{blk20}{rgb}{0.7291,0.7435,0.9947} % Eddy viscosity
 \definecolor{blk21}{rgb}{0.6693,0.7660,0.9890} % Locality
 \definecolor{blk22}{rgb}{0.8310,0.6990,0.9964} % Buoyancy production
-\definecolor{blk23}{rgb}{0.8370,0.5378,0.3703} % Grid means are ensemble means
-\definecolor{blk24}{rgb}{0.7680,0.5859,0.2824} % Vertical shear only
-\definecolor{blk25}{rgb}{0.6945,0.6223,0.2792} % Vertical divergence only
-\definecolor{blk26}{rgb}{0.5892,0.6600,0.3372} % Wall value of $\qsq$
-\definecolor{blk27}{rgb}{0.4894,0.6843,0.4140} % Level-2.5 truncation
-\definecolor{blk28}{rgb}{0.3599,0.7028,0.5203} % Surface fluxes and first level
-\definecolor{blk29}{rgb}{0.2289,0.7081,0.6333} % Master length scale
-\definecolor{blk30}{rgb}{0.1693,0.7001,0.7300} % Constant set
-\definecolor{blk31}{rgb}{0.2112,0.6865,0.7922} % One length for $K$ and $\varepsilon$
-\definecolor{blk32}{rgb}{0.3157,0.6625,0.8509} % Pressure terms
-\definecolor{blk33}{rgb}{0.4082,0.6386,0.8804} % Stability functions and cutoff
-\definecolor{blk34}{rgb}{0.5461,0.5972,0.8886} % K-form fluxes
-\definecolor{blk35}{rgb}{0.6821,0.5514,0.8377} % Buoyancy term
+\definecolor{blk23}{rgb}{0.9898,0.8852,0.8304} % Grid means are ensemble means
+\definecolor{blk24}{rgb}{0.9977,0.8931,0.7353} % Vertical shear only
+\definecolor{blk25}{rgb}{0.9872,0.9133,0.5693} % Vertical divergence only
+\definecolor{blk26}{rgb}{0.8737,0.9532,0.6207} % Wall value of $\qsq$
+\definecolor{blk27}{rgb}{0.7719,0.9792,0.6942} % Level-2.5 truncation
+\definecolor{blk28}{rgb}{0.6523,0.9992,0.8024} % Surface fluxes and first level
+\definecolor{blk29}{rgb}{0.5971,0.9972,0.9210} % Master length scale
+\definecolor{blk30}{rgb}{0.6526,0.9749,0.9947} % Constant set
+\definecolor{blk31}{rgb}{0.7651,0.9451,0.9940} % One length for $K$ and $\varepsilon$
+\definecolor{blk32}{rgb}{0.8252,0.9266,0.9898} % Pressure terms
+\definecolor{blk33}{rgb}{0.8533,0.9172,0.9876} % Stability functions and cutoff
+\definecolor{blk34}{rgb}{0.8855,0.9049,0.9904} % K-form fluxes
+\definecolor{blk35}{rgb}{0.9322,0.8853,0.9965} % Buoyancy term
 \begin{document}
 {\large\bfseries The assumptions of a one-dimensional PBL closure, as a pyramid: what rests on what}\\[0.2ex]
 {\small Colour-coded page of the split variant, 2026-09-21: spectral gap and gradient scale as separate premises. 2026-09-17.}
 
 \vspace{0.3ex}
-{\footnotesize Left the premises, middle the concepts of turbulence theory, right the formal statements of the level-2.5 closure; a block touches at its left exactly the blocks it relies on. \textbf{Colour names a place}: the hue by height on the page, red at the top to violet at the bottom, the shade darkening from left to right. \textbf{A corner triangle} marks a dependence no contact can show, in the colour of the block depended on: left corners point to the previous column, right corners to the same column, upper to a block above, lower to one below. Dashed: each formal statement at $\Delta = 500$~m over the Inn Valley; far right the schemes \textcolor{cMYNN}{\textbf{MYNN as run}}, \textcolor{cGXIX}{\textbf{G19 port}}, \textcolor{cAPPROX}{\textbf{3D-APPROX}}, \textcolor{cFULL}{\textbf{3D-FULL}}, \gK{} implements, \gP{} partly, \gD{} drops. Rules, reading and the list of triangles overleaf.\par}
+{\footnotesize Left the premises, middle the concepts, right the formal statements of the level-2.5 closure; a block touches at its left exactly the blocks it relies on. \textbf{Colour names a place}: hue by height on the page, red at the top to violet at the bottom, the shade lightening from left to right; the grey tab is the block's shortcut (P, C, F from the top). \textbf{A corner triangle} marks a dependence no contact can show, in the colour and with the shortcut of the block depended on: the most important at the bottom left, then counter-clockwise, three at most. Dashed: the formal statements at $\Delta = 500$~m in the Inn Valley; far right the schemes \textcolor{cMYNN}{\textbf{MYNN as run}}, \textcolor{cGXIX}{\textbf{G19 port}}, \textcolor{cAPPROX}{\textbf{3D-APPROX}}, \textcolor{cFULL}{\textbf{3D-FULL}}: \gK{} implements, \gP{} partly, \gD{} drops. Rules, reading, triangles overleaf.\par}
 
 \vspace{0.4ex}
 \begin{center}
@@ -200,150 +202,185 @@
   row/.style={draw, line width=0.4pt, fill=white},
   bk/.style={draw, line width=0.4pt},
   hecto/.style={draw=black!55, dashed, line width=0.4pt, fill=white}]
-\node[font=\scriptsize\bfseries, text=black!60] at (1.250,23.871) {premises};
-\node[font=\scriptsize\bfseries, text=black!60] at (4.590,23.871) {concepts};
-\node[font=\scriptsize\bfseries, text=black!60] at (9.330,23.871) {formalism};
-\node[font=\scriptsize\bfseries, text=black!60] at (18.460,23.871) {schemes};
-\node[font=\scriptsize\bfseries, text=black!60, align=center] at (14.880,24.021) {hectometre-scale simulations\\ in complex terrain};
-\pbv{0.000}{2.500}{22.274}{23.521}{bk, fill=blk0}{\textbf{Spectral gap}\\ a gap between the eddies and the mean flow}{0.30}
-\pbv{0.000}{2.500}{20.941}{22.188}{bk, fill=blk1}{\textbf{Mixing}\\ correlations decay within a finite integral scale}{0.30}
-\pbunion{blk2}{1.618}{14.491}{1.46}{\textbf{Stationarity}\\ statistics invariant under time translation over the relaxation time $l/q$}{0.735/2.500/12.965/16.018,0.000/0.735/12.965/16.018}{(0.000,16.018) -- (2.500,16.018) -- (2.500,12.965) -- (0.000,12.965)}
-\pbunion{blk3}{1.250}{10.342}{2.20}{\textbf{Similarity}\\ one universal scaled relation in every flow; the parameter list complete}{0.000/2.500/9.202/11.481,0.000/2.500/11.481/12.879}{(0.000,12.879) -- (2.500,12.879) -- (2.500,9.202) -- (0.000,9.202)}
-\pbunion{blk4}{1.250}{18.479}{2.20}{\textbf{Horizontal homogeneity}\\ statistics invariant under horizontal translation: \mbox{$\partial_x\avg{\cdot} = \partial_y\avg{\cdot} = 0$} for every mean and every moment}{0.000/2.500/16.104/20.855,0.176/0.618/11.567/16.104,0.176/2.500/11.567/11.868,1.985/2.500/10.750/11.868}{(0.000,20.855) -- (2.500,20.855) -- (2.500,16.104) -- (0.618,16.104) -- (0.618,11.868) -- (2.500,11.868) -- (2.500,10.750) -- (1.985,10.750) -- (1.985,11.567) -- (0.176,11.567) -- (0.176,16.104) -- (0.000,16.104)}
-\pbv{0.000}{2.500}{5.891}{9.116}{bk, fill=blk5}{\textbf{Small-scale isotropy}\\ at high Reynolds number the small eddies forget the direction of shear and gravity}{0.30}
-\pbv{0.000}{2.500}{4.429}{5.805}{bk, fill=blk6}{\textbf{Weak anisotropy}\\ the energy-containing eddies depart only weakly from isotropy}{0.30}
-\pbv{0.000}{2.500}{2.924}{4.343}{bk, fill=blk7}{\textbf{Gradient scale}\\ the eddy small against the scale of the mean gradient}{0.30}
-\pbv{0.000}{2.500}{1.075}{2.838}{bk, fill=blk8}{\textbf{Axisymmetric mixing}\\ gravity the one axis; one $K$ along and across the shear; no handedness}{0.30}
-\pbv{0.000}{2.500}{-0.473}{0.989}{bk, fill=blk9}{\textbf{Boussinesq}\\ unsaturated air; buoyancy the only density effect; incompressible}{0.30}
-\pbv{2.500}{6.680}{22.274}{23.521}{bk, fill=blk10}{\textbf{Reynolds decomposition}\\ $\avg{a'} = 0$ and $\avg{\avg{a}\,b'} = 0$:\\ true for a window only if\\ the mean does not vary across it}{0.30}
-\pbv{2.500}{6.680}{19.866}{22.188}{bk, fill=blk11}{\textbf{Ergodicity in space}\\ the cell mean converges to the ensemble mean: statistics alike across the cell, correlations decaying within $l$, and many such eddies per cell, \mbox{$\Delta \gg l$}}{0.30}
-\pbv{2.500}{6.680}{16.641}{19.780}{bk, fill=blk12}{\textbf{Boundary-layer (column) approximation}\\ every mean and every moment varies in $z$ only: horizontal gradients are neglected as if the flow around each column were homogeneous; $W = 0$ by continuity}{0.56}
-\pbv{2.500}{6.680}{15.566}{16.555}{bk, fill=blk13}{\textbf{Constant-flux layer}\\ fluxes keep their surface value in the boundary layer's lowest tenth}{0.30}
-\pbv{2.500}{6.680}{13.760}{15.480}{bk, fill=blk14}{\textbf{Local equilibrium}\\ the eddies relax within $l/q$, faster than the flow changes along their path: second moments follow the current local gradients; tendency, advection and transport neglected}{0.30}
-\pbv{2.500}{6.680}{11.352}{13.674}{bk, fill=blk15}{\textbf{Monin--Obukhov similarity}\\ in the constant-flux layer the gradients scaled by $u_*$, $\theta_*$, $z$ are universal functions of $z/L_{\mathrm{MO}}$: no other parameter; over a homogeneous, hence horizontal, surface with one roughness length}{0.30}
-\pbv{2.500}{6.680}{10.277}{11.266}{bk, fill=blk16}{\textbf{Mixing length}\\ one integral scale $l$ per height, set by the column alone}{0.30}
-\pbv{2.500}{6.680}{8.213}{10.191}{bk, fill=blk17}{\textbf{Universal constants}\\ the scaled rates of return to isotropy and of dissipation are pure numbers, the same in every flow: measured once in simple flows, valid everywhere}{0.30}
-\pbv{2.500}{6.680}{7.009}{8.127}{bk, fill=blk18}{\textbf{Energy cascade}\\ isotropic dissipation in equilibrium with the integral-scale eddies, $\varepsilon \sim q^3/l$}{0.30}
-\pbv{2.500}{6.680}{4.515}{6.923}{bk, fill=blk19}{\textbf{Return to isotropy}\\ pressure fluctuations scramble the eddies toward isotropy: anisotropy decays at the one rate $q/l$, linear in it, because it is small (Rotta), computed locally as in homogeneous turbulence away from walls; pressure transport diffusive}{0.30}
-\pbv{2.500}{6.680}{1.935}{3.354}{bk, fill=blk20}{\textbf{Eddy viscosity}\\ local gradient transport with one positive scalar $K \sim l q$, alike along and across the shear}{0.40}
-\pbv{2.500}{6.680}{3.440}{4.343}{bk, fill=blk21}{\textbf{Locality}\\ the flux answers the local gradient, $l \ll$ its scale, after decorrelation}{0.30}
-\pbv{2.500}{6.680}{-0.215}{1.806}{bk, fill=blk22}{\textbf{Buoyancy production}\\ gravity acts along one axis: the vertical heat flux alone exchanges kinetic and potential energy, all of it in $\avg{w^2}$; its sharing among the components is left to the return to isotropy; no horizontal heat flux}{0.30}
-\pbv{6.680}{11.980}{19.952}{23.108}{bk, fill=blk23}{\textbf{Grid means are ensemble means}\\ the grid spacing appears nowhere, every eddy inside the cell, $\Delta \gg l,\ z_i$; the resolved flow is not turbulent, so its shear feeds production; the vertical grid resolves the shear layer it differentiates, $\Delta z \ll$ its depth}{0.30}
-\pbv{6.680}{11.980}{18.705}{19.711}{bk, fill=blk24}{\textbf{Vertical shear only}\\ two of nine terms; no gradient of $W$}{0.56}
-\pbv{6.680}{11.980}{16.710}{18.533}{bk, fill=blk25}{\textbf{Vertical divergence only}\\ means and TKE in $z$ only; TKE not advected; horizontal mixing by numerics at its own scale, its energy lost, not paid to $\qsq$; surfaces horizontal}{0.40}
-\pbv{6.680}{11.980}{15.179}{16.486}{bk, fill=blk26}{\textbf{Wall value of $\qsq$}\\ $\qsq = B_1^{2/3} u_*^2$ at the ground: the neutral level-2 equilibrium of the constant-flux layer}{0.30}
-\pbv{6.680}{11.980}{13.760}{15.007}{bk, fill=blk27}{\textbf{Level-2.5 truncation}\\ all second moments but $\qsq$ algebraic: their tendencies and transport neglected, to leading order in the anisotropy}{0.30}
-\pbv{6.680}{11.980}{12.040}{13.287}{bk, fill=blk28}{\textbf{Surface fluxes and first level}\\ bulk transfer between the ground and $z_1$, inside the inertial sublayer: $z_0 \ll z_1 \ll z_i$}{0.30}
-\pbv{6.680}{11.980}{9.890}{11.868}{bk, fill=blk29}{\textbf{Master length scale}\\ $1/L = 1/L_S + 1/L_T + 1/L_B$: wall distance with $\zeta$, one $z_i$ per column, $q/N$ from the buoyancy term; blind to terrain and grid}{0.56}
-\pbv{6.680}{11.980}{8.729}{9.718}{bk, fill=blk30}{\textbf{Constant set}\\ one set, fitted in neutral and convective air over flat terrain}{0.30}
-\pbv{6.680}{11.980}{7.353}{8.600}{bk, fill=blk31}{\textbf{One length for $K$ and $\varepsilon$}\\ $\varepsilon = q^3/(B_1 L)$, isotropic, one rate; the same $L$ as in $K = lqS$, from the master length}{0.30}
-\pbv{6.680}{11.980}{5.934}{6.923}{bk, fill=blk32}{\textbf{Pressure terms}\\ Rotta return, $A_1$; isotropised production, $C_1$; TKE transport down-gradient, $S_q$}{0.30}
-\pbv{6.680}{11.980}{4.515}{5.805}{bk, fill=blk33}{\textbf{Stability functions and cutoff}\\ $S_M$, $S_H$ from the balance $P_s + P_b = \varepsilon$\\ in the vertical Ri alone; cutoff at $\Rfc$}{0.56}
-\pbv{6.680}{11.980}{1.935}{4.343}{bk, fill=blk34}{\textbf{K-form fluxes}\\ local and down-gradient, each flux from the gradient of its own mean: \mbox{$\avg{uw} = -K_M\,U_z$}, \mbox{$\avg{w\theta} = -K_H\,\Theta_z$}; one scalar $K$ in every direction, aligned with the gradient; one $K_H$ for all scalars. This closure's $K = lqS$: $l$ from the master length, $S$ from the stability functions}{0.40}
-\pbv{6.680}{11.980}{-0.215}{1.763}{bk, fill=blk35}{\textbf{Buoyancy term}\\ $P_b = \beta g\,\avg{w\theta_v}$ of unsaturated air, $\beta = 1/300$~K; no horizontal heat flux; $\avg{w\theta_v}$ from the K-form}{0.30}
-\node[inner sep=0pt] at (17.950,21.530) {\color{cMYNN}\gP};
-\node[inner sep=0pt] at (18.290,21.530) {\color{cGXIX}\gK};
-\node[inner sep=0pt] at (18.630,21.530) {\color{cAPPROX}\gP};
-\node[inner sep=0pt] at (18.970,21.530) {\color{cFULL}\gP};
-\node[inner sep=0pt] at (17.950,19.208) {\color{cMYNN}\gK};
-\node[inner sep=0pt] at (18.290,19.208) {\color{cGXIX}\gP};
-\node[inner sep=0pt] at (18.630,19.208) {\color{cAPPROX}\gK};
-\node[inner sep=0pt] at (18.970,19.208) {\color{cFULL}\gD};
-\node[inner sep=0pt] at (17.950,17.621) {\color{cMYNN}\gK};
-\node[inner sep=0pt] at (18.290,17.621) {\color{cGXIX}\gP};
-\node[inner sep=0pt] at (18.630,17.621) {\color{cAPPROX}\gP};
-\node[inner sep=0pt] at (18.970,17.621) {\color{cFULL}\gD};
-\node[inner sep=0pt] at (17.950,15.833) {\color{cMYNN}\gK};
-\node[inner sep=0pt] at (18.290,15.833) {\color{cGXIX}\gK};
-\node[inner sep=0pt] at (18.630,15.833) {\color{cAPPROX}\gD};
-\node[inner sep=0pt] at (18.970,15.833) {\color{cFULL}\gD};
-\node[inner sep=0pt] at (17.950,14.384) {\color{cMYNN}\gK};
-\node[inner sep=0pt] at (18.290,14.384) {\color{cGXIX}\gK};
-\node[inner sep=0pt] at (18.630,14.384) {\color{cAPPROX}\gK};
-\node[inner sep=0pt] at (18.970,14.384) {\color{cFULL}\gK};
-\node[inner sep=0pt] at (17.950,12.664) {\color{cMYNN}\gK};
-\node[inner sep=0pt] at (18.290,12.664) {\color{cGXIX}\gK};
-\node[inner sep=0pt] at (18.630,12.664) {\color{cAPPROX}\gK};
-\node[inner sep=0pt] at (18.970,12.664) {\color{cFULL}\gK};
-\node[inner sep=0pt] at (17.950,10.879) {\color{cMYNN}\gK};
-\node[inner sep=0pt] at (18.290,10.879) {\color{cGXIX}\gP};
-\node[inner sep=0pt] at (18.630,10.879) {\color{cAPPROX}\gK};
-\node[inner sep=0pt] at (18.970,10.879) {\color{cFULL}\gK};
-\node[inner sep=0pt] at (17.950,9.224) {\color{cMYNN}\gK};
-\node[inner sep=0pt] at (18.290,9.224) {\color{cGXIX}\gK};
-\node[inner sep=0pt] at (18.630,9.224) {\color{cAPPROX}\gK};
-\node[inner sep=0pt] at (18.970,9.224) {\color{cFULL}\gK};
-\node[inner sep=0pt] at (17.950,7.976) {\color{cMYNN}\gK};
-\node[inner sep=0pt] at (18.290,7.976) {\color{cGXIX}\gK};
-\node[inner sep=0pt] at (18.630,7.976) {\color{cAPPROX}\gK};
-\node[inner sep=0pt] at (18.970,7.976) {\color{cFULL}\gK};
-\node[inner sep=0pt] at (17.950,6.428) {\color{cMYNN}\gK};
-\node[inner sep=0pt] at (18.290,6.428) {\color{cGXIX}\gK};
-\node[inner sep=0pt] at (18.630,6.428) {\color{cAPPROX}\gK};
-\node[inner sep=0pt] at (18.970,6.428) {\color{cFULL}\gK};
-\node[inner sep=0pt] at (17.950,5.160) {\color{cMYNN}\gD};
-\node[inner sep=0pt] at (18.290,5.160) {\color{cGXIX}\gP};
-\node[inner sep=0pt] at (18.630,5.160) {\color{cAPPROX}\gK};
-\node[inner sep=0pt] at (18.970,5.160) {\color{cFULL}\gP};
-\node[inner sep=0pt] at (17.950,3.139) {\color{cMYNN}\gP};
-\node[inner sep=0pt] at (18.290,3.139) {\color{cGXIX}\gP};
-\node[inner sep=0pt] at (18.630,3.139) {\color{cAPPROX}\gP};
-\node[inner sep=0pt] at (18.970,3.139) {\color{cFULL}\gD};
-\node[inner sep=0pt] at (17.950,0.774) {\color{cMYNN}\gP};
-\node[inner sep=0pt] at (18.290,0.774) {\color{cGXIX}\gP};
-\node[inner sep=0pt] at (18.630,0.774) {\color{cAPPROX}\gP};
-\node[inner sep=0pt] at (18.970,0.774) {\color{cFULL}\gP};
-\pbh{12.230}{17.530}{19.982}{23.078}{By day much of the kinetic energy at the lowest levels is resolved, the effective resolution is several $\Delta$, and the partition claim waits for a $w$-spectrum below that scale; the resolved shear then enters production twice. At night the eddies shrink far below $\Delta$: the cell holds only a few integral scales and the vertical grid none, the cell statistic is a single realisation, and the stable regime is mesoscale again. On a slope the cell mixes slope layer and valley core.}
-\pbh{12.230}{17.530}{18.735}{19.681}{The jet's cross-valley shear is a sizeable fraction of its vertical shear; in weak drainage flow directional shear sets $u_*$.}
-\pbh{12.230}{17.530}{16.740}{18.503}{Horizontal flux divergences are of the order of the vertical one, and the Riviera budgets closed only with transport and advection; the numerical operator stands where the physical divergence belongs, and the energy it removes vanishes instead of feeding $\qsq$.}
-\pbh{12.230}{17.530}{15.209}{16.456}{The nocturnal sonics record turbulence at the surface where every model goes laminar; the observed friction velocity implies a wall $\qsq$ between the two closures' values.}
-\pbh{12.230}{17.530}{13.790}{14.977}{The closure's own ordering justifies the step in stable and slightly unstable air, not toward free convection. Transitions outrun $l/q$; the strain cap's footprint measures it.}
-\pbh{12.230}{17.530}{12.070}{13.257}{The katabatic jet maximum sits inside the layer; over forest the first level lies in the roughness sublayer; the momentum flux is rarely height-constant.}
-\pbh{12.230}{17.530}{9.920}{11.838}{$z_i$ is ill-posed under elevated inversions, the wall distance ambiguous on a slope, the horizontal eddy set by the valley width: two lengths. In the cold pool the length, not the fluxes, was the lever; the fork bounds it by a buoyancy limit and a strain cap.}
-\pbh{12.230}{17.530}{8.759}{9.688}{Three constant sets in one comparison; their dissipation constants differ by a factor that rivals the effects to be reported.}
-\pbh{12.230}{17.530}{7.383}{8.570}{$\varepsilon$ is filter-independent while $q^3$ is not, so the dissipation length must shrink with the grid; the inertial-subrange estimate from the sonics needs Taylor's hypothesis and fails in weak-wind nights.}
-\pbh{12.230}{17.530}{5.964}{6.893}{Taking them small is ``a dangerous assumption'' in complex terrain; the Radfeld budget residual is their only observation.}
-\pbh{12.230}{17.530}{4.545}{5.775}{Most nocturnal valley cells lie beyond the critical Richardson number, where the deficit against the control is flat; the approximate closure switches off at $\Rfc$, the others never.}
-\pbh{12.230}{17.530}{1.965}{4.313}{By day the eddies span $z_i$ and heat runs against the local gradient: the plume terms exist for this. Where slope wind turns into valley wind the stress axes leave the gradient and the jet veers with height: $\avg{uv}$ appears, negative production is admissible. The grid filter, aspect ratio 25, imprints its anisotropy on the subgrid eddies; in stable air $K_H/K_M$ falls with Ri.}
-\pbh{12.230}{17.530}{-0.185}{1.733}{The slope-normal surface heat flux has a horizontal component with no home in the budget; in stable air buoyancy damps $\avg{w^2}$ selectively; on fog nights the saturated flux follows the moist gradient, which only the control's condensation scheme knows; $\beta = 1/300$~K is a few percent off at valley $\Theta_v$.}
+\node[font=\scriptsize\bfseries, text=black!60] at (1.500,23.871) {premises};
+\node[font=\scriptsize\bfseries, text=black!60] at (5.090,23.871) {concepts};
+\node[font=\scriptsize\bfseries, text=black!60] at (9.830,23.871) {formalism};
+\node[font=\scriptsize\bfseries, text=black!60] at (18.960,23.871) {schemes};
+\node[font=\scriptsize\bfseries, text=black!60, align=center] at (15.380,24.021) {hectometre-scale simulations\\ in complex terrain};
+\pbv{0.000}{3.000}{22.274}{23.521}{bk, fill=blk0}{\textbf{Spectral gap}\\ a gap between the eddies and the mean flow}{0.30}
+\pbv{0.000}{3.000}{20.941}{22.188}{bk, fill=blk1}{\textbf{Mixing}\\ correlations decay within a finite integral scale}{0.30}
+\pbunion{blk2}{1.942}{14.491}{1.75}{\textbf{Stationarity}\\ statistics invariant under time translation over the relaxation time $l/q$}{0.882/3.000/12.965/16.018,0.000/0.882/12.965/16.018}{(0.000,16.018) -- (3.000,16.018) -- (3.000,12.965) -- (0.000,12.965)}
+\pbunion{blk3}{1.500}{10.342}{2.64}{\textbf{Similarity}\\ one universal scaled relation in every flow; the parameter list complete}{0.000/3.000/9.202/11.481,0.000/3.000/11.481/12.879}{(0.000,12.879) -- (3.000,12.879) -- (3.000,9.202) -- (0.000,9.202)}
+\pbunion{blk4}{1.500}{18.479}{2.64}{\textbf{Horizontal homogeneity}\\ statistics invariant under horizontal translation: \mbox{$\partial_x\avg{\cdot} = \partial_y\avg{\cdot} = 0$} for every mean and every moment}{0.000/3.000/16.104/20.855,0.211/0.742/11.567/16.104,0.211/3.000/11.567/11.868,2.382/3.000/10.750/11.868}{(0.000,20.855) -- (3.000,20.855) -- (3.000,16.104) -- (0.742,16.104) -- (0.742,11.868) -- (3.000,11.868) -- (3.000,10.750) -- (2.382,10.750) -- (2.382,11.567) -- (0.211,11.567) -- (0.211,16.104) -- (0.000,16.104)}
+\pbv{0.000}{3.000}{5.891}{9.116}{bk, fill=blk5}{\textbf{Small-scale isotropy}\\ at high Reynolds number the small eddies forget the direction of shear and gravity}{0.30}
+\pbv{0.000}{3.000}{4.429}{5.805}{bk, fill=blk6}{\textbf{Weak anisotropy}\\ the energy-containing eddies depart only weakly from isotropy}{0.30}
+\pbv{0.000}{3.000}{2.924}{4.343}{bk, fill=blk7}{\textbf{Gradient scale}\\ the eddy small against the scale of the mean gradient}{0.30}
+\pbv{0.000}{3.000}{1.075}{2.838}{bk, fill=blk8}{\textbf{Axisymmetric mixing}\\ gravity the one axis; one $K$ along and across the shear; no handedness}{0.30}
+\pbv{0.000}{3.000}{-0.473}{0.989}{bk, fill=blk9}{\textbf{Boussinesq}\\ unsaturated air; buoyancy the only density effect; incompressible}{0.30}
+\pbv{3.000}{7.180}{22.274}{23.521}{bk, fill=blk10}{\textbf{Reynolds decomposition}\\ $\avg{a'} = 0$ and $\avg{\avg{a}\,b'} = 0$:\\ true for a window only if\\ the mean does not vary across it}{0.30}
+\pbv{3.000}{7.180}{19.866}{22.188}{bk, fill=blk11}{\textbf{Ergodicity in space}\\ the cell mean converges to the ensemble mean: statistics alike across the cell, correlations decaying within $l$, and many such eddies per cell, \mbox{$\Delta \gg l$}}{0.30}
+\pbv{3.000}{7.180}{16.641}{19.780}{bk, fill=blk12}{\textbf{Boundary-layer (column) approximation}\\ every mean and every moment varies in $z$ only: horizontal gradients are neglected as if the flow around each column were homogeneous; $W = 0$ by continuity}{0.56}
+\pbv{3.000}{7.180}{15.566}{16.555}{bk, fill=blk13}{\textbf{Constant-flux layer}\\ fluxes keep their surface value in the boundary layer's lowest tenth}{0.30}
+\pbv{3.000}{7.180}{13.760}{15.480}{bk, fill=blk14}{\textbf{Local equilibrium}\\ the eddies relax within $l/q$, faster than the flow changes along their path: second moments follow the current local gradients; tendency, advection and transport neglected}{0.30}
+\pbv{3.000}{7.180}{11.352}{13.674}{bk, fill=blk15}{\textbf{Monin--Obukhov similarity}\\ in the constant-flux layer the gradients scaled by $u_*$, $\theta_*$, $z$ are universal functions of $z/L_{\mathrm{MO}}$: no other parameter; over a homogeneous, hence horizontal, surface with one roughness length}{0.30}
+\pbv{3.000}{7.180}{10.277}{11.266}{bk, fill=blk16}{\textbf{Mixing length}\\ one integral scale $l$ per height, set by the column alone}{0.30}
+\pbv{3.000}{7.180}{8.213}{10.191}{bk, fill=blk17}{\textbf{Universal constants}\\ the scaled rates of return to isotropy and of dissipation are pure numbers, the same in every flow: measured once in simple flows, valid everywhere}{0.30}
+\pbv{3.000}{7.180}{7.009}{8.127}{bk, fill=blk18}{\textbf{Energy cascade}\\ isotropic dissipation in equilibrium with the integral-scale eddies, $\varepsilon \sim q^3/l$}{0.30}
+\pbv{3.000}{7.180}{4.515}{6.923}{bk, fill=blk19}{\textbf{Return to isotropy}\\ pressure fluctuations scramble the eddies toward isotropy: anisotropy decays at the one rate $q/l$, linear in it, because it is small (Rotta), computed locally as in homogeneous turbulence away from walls; pressure transport diffusive}{0.30}
+\pbv{3.000}{7.180}{1.935}{3.354}{bk, fill=blk20}{\textbf{Eddy viscosity}\\ local gradient transport with one positive scalar $K \sim l q$, alike along and across the shear}{0.40}
+\pbv{3.000}{7.180}{3.440}{4.343}{bk, fill=blk21}{\textbf{Locality}\\ the flux answers the local gradient, $l \ll$ its scale, after decorrelation}{0.30}
+\pbv{3.000}{7.180}{-0.215}{1.806}{bk, fill=blk22}{\textbf{Buoyancy production}\\ gravity acts along one axis: the vertical heat flux alone exchanges kinetic and potential energy, all of it in $\avg{w^2}$; its sharing among the components is left to the return to isotropy; no horizontal heat flux}{0.30}
+\pbv{7.180}{12.480}{19.952}{23.108}{bk, fill=blk23}{\textbf{Grid means are ensemble means}\\ the grid spacing appears nowhere, every eddy inside the cell, $\Delta \gg l,\ z_i$; the resolved flow is not turbulent, so its shear feeds production; the vertical grid resolves the shear layer it differentiates, $\Delta z \ll$ its depth}{0.30}
+\pbv{7.180}{12.480}{18.705}{19.711}{bk, fill=blk24}{\textbf{Vertical shear only}\\ two of nine terms; no gradient of $W$}{0.56}
+\pbv{7.180}{12.480}{16.710}{18.533}{bk, fill=blk25}{\textbf{Vertical divergence only}\\ means and TKE in $z$ only; TKE not advected; horizontal mixing by numerics at its own scale, its energy lost, not paid to $\qsq$; surfaces horizontal}{0.40}
+\pbv{7.180}{12.480}{15.179}{16.486}{bk, fill=blk26}{\textbf{Wall value of $\qsq$}\\ $\qsq = B_1^{2/3} u_*^2$ at the ground: the neutral level-2 equilibrium of the constant-flux layer}{0.30}
+\pbv{7.180}{12.480}{13.760}{15.007}{bk, fill=blk27}{\textbf{Level-2.5 truncation}\\ all second moments but $\qsq$ algebraic: their tendencies and transport neglected, to leading order in the anisotropy}{0.30}
+\pbv{7.180}{12.480}{12.040}{13.287}{bk, fill=blk28}{\textbf{Surface fluxes and first level}\\ bulk transfer between the ground and $z_1$, inside the inertial sublayer: $z_0 \ll z_1 \ll z_i$}{0.30}
+\pbv{7.180}{12.480}{9.890}{11.868}{bk, fill=blk29}{\textbf{Master length scale}\\ $1/L = 1/L_S + 1/L_T + 1/L_B$: wall distance with $\zeta$, one $z_i$ per column, $q/N$ from the buoyancy term; blind to terrain and grid}{0.56}
+\pbv{7.180}{12.480}{8.729}{9.718}{bk, fill=blk30}{\textbf{Constant set}\\ one set, fitted in neutral and convective air over flat terrain}{0.30}
+\pbv{7.180}{12.480}{7.353}{8.600}{bk, fill=blk31}{\textbf{One length for $K$ and $\varepsilon$}\\ $\varepsilon = q^3/(B_1 L)$, isotropic, one rate; the same $L$ as in $K = lqS$, from the master length}{0.30}
+\pbv{7.180}{12.480}{5.934}{6.923}{bk, fill=blk32}{\textbf{Pressure terms}\\ Rotta return, $A_1$; isotropised production, $C_1$; TKE transport down-gradient, $S_q$}{0.30}
+\pbv{7.180}{12.480}{4.515}{5.805}{bk, fill=blk33}{\textbf{Stability functions and cutoff}\\ $S_M$, $S_H$ from the balance $P_s + P_b = \varepsilon$\\ in the vertical Ri alone; cutoff at $\Rfc$}{0.56}
+\pbv{7.180}{12.480}{1.935}{4.343}{bk, fill=blk34}{\textbf{K-form fluxes}\\ local and down-gradient, each flux from the gradient of its own mean: \mbox{$\avg{uw} = -K_M\,U_z$}, \mbox{$\avg{w\theta} = -K_H\,\Theta_z$}; one scalar $K$ in every direction, aligned with the gradient; one $K_H$ for all scalars. This closure's $K = lqS$: $l$ from the master length, $S$ from the stability functions}{0.40}
+\pbv{7.180}{12.480}{-0.215}{1.763}{bk, fill=blk35}{\textbf{Buoyancy term}\\ $P_b = \beta g\,\avg{w\theta_v}$ of unsaturated air, $\beta = 1/300$~K; no horizontal heat flux; $\avg{w\theta_v}$ from the K-form}{0.30}
+\node[inner sep=0pt] at (18.450,21.530) {\color{cMYNN}\gP};
+\node[inner sep=0pt] at (18.790,21.530) {\color{cGXIX}\gK};
+\node[inner sep=0pt] at (19.130,21.530) {\color{cAPPROX}\gP};
+\node[inner sep=0pt] at (19.470,21.530) {\color{cFULL}\gP};
+\node[inner sep=0pt] at (18.450,19.208) {\color{cMYNN}\gK};
+\node[inner sep=0pt] at (18.790,19.208) {\color{cGXIX}\gP};
+\node[inner sep=0pt] at (19.130,19.208) {\color{cAPPROX}\gK};
+\node[inner sep=0pt] at (19.470,19.208) {\color{cFULL}\gD};
+\node[inner sep=0pt] at (18.450,17.621) {\color{cMYNN}\gK};
+\node[inner sep=0pt] at (18.790,17.621) {\color{cGXIX}\gP};
+\node[inner sep=0pt] at (19.130,17.621) {\color{cAPPROX}\gP};
+\node[inner sep=0pt] at (19.470,17.621) {\color{cFULL}\gD};
+\node[inner sep=0pt] at (18.450,15.833) {\color{cMYNN}\gK};
+\node[inner sep=0pt] at (18.790,15.833) {\color{cGXIX}\gK};
+\node[inner sep=0pt] at (19.130,15.833) {\color{cAPPROX}\gD};
+\node[inner sep=0pt] at (19.470,15.833) {\color{cFULL}\gD};
+\node[inner sep=0pt] at (18.450,14.384) {\color{cMYNN}\gK};
+\node[inner sep=0pt] at (18.790,14.384) {\color{cGXIX}\gK};
+\node[inner sep=0pt] at (19.130,14.384) {\color{cAPPROX}\gK};
+\node[inner sep=0pt] at (19.470,14.384) {\color{cFULL}\gK};
+\node[inner sep=0pt] at (18.450,12.664) {\color{cMYNN}\gK};
+\node[inner sep=0pt] at (18.790,12.664) {\color{cGXIX}\gK};
+\node[inner sep=0pt] at (19.130,12.664) {\color{cAPPROX}\gK};
+\node[inner sep=0pt] at (19.470,12.664) {\color{cFULL}\gK};
+\node[inner sep=0pt] at (18.450,10.879) {\color{cMYNN}\gK};
+\node[inner sep=0pt] at (18.790,10.879) {\color{cGXIX}\gP};
+\node[inner sep=0pt] at (19.130,10.879) {\color{cAPPROX}\gK};
+\node[inner sep=0pt] at (19.470,10.879) {\color{cFULL}\gK};
+\node[inner sep=0pt] at (18.450,9.224) {\color{cMYNN}\gK};
+\node[inner sep=0pt] at (18.790,9.224) {\color{cGXIX}\gK};
+\node[inner sep=0pt] at (19.130,9.224) {\color{cAPPROX}\gK};
+\node[inner sep=0pt] at (19.470,9.224) {\color{cFULL}\gK};
+\node[inner sep=0pt] at (18.450,7.976) {\color{cMYNN}\gK};
+\node[inner sep=0pt] at (18.790,7.976) {\color{cGXIX}\gK};
+\node[inner sep=0pt] at (19.130,7.976) {\color{cAPPROX}\gK};
+\node[inner sep=0pt] at (19.470,7.976) {\color{cFULL}\gK};
+\node[inner sep=0pt] at (18.450,6.428) {\color{cMYNN}\gK};
+\node[inner sep=0pt] at (18.790,6.428) {\color{cGXIX}\gK};
+\node[inner sep=0pt] at (19.130,6.428) {\color{cAPPROX}\gK};
+\node[inner sep=0pt] at (19.470,6.428) {\color{cFULL}\gK};
+\node[inner sep=0pt] at (18.450,5.160) {\color{cMYNN}\gD};
+\node[inner sep=0pt] at (18.790,5.160) {\color{cGXIX}\gP};
+\node[inner sep=0pt] at (19.130,5.160) {\color{cAPPROX}\gK};
+\node[inner sep=0pt] at (19.470,5.160) {\color{cFULL}\gP};
+\node[inner sep=0pt] at (18.450,3.139) {\color{cMYNN}\gP};
+\node[inner sep=0pt] at (18.790,3.139) {\color{cGXIX}\gP};
+\node[inner sep=0pt] at (19.130,3.139) {\color{cAPPROX}\gP};
+\node[inner sep=0pt] at (19.470,3.139) {\color{cFULL}\gD};
+\node[inner sep=0pt] at (18.450,0.774) {\color{cMYNN}\gP};
+\node[inner sep=0pt] at (18.790,0.774) {\color{cGXIX}\gP};
+\node[inner sep=0pt] at (19.130,0.774) {\color{cAPPROX}\gP};
+\node[inner sep=0pt] at (19.470,0.774) {\color{cFULL}\gP};
+\pbh{12.730}{18.030}{19.982}{23.078}{By day much of the kinetic energy at the lowest levels is resolved, the effective resolution is several $\Delta$, and the partition claim waits for a $w$-spectrum below that scale; the resolved shear then enters production twice. At night the eddies shrink far below $\Delta$: the cell holds only a few integral scales and the vertical grid none, the cell statistic is a single realisation, and the stable regime is mesoscale again. On a slope the cell mixes slope layer and valley core.}
+\pbh{12.730}{18.030}{18.735}{19.681}{The jet's cross-valley shear is a sizeable fraction of its vertical shear; in weak drainage flow directional shear sets $u_*$.}
+\pbh{12.730}{18.030}{16.740}{18.503}{Horizontal flux divergences are of the order of the vertical one, and the Riviera budgets closed only with transport and advection; the numerical operator stands where the physical divergence belongs, and the energy it removes vanishes instead of feeding $\qsq$.}
+\pbh{12.730}{18.030}{15.209}{16.456}{The nocturnal sonics record turbulence at the surface where every model goes laminar; the observed friction velocity implies a wall $\qsq$ between the two closures' values.}
+\pbh{12.730}{18.030}{13.790}{14.977}{The closure's own ordering justifies the step in stable and slightly unstable air, not toward free convection. Transitions outrun $l/q$; the strain cap's footprint measures it.}
+\pbh{12.730}{18.030}{12.070}{13.257}{The katabatic jet maximum sits inside the layer; over forest the first level lies in the roughness sublayer; the momentum flux is rarely height-constant.}
+\pbh{12.730}{18.030}{9.920}{11.838}{$z_i$ is ill-posed under elevated inversions, the wall distance ambiguous on a slope, the horizontal eddy set by the valley width: two lengths. In the cold pool the length, not the fluxes, was the lever; the fork bounds it by a buoyancy limit and a strain cap.}
+\pbh{12.730}{18.030}{8.759}{9.688}{Three constant sets in one comparison; their dissipation constants differ by a factor that rivals the effects to be reported.}
+\pbh{12.730}{18.030}{7.383}{8.570}{$\varepsilon$ is filter-independent while $q^3$ is not, so the dissipation length must shrink with the grid; the inertial-subrange estimate from the sonics needs Taylor's hypothesis and fails in weak-wind nights.}
+\pbh{12.730}{18.030}{5.964}{6.893}{Taking them small is ``a dangerous assumption'' in complex terrain; the Radfeld budget residual is their only observation.}
+\pbh{12.730}{18.030}{4.545}{5.775}{Most nocturnal valley cells lie beyond the critical Richardson number, where the deficit against the control is flat; the approximate closure switches off at $\Rfc$, the others never.}
+\pbh{12.730}{18.030}{1.965}{4.313}{By day the eddies span $z_i$ and heat runs against the local gradient: the plume terms exist for this. Where slope wind turns into valley wind the stress axes leave the gradient and the jet veers with height: $\avg{uv}$ appears, negative production is admissible. The grid filter, aspect ratio 25, imprints its anisotropy on the subgrid eddies; in stable air $K_H/K_M$ falls with Ri.}
+\pbh{12.730}{18.030}{-0.185}{1.733}{The slope-normal surface heat flux has a horizontal component with no home in the budget; in stable air buoyancy damps $\avg{w^2}$ selectively; on fog nights the saturated flux follows the moist gradient, which only the control's condensation scheme knows; $\beta = 1/300$~K is a few percent off at valley $\Theta_v$.}
+% ---- shortcut tabs ----
+\fill[black!16] (0.000,23.271) rectangle (0.460,23.521); \draw[black!60, line width=0.25pt] (0.000,23.271) rectangle (0.460,23.521); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (0.230,23.396) {P1}; % Spectral gap
+\fill[black!16] (0.000,21.938) rectangle (0.460,22.188); \draw[black!60, line width=0.25pt] (0.000,21.938) rectangle (0.460,22.188); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (0.230,22.063) {P2}; % Mixing
+\fill[black!16] (0.882,15.768) rectangle (1.342,16.018); \draw[black!60, line width=0.25pt] (0.882,15.768) rectangle (1.342,16.018); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (1.112,15.893) {P4}; % Stationarity
+\fill[black!16] (0.000,12.629) rectangle (0.460,12.879); \draw[black!60, line width=0.25pt] (0.000,12.629) rectangle (0.460,12.879); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (0.230,12.754) {P5}; % Similarity
+\fill[black!16] (0.000,20.605) rectangle (0.460,20.855); \draw[black!60, line width=0.25pt] (0.000,20.605) rectangle (0.460,20.855); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (0.230,20.730) {P3}; % Horizontal homogeneity
+\fill[black!16] (0.000,8.866) rectangle (0.460,9.116); \draw[black!60, line width=0.25pt] (0.000,8.866) rectangle (0.460,9.116); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (0.230,8.991) {P6}; % Small-scale isotropy
+\fill[black!16] (0.000,5.555) rectangle (0.460,5.805); \draw[black!60, line width=0.25pt] (0.000,5.555) rectangle (0.460,5.805); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (0.230,5.680) {P7}; % Weak anisotropy
+\fill[black!16] (0.000,4.093) rectangle (0.460,4.343); \draw[black!60, line width=0.25pt] (0.000,4.093) rectangle (0.460,4.343); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (0.230,4.218) {P8}; % Gradient scale
+\fill[black!16] (0.000,2.588) rectangle (0.460,2.838); \draw[black!60, line width=0.25pt] (0.000,2.588) rectangle (0.460,2.838); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (0.230,2.713) {P9}; % Axisymmetric mixing
+\fill[black!16] (0.000,0.739) rectangle (0.460,0.989); \draw[black!60, line width=0.25pt] (0.000,0.739) rectangle (0.460,0.989); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (0.230,0.864) {P10}; % Boussinesq
+\fill[black!16] (3.000,23.271) rectangle (3.460,23.521); \draw[black!60, line width=0.25pt] (3.000,23.271) rectangle (3.460,23.521); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (3.230,23.396) {C1}; % Reynolds decomposition
+\fill[black!16] (3.000,21.938) rectangle (3.460,22.188); \draw[black!60, line width=0.25pt] (3.000,21.938) rectangle (3.460,22.188); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (3.230,22.063) {C2}; % Ergodicity in space
+\fill[black!16] (3.000,19.530) rectangle (3.460,19.780); \draw[black!60, line width=0.25pt] (3.000,19.530) rectangle (3.460,19.780); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (3.230,19.655) {C3}; % Boundary-layer (column) approximation
+\fill[black!16] (3.000,16.305) rectangle (3.460,16.555); \draw[black!60, line width=0.25pt] (3.000,16.305) rectangle (3.460,16.555); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (3.230,16.430) {C4}; % Constant-flux layer
+\fill[black!16] (3.000,15.230) rectangle (3.460,15.480); \draw[black!60, line width=0.25pt] (3.000,15.230) rectangle (3.460,15.480); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (3.230,15.355) {C5}; % Local equilibrium
+\fill[black!16] (3.000,13.424) rectangle (3.460,13.674); \draw[black!60, line width=0.25pt] (3.000,13.424) rectangle (3.460,13.674); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (3.230,13.549) {C6}; % Monin--Obukhov similarity
+\fill[black!16] (3.000,11.016) rectangle (3.460,11.266); \draw[black!60, line width=0.25pt] (3.000,11.016) rectangle (3.460,11.266); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (3.230,11.141) {C7}; % Mixing length
+\fill[black!16] (3.000,9.941) rectangle (3.460,10.191); \draw[black!60, line width=0.25pt] (3.000,9.941) rectangle (3.460,10.191); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (3.230,10.066) {C8}; % Universal constants
+\fill[black!16] (3.000,7.877) rectangle (3.460,8.127); \draw[black!60, line width=0.25pt] (3.000,7.877) rectangle (3.460,8.127); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (3.230,8.002) {C9}; % Energy cascade
+\fill[black!16] (3.000,6.673) rectangle (3.460,6.923); \draw[black!60, line width=0.25pt] (3.000,6.673) rectangle (3.460,6.923); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (3.230,6.798) {C10}; % Return to isotropy
+\fill[black!16] (3.000,3.104) rectangle (3.460,3.354); \draw[black!60, line width=0.25pt] (3.000,3.104) rectangle (3.460,3.354); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (3.230,3.229) {C12}; % Eddy viscosity
+\fill[black!16] (3.000,4.093) rectangle (3.460,4.343); \draw[black!60, line width=0.25pt] (3.000,4.093) rectangle (3.460,4.343); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (3.230,4.218) {C11}; % Locality
+\fill[black!16] (3.000,1.556) rectangle (3.460,1.806); \draw[black!60, line width=0.25pt] (3.000,1.556) rectangle (3.460,1.806); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (3.230,1.681) {C13}; % Buoyancy production
+\fill[black!16] (7.180,22.858) rectangle (7.640,23.108); \draw[black!60, line width=0.25pt] (7.180,22.858) rectangle (7.640,23.108); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (7.410,22.983) {F1}; % Grid means are ensemble means
+\fill[black!16] (7.180,19.461) rectangle (7.640,19.711); \draw[black!60, line width=0.25pt] (7.180,19.461) rectangle (7.640,19.711); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (7.410,19.586) {F2}; % Vertical shear only
+\fill[black!16] (7.180,18.283) rectangle (7.640,18.533); \draw[black!60, line width=0.25pt] (7.180,18.283) rectangle (7.640,18.533); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (7.410,18.408) {F3}; % Vertical divergence only
+\fill[black!16] (7.180,16.236) rectangle (7.640,16.486); \draw[black!60, line width=0.25pt] (7.180,16.236) rectangle (7.640,16.486); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (7.410,16.361) {F4}; % Wall value of $\qsq$
+\fill[black!16] (7.180,14.757) rectangle (7.640,15.007); \draw[black!60, line width=0.25pt] (7.180,14.757) rectangle (7.640,15.007); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (7.410,14.882) {F5}; % Level-2.5 truncation
+\fill[black!16] (7.180,13.037) rectangle (7.640,13.287); \draw[black!60, line width=0.25pt] (7.180,13.037) rectangle (7.640,13.287); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (7.410,13.162) {F6}; % Surface fluxes and first level
+\fill[black!16] (7.180,11.618) rectangle (7.640,11.868); \draw[black!60, line width=0.25pt] (7.180,11.618) rectangle (7.640,11.868); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (7.410,11.743) {F7}; % Master length scale
+\fill[black!16] (7.180,9.468) rectangle (7.640,9.718); \draw[black!60, line width=0.25pt] (7.180,9.468) rectangle (7.640,9.718); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (7.410,9.593) {F8}; % Constant set
+\fill[black!16] (7.180,8.350) rectangle (7.640,8.600); \draw[black!60, line width=0.25pt] (7.180,8.350) rectangle (7.640,8.600); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (7.410,8.475) {F9}; % One length for $K$ and $\varepsilon$
+\fill[black!16] (7.180,6.673) rectangle (7.640,6.923); \draw[black!60, line width=0.25pt] (7.180,6.673) rectangle (7.640,6.923); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (7.410,6.798) {F10}; % Pressure terms
+\fill[black!16] (7.180,5.555) rectangle (7.640,5.805); \draw[black!60, line width=0.25pt] (7.180,5.555) rectangle (7.640,5.805); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (7.410,5.680) {F11}; % Stability functions and cutoff
+\fill[black!16] (7.180,4.093) rectangle (7.640,4.343); \draw[black!60, line width=0.25pt] (7.180,4.093) rectangle (7.640,4.343); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (7.410,4.218) {F12}; % K-form fluxes
+\fill[black!16] (7.180,1.513) rectangle (7.640,1.763); \draw[black!60, line width=0.25pt] (7.180,1.513) rectangle (7.640,1.763); \node[inner sep=0pt, font=\fontsize{5.5}{6}\selectfont\bfseries] at (7.410,1.638) {F13}; % Buoyancy term
 % ---- corner triangles: the recorded leans, child block, parent colour ----
-\filldraw[fill=blk9, draw=black, line width=0.3pt] (2.500,16.641) -- (2.760,16.641) -- (2.500,16.901) -- cycle; % Boundary-layer (column) approximation <- Boussinesq
-\filldraw[fill=blk2, draw=black, line width=0.3pt] (2.500,8.127) -- (2.760,8.127) -- (2.500,7.867) -- cycle; % Energy cascade <- Stationarity
-\filldraw[fill=blk21, draw=black, line width=0.3pt] (6.680,13.760) -- (6.420,13.760) -- (6.680,14.020) -- cycle; % Local equilibrium <- Locality
-\filldraw[fill=blk4, draw=black, line width=0.3pt] (2.500,15.480) -- (2.760,15.480) -- (2.500,15.220) -- cycle; % Local equilibrium <- Horizontal homogeneity
-\filldraw[fill=blk13, draw=black, line width=0.3pt] (6.680,13.674) -- (6.420,13.674) -- (6.680,13.414) -- cycle; % Monin--Obukhov similarity <- Constant-flux layer
-\filldraw[fill=blk1, draw=black, line width=0.3pt] (2.500,11.266) -- (2.760,11.266) -- (2.500,11.006) -- cycle; % Mixing length <- Mixing
-\filldraw[fill=blk1, draw=black, line width=0.3pt] (2.500,4.343) -- (2.760,4.343) -- (2.500,4.083) -- cycle; % Locality <- Mixing
-\filldraw[fill=blk1, draw=black, line width=0.3pt] (2.810,8.127) -- (3.070,8.127) -- (2.810,7.867) -- cycle; % Energy cascade <- Mixing
-\filldraw[fill=blk21, draw=black, line width=0.3pt] (6.680,3.354) -- (6.420,3.354) -- (6.680,3.094) -- cycle; % Eddy viscosity <- Locality
-\filldraw[fill=blk16, draw=black, line width=0.3pt] (6.370,3.354) -- (6.110,3.354) -- (6.370,3.094) -- cycle; % Eddy viscosity <- Mixing length
-\filldraw[fill=blk4, draw=black, line width=0.3pt] (2.500,6.923) -- (2.760,6.923) -- (2.500,6.663) -- cycle; % Return to isotropy <- Horizontal homogeneity
-\filldraw[fill=blk27, draw=black, line width=0.3pt] (11.980,5.805) -- (11.720,5.805) -- (11.980,5.545) -- cycle; % Stability functions and cutoff <- Level-2.5 truncation
-\filldraw[fill=blk6, draw=black, line width=0.3pt] (6.680,13.760) -- (6.940,13.760) -- (6.680,14.020) -- cycle; % Level-2.5 truncation <- Weak anisotropy
-\filldraw[fill=blk19, draw=black, line width=0.3pt] (6.680,1.806) -- (6.420,1.806) -- (6.680,1.546) -- cycle; % Buoyancy production <- Return to isotropy
-\filldraw[fill=blk10, draw=black, line width=0.3pt] (6.680,10.191) -- (6.420,10.191) -- (6.680,9.931) -- cycle; % Universal constants <- Reynolds decomposition
-\filldraw[fill=blk0, draw=black, line width=0.3pt] (6.680,18.533) -- (6.940,18.533) -- (6.680,18.273) -- cycle; % Vertical divergence only <- Spectral gap
-\filldraw[fill=blk17, draw=black, line width=0.3pt] (6.680,15.179) -- (6.940,15.179) -- (6.680,15.439) -- cycle; % Wall value of $\qsq$ <- Universal constants
-\filldraw[fill=blk17, draw=black, line width=0.3pt] (6.680,5.805) -- (6.940,5.805) -- (6.680,5.545) -- cycle; % Stability functions and cutoff <- Universal constants
-\filldraw[fill=blk12, draw=black, line width=0.3pt] (6.990,5.805) -- (7.250,5.805) -- (6.990,5.545) -- cycle; % Stability functions and cutoff <- Boundary-layer (column) approximation
-\filldraw[fill=blk22, draw=black, line width=0.3pt] (6.680,4.515) -- (6.940,4.515) -- (6.680,4.775) -- cycle; % Stability functions and cutoff <- Buoyancy production
-\filldraw[fill=blk14, draw=black, line width=0.3pt] (7.300,5.805) -- (7.560,5.805) -- (7.300,5.545) -- cycle; % Stability functions and cutoff <- Local equilibrium
-\filldraw[fill=blk35, draw=black, line width=0.3pt] (11.980,9.890) -- (11.720,9.890) -- (11.980,10.150) -- cycle; % Master length scale <- Buoyancy term
-\filldraw[fill=blk34, draw=black, line width=0.3pt] (11.980,1.763) -- (11.720,1.763) -- (11.980,1.503) -- cycle; % Buoyancy term <- K-form fluxes
-\filldraw[fill=blk21, draw=black, line width=0.3pt] (6.680,5.934) -- (6.940,5.934) -- (6.680,6.194) -- cycle; % Pressure terms <- Locality
-\filldraw[fill=blk17, draw=black, line width=0.3pt] (6.680,6.923) -- (6.940,6.923) -- (6.680,6.663) -- cycle; % Pressure terms <- Universal constants
-\filldraw[fill=blk29, draw=black, line width=0.3pt] (11.980,8.600) -- (11.720,8.600) -- (11.980,8.340) -- cycle; % One length for $K$ and $\varepsilon$ <- Master length scale
-\filldraw[fill=blk29, draw=black, line width=0.3pt] (11.980,4.343) -- (11.720,4.343) -- (11.980,4.083) -- cycle; % K-form fluxes <- Master length scale
-\filldraw[fill=blk33, draw=black, line width=0.3pt] (11.670,4.343) -- (11.410,4.343) -- (11.670,4.083) -- cycle; % K-form fluxes <- Stability functions and cutoff
+\filldraw[fill=blk9, draw=black, line width=0.3pt] (3.000,16.641) -- (3.440,16.641) -- (3.000,17.081) -- cycle; \node[inner sep=0pt, font=\fontsize{4}{4.5}\selectfont\bfseries] at (3.132,16.773) {P10}; % Boundary-layer (column) approximation <- Boussinesq (BL)
+\filldraw[fill=blk2, draw=black, line width=0.3pt] (3.000,7.009) -- (3.440,7.009) -- (3.000,7.449) -- cycle; \node[inner sep=0pt, font=\fontsize{4}{4.5}\selectfont\bfseries] at (3.132,7.141) {P4}; % Energy cascade <- Stationarity (BL)
+\filldraw[fill=blk1, draw=black, line width=0.3pt] (7.180,7.009) -- (6.740,7.009) -- (7.180,7.449) -- cycle; \node[inner sep=0pt, font=\fontsize{4}{4.5}\selectfont\bfseries] at (7.048,7.141) {P2}; % Energy cascade <- Mixing (BR)
+\filldraw[fill=blk21, draw=black, line width=0.3pt] (3.000,13.760) -- (3.440,13.760) -- (3.000,14.200) -- cycle; \node[inner sep=0pt, font=\fontsize{4}{4.5}\selectfont\bfseries] at (3.132,13.892) {C11}; % Local equilibrium <- Locality (BL)
+\filldraw[fill=blk4, draw=black, line width=0.3pt] (7.180,13.760) -- (6.740,13.760) -- (7.180,14.200) -- cycle; \node[inner sep=0pt, font=\fontsize{4}{4.5}\selectfont\bfseries] at (7.048,13.892) {P3}; % Local equilibrium <- Horizontal homogeneity (BR)
+\filldraw[fill=blk13, draw=black, line width=0.3pt] (3.000,11.352) -- (3.440,11.352) -- (3.000,11.792) -- cycle; \node[inner sep=0pt, font=\fontsize{4}{4.5}\selectfont\bfseries] at (3.132,11.484) {C4}; % Monin--Obukhov similarity <- Constant-flux layer (BL)
+\filldraw[fill=blk1, draw=black, line width=0.3pt] (3.000,10.277) -- (3.440,10.277) -- (3.000,10.717) -- cycle; \node[inner sep=0pt, font=\fontsize{4}{4.5}\selectfont\bfseries] at (3.132,10.409) {P2}; % Mixing length <- Mixing (BL)
+\filldraw[fill=blk1, draw=black, line width=0.3pt] (3.000,3.440) -- (3.440,3.440) -- (3.000,3.880) -- cycle; \node[inner sep=0pt, font=\fontsize{4}{4.5}\selectfont\bfseries] at (3.132,3.572) {P2}; % Locality <- Mixing (BL)
+\filldraw[fill=blk16, draw=black, line width=0.3pt] (3.000,1.935) -- (3.440,1.935) -- (3.000,2.375) -- cycle; \node[inner sep=0pt, font=\fontsize{4}{4.5}\selectfont\bfseries] at (3.132,2.067) {C7}; % Eddy viscosity <- Mixing length (BL)
+\filldraw[fill=blk21, draw=black, line width=0.3pt] (7.180,1.935) -- (6.740,1.935) -- (7.180,2.375) -- cycle; \node[inner sep=0pt, font=\fontsize{4}{4.5}\selectfont\bfseries] at (7.048,2.067) {C11}; % Eddy viscosity <- Locality (BR)
+\filldraw[fill=blk4, draw=black, line width=0.3pt] (3.000,4.515) -- (3.440,4.515) -- (3.000,4.955) -- cycle; \node[inner sep=0pt, font=\fontsize{4}{4.5}\selectfont\bfseries] at (3.132,4.647) {P3}; % Return to isotropy <- Horizontal homogeneity (BL)
+\filldraw[fill=blk14, draw=black, line width=0.3pt] (7.180,4.515) -- (7.620,4.515) -- (7.180,4.955) -- cycle; \node[inner sep=0pt, font=\fontsize{4}{4.5}\selectfont\bfseries] at (7.312,4.647) {C5}; % Stability functions and cutoff <- Local equilibrium (BL)
+\filldraw[fill=blk22, draw=black, line width=0.3pt] (12.480,4.515) -- (12.040,4.515) -- (12.480,4.955) -- cycle; \node[inner sep=0pt, font=\fontsize{4}{4.5}\selectfont\bfseries] at (12.348,4.647) {C13}; % Stability functions and cutoff <- Buoyancy production (BR)
+\filldraw[fill=blk12, draw=black, line width=0.3pt] (12.480,5.805) -- (12.040,5.805) -- (12.480,5.365) -- cycle; \node[inner sep=0pt, font=\fontsize{4}{4.5}\selectfont\bfseries] at (12.348,5.673) {C3}; % Stability functions and cutoff <- Boundary-layer (column) approximation (TR)
+\filldraw[fill=blk6, draw=black, line width=0.3pt] (7.180,13.760) -- (7.620,13.760) -- (7.180,14.200) -- cycle; \node[inner sep=0pt, font=\fontsize{4}{4.5}\selectfont\bfseries] at (7.312,13.892) {P7}; % Level-2.5 truncation <- Weak anisotropy (BL)
+\filldraw[fill=blk19, draw=black, line width=0.3pt] (3.000,-0.215) -- (3.440,-0.215) -- (3.000,0.225) -- cycle; \node[inner sep=0pt, font=\fontsize{4}{4.5}\selectfont\bfseries] at (3.132,-0.083) {C10}; % Buoyancy production <- Return to isotropy (BL)
+\filldraw[fill=blk10, draw=black, line width=0.3pt] (3.000,8.213) -- (3.440,8.213) -- (3.000,8.653) -- cycle; \node[inner sep=0pt, font=\fontsize{4}{4.5}\selectfont\bfseries] at (3.132,8.345) {C1}; % Universal constants <- Reynolds decomposition (BL)
+\filldraw[fill=blk0, draw=black, line width=0.3pt] (7.180,16.710) -- (7.620,16.710) -- (7.180,17.150) -- cycle; \node[inner sep=0pt, font=\fontsize{4}{4.5}\selectfont\bfseries] at (7.312,16.842) {P1}; % Vertical divergence only <- Spectral gap (BL)
+\filldraw[fill=blk17, draw=black, line width=0.3pt] (7.180,15.179) -- (7.620,15.179) -- (7.180,15.619) -- cycle; \node[inner sep=0pt, font=\fontsize{4}{4.5}\selectfont\bfseries] at (7.312,15.311) {C8}; % Wall value of $\qsq$ <- Universal constants (BL)
+\filldraw[fill=blk35, draw=black, line width=0.3pt] (7.180,9.890) -- (7.620,9.890) -- (7.180,10.330) -- cycle; \node[inner sep=0pt, font=\fontsize{4}{4.5}\selectfont\bfseries] at (7.312,10.022) {F13}; % Master length scale <- Buoyancy term (BL)
+\filldraw[fill=blk34, draw=black, line width=0.3pt] (7.180,-0.215) -- (7.620,-0.215) -- (7.180,0.225) -- cycle; \node[inner sep=0pt, font=\fontsize{4}{4.5}\selectfont\bfseries] at (7.312,-0.083) {F12}; % Buoyancy term <- K-form fluxes (BL)
+\filldraw[fill=blk17, draw=black, line width=0.3pt] (7.180,5.934) -- (7.620,5.934) -- (7.180,6.374) -- cycle; \node[inner sep=0pt, font=\fontsize{4}{4.5}\selectfont\bfseries] at (7.312,6.066) {C8}; % Pressure terms <- Universal constants (BL)
+\filldraw[fill=blk21, draw=black, line width=0.3pt] (12.480,5.934) -- (12.040,5.934) -- (12.480,6.374) -- cycle; \node[inner sep=0pt, font=\fontsize{4}{4.5}\selectfont\bfseries] at (12.348,6.066) {C11}; % Pressure terms <- Locality (BR)
+\filldraw[fill=blk29, draw=black, line width=0.3pt] (7.180,7.353) -- (7.620,7.353) -- (7.180,7.793) -- cycle; \node[inner sep=0pt, font=\fontsize{4}{4.5}\selectfont\bfseries] at (7.312,7.485) {F7}; % One length for $K$ and $\varepsilon$ <- Master length scale (BL)
+\filldraw[fill=blk29, draw=black, line width=0.3pt] (7.180,1.935) -- (7.620,1.935) -- (7.180,2.375) -- cycle; \node[inner sep=0pt, font=\fontsize{4}{4.5}\selectfont\bfseries] at (7.312,2.067) {F7}; % K-form fluxes <- Master length scale (BL)
+\filldraw[fill=blk33, draw=black, line width=0.3pt] (12.480,1.935) -- (12.040,1.935) -- (12.480,2.375) -- cycle; \node[inner sep=0pt, font=\fontsize{4}{4.5}\selectfont\bfseries] at (12.348,2.067) {F11}; % K-form fluxes <- Stability functions and cutoff (BR)
 \end{tikzpicture}
 \end{center}
 
 \newpage
 {\footnotesize Every block is an assumption a boundary-layer scheme makes in order to run. A block touches at its
-left exactly the blocks it relies on, and blocks in one column do not touch each other. Three columns. The ground (left column, lightest shade): ten hypotheses about the fluid and the flow that rest on nothing else here; horizontal homogeneity extends under stationarity and rises between stationarity and similarity, with an air gap above the tunnel, so that Monin--Obukhov similarity touches its three premises. The
+left exactly the blocks it relies on, and blocks in one column do not touch each other. Three columns. The ground (left column, darkest shade): ten hypotheses about the fluid and the flow that rest on nothing else here; horizontal homogeneity extends under stationarity and rises between stationarity and similarity, with an air gap above the tunnel, so that Monin--Obukhov similarity touches its three premises. The
 concepts (middle column, middle shade): the constructs of turbulence theory that follow from the ground and that every closure of this family
 speaks in --- the Reynolds decomposition, the column approximation, the constant-flux layer, Monin--Obukhov similarity,
-the mixing length, the eddy viscosity, Rotta's return to isotropy, Kolmogorov's cascade. The formalism (right column, darkest shade):
+the mixing length, the eddy viscosity, Rotta's return to isotropy, Kolmogorov's cascade. The formalism (right column, lightest shade):
 the statements of the level-2.5 closure as written, each resting on the concepts it applies. Each block shows its
 primary reliance; the incidence matrix of the note has the full set. Where a block leans on a parent it cannot touch, its own text names that parent, as in ``$W = 0$ by continuity''; the two premises without a block, high Reynolds number and unsaturated air, are named in the premise they qualify. Not drawn, because no scheme needs them to
 run: ergodicity in time and Taylor's hypothesis, which carry the observations and the calibration; the
@@ -352,7 +389,7 @@ dynamical core's numerical dissipation. Homogeneity carries a channel: it runs t
 
 
 \vspace{0.2ex}
-{\footnotesize\textbf{Triangles.} The dependences recorded in the source that no contact can show, by the block that carries the triangle (formalism first, top of the page first; the block leaned on in the triangle's colour on the page): \textbf{Vertical divergence only}: Spectral gap; \textbf{Wall value of $\qsq$}: Universal constants; \textbf{Level-2.5 truncation}: Weak anisotropy; \textbf{Master length scale}: Buoyancy term; \textbf{One length for $K$ and $\varepsilon$}: Master length scale; \textbf{Pressure terms}: Locality, Universal constants; \textbf{Stability functions and cutoff}: Level-2.5 truncation, Universal constants, Boundary-layer (column) approximation, Buoyancy production, Local equilibrium; \textbf{K-form fluxes}: Master length scale, Stability functions and cutoff; \textbf{Buoyancy term}: K-form fluxes; \textbf{Boundary-layer (column) approximation}: Boussinesq; \textbf{Local equilibrium}: Locality, Horizontal homogeneity; \textbf{Monin--Obukhov similarity}: Constant-flux layer; \textbf{Mixing length}: Mixing; \textbf{Universal constants}: Reynolds decomposition; \textbf{Energy cascade}: Stationarity, Mixing; \textbf{Return to isotropy}: Horizontal homogeneity; \textbf{Locality}: Mixing; \textbf{Eddy viscosity}: Locality, Mixing length; \textbf{Buoyancy production}: Return to isotropy. The scheme frames of the other pages are left off this one.\par}
+{\footnotesize\textbf{Triangles.} The dependences recorded in the source that no contact can show, by the block that carries the triangle (formalism first, top of the page first), in the order of importance, bottom left first, then counter-clockwise; the block leaned on gives the triangle its colour; a fourth or fifth lean is listed but not drawn: \textbf{F3 Vertical divergence only}: P1 Spectral gap; \textbf{F4 Wall value of $\qsq$}: C8 Universal constants; \textbf{F5 Level-2.5 truncation}: P7 Weak anisotropy; \textbf{F7 Master length scale}: F13 Buoyancy term; \textbf{F9 One length for $K$ and $\varepsilon$}: F7 Master length scale; \textbf{F10 Pressure terms}: C8 Universal constants, C11 Locality; \textbf{F11 Stability functions and cutoff}: C5 Local equilibrium, C13 Buoyancy production, C3 Boundary-layer (column) approximation, F5 Level-2.5 truncation (not drawn), C8 Universal constants (not drawn); \textbf{F12 K-form fluxes}: F7 Master length scale, F11 Stability functions and cutoff; \textbf{F13 Buoyancy term}: F12 K-form fluxes; \textbf{C3 Boundary-layer (column) approximation}: P10 Boussinesq; \textbf{C5 Local equilibrium}: C11 Locality, P3 Horizontal homogeneity; \textbf{C6 Monin--Obukhov similarity}: C4 Constant-flux layer; \textbf{C7 Mixing length}: P2 Mixing; \textbf{C8 Universal constants}: C1 Reynolds decomposition; \textbf{C9 Energy cascade}: P4 Stationarity, P2 Mixing; \textbf{C10 Return to isotropy}: P3 Horizontal homogeneity; \textbf{C11 Locality}: P2 Mixing; \textbf{C12 Eddy viscosity}: C7 Mixing length, C11 Locality; \textbf{C13 Buoyancy production}: C10 Return to isotropy. The scheme frames of the other pages are left off this one.\par}
 
 \vspace{0.1ex}
 {\footnotesize\textbf{Reading.} The ground holds the premises, hypotheses about the fluid and the flow; nothing in it names a model. The middle column is where
