@@ -39,8 +39,8 @@ for R in HERO HCTL; do
   sed -i "s/^ run_hours *= *[0-9]*,/ run_hours              = 9,/; s/^ end_day *= *[0-9]*,/ end_day                = 17,/; s/^ end_hour *= *[0-9]*,/ end_hour               = 10,/" $T/namelist.input
   grep -q "^ restart_interval *= *180" $T/namelist.input || sed -i "s/^ restart_interval *= *[0-9]*,/ restart_interval       = 180,/" $T/namelist.input
   sed "s#vsc5_HERO0.sh#vsc5_$R.sh#" $B/env.sh > $T/env.sh
-  sed -i "s/job-name=wrf_HERO0/job-name=wrf_$R/" $T/submit_wrf.slurm
+  sed -i "s/job-name=wrf_[A-Za-z0-9]*/job-name=wrf_$R/" $T/submit_wrf.slurm
   echo "--- $R namelist diff vs HERO0:"; diff $B/namelist.input $T/namelist.input | grep "^>" | grep -vE "outname" | cut -c1-90
-  find $T -maxdepth 1 -xtype l && echo "!!! dangling symlink in $T" || true
+  [ -n "$(find $T -maxdepth 1 -xtype l)" ] && echo "!!! dangling symlink in $T" || echo "    no dangling symlinks"
 done
 echo "=== built HERO and HCTL (segment a: 01 -> 10 UT). Submit with: cd branko_runs/innval_pbl3d_HERO && sbatch submit_wrf.slurm"
