@@ -35,3 +35,6 @@ echo "--- $RUN$IDX namelist diff vs previous:"; diff $PREV/namelist.input $NEW/n
 find $NEW -maxdepth 1 -xtype l && { echo "!!! dangling symlink"; exit 1; }
 cd $NEW && jid=$(sbatch --parsable submit_wrf.slurm) && echo "hero chain: $RUN$IDX submitted as $jid"
 if [ -n "${NXT[$IDX]}" ]; then nj=$(sbatch --parsable --dependency=afterok:$jid --export=ALL,RUN=$RUN,IDX=${NXT[$IDX]} --chdir=$NEW $RC/scripts/hero_chain.slurm); echo "hero chain: next link ${NXT[$IDX]} queued as $nj (afterok:$jid)"; fi
+# report-only judge after the day-1 evening (segment c) and after the whole run (f); it waits for BOTH runs' segment via a
+# marker: the HERO link submits it afterany its own segment and the judge itself waits for the HCTL segment's output to exist.
+if [ "$RUN" = HERO ] && { [ "$IDX" = c ] || [ "$IDX" = f ]; }; then jj=$(sbatch --parsable --dependency=afterany:$jid --export=ALL,UPTO=$IDX $RC/scripts/hero_judge.slurm); echo "hero chain: judge (up to $IDX) queued as $jj (afterany:$jid)"; fi
