@@ -225,11 +225,13 @@ SUBROUTINE rk_tendency ( config_flags, rk_step,                           &
                          ids, ide, jds, jde, kds, kde,                    &
                          ims, ime, jms, jme, kms, kme,                    &
                          its, ite, jts, jte, kts, kte,                    &
-                         max_vert_cfl, max_horiz_cfl)
+                         max_vert_cfl, max_horiz_cfl, hfx_filt)
 
    IMPLICIT NONE
 
    !  Input data.
+   !  hfx_filt: surface sensible heat flux, only for the diff_6th_slopeopt = 5 filter regime gate
+   REAL , DIMENSION( ims:ime , jms:jme ) , INTENT(IN   ), OPTIONAL :: hfx_filt
 
    TYPE(grid_config_rec_type)    ,           INTENT(IN   ) :: config_flags
 
@@ -1157,7 +1159,7 @@ SUBROUTINE rk_tendency ( config_flags, rk_step,                           &
                                        ids, ide, jds, jde, kds, kde,  &
                                        ims, ime, jms, jme, kms, kme,  &
                                        its, ite, jts, jte, kts, kte,    &
-                                       th_in=t )
+                                       th_in=t, hfx_in=hfx_filt )
 
       CALL sixth_order_diffusion( 'v', v, rv_tendf, mut, dt,          &
                                        v_tend_damp, save_vtend,       &
@@ -1171,7 +1173,7 @@ SUBROUTINE rk_tendency ( config_flags, rk_step,                           &
                                        ids, ide, jds, jde, kds, kde,  &
                                        ims, ime, jms, jme, kms, kme,  &
                                        its, ite, jts, jte, kts, kte,    &
-                                       th_in=t )
+                                       th_in=t, hfx_in=hfx_filt )
 
       IF (non_hydrostatic)                                            &
       CALL sixth_order_diffusion( 'w', w, rw_tendf, mut, dt,          &
@@ -1186,7 +1188,7 @@ SUBROUTINE rk_tendency ( config_flags, rk_step,                           &
                                        ids, ide, jds, jde, kds, kde,  &
                                        ims, ime, jms, jme, kms, kme,  &
                                        its, ite, jts, jte, kts, kte,    &
-                                       th_in=t )
+                                       th_in=t, hfx_in=hfx_filt )
 
       CALL sixth_order_diffusion( 'm', t,  t_tendf, mut, dt,          &
                                        t_tend_damp, save_ttend,       &
@@ -1200,7 +1202,7 @@ SUBROUTINE rk_tendency ( config_flags, rk_step,                           &
                                        ids, ide, jds, jde, kds, kde,  &
                                        ims, ime, jms, jme, kms, kme,  &
                                        its, ite, jts, jte, kts, kte,    &
-                                       th_in=t )
+                                       th_in=t, hfx_in=hfx_filt )
 
     ENDIF
 
@@ -1408,7 +1410,7 @@ SUBROUTINE rk_scalar_tend ( scs, sce, config_flags,          &
                             its, ite, jts, jte, kts, kte,    &
                             fqx, fqy, fqz, fqz_imp,          &
                             output_fluxes_in,                &
-                            q_tend_damp, t_tend_damp, th_phy )
+                            q_tend_damp, t_tend_damp, th_phy, th_filt, hfx_filt )
 
    IMPLICIT NONE
 
@@ -1487,6 +1489,9 @@ SUBROUTINE rk_scalar_tend ( scs, sce, config_flags,          &
                                                                            th_phy,       &
                                                                            fqx, fqy, fqz, fqz_imp
    REAL, OPTIONAL, DIMENSION(ims:ime, kms:kme, jms:jme  ), INTENT(INOUT) :: t_tend_damp
+   !  th_filt (perturbation theta) and hfx_filt: only for the diff_6th_slopeopt = 3/5 filter gates on scalars
+   REAL, OPTIONAL, DIMENSION(ims:ime, kms:kme, jms:jme  ), INTENT(IN   ) :: th_filt
+   REAL, OPTIONAL, DIMENSION(ims:ime, jms:jme           ), INTENT(IN   ) :: hfx_filt
 
    ! Local data
   
@@ -1752,7 +1757,8 @@ SUBROUTINE rk_scalar_tend ( scs, sce, config_flags,          &
                                           msfvx, msfvy,                  &
                                           ids, ide, jds, jde, kds, kde,  &
                                           ims, ime, jms, jme, kms, kme,  &
-                                          its, ite, jts, jte, kts, kte )
+                                          its, ite, jts, jte, kts, kte,  &
+                                          th_in=th_filt, hfx_in=hfx_filt )
          ! convert t_tend_damp to dry theta
          IF ((config_flags%output_t_fluxes .eq. 1) .and. config_flags%output_dry_theta_fluxes .and. &
             (config_flags%use_theta_m .eq. 1) .and. save_qtend) THEN

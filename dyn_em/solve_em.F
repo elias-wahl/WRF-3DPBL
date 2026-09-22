@@ -2431,7 +2431,7 @@ BENCH_START(rk_scalar_tend_tim)
                            k_start    , k_end,               &
                            grid%fqx_adv, grid%fqy_adv, grid%fqz_adv, grid%fqz_imp, &
                            output_fluxes, grid%q_tend_damp,                  &
-                           grid%t_tend_damp, th_phy                         )
+                           grid%t_tend_damp, th_phy, th_filt=grid%t_2, hfx_filt=grid%hfx )
 
                IF( rk_step == 1 .AND. config_flags%use_q_diabatic == 1 )THEN
                IF( im.eq.p_qv .or. im.eq.p_qc )THEN
@@ -2707,7 +2707,7 @@ BENCH_START(tke_adv_tim)
                             ims, ime, jms, jme, kms, kme,     &
                             grid%i_start(ij), grid%i_end(ij), &
                             grid%j_start(ij), grid%j_end(ij), &
-                            k_start    , k_end               )
+                            k_start    , k_end, th_filt=grid%t_2, hfx_filt=grid%hfx )
 
          ENDDO tke_tile_loop_1
          !$OMP END PARALLEL DO
@@ -2808,7 +2808,7 @@ BENCH_START(q_sq_prog_adv_tim)
                             ims, ime, jms, jme, kms, kme,     &
                             grid%i_start(ij), grid%i_end(ij), &
                             grid%j_start(ij), grid%j_end(ij), &
-                            k_start    , k_end               )
+                            k_start    , k_end, th_filt=grid%t_2, hfx_filt=grid%hfx )
 
          ENDDO q_sq_prog_tile_loop_1
          !$OMP END PARALLEL DO
@@ -2903,7 +2903,7 @@ BENCH_START(chem_adv_tim)
                               ims, ime, jms, jme, kms, kme,                      &
                               grid%i_start(ij), grid%i_end(ij),                  &
                               grid%j_start(ij), grid%j_end(ij),                  &
-                              k_start    , k_end                                )
+                              k_start    , k_end, th_filt=grid%t_2, hfx_filt=grid%hfx )
 !
 ! Currently, chemistry species with specified boundaries (i.e. the mother
 ! domain)  are being over written by flow_dep_bdy_chem. So, relax_bdy and
@@ -3066,7 +3066,7 @@ BENCH_START(tracer_adv_tim)
                               ims, ime, jms, jme, kms, kme,                      &
                               grid%i_start(ij), grid%i_end(ij),                  &
                               grid%j_start(ij), grid%j_end(ij),                  &
-                              k_start    , k_end                                )
+                              k_start    , k_end, th_filt=grid%t_2, hfx_filt=grid%hfx )
 !
 ! Currently, chemistry species with specified boundaries (i.e. the mother
 ! domain)  are being over written by flow_dep_bdy_chem. So, relax_bdy and
@@ -3209,7 +3209,7 @@ BENCH_END(tracer_adv_tim)
                                  ims, ime, jms, jme, kms, kme,     &
                                  grid%i_start(ij), grid%i_end(ij), &
                                  grid%j_start(ij), grid%j_end(ij), &
-                                 k_start    , k_end               )
+                                 k_start    , k_end, th_filt=grid%t_2, hfx_filt=grid%hfx )
 
            IF( rk_step == 1 ) THEN
              IF ( config_flags%nested .OR. &

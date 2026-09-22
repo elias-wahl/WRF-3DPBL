@@ -404,9 +404,13 @@ def check(nl):
                        "directory rather than the shared output tree" % (key, v))
 
     # -- 3D PBL hard requirements (module_check_a_mundo.F) -----------------
-    if g("diff_6th_slopeopt", int, 0) == 3 and g("diff_6th_opt", int, 0) == 0:
-        note(FATAL, "diff_6th_slopeopt=3 gates the sixth-order filter's slope taper on "
-                    "static stability, but diff_6th_opt=0 switches the filter off entirely")
+    if g("diff_6th_slopeopt", int, 0) in (3, 5) and g("diff_6th_opt", int, 0) == 0:
+        note(FATAL, f"diff_6th_slopeopt={g('diff_6th_slopeopt', int, 0)} gates the sixth-order filter's slope taper, "
+                    "but diff_6th_opt=0 switches the filter off entirely")
+    if g("diff_6th_slopeopt", int, 0) == 5 and g("diff_6th_stabthresh", float, 2.0) < 5.0:
+        note(WARN, f"diff_6th_slopeopt=5 with diff_6th_stabthresh={g('diff_6th_stabthresh', float, 2.0)} K/km: the daytime "
+                   "mixed layer and entrainment zone sit at 2-5 K/km, so the inversion blend closes the filter at onset; "
+                   "the design value is 10 (DECISIONS 2026-09-22)")
 
     p3 = g("pbl3d_opt", int, 0)
     if p3 != 0:

@@ -6457,7 +6457,7 @@ END SUBROUTINE set_tend
                                         ids, ide, jds, jde, kds, kde,    &
                                         ims, ime, jms, jme, kms, kme,    &
                                         its, ite, jts, jte, kts, kte,    &
-                                        th_in )
+                                        th_in, hfx_in )
                                                                                 
 ! History:       14 Nov 2006   Name of variable changed by Jason Knievel
 !                07 Jun 2006   Revised and generalized by Jason Knievel  
@@ -6502,6 +6502,7 @@ END SUBROUTINE set_tend
 !  and theta be filtered over slopes in well-mixed air -- is unaffected.
     REAL, DIMENSION( ims:ime, kms:kme, jms:jme ), INTENT(IN), OPTIONAL  &
     :: th_in
+    REAL, DIMENSION( ims:ime, jms:jme ), INTENT(IN), OPTIONAL :: hfx_in
 
     REAL, DIMENSION( ims:ime , jms:jme ), INTENT(IN)  &
     :: MUT
@@ -6558,6 +6559,14 @@ END SUBROUTINE set_tend
     REAL :: stabcrit, sblend_p0, sblend_p1, taper_p0, taper_p1, zlo, zhi
     INTEGER :: kstab
     LOGICAL :: do_stabgate
+!  diff_6th_slopeopt = 5 (regime-gated, stratification-corrected along-eta filter):
+!  zlev(i,k,j) is the height of the filtered field's own level, dfdz its vertical gradient.
+    LOGICAL :: do_rs2
+    REAL, DIMENSION( ims:ime, kms:kme, jms:jme ) :: zlev, dfdz
+    REAL :: hfxcrit, hmin_p0, hmin_p1, b_p0, b_p1, g_p0, g_p1, c_p0, c_p1, cp_p0, cp_p1,  &
+            dz5_p0, dz5_p1, dzp_p0, dzp_p1, draw_p0, draw_p1, pair_p0, pair_p1,           &
+            dcorr_p0, dcorr_p1, dzv
+    INTEGER :: im, im1, jm, jm1, kfld, km, kp
 
     LOGICAL  &
     :: specified
@@ -6578,8 +6587,10 @@ END SUBROUTINE set_tend
 !  Static-stability field for the diff_6th_slopeopt = 3 gate. Built once per call; the
 !  cost is one vertical difference per cell and it is skipped entirely otherwise.
     do_stabgate = ( config_flags%diff_6th_slopeopt .EQ. 3 ) .AND. PRESENT( th_in )
+    do_rs2      = ( config_flags%diff_6th_slopeopt .EQ. 5 ) .AND. PRESENT( th_in ) .AND. PRESENT( hfx_in )
     stabcrit = MAX( config_flags%diff_6th_stabthresh, 1.0E-6 ) * 0.001
-    IF ( do_stabgate ) THEN
+    hfxcrit  = config_flags%diff_6th_hfxthresh
+    IF ( do_stabgate .OR. do_rs2 ) THEN
       stab = 0.0
       DO j = MAX(jts-3,jds), MIN(jte+3,jde-1)
       DO k = kts, MIN(kte,kde-1)
@@ -6594,6 +6605,52 @@ END SUBROUTINE set_tend
         END IF
       END DO
       END DO
+      END DO
+    END IF
+
+!  diff_6th_slopeopt = 5: the filter runs along eta, untapered, wherever the surface layer is
+!  convective (all six stencil columns have HFX > diff_6th_hfxthresh), with the part of the
+!  along-eta 5th difference that a HORIZONTALLY stratified layer imprints through the terrain,
+!  c = (df/dz)_face * (5th difference of the level height), subtracted where that imprint is
+!  plausible (same sign and |c| <= |5th difference|). A terrain-following layer (skin layer,
+!  slope wind, katabatic layer) has |c| >> |5th difference| and is left to the plain along-eta
+!  filter, which is blind to it. Inside the convective regime the flux is blended back to the
+!  production tapered flux by the stencil-max d(theta)/dz / diff_6th_stabthresh (residual
+!  morning inversions, capping inversions). Outside it the production taper applies unchanged.
+!  Offline design and cost/benefit: DECISIONS 2026-09-22 (16:40 entry).
+    IF ( do_rs2 ) THEN
+      zlev = 0.0
+      dfdz = 0.0
+      kfld = MIN( kte, kde-1 )
+      IF ( name .EQ. 'w' ) kfld = MIN( kte, kde )
+      DO j = MAX(jts-3,jds), MIN(jte+3,jde)
+        jm  = MIN( j, jde-1 )
+        jm1 = MAX( jm-1, jds )
+        DO k = kts, kfld
+          DO i = MAX(its-3,ids), MIN(ite+3,ide)
+            im  = MIN( i, ide-1 )
+            im1 = MAX( im-1, ids )
+            IF ( name .EQ. 'w' ) THEN
+              zlev(i,k,j) = ( phb(im,k,jm) + ph(im,k,jm) ) / 9.81
+            ELSE IF ( name .EQ. 'u' ) THEN
+              zlev(i,k,j) = 0.25 * ( phb(im1,k,jm) + ph(im1,k,jm) + phb(im1,k+1,jm) + ph(im1,k+1,jm)   &
+                                   + phb(im ,k,jm) + ph(im ,k,jm) + phb(im ,k+1,jm) + ph(im ,k+1,jm) ) / 9.81
+            ELSE IF ( name .EQ. 'v' ) THEN
+              zlev(i,k,j) = 0.25 * ( phb(im,k,jm1) + ph(im,k,jm1) + phb(im,k+1,jm1) + ph(im,k+1,jm1)   &
+                                   + phb(im,k,jm ) + ph(im,k,jm ) + phb(im,k+1,jm ) + ph(im,k+1,jm ) ) / 9.81
+            ELSE
+              zlev(i,k,j) = 0.5 * ( phb(im,k,jm) + ph(im,k,jm) + phb(im,k+1,jm) + ph(im,k+1,jm) ) / 9.81
+            END IF
+          END DO
+        END DO
+        DO k = kts, kfld
+          km = MAX( k-1, kts )
+          kp = MIN( k+1, kfld )
+          DO i = MAX(its-3,ids), MIN(ite+3,ide)
+            dzv = zlev(i,kp,j) - zlev(i,km,j)
+            IF ( dzv .GT. 1.0 ) dfdz(i,k,j) = ( field(i,kp,j) - field(i,km,j) ) / dzv
+          END DO
+        END DO
       END DO
     END IF
 
@@ -6776,7 +6833,49 @@ END SUBROUTINE set_tend
          END IF
          taper_p0 = MAX(1.- (dzmax_p0/dzthresh) , 0.)
          taper_p1 = MAX(1.- (dzmax_p1/dzthresh) , 0.)
-         IF ( do_stabgate ) THEN
+         IF ( do_rs2 ) THEN
+!  diff_6th_slopeopt = 5 (x faces p0: i-1|i, stencil i-3..i+2; p1: i|i+1, stencil i-2..i+3).
+           jm = MIN( j, jde-1 )
+           kstab = MIN( k, MIN(kte,kde-1) )
+           hmin_p0 = MINVAL( hfx_in(MAX(i-3,ids):MIN(i+2,ide-1), jm) )
+           hmin_p1 = MINVAL( hfx_in(MAX(i-2,ids):MIN(i+3,ide-1), jm) )
+           b_p0 = MAX( 0., MIN( 1., MAXVAL( stab(MAX(i-3,ids):MIN(i+2,ide-1),kstab,jm) ) / stabcrit ) )
+           b_p1 = MAX( 0., MIN( 1., MAXVAL( stab(MAX(i-2,ids):MIN(i+3,ide-1),kstab,jm) ) / stabcrit ) )
+           draw_p0 = 10.0*(field(i  ,k,j)-field(i-1,k,j)) - 5.0*(field(i+1,k,j)-field(i-2,k,j)) + (field(i+2,k,j)-field(i-3,k,j))
+           draw_p1 = 10.0*(field(i+1,k,j)-field(i  ,k,j)) - 5.0*(field(i+2,k,j)-field(i-1,k,j)) + (field(i+3,k,j)-field(i-2,k,j))
+           dz5_p0  = 10.0*(zlev(i  ,k,j)-zlev(i-1,k,j)) - 5.0*(zlev(i+1,k,j)-zlev(i-2,k,j)) + (zlev(i+2,k,j)-zlev(i-3,k,j))
+           dz5_p1  = 10.0*(zlev(i+1,k,j)-zlev(i  ,k,j)) - 5.0*(zlev(i+2,k,j)-zlev(i-1,k,j)) + (zlev(i+3,k,j)-zlev(i-2,k,j))
+           pair_p0 = field(i  ,k,j) - field(i-1,k,j)
+           pair_p1 = field(i+1,k,j) - field(i  ,k,j)
+           dzp_p0  = zlev(i  ,k,j) - zlev(i-1,k,j)
+           dzp_p1  = zlev(i+1,k,j) - zlev(i  ,k,j)
+           g_p0 = 0.5 * ( dfdz(i-1,k,j) + dfdz(i  ,k,j) )
+           g_p1 = 0.5 * ( dfdz(i  ,k,j) + dfdz(i+1,k,j) )
+           c_p0 = g_p0 * dz5_p0 ; cp_p0 = g_p0 * dzp_p0
+           c_p1 = g_p1 * dz5_p1 ; cp_p1 = g_p1 * dzp_p1
+           dcorr_p0 = draw_p0
+           dcorr_p1 = draw_p1
+           IF ( draw_p0*c_p0 .GT. 0.0 .AND. ABS(c_p0) .LE. ABS(draw_p0) ) dcorr_p0 = draw_p0 - c_p0
+           IF ( draw_p1*c_p1 .GT. 0.0 .AND. ABS(c_p1) .LE. ABS(draw_p1) ) dcorr_p1 = draw_p1 - c_p1
+           IF ( pair_p0*cp_p0 .GT. 0.0 .AND. ABS(cp_p0) .LE. ABS(pair_p0) ) pair_p0 = pair_p0 - cp_p0
+           IF ( pair_p1*cp_p1 .GT. 0.0 .AND. ABS(cp_p1) .LE. ABS(pair_p1) ) pair_p1 = pair_p1 - cp_p1
+           IF ( diff_6th_opt .EQ. 2 ) THEN
+             IF ( dcorr_p0*pair_p0 .LE. 0.0 ) dcorr_p0 = 0.0
+             IF ( dcorr_p1*pair_p1 .LE. 0.0 ) dcorr_p1 = 0.0
+           END IF
+           IF ( hmin_p0 .GT. hfxcrit ) THEN
+             dflux_x_p0 = ( 1.0 - b_p0 ) * dcorr_p0 + b_p0 * taper_p0 * dflux_x_p0
+           ELSE
+             dflux_x_p0 = taper_p0 * dflux_x_p0
+           END IF
+           IF ( hmin_p1 .GT. hfxcrit ) THEN
+             dflux_x_p1 = ( 1.0 - b_p1 ) * dcorr_p1 + b_p1 * taper_p1 * dflux_x_p1
+           ELSE
+             dflux_x_p1 = taper_p1 * dflux_x_p1
+           END IF
+           slopedamp_p0 = 1.0
+           slopedamp_p1 = 1.0
+         ELSE IF ( do_stabgate ) THEN
 !  Gate the taper on static stability, on the most stable cell of the 5th-difference
 !  stencil (faces p0 and p1 span i-3..i+2 and i-2..i+3 respectively).
            kstab = MIN( k, MIN(kte,kde-1) )
@@ -6872,7 +6971,49 @@ END SUBROUTINE set_tend
          END IF
          taper_p0 = MAX(1.- (dzmax_p0/dzthresh) , 0.)
          taper_p1 = MAX(1.- (dzmax_p1/dzthresh) , 0.)
-         IF ( do_stabgate ) THEN
+         IF ( do_rs2 ) THEN
+!  diff_6th_slopeopt = 5 (y faces p0: j-1|j, stencil j-3..j+2; p1: j|j+1, stencil j-2..j+3).
+           im = MIN( i, ide-1 )
+           kstab = MIN( k, MIN(kte,kde-1) )
+           hmin_p0 = MINVAL( hfx_in(im, MAX(j-3,jds):MIN(j+2,jde-1)) )
+           hmin_p1 = MINVAL( hfx_in(im, MAX(j-2,jds):MIN(j+3,jde-1)) )
+           b_p0 = MAX( 0., MIN( 1., MAXVAL( stab(im,kstab,MAX(j-3,jds):MIN(j+2,jde-1)) ) / stabcrit ) )
+           b_p1 = MAX( 0., MIN( 1., MAXVAL( stab(im,kstab,MAX(j-2,jds):MIN(j+3,jde-1)) ) / stabcrit ) )
+           draw_p0 = 10.0*(field(i,k,j  )-field(i,k,j-1)) - 5.0*(field(i,k,j+1)-field(i,k,j-2)) + (field(i,k,j+2)-field(i,k,j-3))
+           draw_p1 = 10.0*(field(i,k,j+1)-field(i,k,j  )) - 5.0*(field(i,k,j+2)-field(i,k,j-1)) + (field(i,k,j+3)-field(i,k,j-2))
+           dz5_p0  = 10.0*(zlev(i,k,j  )-zlev(i,k,j-1)) - 5.0*(zlev(i,k,j+1)-zlev(i,k,j-2)) + (zlev(i,k,j+2)-zlev(i,k,j-3))
+           dz5_p1  = 10.0*(zlev(i,k,j+1)-zlev(i,k,j  )) - 5.0*(zlev(i,k,j+2)-zlev(i,k,j-1)) + (zlev(i,k,j+3)-zlev(i,k,j-2))
+           pair_p0 = field(i,k,j  ) - field(i,k,j-1)
+           pair_p1 = field(i,k,j+1) - field(i,k,j  )
+           dzp_p0  = zlev(i,k,j  ) - zlev(i,k,j-1)
+           dzp_p1  = zlev(i,k,j+1) - zlev(i,k,j  )
+           g_p0 = 0.5 * ( dfdz(i,k,j-1) + dfdz(i,k,j  ) )
+           g_p1 = 0.5 * ( dfdz(i,k,j  ) + dfdz(i,k,j+1) )
+           c_p0 = g_p0 * dz5_p0 ; cp_p0 = g_p0 * dzp_p0
+           c_p1 = g_p1 * dz5_p1 ; cp_p1 = g_p1 * dzp_p1
+           dcorr_p0 = draw_p0
+           dcorr_p1 = draw_p1
+           IF ( draw_p0*c_p0 .GT. 0.0 .AND. ABS(c_p0) .LE. ABS(draw_p0) ) dcorr_p0 = draw_p0 - c_p0
+           IF ( draw_p1*c_p1 .GT. 0.0 .AND. ABS(c_p1) .LE. ABS(draw_p1) ) dcorr_p1 = draw_p1 - c_p1
+           IF ( pair_p0*cp_p0 .GT. 0.0 .AND. ABS(cp_p0) .LE. ABS(pair_p0) ) pair_p0 = pair_p0 - cp_p0
+           IF ( pair_p1*cp_p1 .GT. 0.0 .AND. ABS(cp_p1) .LE. ABS(pair_p1) ) pair_p1 = pair_p1 - cp_p1
+           IF ( diff_6th_opt .EQ. 2 ) THEN
+             IF ( dcorr_p0*pair_p0 .LE. 0.0 ) dcorr_p0 = 0.0
+             IF ( dcorr_p1*pair_p1 .LE. 0.0 ) dcorr_p1 = 0.0
+           END IF
+           IF ( hmin_p0 .GT. hfxcrit ) THEN
+             dflux_y_p0 = ( 1.0 - b_p0 ) * dcorr_p0 + b_p0 * taper_p0 * dflux_y_p0
+           ELSE
+             dflux_y_p0 = taper_p0 * dflux_y_p0
+           END IF
+           IF ( hmin_p1 .GT. hfxcrit ) THEN
+             dflux_y_p1 = ( 1.0 - b_p1 ) * dcorr_p1 + b_p1 * taper_p1 * dflux_y_p1
+           ELSE
+             dflux_y_p1 = taper_p1 * dflux_y_p1
+           END IF
+           slopedamp_p0 = 1.0
+           slopedamp_p1 = 1.0
+         ELSE IF ( do_stabgate ) THEN
            kstab = MIN( k, MIN(kte,kde-1) )
            sblend_p0 = MAX( 0., MIN( 1.,                                            &
                        MAXVAL( stab(i,kstab,MAX(j-3,jds):MIN(j+2,jde-1)) ) / stabcrit ) )
