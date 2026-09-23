@@ -9,17 +9,17 @@
 #SBATCH --output=hero_chain_%j.out
 #
 # SLURM-resident link for the hero pair's restart segments (2026-09-22). Segment table (restart_interval 180 from 01 UT):
-#   a 17 Jul 01 -> 10   b 10 -> 19   c 19 -> 18 Jul 04   d 04 -> 13   e 13 -> 22   f 22 -> 19 Jul 00 (2 h)
+#   6-h segments (2026-09-23, for backfill): a 17 Jul 01-07  b 07-13  c 13-19  d 19-01  e 18 Jul 01-07  f 07-13  g 13-19  h 19-00 (5 h)
 # Submit with --export=ALL,RUN=HERO,IDX=b --dependency=afterok:<segment a wrf job>. Builds branko_runs/innval_pbl3d_<RUN><IDX>
 # as a copy of the previous segment's dir (same namelist apart from times/restart/output root; tables, wrfinput/wrfbdy, urban
 # tables, iofields carried over; restart file linked), submits wrf.exe, and queues the next link afterok.
 set -u
 D=/gpfs/data/fs72996/ewahl; RC=$D/branko/realcase
 : "${RUN:?}" "${IDX:?}"
-declare -A SDAY=([a]=17 [b]=17 [c]=17 [d]=18 [e]=18 [f]=18) SHR=([a]=01 [b]=10 [c]=19 [d]=04 [e]=13 [f]=22)
-declare -A EDAY=([a]=17 [b]=17 [c]=18 [d]=18 [e]=18 [f]=19) EHR=([a]=10 [b]=19 [c]=04 [d]=13 [e]=22 [f]=00) HRS=([a]=9 [b]=9 [c]=9 [d]=9 [e]=9 [f]=2)
-declare -A WT=([a]=03:45:00 [b]=03:45:00 [c]=03:45:00 [d]=03:45:00 [e]=03:45:00 [f]=01:00:00) NXT=([a]=b [b]=c [c]=d [d]=e [e]=f [f]=)
-PREV_IDX=$(echo "$IDX" | tr 'b-f' 'a-e'); [ "$PREV_IDX" = a ] && PREV=$D/branko_runs/innval_pbl3d_$RUN || PREV=$D/branko_runs/innval_pbl3d_$RUN$PREV_IDX
+declare -A SDAY=([a]=17 [b]=17 [c]=17 [d]=17 [e]=18 [f]=18 [g]=18 [h]=18) SHR=([a]=01 [b]=07 [c]=13 [d]=19 [e]=01 [f]=07 [g]=13 [h]=19)
+declare -A EDAY=([a]=17 [b]=17 [c]=17 [d]=18 [e]=18 [f]=18 [g]=18 [h]=19) EHR=([a]=07 [b]=13 [c]=19 [d]=01 [e]=07 [f]=13 [g]=19 [h]=00) HRS=([a]=6 [b]=6 [c]=6 [d]=6 [e]=6 [f]=6 [g]=6 [h]=5)
+declare -A WT=([a]=02:30:00 [b]=02:30:00 [c]=02:30:00 [d]=02:30:00 [e]=02:30:00 [f]=02:30:00 [g]=02:30:00 [h]=02:10:00) NXT=([a]=b [b]=c [c]=d [d]=e [e]=f [f]=g [g]=h [h]=)
+PREV_IDX=$(echo "$IDX" | tr 'b-h' 'a-g'); [ "$PREV_IDX" = a ] && PREV=$D/branko_runs/innval_pbl3d_$RUN || PREV=$D/branko_runs/innval_pbl3d_$RUN$PREV_IDX
 NEW=$D/branko_runs/innval_pbl3d_$RUN$IDX; RST=$PREV/wrfrst_d01_2025-07-${SDAY[$IDX]}_${SHR[$IDX]}:00:00
 [ -f "$RST" ] || { echo "!!! restart missing: $RST"; exit 1; }
 rm -rf $NEW; mkdir -p $NEW $D/exp/$RUN$IDX/temp/branko
@@ -35,6 +35,6 @@ echo "--- $RUN$IDX namelist diff vs previous:"; diff $PREV/namelist.input $NEW/n
 find $NEW -maxdepth 1 -xtype l && { echo "!!! dangling symlink"; exit 1; }
 cd $NEW && jid=$(sbatch --parsable submit_wrf.slurm) && echo "hero chain: $RUN$IDX submitted as $jid"
 if [ -n "${NXT[$IDX]}" ]; then nj=$(sbatch --parsable --dependency=afterok:$jid --export=ALL,RUN=$RUN,IDX=${NXT[$IDX]} --chdir=$NEW $RC/scripts/hero_chain.slurm); echo "hero chain: next link ${NXT[$IDX]} queued as $nj (afterok:$jid)"; fi
-# report-only judge after the day-1 evening (segment c) and after the whole run (f); it waits for BOTH runs' segment via a
+# report-only judge after the day-1 night (segment d, to 01 UT) and after the whole run (h); it waits for BOTH runs' segment via a
 # marker: the HERO link submits it afterany its own segment and the judge itself waits for the HCTL segment's output to exist.
-if [ "$RUN" = HERO ] && { [ "$IDX" = c ] || [ "$IDX" = f ]; }; then jj=$(sbatch --parsable --dependency=afterany:$jid --export=ALL,UPTO=$IDX $RC/scripts/hero_judge.slurm); echo "hero chain: judge (up to $IDX) queued as $jj (afterany:$jid)"; fi
+if [ "$RUN" = HERO ] && { [ "$IDX" = d ] || [ "$IDX" = h ]; }; then jj=$(sbatch --parsable --dependency=afterany:$jid --export=ALL,UPTO=$IDX $RC/scripts/hero_judge.slurm); echo "hero chain: judge (up to $IDX) queued as $jj (afterany:$jid)"; fi

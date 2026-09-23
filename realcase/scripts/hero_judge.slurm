@@ -8,11 +8,11 @@
 #SBATCH --time=00:10:00
 #SBATCH --output=/gpfs/data/fs72996/ewahl/exp/x16_judge/hero_judge_%j.log
 # Report-only judge of the hero pair (2026-09-22). Submitted by hero_chain.slurm afterany the segment named in $UPTO
-# (c = day-1 evening in, f = both days in). RUN specs use the segment lists so every script's RUN=SEG+SEG syntax works.
+# (d = day-1 night in, h = both days in). RUN specs use the segment lists so every script's RUN=SEG+SEG syntax works.
 set -u
 D=/gpfs/data/fs72996/ewahl; cd $D; source ~/miniconda3/etc/profile.d/conda.sh && conda activate proc
-UPTO=${UPTO:-c}
-segs() { local r=$1 out=$r; for x in b c d e f; do out="$out+$r$x"; [ $x = $UPTO ] && break; done; echo $out; }
+UPTO=${UPTO:-d}
+segs() { local r=$1 out=$r; for x in b c d e f g h; do out="$out+$r$x"; [ $x = $UPTO ] && break; done; echo $out; }
 H=$(segs HERO); C=$(segs HCTL)
 LASTC=HCTL$UPTO; for i in $(seq 1 18); do ls $D/exp/$LASTC/wrf_output/*/wrfout_d01_* >/dev/null 2>&1 && break; sleep 30; done
 ls $D/exp/$LASTC/wrf_output/*/wrfout_d01_* >/dev/null 2>&1 || echo "!!! $LASTC has no archive yet -- HCTL lags; judge runs on what exists"
@@ -25,9 +25,9 @@ echo; echo "########## 3. lee buoyancy barrier -- ICON +1.79 K at 17 UT; and the
 for R in HERO=$H HCTL=$C; do python wrf3dpbl-diag/lee_barrier_physical.py $R TIMES=13:00,14:00,15:00,16:00,17:00,18:00,20:00,22:00 2>&1 | tail -12; done
 echo; echo "########## 4. evening arrival / 0-100 m bias vs HATPRO (17 July 19 UT -> 18 July 05 UT)"
 python wrf3dpbl-diag/evening_arrival_check.py HERO=$H HCTL=$C 2>&1 | tail -30
-if [ $UPTO = f ]; then
+if [ $UPTO = h ]; then
   echo; echo "########## 5. DAY 2 (18 July): break-in and bands"
   python wrf3dpbl-diag/breakin_check.py HERO=$H HCTL=$C HOURS=13,14,15,16,17,18 DAY=18 2>&1 | tail -20
-  python wrf3dpbl-diag/onset_bands_multi.py "RUNS=HEROe:2025-07-18_13:00,2025-07-18_13:30,2025-07-18_14:00,2025-07-18_17:00;HCTLe:2025-07-18_13:00,2025-07-18_13:30,2025-07-18_14:00,2025-07-18_17:00" 2>&1 | grep -E "^(HERO|HCTL)" | grep -E "range      1800  v|foreland   1200  w"
+  python wrf3dpbl-diag/onset_bands_multi.py "RUNS=HEROg:2025-07-18_13:00,2025-07-18_13:30,2025-07-18_14:00,2025-07-18_17:00" 2>&1 | grep -E "^(HERO|HCTL)" | grep -E "range      1800  v|foreland   1200  w"
 fi
 echo "########## hero judge done $(date)"
