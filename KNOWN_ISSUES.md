@@ -1535,3 +1535,9 @@ pressure forces are taken by the E59 method, never from a local terrain-followin
 
 ## E66 — every table in a run dir built by `setup_rundir.sh` is a SYMLINK into `branko/run/` — editing "the run dir's" `URBPARM.TBL` edited the repository's (2026-09-22)
 The E60 trap again, one table over: the city-lever smoke edited `innval_pbl3d_SMOKEURB/URBPARM.TBL` in place with a script; the path was a link to `branko/run/URBPARM.TBL`, so the repository copy carried the open low-rise type-2 column for two hours (no production run reads it: `sf_urban_physics = 0`). Found by `git status`, restored with `git checkout`. Rule: `[ -L file ] && cp --remove-destination "$(readlink -f file)" file` before any in-place edit of a table in a run dir; `clone_twin_rundir.sh --own-table` does this for the Noah-MP table only.
+
+## E67 — `clone_twin_rundir.sh` cloned only a parent's symlinks: a parent with its OWN tables (real files, e.g. HERO's `NoahmpTable.TBL` and three `URBPARM*.TBL`) produced a twin with no Noah-MP table, which dies at start-up in `NoahmpReadTableMod` with `End of file` on `fort.15` (2026-09-24)
+Fixed the same day: real `*.TBL` files are copied. Check a twin with `diff <(ls parent) <(ls twin)` before submitting.
+
+## E68 — `pbl3d_init_opt = 1` (level-2 equilibrium start) blows up a cold start in the current configuration: q² seeded to 500–1600 m² s⁻² in sheared layers at 4–10 km, at the 1000 cap on every level above 1.3 km after one minute, NaN in the surface layer after ~36 steps (`SFCLAYREV produced NaN`). Seven devel twins, DECISIONS 2026-09-24 18:55. Do not use it until the level-2 iteration is repaired; `pbl3d_init_opt = 0` is clean from the same `wrfinput`.
+

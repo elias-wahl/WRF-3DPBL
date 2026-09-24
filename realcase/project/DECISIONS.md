@@ -7,6 +7,24 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-09-24, 18:55 (clock) — HERO'S CRASH IS THE EQUILIBRIUM START (`pbl3d_init_opt = 1`), NOT THE NEW FILTER OR THE URBAN CANOPY. MEASURED IN SEVEN 10-MINUTE DEVEL TWINS OF HERO'S OWN DIRECTORY (01 UT START, 5 × 128).** Segment a (8665306, 2 × 128) died at 01:01:12 with `SFCLAYREV produced NaN` (heat flux and bulk Ri NaN, u* finite). One key changed per twin:
+
+| twin | change against HERO | outcome |
+|---|---|---|
+| reference | none | NaN at 01:01:16 |
+| filter | `diff_6th_slopeopt` 5 → 1 | NaN at 01:01:12 |
+| urban | `sf_urban_physics` 1 → 0 | NaN at 01:01:14 |
+| three closure keys | `pbl3d_init_opt` 1 → 0, `pbl3d_l0_min` 8 → 0, `pbl3d_moist_cond_max` 0 → 1e4 | clean to 01:15:48 (devel wall) |
+| equilibrium start only | `pbl3d_init_opt` 1 → 0 | clean to 01:16 (devel wall) |
+| length floor only | `pbl3d_l0_min` 8 → 0 | NaN at 01:00:52 |
+| moist condition cap only | `pbl3d_moist_cond_max` 0 → 1e4 | NaN at 01:01:14 |
+
+**Mechanism (from the reference twin's 1-min frames).** The level-2 start seeds `q_sq` (twice the TKE, m² s⁻²) in sheared layers of the free troposphere: at 01:00 its maximum is 516 at 4.4 km, 673 at 6.8 km, 1600 at 10.5 km AGL, with master length scales up to 844 m; the floor start has 1e-5 everywhere. Within one minute the seed spreads: at 01:01, 37–51 % of cells between 2.5 and 6.8 km carry `q_sq` > 10 and the maximum sits at the 1000 cap on every level from 1.3 km up (floor start at 01:01: max 8). The runaway reaches the first level in about 36 steps, and the surface layer gets a NaN temperature (the NaN cells report the 0.1 m s⁻¹ wind floor, i.e. a NaN wind). The near-surface stable night is not the trigger: the crash cells had `q_sq` of 0.1–3.7 at 100–200 m at 01:00. **Retracted:** my 17:40 suspicion of the filter option, the urban canopy or the soil input — each excluded by its own twin.
+
+**Why the August test survived and this one does not is not established** (the August equilibrium start ran before the strain cap, pairing and filter changes; the level-2 iteration's `l0` integral over a column with q² ~ 10² aloft is the obvious lever). Not fixed; the switch stays default-off. **HERO is not requeued** — Elias decides between `pbl3d_init_opt = 0` (X26 lineage, measured clean here) and a repaired equilibrium start. Also fixed: `clone_twin_rundir.sh` dropped a parent's own table files (only symlinks were cloned), so the first four twins died reading an empty Noah-MP table (KNOWN_ISSUES E67). Twins `innval_pbl3d_HD0…HD6` (≈ 12 GB each) left on disk. Rating: 8/10 for the project (a one-switch attribution in 40 min of devel time, cause of the runaway itself only described), 6/10 for the model (the start option is now known unsafe; no repair).
+
+---
+
 **2026-09-24, 13:15 (clock) — HERO RESHAPED TO 2 NODES × 5:15 PER 6-h SEGMENT.** On zen3_0512 in the last 24 h: 37 public starts with ≥ 2 nodes, 3 with ≥ 5 (one in the last 12 h), 8 idle nodes; 568 jobs outrank us. A 2-node hole opens ten times as often as a 5-node one, and the segment's cost is the same (1.5 s/step on 2 × 128, 10 800 steps ≈ 4.5 h). `scontrol update NumNodes=2 TimeLimit=05:15:00` on 8660004; `submit_wrf.slurm` and the chain's wall table follow (h: 4:30). Total wall for the 47 h now ≈ 41 h of runtime if every segment starts promptly.
 
 **2026-09-24, 11:20 (clock) — zen3_1024 IS FROZEN BY THE OWNER CAP (E42): 31 IDLE NODES, THE TOP OWNER JOB AT `QOSGrpCpuLimit`, NO PUBLIC START SINCE 23 SEPT 09:22; HERO MOVED TO zen3_0512.** After 42 h pending, only five owner-QOS jobs (p70623, 2-node 7-day and 1-node 9-day) outranked HERO on zen3_1024, yet with 31 idle nodes nothing below the capped owner job was scheduled — the `assoc_limit_stop` trap measured on 2026-09-05, reproduced. On zen3_0512: 582 pending outrank us (17 of them ≥ 5 nodes), 8 idle nodes, 168 public starts in 24 h, and three 6-node 12-h public jobs started yesterday at priority 101k — below our 110k — so the main scheduler (depth 1752) does reach our band there. `scontrol update Partition/QOS` on 8660004; the run dir's `submit_wrf.slurm` follows for the chain. Rule for the skill: an idle-node count on zen3_1024 is meaningless until `sacct -r zen3_1024 -S now-4hours` shows a public start.
