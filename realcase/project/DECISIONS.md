@@ -7,6 +7,10 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-09-24, 19:40 (clock) — HERO REQUEUED WITHOUT THE EQUILIBRIUM START (Elias: "leave it out and restart"): job 8666860 (segment a, 17 July 01→07 UT, 2 × 128, 5:15, `zen3_1024`), chain link 8666861 (`afterok`).** HERO now carries the production lineage's closure values `pbl3d_init_opt = 0`, `pbl3d_l0_min = 0`, `pbl3d_moist_cond_max = 1e4`; its physics namelist is identical to the devel twin that ran clean to 01:16 (old namelist kept as `namelist.input.bak_20260924_init1`). **Why they were in HERO at all:** not a design choice — commit `0612fd307` (2026-08-20) set them in the template `namelist.input.pbl3d` although the same day's decision kept them default-off; the X7-onward lineage never read the template (clones and restarts), the HERO dirs were built fresh from it (E19 repeated). **The template is now set to the lineage values.** Benefit of the equilibrium start for HERO judged near zero: it affects only the first 1–2 h of the 16/17 July night, 12 h before the first target window (August twins: +2–4 % q²). Lane: `zen3_1024` projected 25 Sep 00:20 for any shape (12 public starts in 6 h, not frozen); `zen3_0512` and `zen3_2048` project 2027+ (284 of 638 and 11 of 20 nodes drained). Other template-built dirs still carrying `init_opt = 1`: HCTL, HERO0, X10bdy, NATTEST (not run).
+
+---
+
 **2026-09-24, 18:55 (clock) — HERO'S CRASH IS THE EQUILIBRIUM START (`pbl3d_init_opt = 1`), NOT THE NEW FILTER OR THE URBAN CANOPY. MEASURED IN SEVEN 10-MINUTE DEVEL TWINS OF HERO'S OWN DIRECTORY (01 UT START, 5 × 128).** Segment a (8665306, 2 × 128) died at 01:01:12 with `SFCLAYREV produced NaN` (heat flux and bulk Ri NaN, u* finite). One key changed per twin:
 
 | twin | change against HERO | outcome |

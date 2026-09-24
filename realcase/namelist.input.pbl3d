@@ -149,9 +149,9 @@
  pbl3d_constants        = 'MY82',
  pbl3d_sk_eps_max       = 6.0,         ! Durbin (1996) strain limit   [Tier 1]
  pbl3d_n_tau_max        = 0.53,        ! Deardorff (1980) buoyancy limit  [group G]
- pbl3d_moist_cond_max   = 0.,          ! acceptance threshold on the moist-solve condition number; 0 = off (pre-A14). 1e4 recommended when enabled. See OPEN_ISSUES A14
- pbl3d_init_opt         = 1,           ! start q^2 at level-2 equilibrium (as MYNN does); 0 = floor everywhere (pre-2026-08-20)
- pbl3d_l0_min           = 8.0,         ! floor on the asymptotic length scale l0, m; 0 = off (pre-2026-08-20). See DECISIONS 2026-08-20
+ pbl3d_moist_cond_max   = 10000.0,          ! acceptance threshold on the moist-solve condition number; 0 = off (pre-A14). 1e4 recommended when enabled. See OPEN_ISSUES A14
+ pbl3d_init_opt         = 0,           ! start q^2 at level-2 equilibrium (as MYNN does); 0 = floor everywhere (pre-2026-08-20)
+ pbl3d_l0_min           = 0.0,         ! floor on the asymptotic length scale l0, m; 0 = off (pre-2026-08-20). See DECISIONS 2026-08-20
  pbl3d_dn_max           = 0.0,         ! cap on l from the explicit diffusion number K dt/dz^2 (K = q l / 2); 0 = off (bit for bit); 0.4 with pbl3d_l_opt = 2/5. DECISIONS 2026-09-18
  pbl3d_limiter_opt      = 1,           ! 1 fixed S k/eps cap; 2 cap scaled by the level-2 equilibrium value at local Ri (default-off option)
  pbl3d_sq               = 0.2,         ! S_q of the q^2 vertical diffusivity K_q = S_q l q (MY82 Eq. 24); 0.2 = MY82. D1 test: 0.6, 1.0 (DECISIONS 2026-08-27)
