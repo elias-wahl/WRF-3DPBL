@@ -1541,3 +1541,6 @@ Fixed the same day: real `*.TBL` files are copied. Check a twin with `diff <(ls 
 
 ## E68 — `pbl3d_init_opt = 1` (level-2 equilibrium start) blows up a cold start in the current configuration: q² seeded to 500–1600 m² s⁻² in sheared layers at 4–10 km, at the 1000 cap on every level above 1.3 km after one minute, NaN in the surface layer after ~36 steps (`SFCLAYREV produced NaN`). Seven devel twins, DECISIONS 2026-09-24 18:55. Do not use it until the level-2 iteration is repaired; `pbl3d_init_opt = 0` is clean from the same `wrfinput`.
 
+## E69 — `run_days`/`run_hours`/`run_minutes` override `end_*` whenever any is positive (`share/set_timekeeping.F` l. 222): editing only `run_hours` (or only the end time) in a namelist that still carries `run_days = 1` gives a run a day longer than intended (2026-09-25)
+Found in HERO: `run_days = 1` from the one-run 47-h design survived the reshape into 6-h segments; `hero_chain.slurm` rewrites `run_hours` only. A segment then runs until its wall (TIMEOUT), never writes its end-of-segment restart, and an `afterok` chain stops. Every twin cloned from such a namelist inherits it (the HD devel twins ran past their `run_minutes`). Check all four `run_*` keys, not just `run_hours`, in every namelist diff.
+
