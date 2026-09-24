@@ -18,7 +18,7 @@ D=/gpfs/data/fs72996/ewahl; RC=$D/branko/realcase
 : "${RUN:?}" "${IDX:?}"
 declare -A SDAY=([a]=17 [b]=17 [c]=17 [d]=17 [e]=18 [f]=18 [g]=18 [h]=18) SHR=([a]=01 [b]=07 [c]=13 [d]=19 [e]=01 [f]=07 [g]=13 [h]=19)
 declare -A EDAY=([a]=17 [b]=17 [c]=17 [d]=18 [e]=18 [f]=18 [g]=18 [h]=19) EHR=([a]=07 [b]=13 [c]=19 [d]=01 [e]=07 [f]=13 [g]=19 [h]=00) HRS=([a]=6 [b]=6 [c]=6 [d]=6 [e]=6 [f]=6 [g]=6 [h]=5)
-declare -A WT=([a]=02:30:00 [b]=02:30:00 [c]=02:30:00 [d]=02:30:00 [e]=02:30:00 [f]=02:30:00 [g]=02:30:00 [h]=02:10:00) NXT=([a]=b [b]=c [c]=d [d]=e [e]=f [f]=g [g]=h [h]=)
+declare -A WT=([a]=05:15:00 [b]=05:15:00 [c]=05:15:00 [d]=05:15:00 [e]=05:15:00 [f]=05:15:00 [g]=05:15:00 [h]=04:30:00) NXT=([a]=b [b]=c [c]=d [d]=e [e]=f [f]=g [g]=h [h]=)
 PREV_IDX=$(echo "$IDX" | tr 'b-h' 'a-g'); [ "$PREV_IDX" = a ] && PREV=$D/branko_runs/innval_pbl3d_$RUN || PREV=$D/branko_runs/innval_pbl3d_$RUN$PREV_IDX
 NEW=$D/branko_runs/innval_pbl3d_$RUN$IDX; RST=$PREV/wrfrst_d01_2025-07-${SDAY[$IDX]}_${SHR[$IDX]}:00:00
 [ -f "$RST" ] || { echo "!!! restart missing: $RST"; exit 1; }
