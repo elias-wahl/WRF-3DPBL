@@ -7,6 +7,13 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-09-25, 18:10 (clock) — HSI2 THROUGH THE MORNING: THE IMPLICIT SOLVE HOLDS THE ODD–EVEN MODE AT ≈ 0 WHILE THE EXPLICIT RUN'S GREW WITH THE HEATING; SECOND HERO RUN BUILT AS ONE 47-h JOB, NOT SUBMITTED.**
+- **HSI2 (8668069, crashed configuration + both implicit switches), 30-min frames, lowest 25 faces** — vapour faces > 2 g kg⁻¹ m s⁻¹ / heat faces > 0.5 K m s⁻¹ / largest vapour 2Δz, against HERO segment a (explicit, `t2_scalar = 1`): 05:00 0 / 18 / 1.7 vs 121 / 1645 / 27.3; 05:30 0 / 13 / 1.7 vs 155 / 1940 / 113.6; 06:00 4 / 12 / 6.8 vs 255 / 2563 / 30.0; 06:30 3 / 72 / 2.9 vs 231 / 3317 / 23.3. Health at every frame: finite, θ 287–367 K, T2 259–298 K, max |W| 12.7–14.6 m s⁻¹, q² max 37–42 m² s⁻² (same ranges as HERO a), no condition number > 1e5. Mean 1.99 s/step on 2 × 128 including the 10-min stream (HDIAG 1.81 with its streams): the solve itself is ≲ 2 %. Final check at 07:00 pending.
+- **Queue test for the next run** (`sbatch --test-only`, 17:59): on `zen3_1024` the projected start depends on the node count only, not the wall — 2 nodes 18:40 for 6:15, 12:30, 24:30 or 49:00; 3 nodes 20:36 for 8:30–31:00; 5 nodes 01:37 for 5:00–18:30; `zen3_0512` March 2027 (259 drained). So the next run is as long as possible: the whole 47 h in one job — no segment restarts, hence no restart shock (E70).
+- **HERO2 built** (`branko_runs/innval_pbl3d_HERO2`, clone of HERO; `exp/HERO2`): HERO's namelist + `run_days = 1, run_hours = 23` (17 Jul 01 UT → 19 Jul 00 UT), **`restart_interval = 720`** (Elias: coarser restart saves; re-entry points at 13/01/13 UT only), `pbl3d_scalar_implicit = 1`, `pbl3d_sq_implicit = 1`; `pbl3d_t2_scalar = 1`, class-19 `Z0MVT` 0.05, filter option 5, urban canopy as before. 3 × 128 (≈ 34 min per simulated hour measured in X26 → ≈ 27 h), wall 30:00. **Not submitted:** Elias's "do not restart the production hero run for now" stands; release command in the handover. Disk ≈ 1.8 TB (history + WRFlux every 30 min), 468 TB free.
+
+---
+
 **2026-09-25, 16:20 (clock) — THE FIRST HERO RUN IS ENDED (Elias: "cancel the old faulty first hero run and dependencies").** Cancelled the held segment b (8667814, `innval_pbl3d_HEROb`, 07→13 UT) and chain link c (8667815). What remains of that run: segment a (8667361, 01→07 UT, `exp/HERO/wrf_output/8667361`, explicit closure transport, `pbl3d_t2_scalar = 1`, class-19 `Z0MVT` 0.30) and its 04:00/07:00 restart files — kept, not deleted. A new HERO run will start from 01 UT with the implicit switches once HSI2 is judged. Nothing of ours is queued except HSI2 (8668069).
 
 ---
