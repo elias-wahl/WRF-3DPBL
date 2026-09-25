@@ -7,6 +7,26 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-09-25, ~11:45 (clock) — TWO HATPROs, TWO SITES: THE AFTERNOON WARM ANOMALY IS LOCAL TO KOLSASS (Radfeld ≈ 0 K at 13–17 UT, both closures), THE NIGHT WARM BIAS IS VALLEY-WIDE (Radfeld +2.9…+3.2 K, Kolsass +3.4…+3.9 K at 0–100 m, 22–05 UT, every lineage), AND AT RADFELD THE EVENING COOLING DEFICIT REACHES THROUGH 600 m.** (`wrf3dpbl-diag/hatpro_radfeld_check.py`, log `exp/x16_judge/hatpro_radfeld_check.log`.)
+- **Data:** MeteoSwiss HATPRO-G5 at Radfeld Klärwerk (47.459 N 11.932 E, 510 m; Zenodo 10.5281/zenodo.21918290, July on disk in `data/stations/rad/hatpro_meteoswiss/`), TPB 5-min, 55 levels 0–2500 m; 30 of 576 profiles on 17/18 July rain-flagged and dropped. Kolsass: the UIBK HATPRO next to the i-Box tower.
+- **Method:** θ at both sites from the measured surface pressure (Radfeld MET `Surf_P`, i-Box `pact`) with p(z) integrated hydrostatically through the retrieved T profile; obs = mean of the profiles within ±10 min of each hourly model frame. Model: E59 floor boxes (within 1.5 km, |HGT − station| ≤ 25 m: Radfeld 12 cells 518–534 m, Kolsass 13 cells 553–568 m), box mean of layer-mean θ, 0–100 / 100–300 / 300–600 m AGL. Window means of hourly differences. Confidence ±0.3 K per layer; the lowest 100 m at night is the radiometer's weakest layer (E51).
+- **Mean model − obs, K** (0–100 / 100–300 / 300–600 m):
+
+| run | window | Radfeld | Kolsass |
+|---|---|---|---|
+| X17 | 13–17 UT | **+0.03 / +0.04 / −0.20** | **+0.47 / +0.35 / +0.34** |
+| X17 | 18–21 UT | +1.36 / +0.42 / −0.25 | +2.16 / +1.06 / +0.31 |
+| X17 | 22–05 UT | **+3.17 / +2.09 / +1.03** | **+3.78 / +2.77 / +1.88** |
+| X12m | 13–17 / 22–05 UT | +0.21 / +0.25 / +0.04 · +2.97 / +2.12 / +1.09 | +0.56 / +0.38 / +0.38 · +3.93 / +2.95 / +2.01 |
+| X16s | 22–05 UT | +2.94 / +2.02 / +0.90 | +3.42 / +2.54 / +1.65 |
+| X17m (MYNN) | 13–17 UT | +0.67 / +0.67 / +0.23 | +0.73 / +0.61 / +0.47 |
+
+  At 17 UT X17 is −0.18 / −0.40 / −0.72 at Radfeld against +1.77 / +1.20 / +0.72 at Kolsass; MYNN (X17m) +0.65 / +0.47 / +0.10 against +2.07 / +1.49 / +0.99. X26 ≈ X17 to 0.1 K.
+- **Cooling, X17, K** (obs | model): Radfeld 19–21 UT −2.15 / −2.26 / −1.97 | −1.30 / −0.70 / −0.20; 21–01 UT −2.48 / −2.74 / −1.62 | −0.91 / −1.63 / −1.27. Kolsass 19–21 UT −3.25 / −2.60 / −1.82 | −2.52 / −1.99 / −1.13; 21–01 UT −3.54 / −3.06 / −2.42 | −2.43 / −1.92 / −1.42.
+- **Measured → inferred.** (1) The afternoon floor over-warming is at Kolsass, not at Radfeld: the Kolsass excess over Radfeld peaks at 16–18 UT (contrast error −1.1…−2.0 K in 0–300 m) in both closures — consistent with the lee-slope northerly break-in being a Kolsass-reach phenomenon rather than valley-wide heating (inferred; Radfeld's lee slopes were not sampled). (2) The night bias is valley-wide; Radfeld carries 0.6–1.0 K less of it in every layer and lineage. (3) At Radfeld the observed evening cooling is deep (−2 K at 300–600 m in 19–21 UT) and the model almost misses it above 100 m (−0.2…−0.7 K); at Kolsass the model gets 60–77 % of the deep cooling. A deep evening cold-air supply at Radfeld that the model lacks (side-valley outflow or down-valley advection) is a hypothesis, not tested.
+- **Instrument caveats:** two radiometers, two retrievals. Lowest level minus co-located 2 m T: Radfeld −0.40 K (afternoon), +0.13 K (night); Kolsass −0.16 / −0.59 K — so the observed Radfeld − Kolsass contrast near the ground is uncertain by ~0.5–0.7 K; aloft there is no intercalibration. The fixed 8 km scale height still in `hatpro_cooling.load_hatpro` makes Kolsass θ +0.02 / +0.09 / +0.23 K too warm (0–100 / 100–300 / 300–600 m) against the hydrostatic integration used here — not changed (awaits Elias).
+- **Footprint:** a new analysis script and its log; no model or judge code changed. Rating 8/10 project (a second, independent profile site splits the afternoon from the night problem), 7/10 research; the model is untouched.
+
 **2026-09-25, ~11:00 (clock) — HATPRO θ NOW USES THE MEASURED STATION PRESSURE (KNOWN_ISSUES E72): THE OLD FIXED 950 hPa MADE IT 0.27–0.47 K TOO WARM, SO EVERY RECORDED MODEL − HATPRO BIAS IS 0.3–0.5 K TOO SMALL; AGAINST THE SONDES NOTHING CHANGES.** (Elias's go; the HATPRO stood next to the Kolsass i-Box tower.)
 - **Measured:** i-Box `pact` 953.0 (17 UT) → 955.4 hPa (01 UT) → 954.9 (05 UT). Offset old − new θ: +0.27 / +0.35 / +0.43 / +0.47 / +0.43 K at 17 / 19 / 21 / 01 / 05 UT, the same at all heights. 0–300 m cooling: 19–21 UT −3.18 K (was −3.09), 21–01 UT −3.29 (−3.26), 01–05 UT −1.21 (−1.25).
 - **HATPRO − sonde** (seven 18 July launches, `exp/x16_judge/hatpro_vs_sondes_E72.log`): above 100 m still unsigned, mean |Δ| 0.41 / 0.27 / 0.37 / 0.48 K (100–300 / 300–600 / 600–1000 / 1000–2000 m); 0–100 m at night −1.27 / −1.23 / −1.28 K (05 / 20 / 23 UT; was −0.84…−1.12), by day −0.26…+0.14. The 05:02 grid check (600–900 / 600–1500 m ASL) becomes −0.68 / −1.03 K instead of −0.25 / −0.60.
