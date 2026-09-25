@@ -7,6 +7,10 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-09-25, 08:30 (clock) — HERO: BARREN-LAND ROUGHNESS 0.30 → 0.05 m (Elias: "change barren to 0.05").** `branko_runs/innval_pbl3d_HERO/NoahmpTable.TBL`, first `Z0MVT` row, class 19 (backup `NoahmpTable.TBL.bak_20260925_z0mvt19_030`); the lineage table `branko/run/NoahmpTable.TBL` is untouched. Reason: 0.30 m stood in for ICON's sub-grid orographic drag, is not a surface roughness for rock/scree/sparse alpine grass (≈ 0.001–0.05 m), doubled u* on 42 000 crest cells and amplified the closure's odd–even scalar mode (A31). **Footprint:** segment a (8667361, running, 01→07 UT) keeps 0.30 — it read the table at its start; every later segment copies the HERO dir and runs with 0.05, so HERO has a roughness step at 07 UT on 17 July. A clean 0.05 run from 01 UT would need segment a again. HERO segment a health at 06:30: finite, no ill-conditioned solve, but the mode is ≈ 3 × production and rising with morning heating (heat faces 717 → 3317 from 04:00 to 06:30, one 114 g kg⁻¹ m s⁻¹ spike at 05:30), now mostly over heated needleleaf slopes at ≈ 1760 m.
+
+---
+
 **2026-09-25, 06:05 (clock) — LOOP ITERATION 2 RESULT: BOTH COLD-START SINGLE-SWITCH TESTS PASSED 03:50, BUT NEITHER SWITCH REMOVES THE MODE; THE PROBLEM IS THE CLOSURE'S EXPLICIT SCALAR FLUX (A31), AND ITS FIX IS A CODE CHANGE THAT NEEDS ELIAS. HERO SEGMENT a RUNS ON WITH THE SCALAR BACK-OFF.**
 - **Cold starts on the crash layout (2 × 128), 30-min frames, lowest 25 faces** — vapour faces with 2Δz flux component > 2 g kg⁻¹ m s⁻¹ / heat faces > 0.5 K m s⁻¹ / largest vapour 2Δz:
 
