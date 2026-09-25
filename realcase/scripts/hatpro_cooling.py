@@ -9,10 +9,11 @@ levels, 10-min), 2025-07-17 12 UT -> 07-18 08 UT, with hourly cooling rates and 
 Level heights are a HYPOTHESIS: the standard RPG 39-level zenith grid (m AGL). It is
 validated in-script against the recorded 05:02 sonde layer means (theta 290.81 K over
 600-900 m ASL, 293.21 over 600-1500; DECISIONS 2026-08-31 22:25) before anything else
-is trusted. theta from T via p(z) = p_sfc(t) exp(-z/H), p_sfc = the pressure measured at
-the i-Box tower next to the HATPRO (`pact`, 1-min), H = 8000 m. Until 2026-09-25 p_sfc
-was a fixed 950 hPa, 4-5 hPa below the measured 953-956 hPa: theta 0.35-0.46 K too warm
-(KNOWN_ISSUES E72).
+is trusted. theta from T with p(z) integrated hydrostatically through the retrieved T
+profile from p_sfc = the pressure measured at the i-Box tower next to the HATPRO (`pact`,
+1-min). Until 2026-09-25 p_sfc was a fixed 950 hPa (theta 0.27-0.47 K too warm) and p(z)
+used a fixed 8 km scale height (a further +0.1 K at 200 m, +0.2 at 450 m, ~+1 K at 1.5 km;
+KNOWN_ISSUES E72).
 
 Part 2 — BODEN/BODEN2: nocturnal soil heat flux and soil temperatures vs the model's
 GRDFLX/TSK/T2/HFX at the Kolsass cell (CPB probe wrfout, 01:20 and 04:20 UT).
@@ -33,7 +34,7 @@ Z39 = np.array([0, 10, 30, 50, 75, 100, 125, 150, 200, 250, 325, 400, 475, 550,
                 2200, 2500, 2800, 3100, 3500, 3900, 4400, 5000, 5600, 6200,
                 7000, 8000, 9000, 10000], dtype=float)  # m AGL, RPG standard (hypothesis)
 
-KAPPA, H = 0.2854, 8000.0
+KAPPA, G, RD = 0.2854, 9.81, 287.05
 MET = f"{D}/data/stations/kol/202507-70322_met_rad.csv"   # i-Box Kolsass RAW, 1-min, pact [hPa]
 
 
@@ -46,14 +47,20 @@ def station_pressure(t):
             .interpolate(limit_direction="both").to_numpy()
 
 
+def theta_hydro(T, z, ps):
+    """theta [K] from T [K] (time, level) on heights z [m above the instrument] and surface pressure
+    ps [hPa] (time): p(z) integrated hydrostatically through the profile (dry; moisture < 0.05 K)."""
+    Tm = 0.5 * (T[:, 1:] + T[:, :-1])
+    lnp = np.log(ps)[:, None] - np.c_[np.zeros(len(ps)), np.cumsum(G / (RD * Tm) * np.diff(z)[None, :], axis=1)]
+    return T * (1000.0 / np.exp(lnp)) ** KAPPA
+
+
 def load_hatpro():
     f = glob.glob(f"{KOL}/acinn_data_HATPRO UIBK Temperature_RAW_*/data.csv")[0]
     df = pd.read_csv(f, sep=";", comment="#")
     t = pd.to_datetime(df["rawdate"])
     T = df[[c for c in df.columns if c.startswith("v")]].to_numpy(float)  # K
-    p = station_pressure(t)[:, None] * np.exp(-Z39 / H)[None, :]
-    theta = T * (1000.0 / p) ** KAPPA
-    return t, theta
+    return t, theta_hydro(T, Z39, station_pressure(t))
 
 
 def layer_mean(theta, z, a, b):
