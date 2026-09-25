@@ -8,7 +8,7 @@ set -euo pipefail; D=/gpfs/data/fs72996/ewahl; PAR=$1; NAME=$2; shift 2; HOURS=;
 while [ $# -gt 0 ]; do case $1 in --hours) HOURS=$2; shift 2;; --end-hour) ENDH=$2; shift 2;; --wall) WALL=$2; shift 2;; --set) SETS+=("$2"); shift 2;; --own-table) OWN=1; shift;; --desc) DESC=$2; shift 2;; --submit) SUB=1; shift;; *) echo "unknown $1"; exit 2;; esac; done
 P=$D/branko_runs/innval_pbl3d_$PAR; N=$D/branko_runs/innval_pbl3d_$NAME; [ -d "$P" ] || { echo "no parent $P"; exit 1; }; [ -e "$N" ] && { echo "$N exists"; exit 1; }
 mkdir -p "$N" "$D/exp/$NAME/temp/branko"
-for f in "$P"/*; do b=$(basename "$f"); case "$b" in wrfinput_d01|wrfbdy_d01) continue;; esac; if [ -L "$f" ]; then ln -s "$(readlink "$f")" "$N/$b"; elif [ -f "$f" ] && [[ "$b" == *.TBL ]]; then cp "$f" "$N/$b"; fi; done   # a parent's OWN tables (real files, e.g. HERO's Noah-MP + urban) are copied, not dropped (2026-09-24)
+for f in "$P"/*; do b=$(basename "$f"); case "$b" in wrfinput_d01|wrfbdy_d01) continue;; esac; if [ -L "$f" ]; then ln -s "$(readlink "$f")" "$N/$b"; elif [ -f "$f" ] && { [[ "$b" == *.TBL ]] || [[ "$b" == iofields*.txt ]]; }; then cp "$f" "$N/$b"; fi; done   # a parent's OWN tables (real files, e.g. HERO's Noah-MP + urban) are copied, not dropped (2026-09-24)
 for b in qr_acr_qg_V4.dat qr_acr_qsV2.dat; do [ -e "$N/$b" ] || ln -s "$(readlink -f "$P/$b")" "$N/$b"; done
 if [ $OWN = 1 ]; then rm -f "$N/NoahmpTable.TBL"; cp "$D/branko/run/NoahmpTable.TBL" "$N/NoahmpTable.TBL"; fi
 sed -e "s/$PAR/$NAME/g" "$P/env.sh" > "$N/env.sh"
