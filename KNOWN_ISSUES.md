@@ -1411,8 +1411,6 @@ Do NOT expect one fix to serve both.
 
 ## E51 — the Kolsass HATPRO temperature retrieval is warm-biased above ~800 m AGL: +0.7 K at 1600 m ASL, +1.6 at 1900, +2.0 at 2200, +3.0 at 2500 against the co-located 05 UT sonde (and the same at 17 UT); the 2026-09-01 'matches sondes to 0.2–0.5 K in every layer above 100 m' holds only up to ~1 km AGL (2026-09-15)
 
-**Corrected 2026-09-25 (E72):** the HATPRO was at Radfeld, 25 km from the Kolsass sonde (not co-located), and its θ carried a +0.75…+0.8 K pressure-convention offset; of the warm bias aloft, +0…+2.2 K remains (retrieval or site). The rule below still stands.
-
 **Symptom.** Every model (X12m, MYNN, X16b, the ICON initial state) looked 1.5–3.5 K too cold at ridge level against HATPRO; the sonde agrees with the models to ±0.3 K there.
 **Rule.** Use HATPRO for 0–800 m AGL (with its ~1 K cold bias below 100 m at night, 2026-09-01); above that use the sondes (`data/soundings/kol`, 05/08/11/14/17 UT on the 18th; `ibk` 02/11 UT). Script: `slope_radiation_check.py` section I in `exp/x16_judge/X16w_slope_radiation.log`.
 
@@ -1552,6 +1550,3 @@ Measured with HR0 against HDIAG (DECISIONS 2026-09-25 02:55). Corrected 06:05: H
 ## E71 — `clone_twin_rundir.sh` copied a parent's real `*.TBL` files (E67) but not its real `iofields*.txt`; a twin whose namelist names such a file then gets only what is appended to it (2026-09-25)
 Fixed the same day (real `iofields*.txt` are copied). Check `grep -c '' <twin>/iofields*.txt` against the parent before submitting.
 
-
-## E72 — the "Kolsass HATPRO" stood at RADFELD (47.45899 N, 11.93221 E, 510 m, with the WLS100S101 lidar), 25 km down-valley; its θ was also computed with p = 950 hPa at the station while Radfeld measured 958–959 hPa (+0.75 K too warm) (2026-09-25)
-The files carry no coordinates, the ACINN portal lists the permanent Innsbruck-roof site, and the folder is named `kolsass_claude/`: from 2026-09-01 every model-vs-HATPRO number held the Kolsass column against Radfeld air (DECISIONS 2026-09-25 ~10:00 for what survives). **Rule.** Compare HATPRO only with a Radfeld valley-floor box (E59: within 1.5 km, |HGT − 510| ≤ 25 m), θ from the Radfeld TAWES pressure (`data/stations/rad/202507-89120.dat`), RPG heights above 510 m — `wrf3dpbl-diag/hatpro_site_check.py`. For Kolsass thermal profiles use the Kolsass sondes. Before trusting any instrument's position, read it from the data file or a site list, never from a folder name. Location note: `data/stations/kol/kolsass_claude/HATPRO_LOCATION_README.txt`.
