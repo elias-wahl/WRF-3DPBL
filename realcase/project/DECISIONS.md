@@ -7,6 +7,10 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-09-25, 08:45 (clock) — HERO SEGMENT a COMPLETED (01→07 UT, 5:55 wall, 8667361; restarts at 04:00 and 07:00); THE CHAIN LINK FAILED ON A BROKEN CHECK; SEGMENT b AND LINK c ARE HELD (Elias: "do not restart the production hero run for now").** `hero_chain.slurm`'s dangling-symlink test was `find … -xtype l && exit 1` — `find` exits 0 with no match, so every link aborted (fixed: test on non-empty output). Resubmitted link b (8667811) built `innval_pbl3d_HEROb` (class-19 `Z0MVT` 0.05, restart from 07:00) and queued segment b 8667814 and link c 8667815; both `scontrol hold` at 08:44. Release with `scontrol release 8667814 8667815`.
+
+---
+
 **2026-09-25, 08:30 (clock) — HERO: BARREN-LAND ROUGHNESS 0.30 → 0.05 m (Elias: "change barren to 0.05").** `branko_runs/innval_pbl3d_HERO/NoahmpTable.TBL`, first `Z0MVT` row, class 19 (backup `NoahmpTable.TBL.bak_20260925_z0mvt19_030`); the lineage table `branko/run/NoahmpTable.TBL` is untouched. Reason: 0.30 m stood in for ICON's sub-grid orographic drag, is not a surface roughness for rock/scree/sparse alpine grass (≈ 0.001–0.05 m), doubled u* on 42 000 crest cells and amplified the closure's odd–even scalar mode (A31). **Footprint:** segment a (8667361, running, 01→07 UT) keeps 0.30 — it read the table at its start; every later segment copies the HERO dir and runs with 0.05, so HERO has a roughness step at 07 UT on 17 July. A clean 0.05 run from 01 UT would need segment a again. HERO segment a health at 06:30: finite, no ill-conditioned solve, but the mode is ≈ 3 × production and rising with morning heating (heat faces 717 → 3317 from 04:00 to 06:30, one 114 g kg⁻¹ m s⁻¹ spike at 05:30), now mostly over heated needleleaf slopes at ≈ 1760 m.
 
 ---

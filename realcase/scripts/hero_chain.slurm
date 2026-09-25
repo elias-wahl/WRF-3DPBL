@@ -32,7 +32,7 @@ printf 'source "$(dirname "${BASH_SOURCE[0]}")/vsc5.sh"\nexport WRF_OUTPUT_ROOT=
 sed "s#vsc5_$PREVNAME.sh#vsc5_$RUN$IDX.sh#" $PREV/env.sh > $NEW/env.sh
 sed -i "s/job-name=wrf_$PREVNAME/job-name=wrf_$RUN$IDX/; s/^#SBATCH --time=.*/#SBATCH --time=${WT[$IDX]}/" $NEW/submit_wrf.slurm
 echo "--- $RUN$IDX namelist diff vs previous:"; diff $PREV/namelist.input $NEW/namelist.input | grep "^>" | grep -v outname | cut -c1-80
-find $NEW -maxdepth 1 -xtype l && { echo "!!! dangling symlink"; exit 1; }
+[ -n "$(find $NEW -maxdepth 1 -xtype l)" ] && { find $NEW -maxdepth 1 -xtype l; echo "!!! dangling symlink"; exit 1; }
 cd $NEW && jid=$(sbatch --parsable submit_wrf.slurm) && echo "hero chain: $RUN$IDX submitted as $jid"
 if [ -n "${NXT[$IDX]}" ]; then nj=$(sbatch --parsable --dependency=afterok:$jid --export=ALL,RUN=$RUN,IDX=${NXT[$IDX]} --chdir=$NEW $RC/scripts/hero_chain.slurm); echo "hero chain: next link ${NXT[$IDX]} queued as $nj (afterok:$jid)"; fi
 # report-only judge after the day-1 night (segment d, to 01 UT) and after the whole run (h); it waits for BOTH runs' segment via a
