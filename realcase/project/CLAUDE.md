@@ -80,7 +80,8 @@ Elias is an atmospheric scientist, fluent in turbulence closures; he wants the
 2. **Lead problem (2026-09-18):** in the afternoon a shallow (0–150 m AGL) northerly over-runs the northern-range crests and
    descends the sunlit lee slope to the valley floor by 16–17 UT, in BOTH closures, on either terrain, also on day 2 of a run;
    ICON and the stations (Stanser Joch sonic) do not have it. It kills the up-valley wind and seeds the evening/night warm bias
-   (+3.3 K at 0–100 m by 01 UT in every lineage). Excluded by runs: closure, roughness up to 0.2 m, land-cover heat partition,
+   (+3.3 K at 0–100 m by 01 UT in every lineage against HATPRO; ≈ +3.8 K with the measured station pressure, E72).
+   Excluded by runs: closure, roughness up to 0.2 m, land-cover heat partition,
    sixth-order filter, soil, start time, terrain data set, cross-range and along-valley pressure force. Open: a momentum sink
    acting through depth over the range (ICON carries sub-grid orography fields; WRF has no form drag at 500 m).
 3. **Standing rules since August:** every run starts from the winter-spun-up HRLDAS land state; full output streams; every

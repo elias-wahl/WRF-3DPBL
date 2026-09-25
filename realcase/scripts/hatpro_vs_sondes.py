@@ -13,23 +13,15 @@ import glob
 import numpy as np
 import pandas as pd
 
+from hatpro_cooling import load_hatpro  # theta with the measured station pressure (E72)
+
 D = "/gpfs/data/fs72996/ewahl"
 ELEV = 545.0
 Z39 = np.array([0, 10, 30, 50, 75, 100, 125, 150, 200, 250, 325, 400, 475, 550,
                 625, 700, 800, 900, 1000, 1150, 1300, 1450, 1600, 1800, 2000,
                 2200, 2500, 2800, 3100, 3500, 3900, 4400, 5000, 5600, 6200,
                 7000, 8000, 9000, 10000], dtype=float)
-KAPPA, P0, H = 0.2854, 950.0, 8000.0
 BANDS = [(0, 100), (100, 300), (300, 600), (600, 1000), (1000, 2000)]
-
-
-def load_hatpro():
-    f = glob.glob(f"{D}/data/stations/kol/kolsass_claude/acinn_data_HATPRO UIBK Temperature_RAW_*/data.csv")[0]
-    df = pd.read_csv(f, sep=";", comment="#")
-    t = pd.to_datetime(df["rawdate"])
-    T = df[[c for c in df.columns if c.startswith("v")]].to_numpy(float)
-    p = P0 * np.exp(-Z39 / H)
-    return t, T * (1000.0 / p[None, :]) ** KAPPA
 
 
 def load_sonde(path):

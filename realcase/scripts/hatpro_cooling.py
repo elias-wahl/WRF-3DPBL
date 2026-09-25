@@ -9,8 +9,10 @@ levels, 10-min), 2025-07-17 12 UT -> 07-18 08 UT, with hourly cooling rates and 
 Level heights are a HYPOTHESIS: the standard RPG 39-level zenith grid (m AGL). It is
 validated in-script against the recorded 05:02 sonde layer means (theta 290.81 K over
 600-900 m ASL, 293.21 over 600-1500; DECISIONS 2026-08-31 22:25) before anything else
-is trusted. theta from T via p(z) = p0 exp(-z/H), p0 = 950 hPa at station (545 m),
-H = 8000 m — errors ~0.2 K absolute, ~0 for rates.
+is trusted. theta from T via p(z) = p_sfc(t) exp(-z/H), p_sfc = the pressure measured at
+the i-Box tower next to the HATPRO (`pact`, 1-min), H = 8000 m. Until 2026-09-25 p_sfc
+was a fixed 950 hPa, 4-5 hPa below the measured 953-956 hPa: theta 0.35-0.46 K too warm
+(KNOWN_ISSUES E72).
 
 Part 2 — BODEN/BODEN2: nocturnal soil heat flux and soil temperatures vs the model's
 GRDFLX/TSK/T2/HFX at the Kolsass cell (CPB probe wrfout, 01:20 and 04:20 UT).
@@ -31,7 +33,17 @@ Z39 = np.array([0, 10, 30, 50, 75, 100, 125, 150, 200, 250, 325, 400, 475, 550,
                 2200, 2500, 2800, 3100, 3500, 3900, 4400, 5000, 5600, 6200,
                 7000, 8000, 9000, 10000], dtype=float)  # m AGL, RPG standard (hypothesis)
 
-KAPPA, P0, H = 0.2854, 950.0, 8000.0
+KAPPA, H = 0.2854, 8000.0
+MET = f"{D}/data/stations/kol/202507-70322_met_rad.csv"   # i-Box Kolsass RAW, 1-min, pact [hPa]
+
+
+def station_pressure(t):
+    """Measured station pressure [hPa] at the i-Box tower (the HATPRO stood next to it) at times t."""
+    k = pd.read_csv(MET, sep=";", comment="#", usecols=["rawdate", "pact"])
+    s = pd.Series(k["pact"].to_numpy(float), index=pd.to_datetime(k["rawdate"])).sort_index()
+    s = s[~s.index.duplicated()].where(lambda v: (v > 900) & (v < 1000))
+    return s.reindex(pd.DatetimeIndex(t), method="nearest", tolerance=pd.Timedelta("10min")) \
+            .interpolate(limit_direction="both").to_numpy()
 
 
 def load_hatpro():
@@ -39,8 +51,8 @@ def load_hatpro():
     df = pd.read_csv(f, sep=";", comment="#")
     t = pd.to_datetime(df["rawdate"])
     T = df[[c for c in df.columns if c.startswith("v")]].to_numpy(float)  # K
-    p = P0 * np.exp(-Z39 / H)
-    theta = T * (1000.0 / p[None, :]) ** KAPPA
+    p = station_pressure(t)[:, None] * np.exp(-Z39 / H)[None, :]
+    theta = T * (1000.0 / p) ** KAPPA
     return t, theta
 
 

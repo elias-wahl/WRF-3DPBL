@@ -1411,6 +1411,8 @@ Do NOT expect one fix to serve both.
 
 ## E51 — the Kolsass HATPRO temperature retrieval is warm-biased above ~800 m AGL: +0.7 K at 1600 m ASL, +1.6 at 1900, +2.0 at 2200, +3.0 at 2500 against the co-located 05 UT sonde (and the same at 17 UT); the 2026-09-01 'matches sondes to 0.2–0.5 K in every layer above 100 m' holds only up to ~1 km AGL (2026-09-15)
 
+**2026-09-25 (E72):** with the measured station pressure the HATPRO θ is 0.4–0.5 K lower at every level; the warm bias aloft becomes ≈ +0.3 / +1.1 / +1.5 / +2.5 K at 1600 / 1900 / 2200 / 2500 m ASL. The rule stands.
+
 **Symptom.** Every model (X12m, MYNN, X16b, the ICON initial state) looked 1.5–3.5 K too cold at ridge level against HATPRO; the sonde agrees with the models to ±0.3 K there.
 **Rule.** Use HATPRO for 0–800 m AGL (with its ~1 K cold bias below 100 m at night, 2026-09-01); above that use the sondes (`data/soundings/kol`, 05/08/11/14/17 UT on the 18th; `ibk` 02/11 UT). Script: `slope_radiation_check.py` section I in `exp/x16_judge/X16w_slope_radiation.log`.
 
@@ -1550,3 +1552,6 @@ Measured with HR0 against HDIAG (DECISIONS 2026-09-25 02:55). Corrected 06:05: H
 ## E71 — `clone_twin_rundir.sh` copied a parent's real `*.TBL` files (E67) but not its real `iofields*.txt`; a twin whose namelist names such a file then gets only what is appended to it (2026-09-25)
 Fixed the same day (real `iofields*.txt` are copied). Check `grep -c '' <twin>/iofields*.txt` against the parent before submitting.
 
+
+## E72 — HATPRO θ was computed with a fixed 950 hPa at the station; the i-Box tower next to it measured 953.0–955.4 hPa on 17/18 July → every HATPRO θ was 0.27–0.47 K too warm (largest after sunset, as the pressure rose), rates within 0.1 K per window (2026-09-25)
+Found while mapping the instruments. Fixed in `wrf3dpbl-diag/hatpro_cooling.py` (`station_pressure()`: i-Box `pact`, 1-min, nearest within 10 min); `hatpro_vs_sondes.py` now imports that loader; every script importing `load_hatpro` gets the corrected θ. Consequences: model − HATPRO biases recorded before 2026-09-25 are 0.3–0.5 K too SMALL (01 UT: +0.47 K); HATPRO − sonde (`exp/x16_judge/hatpro_vs_sondes_E72.log`) is now −1.2…−1.3 K in 0–100 m at night (was −0.8…−1.1) and still unsigned above 100 m (mean |Δ| 0.27–0.48 K) — so against the sondes the model's nocturnal 0–300 m bias is unchanged. **Not fixed:** `x16w_slope_diag.py` (`theta_from_T`, slope-station θ with the same 950 hPa at 545 m). **Rule.** Convert T to θ with measured pressure; a fixed reference pressure is a 0.1 K-per-hPa error.
