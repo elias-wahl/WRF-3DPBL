@@ -7,6 +7,23 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-09-25, 06:05 (clock) — LOOP ITERATION 2 RESULT: BOTH COLD-START SINGLE-SWITCH TESTS PASSED 03:50, BUT NEITHER SWITCH REMOVES THE MODE; THE PROBLEM IS THE CLOSURE'S EXPLICIT SCALAR FLUX (A31), AND ITS FIX IS A CODE CHANGE THAT NEEDS ELIAS. HERO SEGMENT a RUNS ON WITH THE SCALAR BACK-OFF.**
+- **Cold starts on the crash layout (2 × 128), 30-min frames, lowest 25 faces** — vapour faces with 2Δz flux component > 2 g kg⁻¹ m s⁻¹ / heat faces > 0.5 K m s⁻¹ / largest vapour 2Δz:
+
+| frame | crashed config (HDIAG) | + `pbl3d_t2_scalar = 1` (HERO a) | + class-19 `Z0MVT` 0 (HC2) |
+|---|---|---|---|
+| 02:00 | 35 / 269 / 12.4 | 17 / 290 / 11.6 | 43 / 196 / 7.4 |
+| 02:30 | 107 / 556 / 43.1 | 20 / 513 / 13.4 | 88 / 246 / 13.0 |
+| 03:00 | 60 / 381 / 16.4 | 50 / 504 / 12.9 | 107 / 277 / 37.6 |
+| 03:30 | 98 / 580 / 22.0 | 53 / 515 / 24.8 | 46 / 287 / 26.9 |
+| 04:00 | crashed 03:50 | 55 / 717 / 16.8 | 139 / 459 / **194** |
+
+  HERO a (only `t2_scalar = 1` added) passed 03:50 and is at 04:17+; HC2 (only the roughness removed) passed 03:50 and finished 04:10 — but with a 194 g kg⁻¹ m s⁻¹ spike at 04:00, four times the crashed run's worst. Survival past the marginal minute is mostly the changed trajectory. The scalar back-off halves the vapour side and leaves the heat side; the roughness lowers the heat side and not the vapour side. Neither removes the mechanism; the crest roughness stays (design, no reason to drop it).
+- **Retraction/correction (E70):** "state is lost at the restart, not last-bit growth" (02:55) is wrong. HR0B (full 1-min stream): at the restart time every prognostic and surface field is identical (only the solver diagnostics start at zero; `PBL3D_T2_STEPS` is reset every call, so it carries no memory); one minute later nearly all cells differ but by tiny amounts (median |Δθ| 6 × 10⁻⁵ K, |Δqv| 2 × 10⁻⁹, |Δp| 0.26 Pa), with large local jumps only where the odd–even mode is active (θ 8.2 K, p 4.8 hPa at i 243, j 285, k 7). A small perturbation at the restart, spread within a minute and amplified by the mode. Its seed is not identified.
+- **Where the loop stands.** Cause found in the sense that matters for a fix: an explicit-time instability of the closure's vertical scalar flux in thin (≈ 19 m), strongly turbulent (`q_sq` 15–18 m² s⁻²), saturated crest layers, whose effective diffusion number (≈ 0.6–0.75 from the growth factor) is 2–3 × the closure's own `q l Δt/(2Δz²)` estimate; production has it at 1/2–1/3 of HERO's amplitude. No existing switch removes it (`pbl3d_dn_max = 0.4` is inert because its proxy never reaches 0.4). Candidate fixes — for Elias, not implemented: (a) implicit (tridiagonal) vertical scalar transport in the closure, as already exists for q² (`pbl3d_sq_implicit`); (b) a limiter on the per-step scalar flux divergence; (c) `pbl3d_dn_max` evaluated with the effective scalar diffusivity instead of `q l/2`. Each needs the standing gates (soundness review, rebuild, bit-for-bit on defaults, devel smoke). Rating: 8/10 for the project, 7/10 for the model.
+
+---
+
 **2026-09-25, 02:55 (clock) — RESTART TWINS: ALL FIVE, THE CONTROL INCLUDED, RAN CLEAN TO 04:10 — THE RESTART IS NOT A FAITHFUL RE-ENTRY IN THIS CONFIGURATION, SO THE SINGLE-SWITCH TEST FAILED BY DESIGN; AS AN ENSEMBLE THEY RANK THE SWITCHES. NEXT SET: TWO COLD-START SINGLE-SWITCH TESTS ON THE CRASH LAYOUT (ONE OF THEM IS HERO SEGMENT a) AND A RESTART-FIDELITY TEST.**
 - **Restart fidelity (measured).** HR0 (identical to HDIAG, restart from its 03:30 file, same 2 × 128 layout) equals HDIAG at 03:30 and differs at 03:31 in 223 000 of 300 000 cells (T2 up to 0.47 K, U10 up to 0.59 m s⁻¹), at 03:50 in 293 000 (T2 1.2 K). Not last-bit growth: state is lost or re-initialised at the restart. The closure's state is in the file (`Q_SQ`, `Q_SQ_PROG_1/2`, `L_MASTER`, all `TURB_FLUX_*`). After the restart the odd–even mode is 3 × stronger than in the continuous run (faces with 2Δz vapour-flux component > 2 g kg⁻¹ m s⁻¹: 303 at 04:00 vs 35–107 in HERO 02:00–03:30; largest single-face value 301 vs 43). This also concerns HERO's chain, which restarts every 6 h (KNOWN_ISSUES E70). Test HR0B queued.
 - **Ensemble ranking (1-min frames 03:31–04:10, lowest 25 faces, time mean).** Faces with 2Δz vapour-flux component > 2 g kg⁻¹ m s⁻¹ / heat > 0.5 K m s⁻¹: control 165 / 722; `pbl3d_t2_scalar = 1` 82 / 785 (vapour −50 %); `pbl3d_dn_max = 0.4` 153 / 712 (no effect — the cap's proxy never exceeds 0.4); class-19 `Z0MVT` 0 93 / 428 (−43 % / −41 %); `diff_6th_slopeopt = 1` 159 / 717 (no effect). Filter option 5 and the diffusion cap are not involved; the scalar back-off and the crest roughness each suppress the mode by about half; neither removes it.
