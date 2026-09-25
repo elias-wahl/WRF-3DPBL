@@ -7,6 +7,10 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-09-25, 18:30 (clock) — HSI2 VERDICT: PASSED (8668069 COMPLETED 01→07 UT, 5:59 on 2 × 128); HERO2's GATE OPENED.** At 07:00 (morning heating, where the explicit mode peaks): vapour faces > 2 g kg⁻¹ m s⁻¹ / heat faces > 0.5 K m s⁻¹ / largest vapour 2Δz — explicit HERO segment a 484 / 4494 / 48.2, implicit HSI2 10 / 71 / 5.0 (−98 %); both finite, T2 259–298 K in both, max |W| 16.3 vs 16.4 m s⁻¹, q² max 44 vs 35 m² s⁻². Over the whole 01→07 run the implicit solve holds the mode at ≤ 4 % of the explicit run's in every frame, with the same extremes of the flow — the numerical fix for A31 is validated in the configuration that crashed. HERO2 (8670451) now pending (Resources, i.e. next in line); the scheduler's backfill estimate is 26 Sep 12:16 (the test-only projection was 01:38) → finish ≈ 27 Sep 10:00 if the estimate holds. Rating 8/10 for the model fix (validated statistically on the crash configuration; momentum still explicit).
+
+---
+
 **2026-09-25, 18:10 (clock) — HERO2 SUBMITTED (Elias: "ok do it"): job 8670451, the whole 47 h (17 Jul 01 UT → 19 Jul 00 UT) in one job on 5 × 128, wall 23:30, `zen3_1024`, `afterok` on HSI2 (8668069) as the gate.** Choice from the finish-time table (starts from `sbatch --test-only`, optimistic; runtimes from HERO segment a's measured 1.96 s/step on 2 × 128 in HERO's own configuration, compute part scaled with 97/95/93 % efficiency, output ≈ 4.5 min per simulated hour held constant): 2 nodes 46.1 h → finish 27 Sep ≈ 16:45; 3 nodes 32.7 h → 27 Sep ≈ 05:20; 4 nodes 25.9 h → 27 Sep ≈ 03:30; **5 nodes 21.8 h → 26 Sep ≈ 23:25** (109 node-hours vs 92 for 2 nodes). Configuration as built 18:10 (`restart_interval = 720`, both implicit switches, `t2_scalar = 1`, class-19 roughness 0.05). The earlier 3-node header with a 30:00 wall would have timed out (needs ≈ 32.7 h) — corrected before the node change.
 
 ---
