@@ -499,6 +499,11 @@ def check(nl):
             note(WARN, "pbl3d_sq=%g with the explicit vertical q^2 diffusion: stable only while "
                        "S_q l q dt/dz^2 < 1/2 -- S_q = 1.0 blew up at 08:48 in the convective morning "
                        "(KNOWN_ISSUES E28); set pbl3d_sq_implicit = 1" % sq)
+        ssi = g("pbl3d_scalar_implicit", int, 0)
+        if ssi not in (0, 1):
+            note(FATAL, "pbl3d_scalar_implicit must be 0 (explicit, previous behaviour) or 1 (implicit theta/qv, A31)")
+        if ssi == 1 and g("pbl3d_nsteps", int, 1) != 1:
+            note(FATAL, "pbl3d_scalar_implicit = 1 requires pbl3d_nsteps = 1")
         if g("pbl3d_init_opt", int, 0) == 0 and p3 == 2:
             note(WARN, "pbl3d_init_opt=0 starts q^2 at its floor everywhere; the 3D closure "
                        "then needs >1 h to spin up (DECISIONS 2026-08-20) -- intended only "

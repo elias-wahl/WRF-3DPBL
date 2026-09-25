@@ -2262,7 +2262,8 @@
               khz, tracer, tracer_tend, pbl3d_opt, ss, config_flags, turb_flux_wtheta, turb_flux_uw, turb_flux_vw, &
               turb_flux_w2, turb_flux_wqv, turb_flux_wqc, turb_flux_wqr, turb_flux_wqi, turb_flux_wqs, turb_flux_wqg, &
               turb_flux_wqnc, turb_flux_wqnr, turb_flux_wqni, turb_flux_wqnwfa, turb_flux_wqnifa, rdz, dnw, dn, rho, &
-              fnm, fnp, n_tracer, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+              fnm, fnp, n_tracer, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, &
+              th_in, qv_in, mut_in, c1h_in, c2h_in, dt_in)
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !                                               !
@@ -2292,6 +2293,11 @@
           dqnc, dqnr, dqni, dqnwfa, dqnifa
       real, dimension (ims:ime, kms:kme, jms:jme, n_tracer), intent(in) ::  tracer
       real, dimension (ims:ime, kms:kme, jms:jme, n_tracer), intent(inout) ::  tracer_tend
+        ! Only used by pbl3d_scalar_implicit = 1 (OPEN_ISSUES A31)
+      real, dimension (ims:ime, kms:kme, jms:jme), intent(in), optional :: th_in, qv_in
+      real, dimension (ims:ime, jms:jme),          intent(in), optional :: mut_in
+      real, dimension (kms:kme),                   intent(in), optional :: c1h_in, c2h_in
+      real,                                        intent(in), optional :: dt_in
       
         ! Local vars
       integer :: im
@@ -2326,6 +2332,25 @@
         call Vertical_mixing_s_with_flux (dqv, config_flags, turb_flux_wqv,  &
             dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms, &
             jme, kms, kme, its, ite, jts, jte, kts, kte)
+      end if
+
+        ! pbl3d_scalar_implicit = 1 (OPEN_ISSUES A31): the explicit theta and qv tendencies above are
+        ! turned into backward-Euler ones. The explicit step of the closure's vertical scalar flux goes
+        ! unstable (2 dt / 2 dz odd-even mode) where the effective diffusion number exceeds 0.5; the
+        ! implicit step is unconditionally stable for the down-gradient part of the flux and returns the
+        ! explicit tendency unchanged where that part is small. Default 0: nothing here is executed.
+      if (config_flags%pbl3d_scalar_implicit == 1) then
+        if (.not. (present(th_in) .and. present(qv_in) .and. present(mut_in) .and. &
+                   present(c1h_in) .and. present(c2h_in) .and. present(dt_in))) &
+          call wrf_error_fatal ('PBL3D: pbl3d_scalar_implicit = 1 needs th_in, qv_in, mut_in, c1h_in, c2h_in, dt_in')
+        if (config_flags%pbl3d_nsteps /= 1) &
+          call wrf_error_fatal ('PBL3D: pbl3d_scalar_implicit = 1 requires pbl3d_nsteps = 1')
+        if (ADD_TEND_T) call Vertical_mixing_s_implicit (dth, config_flags, turb_flux_wtheta, th_in, rdz, &
+            dnw, rho, fnm, fnp, mut_in, c1h_in, c2h_in, dt_in, ids, ide, jds, jde, kds, kde, &
+            ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+        if (ADD_TEND_Q) call Vertical_mixing_s_implicit (dqv, config_flags, turb_flux_wqv, qv_in, rdz, &
+            dnw, rho, fnm, fnp, mut_in, c1h_in, c2h_in, dt_in, ids, ide, jds, jde, kds, kde, &
+            ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
       end if
 
       if ( config_flags%pbl3d_scalar_mix .eq. 1 .and. ss .eq. config_flags%pbl3d_nsteps ) then
@@ -2828,6 +2853,123 @@
       end do
 
     end subroutine Vertical_mixing_s_with_flux
+
+
+    subroutine Vertical_mixing_s_implicit (tendency, config_flags, turb_flux, phi, rdz, dnw, rho, fnm, fnp, &
+              mut, c1h, c2h, dt, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        !                                                                                    !
+        ! Purpose: pbl3d_scalar_implicit = 1. Replaces the explicit coupled tendency of a     !
+        !          mass-point scalar phi (from Vertical_mixing_s_with_flux, same face         !
+        !          densities and metrics) by a backward-Euler one.                            !
+        !                                                                                    !
+        ! At interior face k the closure's flux F is split into a down-gradient part         !
+        ! -K dphi/dz, K = -F / (dphi/dz) where that is positive (capped at K dt rdz^2 = 100),!
+        ! and a remainder (counter-gradient part, the part above the cap, the surface and    !
+        ! top faces) that stays explicit. With delta = phi(n+1) - phi(n) the step is         !
+        !   (I + b D_K) delta = dt * T_explicit / m,   b = -g dt / (dnw m),  m = c1h mut + c2h !
+        ! where D_K is the tridiagonal diffusion operator of the K part: exactly the         !
+        ! explicit increment on the right, the implicit correction on the left. Solving for  !
+        ! the increment keeps single-precision round-off out of the tendency. The matrix is  !
+        ! diagonally dominant (M-matrix), so the K part cannot overshoot or change sign.     !
+        ! Output: tendency = m * delta / dt (coupled, as before). OPEN_ISSUES A31.           !
+        !                                                                                    !
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+      implicit none
+
+      type (grid_config_rec_type), intent(in) :: config_flags
+      integer,                     intent(in) :: ids, ide, jds, jde, kds, kde, &
+                                                 ims, ime, jms, jme, kms, kme, &
+                                                 its, ite, jts, jte, kts, kte
+
+      real, dimension (kms:kme),                   intent(in)    :: dnw, fnm, fnp, c1h, c2h
+      real, dimension (ims:ime, kms:kme, jms:jme), intent(in)    :: turb_flux, phi, rdz, rho
+      real, dimension (ims:ime, jms:jme),          intent(in)    :: mut
+      real,                                        intent(in)    :: dt
+      real, dimension (its:ite, kts:kte, jts:jte), intent(inout) :: tendency
+
+        ! Local vars
+      real, parameter :: DN_CAP = 100.0
+      integer :: i, j, k, ktf
+      integer :: i_start, i_end, j_start, j_end
+      real :: grad, keff, kcap, w
+      real, dimension (kts:kte+1) :: rface, kf
+      real, dimension (kts:kte)   :: mk, bk, lo, di, up, rh, xs
+
+        ! Same loop limits as Vertical_mixing_s_with_flux
+      i_start = its
+      i_end   = Min (ite, ide - 1)
+      j_start = jts
+      j_end   = Min (jte, jde - 1)
+      ktf = Min (kte, kde - 1)
+
+      if (config_flags%open_xs .or. config_flags%specified .or. &
+        config_flags%nested) i_start = Max (ids + 1, its)
+      if (config_flags%open_xe .or. config_flags%specified .or. &
+        config_flags%nested) i_end   = Min (ide - 2, ite)
+      if (config_flags%open_ys .or. config_flags%specified .or. &
+        config_flags%nested) j_start = Max (jds + 1, jts)
+      if (config_flags%open_ye .or. config_flags%specified .or. &
+        config_flags%nested) j_end   = Min (jde - 2, jte)
+
+      do j = j_start, j_end
+        do i = i_start, i_end
+
+            ! Face densities exactly as in the explicit operator
+          rface(kts) = rho(i, kts, j)
+          do k = kts + 1, ktf
+            rface(k) = fnm(k) * rho(i, k, j) + fnp(k) * rho(i, k - 1, j)
+          end do
+          rface(ktf + 1) = rho(i, ktf, j)
+
+            ! Down-gradient diffusivity at the interior faces (surface and top faces stay explicit)
+          kf(kts) = 0.0
+          kf(ktf + 1) = 0.0
+          do k = kts + 1, ktf
+            kf(k) = 0.0
+            grad = (phi(i, k, j) - phi(i, k - 1, j)) * rdz(i, k, j)
+            if (grad /= 0.0) then
+              keff = - turb_flux(i, k, j) / grad
+              if (keff > 0.0) then
+                kcap = DN_CAP / (dt * rdz(i, k, j) * rdz(i, k, j))
+                kf(k) = Min (keff, kcap)
+              end if
+            end if
+          end do
+
+            ! Tridiagonal system for the increment
+          do k = kts, ktf
+            mk(k) = c1h(k) * mut(i, j) + c2h(k)
+            bk(k) = - G * dt / (dnw(k) * mk(k))
+            up(k) = 0.0
+            lo(k) = 0.0
+            if (k < ktf) up(k) = - bk(k) * rface(k + 1) * kf(k + 1) * rdz(i, k + 1, j)
+            if (k > kts) lo(k) = - bk(k) * rface(k) * kf(k) * rdz(i, k, j)
+            di(k) = 1.0 - up(k) - lo(k)
+            rh(k) = dt * tendency(i, k, j) / mk(k)
+          end do
+
+            ! Thomas algorithm (no pivoting needed: diagonally dominant)
+          do k = kts + 1, ktf
+            w = lo(k) / di(k - 1)
+            di(k) = di(k) - w * up(k - 1)
+            rh(k) = rh(k) - w * rh(k - 1)
+          end do
+          xs(ktf) = rh(ktf) / di(ktf)
+          do k = ktf - 1, kts, -1
+            xs(k) = (rh(k) - up(k) * xs(k + 1)) / di(k)
+          end do
+
+          do k = kts, ktf
+            tendency(i, k, j) = mk(k) * xs(k) / dt
+          end do
+
+        end do
+      end do
+
+    end subroutine Vertical_mixing_s_implicit
 
 
     subroutine Horizontal_turb_mix (rt_tendf, ru_tendf, rv_tendf, rw_tendf, moist_tendf, qc_tendf, qr_tendf, &
