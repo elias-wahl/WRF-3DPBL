@@ -7,6 +7,13 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-09-25, 09:40 (clock) — `pbl3d_scalar_implicit` BUILT AND BOTH GATES PASSED; SCIENCE TWIN HSI2 QUEUED (8668069).** Build `BUILD OK` (serial, login node, `.build_scalar_implicit.log`), `ldd` clean; source committed `889d98f19`.
+- **Gate 1 (defaults unchanged):** SMOKEDEF (8668043, new binary, 5 × 128, 13:00–13:10) against its 2026-09-22 archive 8659688 (old binary): **332 variables bit-for-bit identical at 13:05 and 13:10**.
+- **Gate 2 (switch on):** SMOKESI (8668044, same with `pbl3d_scalar_implicit = 1`): finite everywhere; |Δθ| 99th percentile 0.26 / 0.19 / 0.11 / 0.05 / 0.015 / 0.001 K at levels 0 / 2 / 5 / 10 / 20 / 40 at 13:10 — confined to the surface layer. Faces with a 2Δz heat-flux component > 0.5 K m s⁻¹: 417 (explicit) → 199 (implicit), largest 4.05 → 1.57 K m s⁻¹. The largest difference (5.9 K at level 1, i 373, j 242, needleleaf slope at 1282 m, HFX 441 W m⁻²) is the odd–even mode removed: explicit θ 302.67 / 294.45 / 298.99 K over the lowest three levels, implicit 303.02 / 300.37 / 299.86 / 298.91 K (monotonic superadiabatic surface layer). 275 cells differ by > 1 K, 219 of them at levels 0–1.
+- **Next:** HSI2 = the crashed HERO configuration (HDIAG: `t2_scalar = 0`, class-19 `Z0MVT` 0.30, filter option 5, urban canopy) + `pbl3d_scalar_implicit = 1` + `pbl3d_sq_implicit = 1`, cold start 01→07 UT on 2 × 128, 30-min history and 10-min stream with the closure fluxes; judged by the odd–even mode counts against HDIAG (crashed 03:50), HERO segment a and X26. Rating of the gates: 8/10.
+
+---
+
 **2026-09-25, 10:05 (clock) — BOTH IMPLICIT SWITCHES ON FROM NOW ON (Elias: "if the implicit solver does not add much in computational cost we will run both for now").** The science test after the two gates is **HSI2** only (crashed HERO configuration + `pbl3d_scalar_implicit = 1` + `pbl3d_sq_implicit = 1`, cold 01→07 UT, 2 × 128). **Remark for later (Elias): test whether `pbl3d_sq_implicit` can be dropped** — its twin HSI1 (scalar implicit only) is built (`branko_runs/innval_pbl3d_HSI1`) and not submitted. History of that switch: added 2026-08-29 (commit `435bf8c6c`, validated the same day, DECISIONS ~12:35) for KNOWN_ISSUES E28 — explicit q² diffusion is stable only while S_q l q Δt/Δz² < ½ and S_q = 1.0 blew up in the convective morning; at the production S_q = 0.2 it has never been needed, so dropping it is plausible, but with both on the θ/qv and q² vertical operators are consistent (both backward Euler). Cost of both: the q² analogue measured 1.540 vs 1.541 s/step.
 
 ---
