@@ -504,6 +504,14 @@ def check(nl):
             note(FATAL, "pbl3d_scalar_implicit must be 0 (explicit, previous behaviour) or 1 (implicit theta/qv, A31)")
         if ssi == 1 and g("pbl3d_nsteps", int, 1) != 1:
             note(FATAL, "pbl3d_scalar_implicit = 1 requires pbl3d_nsteps = 1")
+        tmf = g("pbl3d_thm_flux", int, 0)
+        if tmf not in (0, 1, 2):
+            note(FATAL, "pbl3d_thm_flux must be 0 (previous behaviour), 1 (theta_m-consistent heat flux, A38) "
+                        "or 2 (1 + physical theta_v buoyancy, A23.2)")
+        if tmf > 0 and g("use_theta_m", int, 1) != 1:
+            note(FATAL, "pbl3d_thm_flux > 0 requires use_theta_m = 1")
+        if g("pbl3d_pblh_agl", int, 0) not in (0, 1):
+            note(FATAL, "pbl3d_pblh_agl must be 0 (previous behaviour) or 1 (PBLH above ground, A37)")
         if g("pbl3d_init_opt", int, 0) == 0 and p3 == 2:
             note(WARN, "pbl3d_init_opt=0 starts q^2 at its floor everywhere; the 3D closure "
                        "then needs >1 h to spin up (DECISIONS 2026-08-20) -- intended only "
