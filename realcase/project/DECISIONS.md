@@ -43,7 +43,7 @@ Crest v is −3.1…−5.6 m s⁻¹ without a break from 10 to 18 UT (maximum 17
 **Reading (inferred):** the incursion sets the floor's warm start into the night (+1.2…+1.5 K over ICON at 19 UT), but ending it an hour earlier (HERO2) changes the night only for an hour at Kolsass; the 22–05 UT bias against the radiometers is then carried mostly by what ICON also has (A34). The persistent evening up-valley wind in the Kolsass–Radfeld reach is a separate evening defect of the same size in HERO2 as the incursion's legacy; it restarts because the incursion that had suppressed it withdraws while the along-valley thermal force is still up-valley (Radfeld thermal force 18–21 UT HERO2 +1.9 vs observed +0.7 × 10⁻³ m s⁻², 190–400 m).
 Rating 7/10 research (answers the question with every frame and on each run's own terrain; the persistence is measured, the causal reading inferred), 5/10 model.
 
-*Addendum 09:45 — the heat budget in the corrected frame (E75; advection from `lee_budget_frame_check.log`, closure term SGS from `hero2_lee_barrier_evening.log` / `hero2_lee_barrier.log`, which E75 does not touch; tendency = centred 30-min frame difference; K h⁻¹, 0–300 m AGL zone means):*
+*Addendum 09:40 — the heat budget in the corrected frame (E75; advection from `lee_budget_frame_check.log`, closure term SGS from `hero2_lee_barrier_evening.log` / `hero2_lee_barrier.log`, which E75 does not touch; tendency = centred 30-min frame difference; K h⁻¹, 0–300 m AGL zone means):*
 
 | | advection | SGS | sum | actual | residual |
 |---|---|---|---|---|---|
