@@ -2840,6 +2840,7 @@ rconfig   integer madwrf_cldinit             namelist,physics      1            
 # For Noah-MP
 rconfig   integer dveg        namelist,noah_mp      1           4         h    "dveg"     "dynamic vegetation (1 -> off ; 2 -> on)"   ""
 rconfig   integer opt_crs     namelist,noah_mp      1           1         h    "opt_crs"  "canopy stomatal resistance (1-> Ball-Berry; 2->Jarvis)"   ""
+rconfig   integer noahmp_tv_conv namelist,noah_mp   1           0         h    "noahmp_tv_conv"  "canopy temperature iteration (0-> original: storage of earlier iterations dropped, energy not conserved at small time steps, OPEN_ISSUES A36; 1-> consistent Newton residual with the heat storage since the start of the step)"   ""
 rconfig   integer opt_btr     namelist,noah_mp      1           1         h    "opt_btr"  "soil moisture factor for stomatal resistance (1-> Noah; 2-> CLM; 3-> SSiB)"   ""
 rconfig   integer opt_runsrf  namelist,noah_mp      1           3         h    "opt_runsrf"  "surface runoff (1->SIMGM; 2->SIMTOP; 3->Schaake96; 4->BATS; 5->Miguez-Macho & Fan; 6->VIC; 7->Xiananjiang; 8->Dynamic VIC)"   ""
 rconfig   integer opt_runsub  namelist,noah_mp      1           3         h    "opt_runsub"  "subsurface runoff and groundwater (1->SIMGM; 2->SIMTOP; 3->Schaake96; 4->BATS; 5->Miguez-Macho & Fan; 6->VIC; 7->Xiananjiang; 8->Dynamic VIC)"   ""

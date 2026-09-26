@@ -44,6 +44,7 @@ CONTAINS
     USE module_configure, ONLY : grid_config_rec_type, model_config_rec
     USE module_radiation_driver, ONLY : pre_radiation_driver, radiation_driver
     USE module_surface_driver, ONLY : surface_driver
+    USE ConstantDefineMod, ONLY : NoahmpCanTempConvOpt
     USE module_cumulus_driver, ONLY : cumulus_driver
     USE module_shallowcu_driver, ONLY : shallowcu_driver
     USE module_pbl_driver, ONLY : pbl_driver
@@ -603,6 +604,7 @@ BENCH_START(surf_driver_tim)
 
 
 
+      NoahmpCanTempConvOpt = config_flags%noahmp_tv_conv   ! A36 switch for the Noah-MP canopy iteration
       CALL surface_driver(                                                &
      &        HYDRO_dt=HYDRO_dt,  sfcheadrt=grid%sfcheadrt,               &
      &        INFXSRT=grid%INFXSRT,  soldrain=grid%soldrain,              &
