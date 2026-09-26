@@ -1580,4 +1580,3 @@ The 10 m Tirol DEM (`data/geo/DGM_Tirol_10m_epsg31254_2006_2020.tif`) puts sf23 
 
 ## E79 — `use_theta_m` cannot be switched at a restart by converting THM (θm → θ): the dry column mass jumps (2026-09-26)
 Converting `THM_1/THM_2` = θm − 300 to θ − 300 with θ = θm/(1 + (Rv/Rd)·qv) and restarting with `use_theta_m = 0` (smoke LE3S, 17 July 13 UT, 12 min) leaves θ consistent (history T within 0.25 K mean) but MU/PSFC rise by +351 Pa domain mean at 13:06 and +555 Pa at 13:12 (p99 +1216 Pa) against the `use_theta_m = 1` twin — the restart's other state (pressure/density diagnostics) is not consistent with the switch. Use a cold start from `real.exe` output (dry θ) to test `use_theta_m = 0`, or change the code with `use_theta_m = 1` kept.
-
