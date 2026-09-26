@@ -1327,6 +1327,7 @@ Skill: `.claude/skills/vsc5-queue/SKILL.md`.
 **Rule.** A level-set (or any grid) change is gated by a run through the *twin's* worst hour, taken from a restart on the same layout (here 16:00→17:00 would have caught it for 25 min of 5 nodes), or by running the first segment as 2 h pieces so a failure costs 40 min, not 1:40 h plus a queue wait. The smoke still has its place: it catches the start (E15/E17-class errors), not the physics.
 
 ## E45 — PBLH is stale in every 3D-closure run: with `bl_pbl_physics=0` no scheme updates it, so the field stays at its real.exe/init value for the whole run (2026-09-09)
+**[CORRECTED 2026-09-26: the cause is not staleness but OPEN_ISSUES A37 — the closure's PBLH is diagnosed with ASL heights against an AGL bound, so it equals the terrain height + ≈ 17 m.]**
 
 **Symptom.** Domain-median PBLH identical to two decimals at 09/11/13 UT of a
 convective day (1186.0 m) in the x12m archive; MYNN's evolves normally.
