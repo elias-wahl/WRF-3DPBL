@@ -1,10 +1,52 @@
 # Open issues / questions — 3D PBL rebase (WRF v4.4 -> v4.8.0)
 
+## A35 — OPEN (2026-09-26): in the run spun up from 01 UT (HERO2) the northerly break-in grows from ≈ 10 UT, with the morning heating, not from 13–14 UT; filter option 5 does not hold the 2–6 Δx band at ICON's level
+Lee-slope v (0–300 m AGL) departs from ICON's 00 UT cycle by −1.1 m s⁻¹ at 10 UT, −2.6 at 13, −4.2 at 17; the lee–floor buoyancy barrier falls 1.7 → 0.3 K between 09 and 12 UT (ICON 2.0 → 1.4) because the floor warms 1 K faster than ICON's (lee θ within ±0.25 K), while the floor takes +60…+90 W m⁻² more sensible heat than ICON's surface (A30, larger in HERO2's land set); Innsbruck turns northerly at 12 UT. 2–6 Δx band at 1800 m: 0.23 (10 UT) → 0.31–0.41 (11–15 UT) vs ICON 0.21 and X12mta 0.20–0.37. The 13–14 UT onset in the ledger was set by the 13 UT start of the lineages. No same-state control: the floor heat, the UCM towns, filter option 5 and the start time are not separated. DECISIONS 2026-09-26 09:30.
+
+## A34 — OPEN (2026-09-26): the forcing model shares most of the night warm bias of the valley air — ICON is +2.4…+2.7 K at 0–100 m over both HATPROs (22–05 UT, 17/18 July, both cycles), WRF +2.9…+4.0 K
+WRF's own share is +0.5…+1.3 K at 0–100 m (HERO2 +0.9 Radfeld, +1.3 Kolsass above its own forcing cycle) but +2…+3 K at 2 m, where ICON's T2 is on the stations only because it sits under a 1–2 K inversion in its lowest 7 m (observed 2 m → 0–100 m contrast 0.4–0.6 K; HERO2 1.4–1.7; ICON 3.1). ICON is also warm on the end of the night before (17 Jul 01–07 UT, +1.1…+2.4 K at Kolsass). Consequences: (1) ICON is not a target for the night valley atmosphere; the observations are; (2) a bias shared by two models with different closures, surface schemes and dynamical cores at 500 m points at what they share (terrain resolution, the missing deep evening cold-air supply at Radfeld, A32) or at the radiometers — the Radfeld one agrees with its 2 m sensor to 0.1 K at night. To firm up: ICON on its native grid (no metgrid remap), the second night. DECISIONS 2026-09-26 09:30.
+
+## A33 — OPEN, possible future work (2026-09-25): the scalar-block retry (`pbl3d_t2_scalar = 1`) is justified, but has two consistency gaps
+**Why it is justified (soundness check for Elias, 2026-09-25).** Without it the closure's heat flux at the first interior face (18 m) over heated ground is 0; a convective surface layer should carry 0.96–0.98 of the surface flux there (linear CBL flux profile, depth 500–1000 m), and similarity theory (Dyer φ_h, median surface flux 0.12 K m s⁻¹, u* 0.2–0.4 m s⁻¹ assumed) gives a θ drop 9 → 27 m of 0.24–0.31 K against 2.5–3.0 K with the check off and 0.4–0.6 K with it on (A18 twins, DECISIONS 2026-08-29/30). The retry keeps the algebraic closure below its unstable pole — for the full 10×10 with a vertical θ gradient only, det A = 0 at |N|τ = 1/√(3A₂(B₂+4A₁)) = 0.181 (MY82; analytic and numeric, `talks/2026_committee/analysis/amat*.py`) — the per-point analogue of the unstable-side limit G_H ≤ 0.0233 (|N|τ ≤ 0.153) of Galperin et al. (1988), whose stable-side l ≤ 0.53 q/N is already `pbl3d_n_tau_max`.
+**Gap 1 — the retried l does not reach the dissipation.** `dg_t1_ratio` carries the strain-limit result only (by design, the one-master-length block in `Calc_fluxes`, `db3b9176c`), so at a retried face the fluxes use l/2ⁿ while ε = q³/(B₁l) keeps the strain-limited l: the eddy transports like a short one and dissipates like a long one, the inconsistency removed for the strain limit, now on 15–40 % of the unstable faces (HERO a 8667361, 03/07 UT; `tiers*.py`). Expected bias: ε too small, q² too high there — possibly part of the +61 % q² on sunlit slopes in the morning twin (N2S, DECISIONS 2026-08-30 22:45).
+**Gap 2 — factor-2 discontinuity.** `L_BACKOFF = 0.5` makes l jump by 2× where the check trips.
+**To do (not started; each opt-in, default bit for bit, soundness check first).** (1) A switch that writes the retry's l ratio back into `l_master` as for the strain limit; one twin from a sunlit-morning restart, judged on q² at the first faces, the 18-m heat flux, h_θ and T2. (2) A smooth unstable cap l ≤ c_u q/|N| before the solve (Galperin: c_u = √0.0233 = 0.153), the retry kept as backstop because shear moves the pole. (3) Fetch Galperin, Kantha, Hassid & Rosati (1988, J. Atmos. Sci. 45, 55–62) and confirm the bound — quoted from memory. Context: a local patch for transport that is non-local near heated ground (MY level 2.5 has no counter-gradient term; at 500 m the grid resolves part of the plumes).
+
+## A32 — OPEN (2026-09-25): along-valley structure of the evening/night error, from the second profile site (Radfeld HATPRO + lidar) — the model misses Radfeld's deep evening cooling, keeps its up-valley flow ~4 h too long, and carries a Kolsass-reach warm anomaly from the northerly intrusion that biases the along-valley thermal force; both closures, every lineage
+**Measured** (DECISIONS 2026-09-25 ~11:45, ~12:40, ~14:30; logs `exp/x16_judge/hatpro_radfeld_check.log`, `radfeld_hatpro_insights.log`, `radfeld_profile_station.log`, `valley_force_tests.log`): (1) night 22–05 UT bias 0–100 m Radfeld +2.9…+3.2 K, Kolsass +3.4…+3.9 K — valley-wide; afternoon 13–17 UT Radfeld ≈ 0, Kolsass +0.4…+0.5 (+1.8 at 17 UT, MYNN too). (2) Radfeld 19–21 UT cooling at 100–600 m: obs −2.0…−2.3 K, model −0.2…−0.7. (3) Lidar at Radfeld: up-valley flow reverses at 400–700 m at 17 UT (obs) vs 21 UT (model); 18–21 UT at 190–400 m obs +0.5 vs model +2.3…+2.9 m s⁻¹; dawn down-valley jet obs −7.0 vs model −4.2 m s⁻¹. (4) Along-valley force: valley-wide (Innsbruck–Kufstein TAWES, 650 m ASL) the night force is right (obs −0.20, model −0.29 × 10⁻³ m s⁻²) but the afternoon up-valley force is 65 % of observed (+1.29 vs +2.03); Radfeld–Kolsass thermal force 0.8 × 10⁻³ too up-valley in the evening/night, from a Kolsass warm anomaly (+0.6…+0.9 K below 1500 m ASL) that starts with the intrusion (16–19 UT) and persists. (5) Above ~2200 m ASL the night model is within 0.2 K of the sondes — the bias is in the valley atmosphere.
+**Retracted within the day:** a "missing non-thermal (Alpine-scale) night force" — the i-Box barometer (E73).
+**To do.** (a) Test the intrusion as the cause of the Kolsass-reach anomaly once the lead problem has a twin that removes the break-in: judge on the Radfeld–Kolsass contrast (560–1500 m ASL) and the thermal force. (b) Find the observed deep evening cold-air supply at Radfeld (side-valley outflow — Alpbach, Brandenberg — or down-valley advection) in the lidar/HATPRO and the model. (c) The valley-wide afternoon up-valley force deficit (65 %) with A30's slope-heating excess in mind. (d) Diagnostics debt: `wrf3dpbl-diag/x16w_slope_diag.py` still converts slope-station T with 950 hPa (E72). Footprint of (b)–(d): analysis only.
+
+## A31 — FIXED BY `pbl3d_scalar_implicit` + `pbl3d_sq_implicit`, VALIDATED 2026-09-25 18:30 (HSI2: mode −96…−98 % in every frame, 01→07 UT, crashed configuration) — was OPEN (2026-09-25): odd–even (2Δt / 2Δz) instability of the closure's explicit vertical scalar transport in a strongly turbulent nocturnal crest layer — killed HERO at 03:50 UT
+
+Measured in HDIAG (DECISIONS 2026-09-25 02:00): at i 157, j 92, 100–160 m above a 2550 m crest (class 19, `Z0MVT` 0.30 m, `q_sq` 15–18 m² s⁻², saturated), the vapour and θ anomalies alternate sign every step and between levels, growing ×1.3–2 per step, until vapour 26.9 g kg⁻¹ / θ 135–400 K and NaN within 50 s; RRTMG-LW then segfaults on the NaN. The closure's own diffusion-number proxy `q l Δt/(2Δz²)` stays 0.1–0.3 there; the growth implies ≈ 0.6–0.75, so the scalar flux is 2–3 × `q l/2`. Configuration of the crash: `pbl3d_t2_scalar = 0`, `pbl3d_dn_max = 0`, `diff_6th_slopeopt = 5`, urban canopy on, ICON terrain. Restart twins HR0–HR4 (control; `t2_scalar = 1`; `dn_max = 0.4`; `Z0MVT(19) = 0`; `slopeopt = 1`) decide which switch stops it. **Update 02:55:** it can — X26 at night carries the same mode on class-19 crests at 1/2–1/3 of HERO's amplitude. In restart twins the scalar back-off and zero crest roughness each halve it; the filter and `pbl3d_dn_max = 0.4` do nothing. The root is the explicit scalar flux itself; the configuration only sets its amplitude. **06:05:** cold starts confirm it (back-off halves the vapour side; zero crest roughness still produced a 194 g kg⁻¹ m s⁻¹ spike). **10:05:** `pbl3d_scalar_implicit` implemented (DECISIONS 09:30); both implicit switches on from now on; to test later whether `pbl3d_sq_implicit` can be dropped (twin HSI1 ready). Earlier fix candidates for Elias: implicit vertical scalar transport (as `pbl3d_sq_implicit` does for q²), a per-step flux-divergence limiter, or `pbl3d_dn_max` evaluated with the effective scalar diffusivity.
+
+
+## A30 — OPEN (2026-09-18): the slopes of the Innsbruck–Jenbach reach give the valley air 40 % more sensible heat than ICON's surface at the same available energy — 80 % of it from evergreen-needleleaf cells (Noah-MP Bowen 1.9 vs ICON 0.5 at LAI 4, half the slope area); at the slope sonics the model's Bowen ratio is 2–3× observed (Weerberg 0.46 vs 0.20, Eggen 0.56 vs 0.14) while the Kolsass floor is exact (0.32 vs 0.32). Candidate common root of the afternoon floor over-warming (+1.3 K vs ICON by 16 UT, both closures), the lee-slope northerly break-in (buoyancy barrier gone) and the evening/night warm bias. Momentum side exonerated (WRF holds ICON's along-valley PGF and up-valley wind to 16 UT). Logs `exp/x16_judge/valley_heat_input_icon_vs_wrf.log`, `slope_hfx_by_landuse_X17.log`, `X17a_daytime_gate.log`; DECISIONS 2026-09-18 09:03. Next: a well-posed twin with the forest sensible heat halved (canopy/stomatal parameters of class 14, opt-in) judged on floor θ at 16 UT, the 17 UT break-in and the 21 UT bias; needs Elias's go (no WRF sensitivity runs without it).
+
+*Update 2026-09-18 12:50 (X20):* forest `MP` 9 / `VCMX25` 60 brings the needleleaf Bowen ratio 2.10 → 1.27 (target met); meadow relabel 0.53 → 0.44 (target 0.25 not met); class-19 vegetation inert (`ISBARREN`). Reach sensible heat −15 of the +62 W m⁻² excess; floor θ, break-in and evening bias unchanged → A30 is a surface correctness item, NOT the root of the break-in or the evening bias (scaled: ≈ 0.5 K of a 1.9 K barrier loss). DECISIONS 2026-09-18 12:50.
+
+## A29 — OPEN (2026-09-17): two groups of land-use classes run on Noah-MP's flat-soil roughness of 2 mm — the rock crests (USGS 19, 14 % of the domain) and the project's CORINE urban extension 31–33 (4.1 %, the valley-floor towns); candidate cause of the late-afternoon northerly break-in over the northern range and of the too-strong 10 m winds in the towns
+**Measured.** `ZNT` in the output: class 19 and 24 → 0.002 m (table `Z0MVT = 0`, fallback `Z0SOIL = 0.002`); classes 31–33 → 0.002 m although the table says 1.0 m, because they are neither vegetated (table LAI 0) nor flagged urban (flag only for class 1 or > `URBTYPE_beg` = 50), so they are bare soil to Noah-MP in every respect. Crest 10 m wind 1.6–1.9× ICON's under the same flow aloft; town-station 10 m winds 50–90 % too strong. **Literature.** Bare rock 0.05 m (CORINE wind-atlas tables), block fields ~0.05 m, debris 0.005–0.5 m; snow/ice 0.5–4.5 mm (2 mm is right); urban fabric 0.4–0.7 m. **Implemented 2026-09-17 21:10 (opt-in, default bit-identical; experiment X19a behind a bit-for-bit gate — DECISIONS).** Originally proposed: per-class bare-ground roughness for class 19 (0.05 m; 0.1 m sensitivity); classes 31–33 flagged urban (`URBTYPE_beg = 30` candidate) with 0.4/0.5/0.7 m — the latter also changes the floor's energy balance. DECISIONS 2026-09-17 (roughness audit).
+
+*Update 2026-09-18 08:51:* X19r (class-19 z0 = 0.20 m, restart 16 → 19 UT) leaves the break-in and the station winds unchanged (Innsbruck 17 UT 8.4 vs 8.7 m s⁻¹ from 348°; crest wind −15…20 % only). With X19a this closes the roughness hypothesis for the valley wind; what remains of A29 is the land-use correctness patch (sound version, proposal only). The break-in is closure-independent (X17m) — see DECISIONS 2026-09-18.
+
+## A28 — STATE PART SETTLED 2026-09-17 (spun-up land state from HRLDAS is production; twin X16s puts the surface energy balance on the observations and shows the pool deficit is atmospheric transport — DECISIONS 2026-09-17 14:45); land-surface PARAMETERS (meadow class, ground–canopy coupling, loam hydraulics) remain open. Original: the ICON forcing's soil STATE is wrong — temperature 3–7 K too cold below the top centimetres and floor soil moisture 22 vol-% against 31 measured; every run inherits it: the nocturnal ground heat flux is 20–25 W m⁻² short (the air pays), and the daytime sensible heat flux at the floor is 4× the observed (2026-09-15)
+
+**Deferred (2026-09-16 11:30):** production spin-up from December with real forcing, W_SNOW in the setup, meadow LU class and loam hydraulics — DECISIONS 11:30.
+
+**Status 2026-09-16 11:15.** Spin-up done; offline gate passed at Kolsass (night SEB closed, day Bowen 0.38 vs 0.43; DECISIONS 11:15) → the soil state is the mechanism; twin X16s built, awaiting Elias. Earlier: Fix in progress: HRLDAS spin-up 8632206 running (2025-04-01 → 07-18, two passes, ~9 s per day), the hourly July segment 8632275 and the report-only gate 8632312 chained behind it (`exp/x16_judge/hrldas_check.log`; script `wrf3dpbl-diag/hrldas_check.py`). Twin X16s is built with `hrldas/tools/make_twin_rundir.sh X16b X16s <RESTART.2025071721_DOMAIN1>` and submitted by hand after the gate (DECISIONS 2026-09-16 10:45). Watch layer 4 against the BODEN2 20–21 °C: `TMN` (8.7 °C at Kolsass, the 8 m bottom boundary) is the first suspect if it stays cold.
+
+**Measured.** 5-cm soil probes vs Noah-MP layer 1, 17 July night: Kolsass 19.5 vs 13.0 °C, Eggen 17.8 vs 12.0, StanserJoch 11.0 vs 7.5; Kolsass column (8 sensors) 20.3–21.5 °C vs model 13.0/15.5/16.3/15.6 in the four layers. Raw ICON GRIB at 14 UT under Kolsass: 20.7/18.8/17.2/15.6 °C at 0.5/6/18/54 cm — the cold column is ICON's own; its top layer follows the skin (12.4 °C at 21 UT). MYNN control starts (01 UT) from 12.0 °C at 0–10 cm (obs 18.6). Ground flux: model GRDFLX −30/−25/−14 W m⁻² (Kolsass/Weerberg/Hochhäuser) vs observed residual −47…−49/−47/−41; HFX −13/−21/−42 vs sonic −4/−16/−14. DECISIONS 2026-09-15 ~14:30; `wrf3dpbl-diag/slope_soil_check.py`, `exp/x16_judge/X16w_slope_soil.log`.
+**Why it matters.** Surface energy balance day and night: by day the cold soil sinks heat that should warm the air (valley-wind under-forecast, CBL depth); at night the surface takes 10–25 W m⁻² more from the air, the skin is colder and the slope drainage 1.5–2.5× too fast. It is the fourth forcing-side error after the SMOIS mass/volume bug, the 12-level ladder (A19/A21) and the moist layer aloft (A26).
+**Fix (Elias 2026-09-15): a spun-up land-surface state, not a patched field** — HRLDAS (offline Noah-MP) on the ICON 500 m surface forcing for the weeks before the case, written into wrfinput (TSLB, SMOIS, TMN, canopy). A temperature-only rewrite is unsafe: the day-spun chain already runs a 3 K warm night skin with a soil still 2 K cold (DECISIONS ~17:00). Needs the ICON surface files with SW↓, LW↓ and precipitation (not in the on-disk subset — FTP inventory to check). Report to the TEAMx ICON providers.
+**Not the cause of:** the sidewall longwave (measured right within 3 W m⁻², DECISIONS ~12:30).
+
 ## A27 — The calm valley's own cooling deficit and the spurious deep-night drainage (2026-09-11, open; from the X16b cold start)
 
 **Measured (X16b, 17 → 18 July, clear sky, calm floor).** Cooling 21 → 01 UT 38 % (0–100 m) and 42 % (100–300 m) short of HATPRO; longwave up 356–358 vs 362–365 W m⁻² observed (skin ≈1.5 K too cold) with 2 m air +0.5…+1.1 K and 0–100 m +1.5…+2.2 K too warm — the surface cools, the air does not follow: the wall-layer collapse of the sonic referee, isolated from the wind error. From 01:30 UT a 2.5–3.4 m s⁻¹ down-valley jet at 50–300 m (tower 0.3–0.5, lidar 0.3 at 00 UT) under a valley-scale force of −6…−14·10⁻⁴ m s⁻²; floor bias +2.3 → +3.1 K by 03:30. DECISIONS 2026-09-11 ~06:30.
 
-**To do.** (1) X16b + `pbl3d_sfc_qsq_bc=1` (same wrfinput, one namelist key) — judge on the 21 → 01 UT cooling and the skin–air difference (obs LW up, T2, HATPRO 0–100 m); the X15 verdict (warmer pool) was made on a windy floor and does not transfer. (2) Downstream pressure and wind (Jenbach, Strass, Kundl) to test the model's nocturnal along-valley gradient. (3) Whether the drainage is the model's cold pool failing to decouple (too warm, too shallow) rather than the gradient being wrong: compare the pool depth/strength at 01 UT with the sounding/HATPRO before changing anything.
+**To do.** (1) X16b + `pbl3d_sfc_qsq_bc=1` (same wrfinput, one namelist key) — judge on the 21 → 01 UT cooling and the skin–air difference (obs LW up, T2, HATPRO 0–100 m); the X15 verdict (warmer pool) was made on a windy floor and does not transfer. (2) Downstream pressure and wind (Jenbach, Strass, Kundl) to test the model's nocturnal along-valley gradient. **[2026-09-25, partly answered (A32): with the TAWES barometers Innsbruck–Kufstein the model's night along-valley force at 650 m ASL equals the observed (−0.29 vs −0.20 × 10⁻³ m s⁻²); the i-Box barometer is unusable for this (E73).]** (3) Whether the drainage is the model's cold pool failing to decouple (too warm, too shallow) rather than the gradient being wrong: compare the pool depth/strength at 01 UT with the sounding/HATPRO before changing anything.
 
 ## A26 — Spurious mid-level stratus from the native ICON forcing over the Kolsass reach, 17 July 19:30–23:00 UT (2026-09-10, open)
 
@@ -18,6 +60,8 @@
 
 ## A25 — OPEN (2026-09-09): `pbl3d_l_opt=2` (the MYNN-form master length scale) blows the flow up at a barren crest within 14 min of a midday start — the A24 fingerprint on two neighbouring cells; hypothesis: the closure's explicit vertical mixing exceeds its stability limit, the same limit X13 reached by thinning the layers
 **Measured** (X14 smoke, job 8581406, `branko_runs/innval_pbl3d_X14smoke/rsl.error.0144|0145`, archive `exp/X14smoke/wrf_output/8581406`): X12m + `pbl3d_l_opt=2`, 80 levels, 5 × 128, start 13:00 UT from the shared wrfinput; last step 2025-07-17 13:13:52 (416 steps, 0.71 s/step). Two ranks fired the SFCLAYREV NaN detector in the same step: **i=150, j=118** — `ust 1.380, hfx NaN, chs 0.0460, br 0.0, zol 0.0, wspd 31.54 m/s`; inputs `tsk 289.3, t1 281.5 K, qv1 2.33 g/kg, xland 1, znt 0.002 m` — and **i=152, j=115** — `ust 1.312, hfx NaN, chs 0.0433, br 0.0, zol 0.0, wspd 7.22`; inputs `tsk 292.9, t1 283.5, qv1 6.67 g/kg, land, znt 1.09 m`. A barren cell (LU 19 class, as A24's) and its forest neighbour, 2 × 3 cells apart, ~50 cells from A24's cell (165, 73). No CFL/W-damping message (none at `debug_level 0`). The twin X12ma (option 1; identical namelist otherwise, verified by diff) ran 13→19 UT clean. Frames 13:00 and 13:10 (3:52 before the crash) exist.
+
+*Update 2026-09-20:* the crash class is closed by the new `pbl3d_dn_max` (cap on l from the explicit diffusion number). X25 (8650637) ran 13 → 18 UT with the new `pbl3d_l_opt = 5` (operational-MYNN-like length, l 30 → 76 m at 150–400 m above the crests) and `pbl3d_dn_max = 0.4`: no crash, diffusion number max 0.41, no cell above 0.5. Untested at night. DECISIONS 2026-09-20.
 
 **What the numbers say:** `br = zol = 0` with finite u* is E43's hidden-NaN fingerprint (a NaN Ri laundered to the neutral regime), so hfx carries a NaN that entered through p_sfc, i.e. p(2)/φ(3) — as in A24. Two cells at once means the patch was already ≥ 2 cells wide: the printed cell is where the detector looked, not where the NaN was born. 31.5 m/s at the first mass level (~16 m) over bare ground at 13:13 UT with a 7.8 K skin–air step is a blown-up wind: the twin's crest winds are 8–14 m/s.
 
@@ -2086,3 +2130,87 @@ cap `pbl3d_sk_eps_max = 6` (load-bearing at night) clips shear production where 
 check not yet done: fraction of `PBL3D_T1_RATIO < 0.999` cells by Ri_g and time of day from a 1-min
 stream-23 segment 16→20 UTC. Fix candidate: `pbl3d_limiter_opt = 2` (exists, never run), night check
 repeated. Depends on the WRFlux second moments (plan Part 1) for a temporal resolved TKE.
+
+---
+
+**A31 — CLOSED 2026-09-21 02:20. The northerly break-in is spurious 2-6 dx variance generated over
+steep slopes where the sixth-order filter is tapered off.**
+
+See DECISIONS 2026-09-21 02:20. At 13:00 UT WRF and ICON are identical in wind, cross-range gradient
+and spectrum. In the next 15 minutes WRF more than doubles its v variance at 2-6 dx (0.194 -> 0.408
+m2/s2) and adds 71 % at 6-12 dx, below its own effective resolution (~6-7 dx); ICON's 2-6 dx variance
+FALLS over the whole hour. The gradient |grad v| sharpens 57 %, -v dv/dy doubles, and the northerly
+accelerates 2.6x faster than ICON's. Terrain and blocking are excluded: X12mta (WRF on ICON's terrain)
+reproduces ICON's Nh/U = 2.04 and z_d = 512 m exactly and still breaks in, with the LARGEST small-scale
+variance of the set. The filter twin X21b (`diff_6th_slopeopt = 0`) removes 18-23 % of the 2-6 dx band,
+landing on ICON's value, and cuts -v dv/dy from -6.4 to -4.1.
+
+**Lever:** `diff_6th_slopeopt = 0` (and a `diff_6th_factor` scan, since 0.12 was tuned for the tapered
+configuration). No code change. **Confirmation run needed:** the full 13->22 UT afternoon and evening
+(X21b ran only 13->15), judged on the 17 UT floor break-in, the lee barrier and the 01 UT bias.
+
+*Superseded framing below, kept for the reasoning trail.*
+
+**RETRACTED IN PART 2026-09-20 21:30 (see DECISIONS).** The "too strong" half is wrong: total sigma_w
+agrees with ICON to 16 % and the total momentum flux to ~5 % once the subgrid part is included
+(KNOWN_ISSUES E63). Across nine WRF runs the crest flux is anti-correlated with the floor plunge
+(X25 lowest flux, worst plunge; X21b highest flux, weakest crest wind). The crest momentum flux is
+neither anomalous nor controlling. What remains open is below.
+
+**The real gap.** Same cross-range pressure force as ICON, same total downward momentum flux, and a
+surface stress that X23 pushed past ICON's (0.390 vs 0.25 N/m2) -- yet the 100 m crest wind is still
+6.25 vs 4.57 m/s. The crest column does not balance, and the term never measured cleanly is
+HORIZONTAL ADVECTION of momentum into it (the 09-18 budget closed to 1/3 there). Next: a term-by-term
+crest-column momentum budget from FVX/FVY/FVZ_ADV_MEAN_2ND, with ICON's horizontal advection computed
+from its u, v on the same grid.
+
+*Superseded framing below, kept for the reasoning trail.*
+
+State after the three non-run diagnostics (`DECISIONS.md` 2026-09-20 14:30). The vertical flux of
+meridional momentum over the northern-range crests is carried by a terrain-locked circulation whose
+cross-range wavelength is **19 Δx (9.5 km)** and along-range **40 Δx (20 km)**; under 1.2 % of the flux
+sits below 4 Δx. It is therefore a properly resolved mountain-scale overturning, not grid noise, and it
+is not reachable by the closure (three configurations, K_m varied ~4.4×), by surface drag (Cd₁₀ raised
+to ICON's 16–20 × 10⁻³), by the vertical coordinate (`hybrid_opt` changes B(η) by < 0.1 % below 150 m
+AGL over a 3621 m crest) or by `gwd_opt` (E62b: `VAR` double-counts resolved terrain at 500 m).
+
+**UPDATE 2026-09-20 17:10 — step 1 is done and it changes the question.** ICON has the same
+terrain-locked overturning at the same wavelength (9.5 vs 10.9 Δx; 0.8 % of its flux below 4 Δx), so
+it is not a grey-zone partition and no body force is hiding the transport. WRF's downward flux is
+2–3× ICON's and the gap closes with height — 3.3× at 25 m, 2.1× at 100 m, 1.8× at 150 m, 1.5× at
+250 m, **0.94× at 400 m**. ICON's flux falls away towards the ground (0.244 at 150 m → 0.110 at 25 m)
+while WRF's stays high (0.441 → 0.364). **The "momentum sink through depth over the range" hypothesis
+is retired**; the difference is confined to the lowest ~250 m. **REFINED 2026-09-20 19:40 — it is sigma_w, uniformly with height, not a near-surface effect.**
+Decomposing <v'w'> = r sigma_v' sigma_w': sigma_w' is 1.8x larger in WRF at EVERY height
+(1.20 vs 0.67 m/s at 100 m), sigma_v' matches within 10 %, and ICON's v'-w' correlation is
+higher everywhere above 25 m (0.28 vs 0.21 at 100 m, rising to 0.40 at 400 m while WRF's falls
+to 0.17). Normalised by the kinematic terrain forcing V|grad h| -- which is the SAME in both,
+1.51 vs 1.54 m/s, ICON's 39 % steeper slope offsetting its 27 % weaker wind -- WRF realises
+0.72-0.80 of it and ICON only 0.43. A control rules out the CDO remap: ICON's terrain came
+through the same path and is steeper, with more small-scale variance, than WRF's.
+**The question is now: why is WRF's resolved vertical velocity over steep terrain twice ICON's
+for the same forcing?**  Note also that raising roughness reaches 10 m and not 100 m (X23: crest
+U10 4.18 vs ICON ~4.0, but V100 5.83 vs 4.57), and that X25 halves the flux by decorrelating
+v' and w' (r 0.111) without touching sigma_w' -- and its lee plunge was the worst of the set, so
+cutting the crest flux is not sufficient.
+X25 reaches ICON's subgrid TKE (1.13–1.51 vs 1.09–1.86 m² s⁻²) and is still 1.4–1.5× ICON in resolved
+flux, so the closure's energy level is not the lever. Candidates: the lowest-level vertical spacing over
+steep terrain (X13 crashed, A24), the surface-layer scheme's treatment of the flux delivered from above,
+and how w is allowed to behave in the first few levels above a 30° slope.
+
+**Superseded — what would have discriminated, in order.**
+1. ~~**ICON's own w over the crests from native GRIBs**~~ — DONE, see the update above. — the same box-mean v′w′ partition and the same
+   spectrum. If ICON's resolved flux is ~0.1 m² s⁻² against WRF's 0.44 with its subgrid carrying the
+   rest, this is a grey-zone partition and the answer is a body force; if ICON's resolved flux is also
+   ~0.4, the crest is the wrong place to look and the difference is downstream. Needs `icon-data`
+   (E62a: `met_em` has no w).
+2. **Why X21b worked.** Keeping the 6th-order filter on over steep slopes took 25–30 % off the lee
+   current, but a 6th-order filter does essentially nothing at 19 Δx. Either the filter acts on the
+   *slope-layer* current rather than the crest overturning, or the taper is doing something other than
+   scale-selective damping. Measure the filter's momentum tendency offline in both configurations
+   (`filter_tend_offline.py` is the θ version).
+3. Vertical resolution over the crest (X13 crashed, A24): the flux divergence peaks at 25–150 m, which
+   is 8 model levels here.
+
+**Not to be retried:** closure constants, roughness, land-cover heat partition, `hybrid_opt`, `gwd_opt`
+as shipped.

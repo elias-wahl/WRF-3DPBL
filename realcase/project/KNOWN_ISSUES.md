@@ -1395,3 +1395,170 @@ first routine that inspects a field after the dynamics. Remedies therefore
 differ: `w_damping = 1` (or Δt 1.5 s) for the level refinement; a
 diffusion-number cap on l (or implicit vertical mixing) for the length scale.
 Do NOT expect one fix to serve both.
+
+## E49 — WRF reports `SUCCESS COMPLETE WRF` after a run in which EVERY history and WRFlux write failed: if `$WRF_OUTPUT_ROOT/temp/branko/` does not exist, each `open_hist_w` returns `WRF_WARN_NETCDF` (−1021), a warning, and the integration continues to the end (2026-09-12, X16w job 8599103)
+
+**Symptom.** `rsl.error.0000` carries one `open_hist_w : error opening …/temp/branko/wrfout_d01_… for writing. -1021` per frame (18 lines for 9 history + 9 mean frames), the run finishes in the normal wall time, `submit_wrf.slurm` archives an empty `wrf_output/<jobid>/` (only `job_info.txt` and `namelist.input`), and the dependent analysis job reports "no such file". 1:14 h on 5 nodes and a queue wait lost.
+**Cause.** A run directory built by hand (copy of X16b's dir with a new `WRF_OUTPUT_ROOT`) skipped the `mkdir -p "$WRF_OUTPUT_ROOT/temp/branko"` that `setup_rundir.sh` (line 108) performs; nothing in `submit_wrf.slurm` created it, and WRF's netCDF open failure is a warning, not an abort.
+**Rule.** `submit_wrf.slurm` (template and X16w's copy) now runs `mkdir -p "${WRF_OUTPUT_ROOT:?}/temp/branko" || exit 1` before `wrf.exe`. For any hand-built run dir: `ls -d $WRF_OUTPUT_ROOT/temp/branko` before `sbatch`, and `grep -c open_hist_w rsl.error.0000` must be 0 at the first frame. The empty archive is kept as `exp/X16w/wrf_output/8599103_nooutput`.
+
+
+**Recurrence 2026-09-17 (X16s, job 8637042):** a run dir built by copying an older run dir (`make_twin_rundir.sh` from X16b, 2026-09-10) inherited a `submit_wrf.slurm` without the `mkdir`; 2.5 h of 5 nodes produced no output. **Rule extended:** before any `sbatch submit_wrf.slurm`, `grep -c 'mkdir -p "${WRF_OUTPUT_ROOT:?}/temp/branko"' submit_wrf.slurm` must be 1 (the builder now inserts it and creates the dir); never trust a SLURM script copied from a run dir older than the last template fix — diff it against `realcase/scripts/submit_wrf.slurm`.
+## E50 — the i-Box ECPY `mean_t{1,2,3}` is SONIC temperature: an acoustic virtual temperature with per-sensor offsets of 1–3 K, not a thermometer; absolute θ comparisons must use the ventilated `ta_avg`/`t_air_*`/`taact_avg` of the RAW tables (2026-09-15)
+
+**Symptom.** Model − sonic θ at Eggen −1.2 K and at StanserJoch/Arbeser −3.7 K (DECISIONS 2026-09-15 ~10:30) became +0.03 K and −1.2 K with the ventilated sensors (~12:30). Differences and variances from the sonic are fine; levels are not.
+**Rule.** For any absolute temperature at an i-Box site take the RAW table (`data/stations/ibox_rad/<site>_RAW/data.csv`, or Kolsass_RAW `taact_avg`); sonic `mean_t` only for fluctuations and fluxes.
+
+## E51 — the Kolsass HATPRO temperature retrieval is warm-biased above ~800 m AGL: +0.7 K at 1600 m ASL, +1.6 at 1900, +2.0 at 2200, +3.0 at 2500 against the co-located 05 UT sonde (and the same at 17 UT); the 2026-09-01 'matches sondes to 0.2–0.5 K in every layer above 100 m' holds only up to ~1 km AGL (2026-09-15)
+
+**CORRECTED 2026-09-25 (E72) — the warm bias aloft was mostly our θ conversion, not the retrieval.** With the measured station pressure and p(z) integrated hydrostatically (instead of 950 hPa and a fixed 8 km scale height), HATPRO − sonde at 05 UT is −0.81 / −0.05 / +0.21 / +1.02 K at 1600 / 1900 / 2200 / 2500 m ASL (was +0.7 / +1.6 / +2.0 / +3.0); over all seven 18 July launches it lies within ±0.5–0.9 K up to 2200 m ASL, with one −1.5 K at 22:58 (`exp/x16_judge/E51_recheck_hydrostatic.log`). HATPRO now reads slightly COLD against the sondes: mean −0.25 / −0.37 / −0.50 / −0.55 K at 100–300 / 300–600 / 600–1000 / 1000–2000 m AGL, and −1.3 K in 0–100 m at night. **Revised rule:** HATPRO is usable to ~2200 m ASL (~1.6 km AGL) with that cold offset in mind; the 2500 m level stays suspect (+0.2…+1.0 K); the sondes remain the reference. The symptom below ("models 1.5–3.5 K too cold at ridge level against HATPRO") was the conversion.
+
+**Symptom.** Every model (X12m, MYNN, X16b, the ICON initial state) looked 1.5–3.5 K too cold at ridge level against HATPRO; the sonde agrees with the models to ±0.3 K there.
+**Rule.** Use HATPRO for 0–800 m AGL (with its ~1 K cold bias below 100 m at night, 2026-09-01); above that use the sondes (`data/soundings/kol`, 05/08/11/14/17 UT on the 18th; `ibk` 02/11 UT). Script: `slope_radiation_check.py` section I in `exp/x16_judge/X16w_slope_radiation.log`.
+
+## E52 — a 3–7 K cold soil in every wrfinput (A28) went unnoticed for four weeks because the surface was only ever tested through what differs between runs, and the station data that showed it (sonic H at seven sites, 5-cm soil probes) sat on disk from 2026-09-01 unused (2026-09-15)
+
+**How it hid.** (1) The MYNN control shares the soil with every 3D run, so the "closure vs control" method demoted everything they share; the surface was probed only via the surface-layer scheme (EVE2, X15, sfclay=5) — three correct nulls. (2) The 2026-09-01 SEB check compared one floor site's ground flux by residual in a chain whose top soil layer had spun up 5 K by day, and printed the 19–20 °C probe without opening the model's `TSLB`. (3) The ECPY sensible heat flux was on disk from 2026-09-01; the 2026-09-09 sonic analysis used q² only. (4) `check_wrfinput.py` tests `SMOIS` (after the mass/volume bug) and not `TSLB`.
+**Rule.** Before any physics hypothesis: hold the initial state against every station variable on disk (T2, TSK, TSLB, SMOIS, HFX, radiation components) at every site, and apply "impossible term ⇒ raw arrays first" (E18) to the surface energy balance as well as to the atmosphere. Add to `check_wrfinput.py`: `TSLB` layer 1 within 5 K of a July 2-m climatology at the cell height (fail below 15 °C on the valley floor in July) and the top-layer-vs-`T2` difference.
+
+## E53 — HRLDAS (MPI, v5.1.1) segfaults in `NoahmpInitMain` on the last rank with 128 ranks on the 500 × 600 domain when the setup file carries snow; 64 ranks run, and 128 ranks run with a snow-free setup (2026-09-16, devel jobs 8632153/8632194/8632195)
+
+**Rule.** Run HRLDAS on this domain with 64 ranks (1 node, `--ntasks-per-node=64`); the MPI decomposition with 128 ranks is not safe for the snow initialisation. Launch with `mpirun -np $SLURM_NTASKS` (as WRF): `srun` fails at MPI_Init (PMIx). HRLDAS ends without MPI_Finalize — mpirun's 'exited improperly' notice after a complete run is cosmetic; judge by the output files.
+
+## E54 — a second agent instance on the same account can run the same plan in parallel and submit jobs into the same run directories (2026-09-16 10:23–10:26: duplicate spin-up and dependent segments, one with the crashing 128-rank layout, one with a wrong restart path)
+
+**Rule.** Before submitting or chaining, `squeue -u $USER` and `ls -lat` the run-dir parent for submissions and directories you did not make; cancel duplicates that write into shared directories, leave their directories, and say so in the record. Only one session should hold a run directory at a time.
+
+**Recurrence 2026-09-17 09:34–09:35:** two sessions each took the other's winter HRLDAS chain for the duplicate; one cancelled the *running* chain, the other the pending copy — both gone. **Rule extended:** the duplicate is the later-submitted, still-pending chain (`scontrol show job` → `SubmitTime`, `JobState`); never cancel a RUNNING job in favour of a pending copy; before `scancel`, write what you are about to cancel and why into the run directory's log; leave `SESSION_LOCK.txt` (session name, time, job IDs) in every run directory you hold and read it before touching one.
+
+**Recurrence 2026-09-17 09:35 (winter-start HRLDAS chain):** two interactive sessions of Elias's worked the same run directory; one cancelled the other's running spin-up (8639473, 1:36 in) and resubmitted an identical chain (8639481–83), leaving `SESSION_LOCK.txt`/`CHAIN_JOBIDS.txt`. No science lost, ~2 min of compute and one job's worth of confusion. **Rule sharpened:** a run directory carries `SESSION_LOCK.txt` (who, since when, job IDs) from the moment a chain is submitted; any session finding one *reads* it and does not cancel or resubmit; pipelines take a `flock` and refuse to submit when a job of the chain's name is queued (`prepare_winter.sh` does both).
+## E55 — the first LDASOUT file of an HRLDAS segment (`SKIP_FIRST_OUTPUT = .false.`) carries −9999 in the flux fields (HFX, LH, GRDFLX, …) while the state fields (SOIL_T, SOIL_M, TG) and FSA/FIRA are valid; averaged in, it halves every flux mean (Kolsass 13–14 UT smoke mean read −4937 W m⁻²) (2026-09-16)
+
+**Rule.** Mask values below −9000 before averaging HRLDAS output (`hrldas_check.py` does), or start every flux window at the second file. The state in the first file is the initial state and is valid.
+
+## E56 — the `realcase/env/vsc5.sh` python has numpy and netCDF4 but no pandas; every diagnostic that reads station CSVs (`slope_soil_check.py`, `hrldas_check.py`, the judge scripts) needs `source ~/miniconda3/bin/activate proc` — the SLURM judge scripts do this, an interactive call from the WRF env dies with `ModuleNotFoundError: pandas` (2026-09-16)
+
+**Rule.** Station comparisons: `source ~/miniconda3/bin/activate proc && python <script>`. `wrfinput`/restart manipulation (`hrldas_to_wrfinput.py`, `check_wrfinput.py`, `make_setup.py`): the WRF env's `python3` is enough and is what the shell tools call.
+
+**Addendum 2026-09-17:** `source ~/miniconda3/bin/activate proc` does NOT take effect in a shell that has sourced `realcase/env/vsc5.sh` (the Spack module paths stay ahead on PATH, and the login shell exports a `PYTHONPATH` with Spack's py3.9 site-packages that breaks the conda python with `No module named numpy.core._multiarray_umath`). In scripts: `PY=$HOME/miniconda3/envs/proc/bin/python; unset PYTHONPATH` and call `$PY` explicitly; do not source the WRF env in the same script unless `wrf.exe`/`ncdump` are needed (the pipeline `hrldas_runs/spinup_winter/prepare_winter.sh` lost three launches to this).
+
+**Addendum 2026-09-17:** `realcase/env/vsc5.sh` exports a `PYTHONPATH` of Spack python-3.9 site-packages (numpy 1.23, netCDF4, cftime). A conda python (3.12) started from a shell that sourced it imports that numpy and dies with `No module named 'numpy.core._multiarray_umath'`. In any script that sources `vsc5.sh` and then needs the conda env, call `env -u PYTHONPATH $HOME/miniconda3/envs/proc/bin/python`. `make_ldasin.py`, `make_setup.py`, `check_series_join.py` need it (xarray/pandas); `hrldas_to_wrfinput.py`, `check_wrfinput.py` run on the WRF env's `python3`. Also: the WRF env's cftime 1.0.3 has no `only_use_python_datetimes` — parse `time:units` by hand.
+
+## E57 — a bash pipeline script rewritten on disk while an instance is running executes the new file from its current byte offset (bash reads scripts incrementally); and `pkill -f "<pattern>"` kills the calling shell when the pattern appears in its own command line (2026-09-17, `prepare_winter.sh`: duplicate setup builds and a duplicate SLURM chain, cancelled)
+
+**Rule.** Never edit or overwrite a script that may be running — copy it to a new name (`prepare_winter_v2.sh`) or kill the instance first (by PID from `ps -eo pid,args | grep <name>`, never `pkill -f` with a pattern that the killing command itself contains). Before submitting a chain from a script, `squeue -u $USER` for a chain another instance may already have submitted. Python for the HRLDAS tools: the conda env by explicit path, without sourcing the WRF env in the same shell (E56).
+
+## E57 — wall times inherited from a run with thinned output are too short once the full output streams are on: 0.74 s per step on 5 × 128 by day with `iofields_full.txt` + `output_t_fluxes = 1` (0.62 thinned; 0.65 at night), so a 6 h daytime segment needs ≈ 2:20, not the 2:15 of X12ma; `scontrol update TimeLimit` is refused for a running job (2026-09-17, X17a 8640421)
+
+**Rule.** Request ≥ 25 min of wall per simulated hour on 5 nodes for daytime segments and ≥ 22 min at night when the full streams are on; the twin builder copies the parent's SLURM header — check `--time` against this before `sbatch`. Arm an `afternotok` chain link from the last written restart when a segment is at risk.
+
+## E58 — `chain_segment.slurm` / `setup_restart_run.sh` are built for the 18 July case: boundary files are linked from `innval_pbl3d_18th`, `start_day = 18`, and the template physics lacks the X12 sets; a continuation of a 17 July (X12/X16/X17) run built with them either fails or silently runs with the wrong boundaries. Also: `--iofields` given as a relative path is resolved from the calling job's cwd and fails from a SLURM link (2026-09-17, link 8640529)
+
+**Rule.** For the 17 July window use `chain_x12.slurm` / `chain_x17.slurm`: absolute `--iofields`, `--set start_day/end_day`, `--set pbl3d_moist_cond_max=10000.0 --set pbl3d_t2_scalar=1` with the three E19 sets, relink `wrfinput_d01`/`wrfbdy_d01` to the full-window files, then diff the namelist against the parent segment (must be empty apart from times/restart/paths) before `sbatch`.
+
+## E60 — `NoahmpTable.TBL` in every WRF run dir is a SYMLINK to `branko/run/NoahmpTable.TBL` (the project's 33-category table, untracked in git until 2026-09-18): editing 'the run dir's table' with a script writes through the link and silently changes the default for every future run (2026-09-18 09:38, caught within minutes, restored from `hrldas_runs/sens_z0/ctl/`, md5 4e1f4ef8). Rule: `rm` the link and `cp` the table before any edit (`make_twin_rundir.sh` recreates links); the default is now tracked — `git diff run/NoahmpTable.TBL` must be empty before a submission.
+
+## E59 — nearest-cell-centre sampling puts slope and crest stations in the wrong place: on a 27° slope one 500 m cell spans 255 m of height (Hochhäuser: nearest cell 895 m for a 1009 m station, although the model terrain at the station's position is 983 m); cell-averaged terrain flattens crests by 80–130 m (StanserJoch, Arbeser), and the nearest cell can lie on the opposite side of a ridge (StanserJoch: fall line 168° for a station facing 340°) (2026-09-17)
+
+**Rule.** For slope and crest sites pick the model cell by terrain, not by distance: within 5 × 5 cells, aspect within 60° of the station's, then the closest height; project winds on the *cell's own* fall line (HGT gradient), never on the station's aspect; drop sites whose landform is unresolved (Eggen's terrace). State cell height, fall line and distance with every site comparison. Valley-floor stations: closest height within 1.5 km. The proper route is `proc`'s `VirtualStation.get_var_at(name, height)`; quick scripts must at least follow this rule (`exp/x16_judge/drainage_matched_cells.log`).
+
+**E59 addendum (2026-09-17 20:50):** horizontal pressure differences between sites must be taken at fixed heights from the model column with box means (5 × 5 cells); `PSFC` of single cells reduced with `T2` fluctuates by ±0.5 hPa between half-hourly frames in a convective afternoon and produced a false 'WRF has 35 % of the observed along-valley pressure gradient' (retracted within the hour).
+
+---
+
+**E61 (2026-09-20) — the η-coordinate split of resolved advection is meaningless on steep slopes; use a constant-height frame.**
+
+The WRFlux θ budget closes fine in total, but its split into horizontal and vertical advection is
+computed on η surfaces. Over the lee slope of the northern range (slope > 0.10) the two parts come out
+as **+849.9 and −850.5 K h⁻¹**, cancelling to a physical −0.56 K h⁻¹ — because the η-vertical flux
+carries the whole terrain-following part of the horizontal transport. Reading either column on its own,
+or their ratio, is meaningless there; on the valley floor the same split gives +1017 / −1017.
+This is what "the budget closes to ⅓ except on the lee slope" (2026-09-18) was really recording.
+
+**Rule.** On slopes, report `adv` as a total from the WRFlux terms, and if the split is needed, redo it
+in a physical frame on constant-height surfaces with the model's own winds — `ADV_Z = −w ∂θ/∂z`,
+`ADV_H = −u ∂θ/∂x − v ∂θ/∂y` — keeping the subgrid term from `FTZ_SGS_MEAN`
+(`wrf3dpbl-diag/lee_barrier_physical.py`; the η-frame version is `lee_barrier_theta_budget.py` and is
+kept only to show the degeneracy).
+
+**E62 (2026-09-20) — `met_em` has no vertical velocity, and `VAR` double-counts resolved terrain at 500 m.**
+
+Two traps when reaching for ICON as the reference. (a) The metgrid files carry 84 fields — UU, VV, TT,
+RH, PRES/PRESSURE, GHT, the soil block and the sub-grid orography block (VAR, VAR_SSO, OA1–4, OL1–4) —
+but **no w**. Any ICON-side vertical-flux comparison needs the native GRIBs (`icon-data` skill), not
+`met_em`. (b) `VAR`, the sub-grid orographic standard deviation that WRF's `gwd_opt` drag is built on,
+has a crest median of **473 m** on this grid, against a resolved terrain standard deviation of **236 m**
+inside a 5.5 km box: the field comes from a ~10 km-scale data set and is simply interpolated down, so at
+dx = 500 m it describes orography the grid already resolves. Switching `gwd_opt` on here is a factor-2
+double count, not a missing physical drag.
+
+**E63 (2026-09-20) — never compare a resolved quantity across two models at 500 m without its subgrid partner.**
+
+The mirror of the 2026-08-22 rule ("judge the convective regime by subgrid q² *and* resolved, never
+subgrid alone"). Comparing WRF's **resolved** crest vertical-velocity variance with ICON's gave
+σ_w′ 1.8× larger at every height, and the resolved momentum flux 1.5× larger — both read as a WRF
+defect for a day. Adding the subgrid part dissolved them: total σ_w agrees to 16 % (WRF resolves
+76–82 % of it, ICON 27–42 %) and the total momentum flux to ~5 % at any ordinary mixing length.
+At dx = 500 m over 1 km relief the resolved/subgrid split is the *first* thing that differs between
+a 3D closure and a 1D TKE scheme, so a resolved-only comparison measures the partition, not the flow.
+
+**Rule.** Any cross-model comparison of a turbulent second moment states both parts and the total.
+Where the other model's subgrid term is not archived (ICON's GRIBs carry `tke` but no momentum flux),
+bound it — `<v'w'>_sgs = -K_m dv/dz`, `K_m = S_m l q`, `q = sqrt(2 TKE)`, `S_m ≈ 0.39` — and scan the
+length scale rather than quoting the resolved number alone. Validate the estimator wherever both
+exist: in the 3D closure `W2_SGS_MEAN / ((2/3) TKE)` is 0.96–1.21.
+(`wrf3dpbl-diag/crest_w_partition.py`, `exp/x16_judge/icon_sgs_flux_bound.log`.)
+
+**E61 addendum (2026-09-20 23:15) — the trap has a second half, and it reaches the pressure force.**
+
+(a) *Advection.* Moving the budget off eta surfaces onto **constant-height-above-ground** surfaces is
+not enough. On such a surface `d/dy|_AGL = d/dy|_z + (dz/dy) d/dz`, and over these crests
+`dz/dy = 0.145` with `dv/dz ~ 3e-3 /s`, so the contamination is ~22e-4 m/s2 — the size of every term
+in the momentum budget. Only the TOTAL advection is frame-robust; quote the split only on true
+constant-height (ASL) surfaces, which over a range exist only above the highest terrain in the box.
+
+(b) *Pressure force.* The local PGF `-(1/rho) dp/dy|_s - g dz/dy|_s` is the residual of two
+slope-proportional terms cancelling to 1 part in 165-880, so it is **not comparable between two
+models whose terrain differs** — ICON's is 39 % steeper on this grid. Evaluated that way ICON's
+crest PGF came out 2-3x smaller than WRF's; by the E59 method (fixed heights ASL, box means either
+side of the range) the two are equal and ICON's is slightly the larger below 2000 m. Cross-model
+pressure forces are taken by the E59 method, never from a local terrain-following gradient.
+(`wrf3dpbl-diag/cross_range_pgf_boxes.py`, `exp/x16_judge/cross_range_pgf_boxes.log`.)
+
+## E61 — a queued VSC-5 job cannot be moved between the Zen3 lanes with `scontrol update Partition=/QOS=`: the lane-specific memory and GRES are frozen at submit time, so the moved job goes `BadConstraints` and never runs (2026-09-21 09:47). `submit_wrf.slurm` requests only `--nodes`/`--time`, so SLURM fills memory and the billing GRES from the *submit* partition's defaults: X26/X27, submitted to `zen3_2048`, carried `mem=10000000M` (2 TB/node) and `gres/cpu_zen3_2048=1280`. `scontrol update` changes `Partition` and `QOS` but recomputes neither, so in `zen3_1024` (1 TB/node) the request is unsatisfiable — the job sits `(BadConstraints)` forever with no error. Moving it back restores schedulability and queue position, so the mistake is free if caught. **The only way to change lane is cancel + resubmit** with the partition/QOS edited in the script; this costs nothing, because all three lane QOS have priority 100000 and the `sprio` AGE term is 0 on this cluster — a resubmitted job has exactly the standing of the one it replaces. Re-arm any dependent judge on the new job ids (`judge_X26_X27.slurm` takes run names, not ids, so only the `--dependency` changes). Done for 8653060/8653061 → 8653959/8653960, judge 8653062 → 8653961.
+
+## E62 — `submit_wrf.slurm` must be submitted **from inside the run directory**: it does `cd "$SLURM_SUBMIT_DIR"` and then `. ./env.sh`, so `sbatch <rundir>/submit_wrf.slurm` from anywhere else dies in 13 s with `./env.sh: No such file or directory` and `WRF_OUTPUT_ROOT: parameter null or not set` (2026-09-21 10:00, X26/X27 jobs 8653959/8653960). The failure is quiet in two ways: `#SBATCH --output=wrf.%j.out` is also relative, so the `.out`/`.err` land in the *submit* directory, not the run dir where you look for them; and a judge chained `afterany` then runs on the previous contents of the output root and produces a plausible-looking log for runs that never existed (8653961, voided). Submit with `cd <rundir> && sbatch submit_wrf.slurm`, or `sbatch -D <rundir>`; after re-arming a chain, check `scontrol show job <id> | grep WorkDir`.
+
+## E64 — `pkill -f` / `pgrep -f` on the login node match the calling shell; a failed edit must never share a shell with a build start (2026-09-22)
+`pkill -f "compile"` from the assistant's bash killed the assistant's own command (exit 144) because the pattern appears in that shell's command line (same family as E2). And an `edit-script && build` one-liner started `build_em_real.sh --reconfigure` while the edit had failed: `./clean -a` removed `main/wrf.exe` before the mistake was noticed. Rules: kill build processes by an explicit PID list (`ps -u $USER -o pid,args | grep ... | awk`), and start a build only in a later command after `git diff --stat` has shown the intended edits.
+
+## E65 — HRLDAS with the urban canopy model: three start-up traps (2026-09-22)
+(a) HRLDAS reads its own `URBPARM.TBL` format; WRF 4.8's table aborts the reader (`Unrecognized NAME = "FVG"`) — copy `hrldas/hrldas/run/URBPARM.TBL` into the run dir and edit that. (b) `urban_var_init` prints a sample of the `*_URB3D` arrays that are allocated only for `sf_urban_physics = 2/3`; with option 1 this segfaults after the "Sample of Urban settings" header — patched out in `urban/wrf/module_sf_urban.F` (patch the `.F`, never the generated `.f90`). (c) `run_hrldas.slurm` must `exit $rc` after `mpirun`, otherwise a crashed segment counts as `afterok`-satisfied and the next segment starts on a missing restart. (d) HRLDAS terminates a NORMAL run through MPI_Abort, so `mpirun` returns 1 and the job log ends in the OpenMPI abort boilerplate even when the last restart was written (reference run 8640754 too); with `exit $rc` an `afterok` chain therefore never fires. Chain HRLDAS segments with `afterany` and test for the expected last `RESTART.*` file instead. Also: the ICON lead code in file names is `ilf3f<DD><HH>0000` (day, hour), not an hour count.
+
+## E66 — every table in a run dir built by `setup_rundir.sh` is a SYMLINK into `branko/run/` — editing "the run dir's" `URBPARM.TBL` edited the repository's (2026-09-22)
+The E60 trap again, one table over: the city-lever smoke edited `innval_pbl3d_SMOKEURB/URBPARM.TBL` in place with a script; the path was a link to `branko/run/URBPARM.TBL`, so the repository copy carried the open low-rise type-2 column for two hours (no production run reads it: `sf_urban_physics = 0`). Found by `git status`, restored with `git checkout`. Rule: `[ -L file ] && cp --remove-destination "$(readlink -f file)" file` before any in-place edit of a table in a run dir; `clone_twin_rundir.sh --own-table` does this for the Noah-MP table only.
+
+## E67 — `clone_twin_rundir.sh` cloned only a parent's symlinks: a parent with its OWN tables (real files, e.g. HERO's `NoahmpTable.TBL` and three `URBPARM*.TBL`) produced a twin with no Noah-MP table, which dies at start-up in `NoahmpReadTableMod` with `End of file` on `fort.15` (2026-09-24)
+Fixed the same day: real `*.TBL` files are copied. Check a twin with `diff <(ls parent) <(ls twin)` before submitting.
+
+## E68 — `pbl3d_init_opt = 1` (level-2 equilibrium start) blows up a cold start in the current configuration: q² seeded to 500–1600 m² s⁻² in sheared layers at 4–10 km, at the 1000 cap on every level above 1.3 km after one minute, NaN in the surface layer after ~36 steps (`SFCLAYREV produced NaN`). Seven devel twins, DECISIONS 2026-09-24 18:55. Do not use it until the level-2 iteration is repaired; `pbl3d_init_opt = 0` is clean from the same `wrfinput`.
+
+## E69 — `run_days`/`run_hours`/`run_minutes` override `end_*` whenever any is positive (`share/set_timekeeping.F` l. 222): editing only `run_hours` (or only the end time) in a namelist that still carries `run_days = 1` gives a run a day longer than intended (2026-09-25)
+Found in HERO: `run_days = 1` from the one-run 47-h design survived the reshape into 6-h segments; `hero_chain.slurm` rewrites `run_hours` only. A segment then runs until its wall (TIMEOUT), never writes its end-of-segment restart, and an `afterok` chain stops. Every twin cloned from such a namelist inherits it (the HD devel twins ran past their `run_minutes`). Check all four `run_*` keys, not just `run_hours`, in every namelist diff.
+
+## E70 — a WRF restart is NOT a bit-faithful re-entry in the HERO configuration (2026-09-25): identical at the restart time, nearly every cell differs one minute later by tiny amounts (median |Δθ| 6e-5 K), amplified to T2 jumps of 0.47 K and more wherever the closure's odd–even scalar mode is active
+Measured with HR0 against HDIAG (DECISIONS 2026-09-25 02:55). Corrected 06:05: HR0B shows all prognostic and surface fields identical at the restart time; the perturbation is small and its seed unidentified (not the back-off level, which is reset every call). The earlier reading "state lost, not last-bit growth" is retracted. Until it is known, a restart twin cannot reproduce a marginal event, and every segment boundary of a chained run shocks the closure.
+
+## E71 — `clone_twin_rundir.sh` copied a parent's real `*.TBL` files (E67) but not its real `iofields*.txt`; a twin whose namelist names such a file then gets only what is appended to it (2026-09-25)
+Fixed the same day (real `iofields*.txt` are copied). Check `grep -c '' <twin>/iofields*.txt` against the parent before submitting.
+
+
+## E72 — HATPRO θ was computed with a fixed 950 hPa at the station; the i-Box tower next to it measured 953.0–955.4 hPa on 17/18 July → every HATPRO θ was 0.27–0.47 K too warm (largest after sunset, as the pressure rose), rates within 0.1 K per window (2026-09-25)
+Found while mapping the instruments. Fixed in `wrf3dpbl-diag/hatpro_cooling.py` (`station_pressure()`: i-Box `pact`, 1-min, nearest within 10 min); `hatpro_vs_sondes.py` now imports that loader; every script importing `load_hatpro` gets the corrected θ. Consequences: model − HATPRO biases recorded before 2026-09-25 are 0.3–0.5 K too SMALL (01 UT: +0.47 K); HATPRO − sonde (`exp/x16_judge/hatpro_vs_sondes_E72.log`) is now −1.2…−1.3 K in 0–100 m at night (was −0.8…−1.1) and still unsigned above 100 m (mean |Δ| 0.27–0.48 K) — so against the sondes the model's nocturnal 0–300 m bias is unchanged. **Second convention error, fixed the same day:** p(z) used a fixed 8 km scale height; now integrated hydrostatically through the retrieved profile (`hatpro_cooling.theta_hydro`, shared with `hatpro_radfeld_check.py`) — a further −0.02 / −0.09 / −0.23 K at 0–100 / 100–300 / 300–600 m and ~−1 K at 1.5 km AGL. **Not fixed:** `x16w_slope_diag.py` (`theta_from_T`, slope-station θ with the same 950 hPa at 545 m). **Rule.** Convert T to θ with measured pressure; a fixed reference pressure is a 0.1 K-per-hPa error.
+
+## E73 — the Kolsass i-Box barometer (`pact`, RAW 1-min) is temperature-sensitive: ≈ −0.1 hPa K⁻¹, reading 0.7 hPa low by day and 0.4 hPa high at night against the Kolsass sondes (18/19 July) — a ~1 hPa diurnal artefact (2026-09-25)
+It produced a false "non-thermal along-valley force" of −1.3 × 10⁻³ m s⁻² (DECISIONS 2026-09-25 ~13:30, retracted ~14:30). **Rule.** Never use `pact` for horizontal pressure differences or tendencies; use the GeoSphere TAWES barometers (Innsbruck, Jenbach, Kufstein, Radfeld — Radfeld's agrees with the HATPRO MET barometer to 0.02 hPa) with the E59 addendum method. For HATPRO θ (E72) the error is ±0.05 K and can be ignored. Check: `exp/x16_judge/ibox_barometer_check.log`.
+
+## E74 — ICON as a yardstick: use the run's own forcing cycle; met_em has no 2 m temperature; ICON is not a night target for the valley air; `breakin_check.py` picks station cells on the first run's terrain (2026-09-26)
+(a) The 00 UT and 12 UT ICON cycles differ by ≈ 1 m s⁻¹ in the foreland zone v at 13 UT (−3.0 vs −1.9) and by 0.2–0.6 K at the HATPROs: judge a run against the cycle that forces it (`metgrid_output_1700nat_icontopo` for HERO/HERO2, `metgrid_output_1712nat` for the 13 UT lineages). (b) In the met_em files the surface level of `TT` is a fill value (−1e30), so "lowest GHT level" returns garbage; the lowest native level is ~7 m AGL and at night 1–2 K warmer than ICON's own 2 m, which only `ICON/surface_series` (T2D, ends 18 Jul 00 UT) carries. (c) ICON's 0–100 m valley air is +2.4…+2.7 K too warm at night (A34) — "matches ICON" is not "matches the valley" at night. (d) `breakin_check.py` and `northerly_origin_check.py` take `HGT` from the FIRST run named and apply it to all: runs on another terrain (X17/X26 on the WRF terrain vs HERO2/X12mt on ICON's) get their station and zone cells, and AGL layers, from the wrong terrain — put the run whose terrain matters first, or run the terrains separately.
+
