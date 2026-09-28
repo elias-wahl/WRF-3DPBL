@@ -261,7 +261,7 @@ cos(zenith) > 0, so RRTMG-SW runs there and reflects `-9999 x` the diffuse beam.
 | quantity at 07:00 UTC (09:00 local) | value |
 |---|---|
 | columns with `ALBEDO` = -9999 and cos(zenith) > 0 | **27 740** (9.3 % of domain), all land, median terrain 1660 m |
-| their `SWDOWN` | median 16 W m^-2 (diffuse only — they are in terrain shadow) |
+| their `SWDOWN` | median 16 W m^-2 (diffuse only — they are in terrain shadow) **[corrected 2026-09-28, E87: SWDOWN is the flat flux; it was low because the −9999 albedo corrupted RRTMG's surface flux there, not because of shading (X6 07 UT: SWDOWN median 15 vs lit land 520, SWNORM median −98). The bug diagnosis stands.]** |
 | diffuse surface flux there | **-480 W m^-2**; slope-normal -127 W m^-2 |
 | `RTHRATEN` (potential-temperature radiative tendency, K h^-1) | median ~0, 1st percentile **-85**, extreme **-232** (at 04:00: -0.15 / -2) |
 | cooling profile | **-80 K h^-1** at the surface, -40 K h^-1 at 750 m AGL, smooth |
@@ -283,7 +283,7 @@ sunrise either.
 
 `sf_surface_physics = 4`, `topo_shading = 1`, any PBL scheme, real terrain with slopes that
 shade after sunrise. In any post-sunrise frame compare the count of land cells with
-`ALBEDO < 0` against the count with `SWDOWN < 50 W m^-2`: they coincide. Then read
+`ALBEDO < 0` against the count with `SWDOWN < 50 W m^-2`: they coincide (this works only in a U3-affected run; shaded cells in general: `SWNORM < 0.4 × SWDOWN`, E87). Then read
 `RTHRATEN` in the same columns — a 4.6 run has O(1) K h^-1 there, a 4.8 run O(-80).
 
 ### The fix carried here
@@ -1603,3 +1603,8 @@ The files have no height column, and the records called every slope station "one
 
 ## E87 — with `slope_rad = 1`, WRF output SWDOWN is the FLAT, unshaded shortwave and SWNORM the slope- and shadow-adjusted one (2026-09-28)
 `phys/module_surface_driver.F` l. 4629–4634 swaps them after the land-surface call ("SWDOWN contains unaffected SWDOWN in output; SWNORM contains slope-affected SWDOWN in output"). The land surface used the adjusted value; the history file's SWDOWN is the horizontal-plane flux without topographic shading. **Rule:** for the shortwave the surface actually received on slopes or in shadow use SWNORM; SWDOWN only for flat, unshaded comparisons (e.g. a pyranometer on the valley floor away from horizons). Scripts that read SWDOWN and may be affected on slopes: `northerly_origin_check.py`, `valley_heat_input_icon_vs_wrf.py`, `plot_radiation_stations.py`, `evening17_cloud_lw_check.py`, `compare_mynn.py` (floor-only uses, e.g. `kolsass_evening_seb.py`, are unaffected). Also: WRF's solar position omits the equation of time (≈ 6 min in July). Check: `wrf3dpbl-diag/sidevalley_sunlight.py`.
+
+**E87 addendum (2026-09-28, `wrf3dpbl-diag/swnorm_audit.py`, log `exp/x16_judge/swnorm_audit.log`):** verified on HERO2 — SWDOWN is smooth (neighbour differences 4 W m⁻²), SWNORM carries the terrain (58–75; 13–28 % of land cells below 0.4 × flat). Zone means SWNORM/SWDOWN: floor 0.99–1.00 until 16 UT, 0.45–0.47 at 18 UT; south-facing lee slope 1.03–1.08 at 09–12 UT, 0.61–0.64 at 17 UT; slopes 0.93 at 16 UT, 0.87–0.89 at 17 UT. No recorded conclusion changes (numbers at the recorded times move by 1–3 %). **i-Box radiometers:** Hochhäuser's is tilted with its 24° slope (compare with SWNORM); Weerberg and Arbeser read like horizontal sensors (compare with SWDOWN, their cells' SWNORM carries the cell's slope, not the station's); Kolsass floor follows SWNORM in the evening shadow.
+
+## E88 — the offline land-surface spin-up (HRLDAS) never sees the terrain: no slope or shading correction of the shortwave forcing (2026-09-28)
+HRLDAS (the winter-to-July spin-up that sets every run's soil and canopy state, [[feedback-spunup-land-state]]) takes ICON's horizontal-plane direct + diffuse shortwave and has no slope-radiation or terrain-shadow code (only the urban canyon treats shadows). The spun-up soil temperature and moisture on slopes were therefore built with flat sunshine — too much energy on north-facing and shaded slopes, too little on steep sun-facing ones. Not yet quantified; relevant to the evening soil heat release in the side valleys (DECISIONS 2026-09-28 11:40). Found by the E87 audit.
