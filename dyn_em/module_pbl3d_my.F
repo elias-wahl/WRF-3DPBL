@@ -677,6 +677,10 @@
             dz_min = Min (dz(i, k, j), dz(i, k - 1, j))
             l_cap  = DN_MAX * dz_min * dz_min / (0.5 * Max (Sqrt (q_sq(i, k, j)), 1.0E-6) * DT_DN)
             if (l_master(i, k, j) > l_cap) then
+                ! BouLac (pbl3d_l_opt = 3) carries a separate dissipation length l_eps = l_boulac >= l_k = l_master;
+                ! shorten it by the same factor so the cap keeps BouLac's l_eps/l_k (one-master-length rule for a
+                ! two-length scheme, A43). Options 1, 2, 4, 5 unchanged.
+              if (pbl3d_l_opt == 3) l_boulac(i, k, j) = l_boulac(i, k, j) * l_cap / l_master(i, k, j)
               l_master(i, k, j) = l_cap
               if (pbl3d_l_opt < 3 .or. pbl3d_l_opt == 5) l_boulac(i, k, j) = l_cap
             end if
