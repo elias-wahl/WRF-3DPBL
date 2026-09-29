@@ -7,6 +7,23 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-09-29 (clock) — THE FULL MODEL AGAINST THE SEVEN i-BOX SONICS (18 JULY): ITS ONE CLEAR TURBULENCE ADVANTAGE OVER THE BASELINE IS THE HEAT FLUX AT ~18 m — ≈ 0 AT NIGHT LIKE THE SONICS (MYNN −0.010…−0.024 K m s⁻¹, OVER-MIXING) AND AT KOLSASS BY DAY IN THE TOWER'S CLOSURE BAND (MYNN A THIRD OF IT). ITS UNIQUE OUTPUT, THE VERTICAL SHARE OF THE VARIANCE, IS 2–3× TOO ISOTROPIC BY DAY AND 1.3–5× AT NIGHT; THE AUGUST "RIGHT SUPPRESSION CLASS" IS WITHDRAWN.** Script `wrf3dpbl-diag/sonic_turbulence_hero2.py`, log `exp/x16_judge/sonic_turbulence_hero2.log`, CSV `…/sonic_turbulence_hero2.csv`. **Method:** i-Box ECpy 30-min (stamp = interval end, QC flag > −1; Terfens fully flagged on 18 July → no obs), highest good sonic level (heights from zol·L, E85: Kolsass 16.9 m, slopes 1.5–6.8 m; slope sonics slope-parallel, so their var_w and wt are slope-normal — an upper bound on the vertical share); model E59 cells (≤ 1.5 km, ±25 m, 2–15 cells), median over cells; subgrid = mean of the two bracketing history frames (3D: Q_SQ, TURB_FLUX_W2 at the first interior face, 18 m; MYNN QKE at 9 m); resolved = WRFlux 30-min temporal variance at mass level 1; heat flux = WRFlux resolved + subgrid at face 1 and HFX/(ρ_d c_p); day = stamps 08–18, night 20–24 UT; medians.
+
+| | obs | full model | baseline |
+|---|---|---|---|
+| w′θ′ night, sensor / 18 m [K m s⁻¹], 6 sites | −0.000…−0.012 | −0.002…+0.003 (ground −0.009…−0.061) | −0.010…−0.024 |
+| w′θ′ day, Kolsass 16.9 / 18 m | +0.050 (closure 0.61–0.72 → band ≈ 0.07–0.08) | +0.081 | +0.018 |
+| w′θ′ day, slope sites | +0.04…+0.29 | 1.0–3.5× obs (Eggen, Hochhäuser, Stanser Joch high; Arbeser low) | 0.9–2.1× |
+| vertical share σ_w²/q², day | 0.08–0.16 | subgrid 0.20–0.44 | — (no ⟨w′²⟩ output) |
+| vertical share, night | 0.03–0.19 (Kolsass 0.03) | subgrid 0.13–0.17 | — |
+| q² day [m² s⁻²], Kolsass / crests | 1.81 / 2.25–2.26 | 1.55 / 1.21–1.52 | 1.29 / 2.42–2.86 |
+| q² night, subgrid | 0.19–0.48 | 0.00–0.13 | 0.08–0.31 |
+| u* night [m s⁻¹] | 0.08–0.23 | 0.03–0.07 (Hochhäuser 0.29) | 0.02–0.10 |
+
+**Reading:** (1) the realisability fix and the closure's stable-regime flux leave the night heat flux divergence in the lowest 18 m, as observed (Kolsass: −3…−5 W m⁻² at 4 m, ≈ 0 at 8.9 m, 09-27 11:10); MYNN carries heat down through 18 m. (2) The closure's stress tensor is too isotropic near the ground in every regime — consistent with MY82's pressure–strain having no wall-reflection term (inferred, untested); by day at 18 m the buoyancy route adds to ⟨w′²⟩ (Kolsass −z/L ≈ 0.2, similarity predicts ≈ 0.18, obs 0.15, closure 0.31). (3) The subgrid q² at the wall still collapses at night (crest sites 0.00). **Traps:** Q_SQ and TURB_FLUX_W2 are 0 at the ground face — `ibox_q2.py` (09-09) averaged faces 0 and 1 and halved the 3D q² (ratios unaffected); the WRFlux temporal variance at night includes the 30-min change of the mean flow (not detrended; Kolsass resolved 0.47 vs subgrid 0.06 during the late reversal) — do not add it to a night comparison with detrended EC variances. Rating 7/10 research (six sites, one day, matched method), 6/10 model (a concrete defect, the anisotropy, and a concrete advantage, the flux profile).
+
+---
+
 **2026-09-29 (clock) — WHAT THE 3D CLOSURE ADDS THAT A COLUMN SCHEME CANNOT: 12–18 % OF THE q² SHEAR PRODUCTION ON STEEP SLOPES AT NIGHT AND 30–46 % ABOVE 100 m BY DAY COME FROM TERMS A 1D SCHEME DOES NOT HAVE — MOSTLY THE NORMAL-STRAIN TERM −2⟨w′²⟩∂W/∂z, NOT THE HORIZONTAL PAIRINGS (≈ 0 IN THE VALLEY AFTER THE SLOPE PAYMENT). MODEL-INTERNAL; NOT YET EVIDENCE THAT THE RESULT IS BETTER.** Also answered: the station-statistics slide of the talk uses HERO2 (8670451), the newest full-configuration run through 18 July 24 UT; everything later is a restart of it (CVCTL reproduces it; CVDAWN perturbed; FX0–FX2 13–16 UT, LE2C/T 17 Jul 13–15) and none covers the statistics windows with a newer configuration. **Method:** HERO2 history, 18 July 02 and 13 UT; Q_SQ_SHEAR = −2(⟨uw⟩∂U/∂z + ⟨vw⟩∂V/∂z + ⟨w²⟩∂W/∂z) + QSQ_SHEAR_H (`module_pbl3d.F:6547`); normal strain from TURB_FLUX_W2 (faces→mass) × column ∂W/∂z of the history W; shares of the layer sum over each class (masks of `partition_resolved_sgs.py`, plus slopes 10–20°); script `wrf3dpbl-diag/shear_production_3d_share.py`, log `exp/x16_judge/shear_production_3d_share_20260929.log`.
 
 | 3D-only share of q² shear production (horizontal pairing + normal strain) | 02 UT 0–100 / 100–300 / 300–1000 m | 13 UT 0–100 / 100–300 / 300–1000 m |
