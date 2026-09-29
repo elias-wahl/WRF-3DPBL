@@ -7,6 +7,22 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-09-29 (clock) — WHY THE BASELINE HAS 2.5–3.3× THE FULL MODEL'S SUBGRID TKE BY DAY (18 JULY 10–14 UT, 150–350 m AGL): ≈ 85 % OF THE GAP IS THE MY82 CONSTANT SET (ASYMPTOTIC LENGTH 0.10 vs 0.23 OF THE q-WEIGHTED HEIGHT: ≈ 60 %; B₁ 16.6 vs 24: ≈ 25 %); THE ENERGY INPUT (DISSIPATION) 5–17 %; THE SOLVER'S RETRY (HALVED l) CANNOT ACT DIRECTLY — IT SHORTENS ONLY THE l OF THE FLUX SOLVE, NOT L_MASTER OR ε — AND IS BOUNDED BY THE DISSIPATION SHARE.** Script `wrf3dpbl-diag/tke_gap_attribution.py`. **Method:** hourly history frames 10–14 UT, HERO2 8670451 vs MYNN 8320565; faces 150–350 m AGL of the Part III classes (Inn floor, foreland, Inn slopes > 20°); per face E = ½(B₁ l ε)^{2/3} (holds to 2–4 %: `L_MASTER`, `Q_SQ_DISSIP`/2; `EL_PBL`, `QDISS`), l split into α · z_c · blend · Ψ · Tier-1 · rest (z_c = the code's own ∫q z/∫q: full column minus q_min for the 3D closure, to PBLH + transition for MYNN); geometric means over faces, so the log split closes exactly. Share of ln(E_MYNN/E_3D), floor / foreland / slopes:
+
+| factor | ratio | share |
+|---|---|---|
+| α 0.23 vs 0.10 | 2.30 | 59 / 60 / 46 % |
+| B₁ 24 vs 16.6 | 1.28 (on E) | 26 / 27 / 21 % |
+| near-ground blend (Blackadar vs MYNN surface length) | 1.19 / 1.33 / 1.14 | 12 / 21 / 7 % |
+| q-weighted height (3D centroid higher: 1176 vs 920 m on the floor) | 0.78 / 0.81 / 1.07 | −17 / −15 / +4 % |
+| dissipation ε (energy input) | 1.17 / 1.07 / 1.35 | 11 / 5 / 17 % |
+| grey-zone taper + strain limit + N/surface limits | ≤ 1.06 | 5 / 1 / 4 % |
+| identity residual | 1.02–1.03 | 2–4 % |
+
+Retry: 41 / 45 / 17 % of these faces are re-solved (≈ 1 halving), but Tier 2 by design does not write back into `L_MASTER`/ε (module_pbl3d_my.F ≈ 1422), so it can only lower E through the production, i.e. inside the 5–17 % ε share — which also contains the resolved share of the heat flux; re-solved faces carry *more* normalised subgrid heat flux (floor 150–250 m: 0.45 vs 0.15 of the surface value), so there is no sign that the retry starves production (no twin; a bound, not a measurement). The taper is ≈ 1 because of A37 (PBLH = terrain height); with a true PBLH it would cut l a further ≈ 4 %. **Reading:** the subgrid-TKE gap is a constant-set choice, not numerics; it matters because the lidar (entry above) puts the full model's daytime total TKE at 300–700 m a factor 2.6 below the observations and MYNN a factor 1.7 below. `pbl3d_l_opt = 2/5` (MYNN α and length form) already exist, unrun in this lineage. Rating 8/10 model (exact split of a closure identity), 6/10 research (one day, the counterfactual for the retry untested).
+
+---
+
 **2026-09-29 (clock) — FOUR-WAY KOLSASS LIDAR COMPARISON, 18 JULY: THE FULL MODEL HAS THE BEST UP-VALLEY WIND AT EVERY HEIGHT BY DAY (BIAS +0.24 / −0.13 / −0.46 m s⁻¹ AT 50–300 / 300–700 / 700–1500 m vs MYNN −1.32 / −1.49 / −1.20; THE EARLY-SEPTEMBER 3D LINEAGE IN BETWEEN), BUT BY DAY ITS TOTAL TKE ABOVE 250 m IS A FACTOR ≈ 2.6 BELOW THE LIDAR WHERE MYNN IS ON IT; NEAR THE GROUND BOTH ARE EQUALLY LOW.** Output `plot_output/lidar/kolsass_20250718_4way/` (time–height panels of along-valley wind, speed, TKE; mean profiles; stats CSV; caption with method), script `wrf3dpbl-diag/lidar_4way_panels.py` (ac39d2a), `proc/meta/meta_lidar_stats.py` gains `wal`, `sub_dir`, `temporal_res_all` (defaults unchanged). New pseudo-job `wrf_output/9999913` = HERO2 18 July frames (version `hero2` in the git-ignored `proc/config/config.yaml`). **Method:** proc virtual lidar (bilinear at the lidar point, one column; not an E59 box — HERO2's cell 545 vs 548 m), instantaneous :00/:30 frames paired with the nearest lidar profile within 20 min; common sample (obs and all three runs valid, 64–150 pairs per row); day 08–18, night 19–22 + 01–06 UT (the older lineage ends at 22 UT). TKE: MYNN QKE/2 + WRFlux resolved; full model Q_SQ/2 + resolved; the fourth run (pseudo-job 9999912, x12m chain, 2026-09-07/09: already has `pbl3d_t2_scalar = 1`, but ICON soil, explicit transport, no urban canopy, earlier filter/length settings — **the agent prompt's "before the realisability fix" was wrong; caption corrected**) subgrid only (its meanout lacks the flux set).
 
 | bias / RMSE, sim − obs | full model | MYNN baseline | 3D early-September |
