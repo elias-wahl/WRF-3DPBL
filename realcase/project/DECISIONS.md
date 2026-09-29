@@ -7,6 +7,10 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-09-29 (clock) — THE SIDE-VALLEY EVENING SOIL RELEASE COMES MOSTLY FROM THE OPEN HIGH TERRAIN: GRASS + BARREN CELLS ARE 51–75 % OF THE FIVE CATCHMENTS AND SUPPLY 64–87 % OF THEIR SOIL HEAT AT 19 UT; BARREN CELLS RELEASE 86–93 W m⁻², GRASS 77–87, NEEDLELEAF FOREST 43–46; LOAMY SAND IS 36–55 % OF FOUR CATCHMENTS. THE CLASS RELABEL (19 → 7) ALONE WOULD CHANGE LITTLE — THE SOIL IS THE CANDIDATE (A42).** Script `wrf3dpbl-diag/sidevalley_landbasis.py` (catchments and routing reused from `sidevalley_evening_seb.py`), log `exp/x16_judge/sidevalley_landbasis.log`. Method: HERO2, 18 July 19:00 UT frame, G = −GRDFLX, area shares of LU_INDEX / ISLTYP inside the D8 catchments above Steinach (Wipp, 1399 cells), Neustift (Stubai, 854), Hintertux (Tux, 105), Watten (291), Weer (284) mouths. Catchment mean G 65–74 W m⁻²; Stubai 46 % barren, Tux 40 %; soil class 15 (bedrock) 21–44 % in Stubai/Tux. Talk: the WorldCover slides moved from Part III to Part II after the side-valley budget; reason stated there for WorldCover rather than CORINE as the reference (the model's classes are CORINE, so CORINE would only test the remapping; WorldCover is an independent Sentinel-1/2 classification at 10 m vs CORINE's 25 ha photo-interpreted units). Whether G is too large remains unmeasured. Rating 6/10 research, 5/10 model.
+
+---
+
 **2026-09-29 (clock) — PRIORITY FOR THE NEXT RUNS (Elias): A BOUGEAULT–LACARRÈRE TWIN (`pbl3d_l_opt = 3` + `pbl3d_constants = 'Boulac'`, the configuration of Kosović et al. 2020 / Juliano et al. 2022) AS THE FIRST TEST; plan and gates in OPEN_ISSUES A43.** Why: the day subgrid-TKE deficit is the MY82 calibration (entries above), the fork's own authors did not run MY82 for convection, and both pieces are in the fork but were never run here (09-09: "the bigger non-bit-comparable step, NOT taken"). Pre-run: the `l_dissip` one-liner for `l_opt ≥ 3`, source-only build, bit-for-bit gate, devel smoke. Judged on TKE against lidar/sonics AND on the break-in (X25) and the night q² (runaway sign). No run submitted yet.
 
 ---
