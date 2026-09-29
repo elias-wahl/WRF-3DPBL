@@ -901,7 +901,7 @@ The right-hand column is healthy (`Sk/eps = 3.49` against the theoretical equili
 `N·tau ~ 100`.
 
 **The limit was missing only from the default option.** `pbl3d_l_opt = 2` (MYNN) has
-`l_f = alpha_2 q/N`; `pbl3d_l_opt = 3` (Messinger) has `l_d = c_r q/N`;
+`l_f = alpha_2 q/N`; `pbl3d_l_opt = 3` (Messinger) has `l_d = c_r q/N`; **[CORRECTED 2026-09-29: Messinger is `pbl3d_l_opt = 4`; `3` is Bougeault–Lacarrère (`Calc_l_boulac_master_algebra`), inherited from the fork, never run here]**
 `pbl3d_l_opt = 1` (MY74, the default and the one in use) had none, despite two comments
 in the file asserting that it did.
 
