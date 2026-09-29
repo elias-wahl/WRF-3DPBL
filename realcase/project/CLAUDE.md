@@ -84,6 +84,7 @@ Elias is an atmospheric scientist, fluent in turbulence closures; he wants the
    Excluded by runs: closure, roughness up to 0.2 m, land-cover heat partition,
    sixth-order filter, soil, start time, terrain data set, cross-range and along-valley pressure force. Open: a momentum sink
    acting through depth over the range (ICON carries sub-grid orography fields; WRF has no form drag at 500 m).
+2b. **Priority test for the next runs (Elias 2026-09-29):** the Bougeault–Lacarrère twin (`pbl3d_l_opt = 3` + `pbl3d_constants = 'Boulac'`), plan and gates in `OPEN_ISSUES.md` **A43** — propose it before any other new run.
 3. **Standing rules since August:** every run starts from the winter-spun-up HRLDAS land state; full output streams; every
    model-vs-obs number carries its method (E59); every analysis is rated 1–10; twins via
    `realcase/scripts/clone_twin_rundir.sh` (never edit `NoahmpTable.TBL` through the run-dir symlink, E60); judges hang on
