@@ -7,6 +7,19 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-09-29 (clock) — WHAT THE 3D CLOSURE ADDS THAT A COLUMN SCHEME CANNOT: 12–18 % OF THE q² SHEAR PRODUCTION ON STEEP SLOPES AT NIGHT AND 30–46 % ABOVE 100 m BY DAY COME FROM TERMS A 1D SCHEME DOES NOT HAVE — MOSTLY THE NORMAL-STRAIN TERM −2⟨w′²⟩∂W/∂z, NOT THE HORIZONTAL PAIRINGS (≈ 0 IN THE VALLEY AFTER THE SLOPE PAYMENT). MODEL-INTERNAL; NOT YET EVIDENCE THAT THE RESULT IS BETTER.** Also answered: the station-statistics slide of the talk uses HERO2 (8670451), the newest full-configuration run through 18 July 24 UT; everything later is a restart of it (CVCTL reproduces it; CVDAWN perturbed; FX0–FX2 13–16 UT, LE2C/T 17 Jul 13–15) and none covers the statistics windows with a newer configuration. **Method:** HERO2 history, 18 July 02 and 13 UT; Q_SQ_SHEAR = −2(⟨uw⟩∂U/∂z + ⟨vw⟩∂V/∂z + ⟨w²⟩∂W/∂z) + QSQ_SHEAR_H (`module_pbl3d.F:6547`); normal strain from TURB_FLUX_W2 (faces→mass) × column ∂W/∂z of the history W; shares of the layer sum over each class (masks of `partition_resolved_sgs.py`, plus slopes 10–20°); script `wrf3dpbl-diag/shear_production_3d_share.py`, log `exp/x16_judge/shear_production_3d_share_20260929.log`.
+
+| 3D-only share of q² shear production (horizontal pairing + normal strain) | 02 UT 0–100 / 100–300 / 300–1000 m | 13 UT 0–100 / 100–300 / 300–1000 m |
+|---|---|---|
+| Inn floor | 0.03 / 0.17 / 0.17 | 0.05 / 0.32 / 0.23 |
+| foreland | 0.00 / 0.02 / 0.03 | 0.16 / 0.30 / 0.43 (horizontal pairing 0.27 of it above 100 m) |
+| Inn slopes 10–20° | 0.07 / 0.12 / 0.13 | 0.05 / 0.39 / 0.30 |
+| Inn slopes > 20° | 0.18 / 0.17 / 0.15 | 0.12 / 0.46 / 0.34 |
+
+**Reading:** in the valley the 3D content of the closure is the vertical stretching of the resolved flow (slope flows at night; resolved plumes by day), which a column scheme cannot see; the horizontal pairings matter only over flat land by day, where the slope factor is 1 and resolved cells carry horizontal shear. Whether this makes the solution better needs a 1D-vs-3D twin of the same closure (`pbl3d_opt=1` from the HERO2 restart) — not run. Rating 6/10 research (a clean mechanism number), 3/10 as evidence of benefit.
+
+---
+
 **2026-09-29 (clock) — RESOLVED vs SUBGRID TKE IN THE CURRENT FULL MODEL: THE GRID CARRIES ONLY 7–14 % OF THE DAYTIME TKE ON THE INN FLOOR AND 30–43 % OVER THE FORELAND AND STEEP SLOPES, NOT 64–91 %. THE AUGUST PARTITION NUMBERS ARE RETRACTED FOR THE CURRENT MODEL — THEY DESCRIBE THE LINEAGE WHOSE WALL HEAT FLUX WAS ZERO (A18) AND A FLOOR MASK THAT WAS 83 % FORELAND (E30).** Question (Elias): should the resolved TKE not depend only on the grey-zone factor? No: `Psig_bl` multiplies the mixing length (the same Honnert fit in MYNN, `module_bl_mynnedmf.F:8314`, and the 3D closure, `module_pbl3d_my.F:4238`; 0.90–0.96 here) and says how much the scheme gives up, not what the grid resolves. How much the grid resolves depends on how much instability the scheme leaves in the resolved state. **Method:** 18 July, 10/11/13/15 UT; resolved = 30-min WRFlux temporal variance ½(σu²+σv²+σw²) (the `proc/pre/wrflux_loader.py` residual; excludes stationary terrain-locked motion, includes 30-min mesoscale unsteadiness); subgrid = mean of the two bracketing history frames (3D: Q_SQ/2 faces→mass; MYNN: QKE/2); medians over cells by class and layer AGL; script `wrf3dpbl-diag/partition_resolved_sgs.py`, log `exp/x16_judge/partition_resolved_sgs_20260929.log`. CVCTL (8675067, restart of HERO2 at 18 Jul 01 UT) reproduces HERO2 (8670451) to every digit shown.
 
 | resolved fraction (median), 150–350 m AGL | 10 UT | 11 UT | 13 UT | 15 UT |
