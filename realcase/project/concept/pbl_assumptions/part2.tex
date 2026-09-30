@@ -252,7 +252,7 @@ $E_1 = 1 - 3\alpha_c^2 A_2 B_2 (1 - C_3) G_H$, $E_2 = 1 - 9\alpha_c^2 A_1 A_2 (1
 \C{B7}{sms}{\texttt{diff\_opt=2} forced \src{module\_check\_a\_mundo.F:341--353}; \texttt{compute\_diff\_metrics} \src{DE:7538--7786}; ad hoc taper $\alpha = \max(a, 1)$, $a^2 = (\overline{|z_x|}\,\dx/\Delta z)^2$ $+ (\overline{|z_y|}\,\Delta y/\Delta z)^2$, on the Smagorinsky part \src{DE:2278--2291}.} &
 \C{B7}{les}{Metric correction as SMS-3DTKE; no slope taper for \texttt{km\_opt=2} \src{DE:2205--2253}.} \\
 \rowshade{C1}\rid{C1} &
-\C{C1}{gxviii}{K-form of its MYNN base.} & \C{C1}{gxix}{As G18.} &
+\C{C1}{gxviii}{K-form of its MYNN base plus its mass-flux plumes for heat and moisture (\texttt{bl\_mynn\_edmf = 1}); momentum plumes off (\texttt{bl\_mynn\_edmf\_mom = 0}) in both ports' namelists.} & \C{C1}{gxix}{As G18.} &
 \C{C1}{ito}{Level-3 $\Gamma_\theta$ \src{I15 Eq.~13}; down-gradient kept although "a poor assumption in the TI zone" \src{p.~35}.} &
 \C{C1}{approx}{Vertical fluxes $\avg{uw} = -q l S_M U_z$, $\avg{w\theta_v} = -q l S_H\Theta_{v,z}$ \src{MY:3250--3259}; $S_M$, $S_H$ per J22 Eqs.~20--21; the other moments diagnosed from them \src{J22 p.~1589}.} &
 \C{C1}{full}{$\mathsf{A}\mathbf{x} = \mathbf{b}$, $\mathsf{A} = \tau^{-1}\mathsf{I} + \mathsf{S}$: no eddy viscosity anywhere \src{J22 Eq.~19; MY:2116, 2443}.} &

@@ -351,7 +351,7 @@ The pressure term carries the resolved--subgrid energy exchange (the "rapid" par
 \C{B7}{sms}{\texttt{diff\_opt=2} metric correction; an ad hoc slope taper on the Smagorinsky part} &
 \C{B7}{les}{metric correction, no taper} \\
 \rowshade{C1}\rid{C1} local down-gradient &
-\C{C1}{gxviii}{K-form} & \C{C1}{gxix}{K-form} & \C{C1}{ito}{K-form plus the level-3 countergradient $\Gamma_\theta$} &
+\C{C1}{gxviii}{K-form plus the MYNN plumes for heat and moisture (momentum plumes off)} & \C{C1}{gxix}{as G18} & \C{C1}{ito}{K-form plus the level-3 countergradient $\Gamma_\theta$} &
 \C{C1}{approx}{K-form for the vertical fluxes; the other twelve moments are algebraic by-products} &
 \C{C1}{full}{no $K$: the stresses solve an algebraic system coupling all gradients} &
 \C{C1}{sms}{K-form plus a prescribed nonlocal heat-flux profile and a countergradient momentum term, vertical only} &
@@ -385,7 +385,7 @@ The pressure term carries the resolved--subgrid energy exchange (the "rapid" par
 \C{C5}{sms}{a separately blended dissipation length; $C_\varepsilon$ grows with $l/\Delta$} &
 \C{C5}{les}{$C_\varepsilon = c_{\varepsilon1} + c_{\varepsilon2}\,l/\Delta$} \\
 \rowshade{C6}\rid{C6} vertical Ri; cutoff &
-\C{C6}{gxviii}{a source independent of Ri, added to a scheme that keeps its cutoff} & \C{C6}{gxix}{as G18} &
+\C{C6}{gxviii}{a source independent of Ri, added to MYNN, which has no cutoff but measures stability by the vertical Ri alone} & \C{C6}{gxix}{as G18} &
 \C{C6}{ito}{NN09 $S_M, S_H$ unchanged} &
 \C{C6}{approx}{level-2 cutoff $\Rfc = 0.191$ (MY82 constants) in $S_M, S_H$} &
 \C{C6}{full}{no $S_M, S_H$: the equilibrium follows from the full strain; $N$ enters through $l$ only} &
