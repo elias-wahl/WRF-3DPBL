@@ -366,19 +366,5 @@
 \filldraw[fill=blk29, draw=black, line width=0.9pt] (7.180,7.353) -- (7.680,7.353) -- (7.430,7.753) -- cycle; \node[inner sep=0pt, font=\fontsize{4}{4.5}\selectfont\bfseries] at (7.430,7.473) {F7}; % One length for $K$ and $\varepsilon$ <- Master length scale (arrow up, weight 3)
 \filldraw[fill=blk29, draw=black, line width=0.9pt] (7.180,1.935) -- (7.680,1.935) -- (7.430,2.335) -- cycle; \node[inner sep=0pt, font=\fontsize{4}{4.5}\selectfont\bfseries] at (7.430,2.055) {F7}; % K-form fluxes <- Master length scale (arrow up, weight 3)
 \filldraw[fill=blk33, draw=black, line width=0.9pt] (11.980,1.935) -- (12.480,1.935) -- (12.230,2.335) -- cycle; \node[inner sep=0pt, font=\fontsize{4}{4.5}\selectfont\bfseries] at (12.230,2.055) {F11}; % K-form fluxes <- Stability functions and cutoff (arrow up, weight 3)
-
-% ---- key (concept variant): read the figure without the caption
-\node[anchor=south west, inner sep=0pt, text width=19.6cm, font=\fontsize{6}{7.2}\selectfont, align=left] at (0,24.55) {%
-\textbf{Block}: one assumption a scheme makes in order to run; it touches at its left exactly the blocks it rests on.
-\textbf{Tab}: shortcut, P premises, C concepts, F formal statements of the level-2.5 closure, numbered from the top.\\
-\textbf{Corner mark}: a dependence no contact can show, in the colour and with the tab of the block depended on
-(triangle: previous column; arrowhead: same column, up or down; thick border: load-bearing).
-\textbf{Colour} names a place: hue by height, shade by column.\\
-\textbf{Moons}, per formal statement, left to right \textcolor{cMYNN}{\textbf{MYNN}}, \textcolor{cGXIX}{\textbf{G19}},
-\textcolor{cAPPROX}{\textbf{3D-APPROX}}, \textcolor{cFULL}{\textbf{3D-FULL}}:
-\tikz[baseline=-0.6ex]{\fill (0,0) circle (0.09);}~kept,
-\tikz[baseline=-0.6ex]{\draw[line width=0.4pt] (0,0) circle (0.09); \fill (0,0) -- (90:0.09) arc (90:270:0.09) -- cycle;}~partly,
-\tikz[baseline=-0.6ex]{\draw[line width=0.4pt] (0,0) circle (0.09);}~dropped.
-\textbf{Dashed boxes}: what breaks in hectometre-scale simulations over complex terrain.};
 \end{tikzpicture}
 \end{document}
