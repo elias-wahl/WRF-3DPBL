@@ -1614,3 +1614,10 @@ HRLDAS (the winter-to-July spin-up that sets every run's soil and canopy state, 
 
 ## E90 — the HRLDAS spin-up always ends "FAILED": after the last forcing hour hrldas.exe calls MPI_Abort (2026-09-28)
 The control spin-up 8659816 and both terrain-corrected spin-ups (8678201/2) reach the last forcing hour (`***DATE=2025-07-18_00:00:00`) and then abort (exit 1, SLURM state FAILED), with all daily restarts written. **Rule:** judge a spin-up by its last `***DATE` line and the restart files, and never chain its continuation with `afterok` — use `afterany` (the July segments of 28 Sep sat in DependencyNeverSatisfied until resubmitted).
+
+## E91 — ACINN VAD lidars: degenerate sine fits carry R² = 1 and 50–80 m s⁻¹ winds (2026-10-01)
+
+WLS100S34 (Kramsach Oberberg) on 17 July 04:10–05:20 UT and 19 July report gates of 15–80 m s⁻¹ with `R2` exactly 1.00
+(or −inf): a fit through too few beams is exact, so a perfect R² marks the *worst* data, not the best. The provider's CNR
+filter keeps them. Drop gates with R² non-finite or ≥ 0.999 and speed > 25 m s⁻¹ (`wrf3dpbl-diag/convert_lidar_to_l2.py`);
+do **not** add an R² floor — low R² marks weak wind (median 2 m s⁻¹ of the gates an R² ≥ 0.2 cut removes) and biases the speed high.
