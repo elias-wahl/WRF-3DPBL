@@ -25,6 +25,8 @@ Elias is an atmospheric scientist, fluent in turbulence closures; he wants the
   **E59** (terrain-matched cells, the cell's own fall line, pressure differences only at fixed heights with box means);
   prefer `proc` virtual instruments over nearest-cell scripts.
 - **Rate every analysis 1–10** for how good it is for the project, research and model separately when they differ.
+- **Write in his MSc-thesis style** (Elias 2026-10-25, a rule): every change or addition to his documents — concept,
+  papers, proposals, captions — follows `concept/STYLE_GUIDE_ELIAS.md`; brief every writing agent with it.
 - **Separate measured from inferred**, and retract a number the moment its
   method fails a sanity check. Record retractions, do not quietly drop them.
 - **No internal labels in prose** (commit-group letters, "Tier 1", "X2", agent
