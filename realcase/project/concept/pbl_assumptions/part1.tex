@@ -49,8 +49,8 @@ terms --- the frontier left open by all of them. Down the 3D family the number o
 grows from the Goger ports (one source term) to the full closure (production, divergences,
 transport and the tensor itself); SMS-3DTKE and the LES limit drop the same geometric
 assumptions but keep the eddy-viscosity form. The lone open circle in the MYNN-as-run column is
-the removed critical Richardson number --- the control run has no stability cutoff, while the
-approximate 3D closure still carries one.\par}
+the removed critical Richardson number --- the control run has no stability cutoff, and neither has the
+approximate 3D closure at level 2.5 (corrected 2026-10-26; only level 2 has one).\par}
 \landscapeclose
 
 % ---------------------------------------------------------------------------
@@ -387,7 +387,7 @@ The pressure term carries the resolved--subgrid energy exchange (the "rapid" par
 \rowshade{C6}\rid{C6} vertical Ri; cutoff &
 \C{C6}{gxviii}{a source independent of Ri, added to MYNN, which has no cutoff but measures stability by the vertical Ri alone} & \C{C6}{gxix}{as G18} &
 \C{C6}{ito}{NN09 $S_M, S_H$ unchanged} &
-\C{C6}{approx}{level-2 cutoff $\Rfc = 0.191$ (MY82 constants) in $S_M, S_H$} &
+\C{C6}{approx}{no cutoff at level 2.5 (\texttt{pbl3d\_prog = 1}): level-2.5 $S_M, S_H$ of the vertical $G_H$; the level-2 functions ($\Rfc = 0.191$) enter only the Helfand--Labraga rescaling (corrected 2026-10-26)} &
 \C{C6}{full}{no $S_M, S_H$: the equilibrium follows from the full strain; $N$ enters through $l$ only} &
 \C{C6}{sms}{no stability functions; $N$ limits $l$; no cutoff} & \C{C6}{les}{as SMS-3DTKE} \\
 \rowshade{C7}\rid{C7} local equilibrium &

@@ -289,7 +289,7 @@ $E_1 = 1 - 3\alpha_c^2 A_2 B_2 (1 - C_3) G_H$, $E_2 = 1 - 9\alpha_c^2 A_1 A_2 (1
 \rowshade{C6}\rid{C6} &
 \C{C6}{gxviii}{The source is independent of Ri; $S_M$, $S_H$ of the MYNN base unchanged.} & \C{C6}{gxix}{As G18.} &
 \C{C6}{ito}{$S_M$, $S_H$, $\Gamma_\theta$ "determined in the conventional way" \src{I15 p.~29}; $L_B$ Eq.~17.} &
-\C{C6}{approx}{Level 2: $\Rf = f_1(\Ri + f_2 - \sqrt{\Ri^2 + f_3\Ri + f_4})$, $S_M = c_m\dfrac{(\Rfc - \Rf)(R_{f1} - \Rf)}{(1 - \Rf)(R_{f2} - \Rf)}$, $S_H = \dfrac{c_{h2}}{c_m}\dfrac{R_{f2} - \Rf}{R_{f1} - \Rf}S_M$, $S = $ \texttt{TURB\_FLUX\_MIN} for $\Rf \ge \Rfc$ \src{MY:3464--3510}; $\Rfc = 0.1912$, $R_{f1} = 0.234$, $R_{f2} = 0.223$ for MY82 \src{MY:4297--4336}; level 2.5 by $\sqrt{\qsq/q^2_{HL88}}$ with caps $S_M \le 0.44/\sqrt{G_M}$, $S_H \le 0.76 B_2$ \src{MY:3540--3583}. With prognostic $\qsq$ the $\Rfc$ gate on $\qsq$ is not live, but the fluxes vanish above $\Rfc$. \cost{The stable-regime deficit of the project sits above $\Ri \approx 0.3$.}} &
+\C{C6}{approx}{Level 2: $\Rf = f_1(\Ri + f_2 - \sqrt{\Ri^2 + f_3\Ri + f_4})$, $S_M = c_m\dfrac{(\Rfc - \Rf)(R_{f1} - \Rf)}{(1 - \Rf)(R_{f2} - \Rf)}$, $S_H = \dfrac{c_{h2}}{c_m}\dfrac{R_{f2} - \Rf}{R_{f1} - \Rf}S_M$, $S = $ \texttt{TURB\_FLUX\_MIN} for $\Rf \ge \Rfc$ \src{MY:3464--3510}; $\Rfc = 0.1912$, $R_{f1} = 0.234$, $R_{f2} = 0.223$ for MY82 \src{MY:4297--4336}; level 2.5 by $\sqrt{\qsq/q^2_{HL88}}$ with caps $S_M \le 0.44/\sqrt{G_M}$, $S_H \le 0.76 B_2$ \src{MY:3540--3583}. Corrected 2026-10-26: at level 2.5 (\texttt{pbl3d\_prog = 1}, both 3D schemes) the level-2 functions enter only this Helfand--Labraga rescaling for $\qsq < q^2_{HL88}$. Above $\Rfc$ the level-2 $\qsq$ vanishes, so the code takes the level-2.5 functions of $G_H$, which stay positive \src{MY:3665--3712}: no cutoff. Only level 2 (\texttt{pbl3d\_prog = 0}) has one. \cost{The stable-regime deficit of the project sits above $\Ri \approx 0.3$.}} &
 \C{C6}{full}{No $S_M$, $S_H$; the equilibrium follows from the full strain and buoyancy through $\mathsf{A}$; $N$ enters $l$ (0.53~$q/N$) only.} &
 \C{C6}{sms}{No stability functions; $N$ in $\ell_v$, $l_B$, $l_F$; Prandtl numbers not Ri-dependent \src{DE:2320--2322}.} &
 \C{C6}{les}{$N$ in $\ell$ and in $P_b = -K_{hv}N^2$ with the moist $N^2$ \src{DE:6985, 1485--1713}. \lit{In the Riviera the closure "will not produce SFS turbulence when the flow is stable (as measured by the Richardson number)"; removing it changed nothing above 500~m over 30~h \parencite{chow2006}.}} \\
@@ -335,10 +335,10 @@ nothing else \src{M3D:6336, 5863}, while the momentum and scalar equations recei
 divergences of the diagnosed stresses. The publication does not state the production of 3D-APPROX;
 the code does. \textcite{wiersema2023} ran exactly this variant at 280~m over the METEX21 terrain because the full closure was numerically unstable there. This is the cell that separates "applying fluxes in three dimensions" from "solving
 the tensor".
-\item \textbf{Two stability cutoffs, one control.} The control run's MYNN has no critical
-Richardson number (the $a_2$-factor of Canuto and Kitamura keeps $S_M, S_H > 0$), the approximate
-3D closure with MY82 constants cuts off at $\Rfc = 0.191$, the original NN09 at 0.298. Two of the
-compared schemes therefore differ at night in the very quantity the project's deficit is binned by.
+\item \textbf{No stability cutoff in the comparison (corrected 2026-10-26).} The control run's MYNN has no critical
+Richardson number (the $a_2$-factor of Canuto and Kitamura keeps $S_M, S_H > 0$), and the approximate
+3D closure has none at level 2.5 either: its level-2 functions ($\Rfc = 0.191$ with MY82 constants, 0.298 with
+NN09) enter only the Helfand--Labraga rescaling. A cutoff exists only at level 2 (\texttt{pbl3d\_prog = 0}).
 \item \textbf{Ito et al.\ (2015) is not a column scheme.} As published and tested it is MYNN
 level~3 used as the subgrid model of a three-dimensional code, with all flux components in K-form,
 Honnert-scaled length scales and a separate horizontal length scale $L_x = 0.1\,h\,F$. It is the

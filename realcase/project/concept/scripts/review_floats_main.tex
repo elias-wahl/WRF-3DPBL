@@ -1,0 +1,41 @@
+% =============================================================================
+%  PhD Concept -- Elias Wahl -- ACINN, University of Innsbruck
+%  Skeleton: one file per section, bullets only (no prose yet).
+%  Build locally:  ~/miniconda3/envs/tex/bin/tectonic main.tex
+%  Overleaf:       upload the folder as a zip; compiler pdfLaTeX, biber runs automatically.
+% =============================================================================
+\documentclass[11pt,a4paper]{article}
+\input{00_preamble}
+\usepackage[active,tightpage]{preview}
+\makeatletter
+\newlength\origtw\setlength\origtw{\textwidth}\newsavebox\pvbox
+\renewenvironment{figure}[1][]{\def\@captype{figure}\begin{lrbox}{\pvbox}\begin{minipage}{\origtw}}{\end{minipage}\end{lrbox}\noindent\makebox[\origtw][c]{\makebox[0pt][c]{\hspace*{-0.5\origtw}\rule{0pt}{0pt}}\usebox{\pvbox}\makebox[0pt][c]{\hspace*{0.5\origtw}\rule{0pt}{0pt}}}}
+\renewenvironment{table}[1][]{\def\@captype{table}\begin{lrbox}{\pvbox}\begin{minipage}{\origtw}}{\end{minipage}\end{lrbox}\noindent\makebox[\origtw][c]{\usebox{\pvbox}}}
+\makeatother
+\PreviewEnvironment{figure}\PreviewEnvironment{table}
+\setlength\PreviewBorder{120pt}
+\makeatletter\AtBeginDocument{\renewcommand{\caption}[2][]{\refstepcounter{\@captype}}}\makeatother
+
+
+\makeatletter\AtBeginDocument{\input{labels_from_main.tex}}\makeatother
+\begin{document}
+
+
+
+\input{01_introduction}
+\input{02_state_of_research}
+\input{03_research_questions}
+\input{04_methods}
+\input{05_first_paper}
+\input{06_second_paper}
+\input{07_third_paper}
+\input{08_schedule}
+
+
+
+
+
+% --- Appendix: structure prepared, not yet decided whether it will be used ---
+%\input{A1_appendix}
+
+\end{document}

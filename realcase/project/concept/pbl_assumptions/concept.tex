@@ -88,7 +88,7 @@ sound \\
 \addlinespace[3pt]
 Scheme table: columns ``horizontal shear production'', ``horizontal flux divergence'', ``length scale(s)'' &
 \rid{B1}, \rid{B3}, \rid{C4} &
-Three of the nineteen rows. The columns that would make the table honest about the ladder are missing: a stability cutoff (C6: yes / no / yes / no), nonlocal transport (C1: mass-flux plumes in the control, none elsewhere), TKE transport (B4), the constant set (C9: NN09 / NN09 / MY82 / MY82), and an ``as run'' line for the 3D closures (six departures from the publication: one master scale, strain cap, buoyancy limit, excess-weighted $l_0$, slope-factor pairing, friction-velocity floor). The methods say the switches ``all default to the reference behaviour''; true of the code, false of the production namelist. &
+Three of the nineteen rows. The columns that would make the table honest about the ladder are missing: a stability cutoff (C6: yes / no / yes / no; corrected 2026-10-26: none in any of the four at level 2.5), nonlocal transport (C1: mass-flux plumes in the control, none elsewhere), TKE transport (B4), the constant set (C9: NN09 / NN09 / MY82 / MY82), and an ``as run'' line for the 3D closures (six departures from the publication: one master scale, strain cap, buoyancy limit, excess-weighted $l_0$, slope-factor pairing, friction-velocity floor). The methods say the switches ``all default to the reference behaviour''; true of the code, false of the production namelist. &
 sharpen \\
 \addlinespace[3pt]
 The control: ``MYNN with mass flux for heat and moisture but not momentum, TKE advection on'' &
@@ -121,7 +121,7 @@ per scheme and regime, $K_M$ from observed moments) are the tests this note woul
 concept describes, however, are the published schemes: the schemes that will run carry six
 departures from the publication, a control whose transport model differs from the one written
 down, and a stability cutoff that separates the approximate variant from both its neighbours at
-night without being mentioned. Of the five rows no scheme drops (the shaded ones), the concept
+night without being mentioned (corrected 2026-10-26: at level 2.5 the approximate variant has no cutoff). Of the five rows no scheme drops (the shaded ones), the concept
 can test two --- B6 with the sonics and C10 with the budget residual --- and should say so; C7 is
 tested by the transition, C9 is not testable in this design, and A2 needs one sentence. Correcting
 the text is an afternoon; the second control is one run.
