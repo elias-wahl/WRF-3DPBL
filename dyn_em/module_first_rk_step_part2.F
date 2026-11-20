@@ -1356,8 +1356,8 @@ BENCH_END(hor_diff_tim)
                     ips, ipe, jps, jpe, kps, kpe, grid%i_start(ij), grid%i_end(ij), &
                     grid%j_start(ij), grid%j_end(ij), k_start, k_end                )
              ENDDO
+             !$OMP END PARALLEL DO
            END IF
-           !$OMP END PARALLEL DO
 
            !$OMP PARALLEL DO   &
            !$OMP PRIVATE ( ij )
