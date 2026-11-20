@@ -1614,155 +1614,43 @@
          dqnc_dx, dqnc_dy, dqnc_dz, dqnr_dx, dqnr_dy, dqnr_dz, dqni_dx, dqni_dy, dqni_dz, &
          dqnwfa_dx, dqnwfa_dy, dqnwfa_dz, dqnifa_dx, dqnifa_dy, dqnifa_dz
 
-        ! Calculate cloud mass derivatives
-      if ( p_qc .ge. param_first_scalar ) then
-        call Calc_dmassvar_dx (qc, zx, rdz, msftx, fnm, fnp, dn, dnw, rdx, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqc_dx)
+      call Derivatives_of (p_qc, qc, dqc_dx, dqc_dy, dqc_dz)                  ! Cloud mass
+      call Derivatives_of (p_qr, qr, dqr_dx, dqr_dy, dqr_dz)                  ! Rain mass
+      call Derivatives_of (p_qi, qi, dqi_dx, dqi_dy, dqi_dz)                  ! Ice mass
+      call Derivatives_of (p_qs, qs, dqs_dx, dqs_dy, dqs_dz)                  ! Snow mass
+      call Derivatives_of (p_qg, qg, dqg_dx, dqg_dy, dqg_dz)                  ! Graupel mass
+      call Derivatives_of (p_qnc, qnc, dqnc_dx, dqnc_dy, dqnc_dz)             ! Cloud number
+      call Derivatives_of (p_qnr, qnr, dqnr_dx, dqnr_dy, dqnr_dz)             ! Rain number
+      call Derivatives_of (p_qni, qni, dqni_dx, dqni_dy, dqni_dz)             ! Ice number
+      call Derivatives_of (p_qnwfa, qnwfa, dqnwfa_dx, dqnwfa_dy, dqnwfa_dz)   ! Water friendly aerosol number
+      call Derivatives_of (p_qnifa, qnifa, dqnifa_dx, dqnifa_dy, dqnifa_dz)   ! Ice friendly aerosol number
 
-        call Calc_dmassvar_dy (qc, zy, rdz, msfty, fnm, fnp, dn, dnw, rdy, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqc_dy)
+    contains
 
-        call Calc_dmassvar_dz (qc, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqc_dz)
-      else
-        dqc_dx(its:ite, kts:kte, jts:jte) = 0.0
-        dqc_dy(its:ite, kts:kte, jts:jte) = 0.0
-        dqc_dz(its:ite, kts:kte, jts:jte) = 0.0
-      end if
+      subroutine Derivatives_of (p_q, q, dq_dx, dq_dy, dq_dz)
 
-        ! Calculate rain mass derivatives
-      if ( p_qr .ge. param_first_scalar ) then
-        call Calc_dmassvar_dx (qr, zx, rdz, msftx, fnm, fnp, dn, dnw, rdx, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqr_dx)
+          ! The three derivatives of one hydrometeor mass or number (index p_q in moist or scalar;
+          ! zero when the microphysics does not carry it)
 
-        call Calc_dmassvar_dy (qr, zy, rdz, msfty, fnm, fnp, dn, dnw, rdy, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqr_dy)
+        integer,                                     intent (in)  :: p_q
+        real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: q
+        real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dq_dx, dq_dy, dq_dz
 
-        call Calc_dmassvar_dz (qr, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqr_dz)
-      else
-        dqr_dx(its:ite, kts:kte, jts:jte) = 0.0
-        dqr_dy(its:ite, kts:kte, jts:jte) = 0.0
-        dqr_dz(its:ite, kts:kte, jts:jte) = 0.0
-      end if
+        if ( p_q .ge. param_first_scalar ) then
+          call Calc_dmassvar_dx (q, zx, rdz, msftx, fnm, fnp, dn, dnw, rdx, cf1, cf2, cf3,  &
+              ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dq_dx)
 
-        ! Calculate ice mass derivatives
-      if ( p_qi .ge. param_first_scalar ) then
-        call Calc_dmassvar_dx (qi, zx, rdz, msftx, fnm, fnp, dn, dnw, rdx, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqi_dx)
+          call Calc_dmassvar_dy (q, zy, rdz, msfty, fnm, fnp, dn, dnw, rdy, cf1, cf2, cf3,  &
+              ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dq_dy)
 
-        call Calc_dmassvar_dy (qi, zy, rdz, msfty, fnm, fnp, dn, dnw, rdy, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqi_dy)
+          call Calc_dmassvar_dz (q, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dq_dz)
+        else
+          dq_dx(its:ite, kts:kte, jts:jte) = 0.0
+          dq_dy(its:ite, kts:kte, jts:jte) = 0.0
+          dq_dz(its:ite, kts:kte, jts:jte) = 0.0
+        end if
 
-        call Calc_dmassvar_dz (qi, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqi_dz)
-      else
-        dqi_dx(its:ite, kts:kte, jts:jte) = 0.0
-        dqi_dy(its:ite, kts:kte, jts:jte) = 0.0
-        dqi_dz(its:ite, kts:kte, jts:jte) = 0.0
-      end if
-
-        ! Calculate snow mass derivatives
-      if ( p_qs .ge. param_first_scalar ) then
-        call Calc_dmassvar_dx (qs, zx, rdz, msftx, fnm, fnp, dn, dnw, rdx, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqs_dx)
-
-        call Calc_dmassvar_dy (qs, zy, rdz, msfty, fnm, fnp, dn, dnw, rdy, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqs_dy)
-
-        call Calc_dmassvar_dz (qs, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqs_dz)
-      else
-        dqs_dx(its:ite, kts:kte, jts:jte) = 0.0
-        dqs_dy(its:ite, kts:kte, jts:jte) = 0.0
-        dqs_dz(its:ite, kts:kte, jts:jte) = 0.0
-      end if
-
-        ! Calculate graupel mass derivatives
-      if ( p_qg .ge. param_first_scalar ) then
-        call Calc_dmassvar_dx (qg, zx, rdz, msftx, fnm, fnp, dn, dnw, rdx, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqg_dx)
-
-        call Calc_dmassvar_dy (qg, zy, rdz, msfty, fnm, fnp, dn, dnw, rdy, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqg_dy)
-
-        call Calc_dmassvar_dz (qg, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqg_dz)
-      else
-        dqg_dx(its:ite, kts:kte, jts:jte) = 0.0
-        dqg_dy(its:ite, kts:kte, jts:jte) = 0.0
-        dqg_dz(its:ite, kts:kte, jts:jte) = 0.0
-      end if
-
-        ! Calculate cloud number derivatives
-      if ( p_qnc .ge. param_first_scalar ) then
-        call Calc_dmassvar_dx (qnc, zx, rdz, msftx, fnm, fnp, dn, dnw, rdx, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqnc_dx)
-
-        call Calc_dmassvar_dy (qnc, zy, rdz, msfty, fnm, fnp, dn, dnw, rdy, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqnc_dy)
-
-        call Calc_dmassvar_dz (qnc, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqnc_dz)
-      else
-        dqnc_dx(its:ite, kts:kte, jts:jte) = 0.0
-        dqnc_dy(its:ite, kts:kte, jts:jte) = 0.0
-        dqnc_dz(its:ite, kts:kte, jts:jte) = 0.0
-      end if
-
-        ! Calculate rain number derivatives
-      if ( p_qnr .ge. param_first_scalar ) then
-        call Calc_dmassvar_dx (qnr, zx, rdz, msftx, fnm, fnp, dn, dnw, rdx, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqnr_dx)
-
-        call Calc_dmassvar_dy (qnr, zy, rdz, msfty, fnm, fnp, dn, dnw, rdy, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqnr_dy)
-
-        call Calc_dmassvar_dz (qnr, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqnr_dz)
-      else
-        dqnr_dx(its:ite, kts:kte, jts:jte) = 0.0
-        dqnr_dy(its:ite, kts:kte, jts:jte) = 0.0
-        dqnr_dz(its:ite, kts:kte, jts:jte) = 0.0
-      end if
-
-        ! Calculate ice number derivatives
-      if ( p_qni .ge. param_first_scalar ) then
-        call Calc_dmassvar_dx (qni, zx, rdz, msftx, fnm, fnp, dn, dnw, rdx, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqni_dx)
-
-        call Calc_dmassvar_dy (qni, zy, rdz, msfty, fnm, fnp, dn, dnw, rdy, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqni_dy)
-
-        call Calc_dmassvar_dz (qni, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqni_dz)
-      else
-        dqni_dx(its:ite, kts:kte, jts:jte) = 0.0
-        dqni_dy(its:ite, kts:kte, jts:jte) = 0.0
-        dqni_dz(its:ite, kts:kte, jts:jte) = 0.0
-      end if
-
-        ! Calculate water friendly aerosol number derivatives
-      if ( p_qnwfa .ge. param_first_scalar ) then
-        call Calc_dmassvar_dx (qnwfa, zx, rdz, msftx, fnm, fnp, dn, dnw, rdx, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqnwfa_dx)
-
-        call Calc_dmassvar_dy (qnwfa, zy, rdz, msfty, fnm, fnp, dn, dnw, rdy, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqnwfa_dy)
-
-        call Calc_dmassvar_dz (qnwfa, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqnwfa_dz)
-      else
-        dqnwfa_dx(its:ite, kts:kte, jts:jte) = 0.0
-        dqnwfa_dy(its:ite, kts:kte, jts:jte) = 0.0
-        dqnwfa_dz(its:ite, kts:kte, jts:jte) = 0.0
-      end if
-
-        ! Calculate ice friendly aerosol number derivatives
-      if ( p_qnifa .ge. param_first_scalar ) then
-        call Calc_dmassvar_dx (qnifa, zx, rdz, msftx, fnm, fnp, dn, dnw, rdx, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqnifa_dx)
-
-        call Calc_dmassvar_dy (qnifa, zy, rdz, msfty, fnm, fnp, dn, dnw, rdy, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqnifa_dy)
-
-        call Calc_dmassvar_dz (qnifa, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqnifa_dz)
-      else
-        dqnifa_dx(its:ite, kts:kte, jts:jte) = 0.0
-        dqnifa_dy(its:ite, kts:kte, jts:jte) = 0.0
-        dqnifa_dz(its:ite, kts:kte, jts:jte) = 0.0
-      end if
+      end subroutine Derivatives_of
 
     end subroutine Calc_scalar_var_derivatives
 
@@ -2177,96 +2065,16 @@
       end if
 
       if ( config_flags%pbl3d_scalar_mix .eq. 1 .and. ss .eq. config_flags%pbl3d_nsteps ) then
-          ! Cloud mass
-        if ( p_qc .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          call Vertical_mixing_s_with_flux (hydromet_tend, config_flags, turb_flux_wqc,  &
-              dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms, &
-              jme, kms, kme, its, ite, jts, jte, kts, kte)
-          dqc(its:ite, kts:kte, jts:jte) = dqc(its:ite, kts:kte, jts:jte) + &
-                                           hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-          ! Rain mass
-        if ( p_qr .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          call Vertical_mixing_s_with_flux (hydromet_tend, config_flags, turb_flux_wqr,  &
-              dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms, &
-              jme, kms, kme, its, ite, jts, jte, kts, kte)
-          dqr(its:ite, kts:kte, jts:jte) = dqr(its:ite, kts:kte, jts:jte) + &
-                                           hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-          ! Ice mass
-        if ( p_qi .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          call Vertical_mixing_s_with_flux (hydromet_tend, config_flags, turb_flux_wqi,  &
-              dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms, &
-              jme, kms, kme, its, ite, jts, jte, kts, kte)
-          dqi(its:ite, kts:kte, jts:jte) = dqi(its:ite, kts:kte, jts:jte) + &
-                                           hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-          ! Snow mass
-        if ( p_qs .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          call Vertical_mixing_s_with_flux (hydromet_tend, config_flags, turb_flux_wqs,  &
-              dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms, &
-              jme, kms, kme, its, ite, jts, jte, kts, kte)
-          dqs(its:ite, kts:kte, jts:jte) = dqs(its:ite, kts:kte, jts:jte) + &
-                                           hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-           ! Graupel mass
-        if ( p_qg .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          call Vertical_mixing_s_with_flux (hydromet_tend, config_flags, turb_flux_wqg,  &
-              dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms, &
-              jme, kms, kme, its, ite, jts, jte, kts, kte)
-          dqg(its:ite, kts:kte, jts:jte) = dqg(its:ite, kts:kte, jts:jte) + &
-                                           hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-          ! Cloud number
-        if ( p_qnc .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          call Vertical_mixing_s_with_flux (hydromet_tend, config_flags, turb_flux_wqnc,  &
-              dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms, &
-              jme, kms, kme, its, ite, jts, jte, kts, kte)
-          dqnc(its:ite, kts:kte, jts:jte) = dqnc(its:ite, kts:kte, jts:jte) + &
-                                            hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-          ! Rain number
-        if ( p_qnr .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          call Vertical_mixing_s_with_flux (hydromet_tend, config_flags, turb_flux_wqnr,  &
-              dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms, &
-              jme, kms, kme, its, ite, jts, jte, kts, kte)
-          dqnr(its:ite, kts:kte, jts:jte) = dqnr(its:ite, kts:kte, jts:jte) + &
-                                            hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-          ! Ice number
-        if ( p_qni .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          call Vertical_mixing_s_with_flux (hydromet_tend, config_flags, turb_flux_wqni,  &
-              dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms, &
-              jme, kms, kme, its, ite, jts, jte, kts, kte)
-          dqni(its:ite, kts:kte, jts:jte) = dqni(its:ite, kts:kte, jts:jte) + &
-                                            hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-          ! Water friendly aerosol number
-        if ( p_qnwfa .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          call Vertical_mixing_s_with_flux (hydromet_tend, config_flags, turb_flux_wqnwfa,  &
-              dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms, &
-              jme, kms, kme, its, ite, jts, jte, kts, kte)
-          dqnwfa(its:ite, kts:kte, jts:jte) = dqnwfa(its:ite, kts:kte, jts:jte) + &
-                                              hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-          ! Ice friendly aerosol number
-        if ( p_qnifa .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          call Vertical_mixing_s_with_flux (hydromet_tend, config_flags, turb_flux_wqnifa,  &
-              dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms, &
-              jme, kms, kme, its, ite, jts, jte, kts, kte)
-          dqnifa(its:ite, kts:kte, jts:jte) = dqnifa(its:ite, kts:kte, jts:jte) + &
-                                              hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
+        call Mix_hydrometeor (p_qc, turb_flux_wqc, dqc)            ! Cloud mass
+        call Mix_hydrometeor (p_qr, turb_flux_wqr, dqr)            ! Rain mass
+        call Mix_hydrometeor (p_qi, turb_flux_wqi, dqi)            ! Ice mass
+        call Mix_hydrometeor (p_qs, turb_flux_wqs, dqs)            ! Snow mass
+        call Mix_hydrometeor (p_qg, turb_flux_wqg, dqg)            ! Graupel mass
+        call Mix_hydrometeor (p_qnc, turb_flux_wqnc, dqnc)         ! Cloud number
+        call Mix_hydrometeor (p_qnr, turb_flux_wqnr, dqnr)         ! Rain number
+        call Mix_hydrometeor (p_qni, turb_flux_wqni, dqni)         ! Ice number
+        call Mix_hydrometeor (p_qnwfa, turb_flux_wqnwfa, dqnwfa)   ! Water friendly aerosol number
+        call Mix_hydrometeor (p_qnifa, turb_flux_wqnifa, dqnifa)   ! Ice friendly aerosol number
       end if
 
       if (ss .eq. config_flags%pbl3d_nsteps .and. n_tracer .ge. param_first_scalar) then
@@ -2275,6 +2083,28 @@
               khz, dnw, rdz, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
         end do
       end if
+
+    contains
+
+      subroutine Mix_hydrometeor (p_q, turb_flux_wq, dq)
+
+          ! Adds the vertical turbulent mixing of one hydrometeor mass or number (index p_q in moist
+          ! or scalar; nothing when the microphysics does not carry it) to its tendency dq
+
+        integer,                                     intent (in)    :: p_q
+        real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: turb_flux_wq
+        real, dimension (ims:ime, kms:kme, jms:jme), intent (inout) :: dq
+
+        if ( p_q .ge. param_first_scalar ) then
+          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
+          call Vertical_mixing_s_with_flux (hydromet_tend, config_flags, turb_flux_wq,  &
+              dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms, &
+              jme, kms, kme, its, ite, jts, jte, kts, kte)
+          dq(its:ite, kts:kte, jts:jte) = dq(its:ite, kts:kte, jts:jte) + &
+                                          hydromet_tend(its:ite, kts:kte, jts:jte)
+        end if
+
+      end subroutine Mix_hydrometeor
 
     end subroutine Vertical_turb_mix
 
@@ -2946,96 +2776,16 @@
           ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
       if ( config_flags%pbl3d_scalar_mix .eq. 1 .and. ss .eq. config_flags%pbl3d_nsteps ) then
-          ! Cloud mass
-        if ( p_qc .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          hydromet_tend(its:ite, kts:kte, jts:jte) = qc_tendf(its:ite, kts:kte, jts:jte)
-          call Horizontal_mixing_s_with_flux (hydromet_tend, config_flags, msftx, msfty, rdx, rdy, &
-              fnm, fnp, zx, zy, rdz, rdzw, dnw, rho, sf_alpha, turb_flux_uqc, turb_flux_vqc, &
-              ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-          qc_tendf(its:ite, kts:kte, jts:jte) = hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-          ! Rain mass
-        if ( p_qr .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          hydromet_tend(its:ite, kts:kte, jts:jte) = qr_tendf(its:ite, kts:kte, jts:jte)
-          call Horizontal_mixing_s_with_flux (hydromet_tend, config_flags, msftx, msfty, rdx, rdy, &
-              fnm, fnp, zx, zy, rdz, rdzw, dnw, rho, sf_alpha, turb_flux_uqr, turb_flux_vqr, &
-              ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-          qr_tendf(its:ite, kts:kte, jts:jte) = hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-          ! Ice mass
-        if ( p_qi .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          hydromet_tend(its:ite, kts:kte, jts:jte) = qi_tendf(its:ite, kts:kte, jts:jte)
-          call Horizontal_mixing_s_with_flux (hydromet_tend, config_flags, msftx, msfty, rdx, rdy, &
-              fnm, fnp, zx, zy, rdz, rdzw, dnw, rho, sf_alpha, turb_flux_uqi, turb_flux_vqi, &
-              ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-          qi_tendf(its:ite, kts:kte, jts:jte) = hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-          ! Snow mass
-        if ( p_qs .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          hydromet_tend(its:ite, kts:kte, jts:jte) = qs_tendf(its:ite, kts:kte, jts:jte)
-          call Horizontal_mixing_s_with_flux (hydromet_tend, config_flags, msftx, msfty, rdx, rdy, &
-              fnm, fnp, zx, zy, rdz, rdzw, dnw, rho, sf_alpha, turb_flux_uqs, turb_flux_vqs, &
-              ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-          qs_tendf(its:ite, kts:kte, jts:jte) = hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-          ! Graupel mass
-        if ( p_qg .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          hydromet_tend(its:ite, kts:kte, jts:jte) = qg_tendf(its:ite, kts:kte, jts:jte)
-          call Horizontal_mixing_s_with_flux (hydromet_tend, config_flags, msftx, msfty, rdx, rdy, &
-              fnm, fnp, zx, zy, rdz, rdzw, dnw, rho, sf_alpha, turb_flux_uqg, turb_flux_vqg, &
-              ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-          qg_tendf(its:ite, kts:kte, jts:jte) = hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-          ! Cloud number
-        if ( p_qnc .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          hydromet_tend(its:ite, kts:kte, jts:jte) = qnc_tendf(its:ite, kts:kte, jts:jte)
-          call Horizontal_mixing_s_with_flux (hydromet_tend, config_flags, msftx, msfty, rdx, rdy, &
-              fnm, fnp, zx, zy, rdz, rdzw, dnw, rho, sf_alpha, turb_flux_uqnc, turb_flux_vqnc, &
-              ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-          qnc_tendf(its:ite, kts:kte, jts:jte) = hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-           ! Rain number
-        if ( p_qnr .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          hydromet_tend(its:ite, kts:kte, jts:jte) = qnr_tendf(its:ite, kts:kte, jts:jte)
-          call Horizontal_mixing_s_with_flux (hydromet_tend, config_flags, msftx, msfty, rdx, rdy, &
-              fnm, fnp, zx, zy, rdz, rdzw, dnw, rho, sf_alpha, turb_flux_uqnr, turb_flux_vqnr, &
-              ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-          qnr_tendf(its:ite, kts:kte, jts:jte) = hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-          ! Ice number
-        if ( p_qni .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          hydromet_tend(its:ite, kts:kte, jts:jte) = qni_tendf(its:ite, kts:kte, jts:jte)
-          call Horizontal_mixing_s_with_flux (hydromet_tend, config_flags, msftx, msfty, rdx, rdy, &
-              fnm, fnp, zx, zy, rdz, rdzw, dnw, rho, sf_alpha, turb_flux_uqni, turb_flux_vqni, &
-              ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-          qni_tendf(its:ite, kts:kte, jts:jte) = hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-          ! Water friendly aerosol number
-        if ( p_qnwfa .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          hydromet_tend(its:ite, kts:kte, jts:jte) = qnwfa_tendf(its:ite, kts:kte, jts:jte)
-          call Horizontal_mixing_s_with_flux (hydromet_tend, config_flags, msftx, msfty, rdx, rdy, &
-              fnm, fnp, zx, zy, rdz, rdzw, dnw, rho, sf_alpha, turb_flux_uqnwfa, turb_flux_vqnwfa, &
-              ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-          qnwfa_tendf(its:ite, kts:kte, jts:jte) = hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-          ! Ice friendly aerosol number
-        if ( p_qnifa .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          hydromet_tend(its:ite, kts:kte, jts:jte) = qnifa_tendf(its:ite, kts:kte, jts:jte)
-          call Horizontal_mixing_s_with_flux (hydromet_tend, config_flags, msftx, msfty, rdx, rdy, &
-              fnm, fnp, zx, zy, rdz, rdzw, dnw, rho, sf_alpha, turb_flux_uqnifa, turb_flux_vqnifa, &
-              ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-          qnifa_tendf(its:ite, kts:kte, jts:jte) = hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
+        call Mix_hydrometeor (p_qc, turb_flux_uqc, turb_flux_vqc, qc_tendf)               ! Cloud mass
+        call Mix_hydrometeor (p_qr, turb_flux_uqr, turb_flux_vqr, qr_tendf)               ! Rain mass
+        call Mix_hydrometeor (p_qi, turb_flux_uqi, turb_flux_vqi, qi_tendf)               ! Ice mass
+        call Mix_hydrometeor (p_qs, turb_flux_uqs, turb_flux_vqs, qs_tendf)               ! Snow mass
+        call Mix_hydrometeor (p_qg, turb_flux_uqg, turb_flux_vqg, qg_tendf)               ! Graupel mass
+        call Mix_hydrometeor (p_qnc, turb_flux_uqnc, turb_flux_vqnc, qnc_tendf)           ! Cloud number
+        call Mix_hydrometeor (p_qnr, turb_flux_uqnr, turb_flux_vqnr, qnr_tendf)           ! Rain number
+        call Mix_hydrometeor (p_qni, turb_flux_uqni, turb_flux_vqni, qni_tendf)           ! Ice number
+        call Mix_hydrometeor (p_qnwfa, turb_flux_uqnwfa, turb_flux_vqnwfa, qnwfa_tendf)   ! Water friendly aerosol number
+        call Mix_hydrometeor (p_qnifa, turb_flux_uqnifa, turb_flux_vqnifa, qnifa_tendf)   ! Ice friendly aerosol number
       end if
 
       if (ss .eq. config_flags%pbl3d_nsteps .and. n_tracer .ge. param_first_scalar) then
@@ -3045,6 +2795,27 @@
               ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
         end do
       end if
+
+    contains
+
+      subroutine Mix_hydrometeor (p_q, turb_flux_uq, turb_flux_vq, q_tendf)
+
+          ! Adds the horizontal turbulent mixing of one hydrometeor mass or number (index p_q in moist
+          ! or scalar; nothing when the microphysics does not carry it) to its tendency q_tendf
+
+        integer,                                     intent (in)    :: p_q
+        real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: turb_flux_uq, turb_flux_vq
+        real, dimension (ims:ime, kms:kme, jms:jme), intent (inout) :: q_tendf
+
+        if ( p_q .ge. param_first_scalar ) then
+          hydromet_tend(its:ite, kts:kte, jts:jte) = q_tendf(its:ite, kts:kte, jts:jte)
+          call Horizontal_mixing_s_with_flux (hydromet_tend, config_flags, msftx, msfty, rdx, rdy, &
+              fnm, fnp, zx, zy, rdz, rdzw, dnw, rho, sf_alpha, turb_flux_uq, turb_flux_vq, &
+              ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+          q_tendf(its:ite, kts:kte, jts:jte) = hydromet_tend(its:ite, kts:kte, jts:jte)
+        end if
+
+      end subroutine Mix_hydrometeor
 
     end subroutine Horizontal_turb_mix
 
