@@ -5057,9 +5057,9 @@
 
         case default
 
-          write (OUTPUT_UNIT, *) 'ERROR: Unknown definition of model constants'
-          write (OUTPUT_UNIT, *) 'Valid values of turbmix3d_constants are Y73, MY74 and MY82'
-          stop
+            ! a fatal error through WRF's handler (all MPI ranks stop), not a bare STOP
+          call wrf_error_fatal ('PBL3D: unknown pbl3d_constants; valid values are MY73 (or M73), MY74, ' // &
+                                'MY82, MYJ and Boulac')
 
       end select
 
