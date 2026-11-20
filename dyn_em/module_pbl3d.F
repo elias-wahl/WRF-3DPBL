@@ -38,14 +38,14 @@
 
     use, intrinsic :: iso_fortran_env
 
-    use module_model_constants, only: KARMAN, G, P608, T0, CP, RCP
+    use module_model_constants, only: KARMAN, G, P608, T0, CP, RCP, RVOVRD
     use module_state_description, only: p_qc, p_qr, p_qi, p_qs, p_qg, p_qnc, p_qnr, p_qni, p_qnwfa, p_qnifa, param_first_scalar
     use module_domain, only: domain
     use module_big_step_utilities_em, only: grid_config_rec_type
     use module_dm, only: local_communicator, mytask, ntasks, ntasks_x, ntasks_y, local_communicator_periodic
     use module_comm_dm, only: halo_em_phys_hdiff_pbl3d_sub, period_bdy_em_hdiff_pbl3d_sub
     use module_bc, only: set_physical_bc3d
-    use module_pbl3d_my, only: Set_init_turb_state_my, Calc_turb_fluxes_my
+    use module_pbl3d_my, only: Set_init_turb_state_my, Calc_turb_fluxes_my, THM_FLUX_OPT, PBLH_AGL_OPT
     use module_pbl3d_my, only: Q_SQ_MIN, TURB_FLUX_MIN, a_2, b_1, SQ_DIFF, SFC_QSQ_BC, SQ_IMPLICIT
 
     implicit none
@@ -688,6 +688,12 @@
           dqni_dx, dqni_dy, dqni_dz, dqnwfa_dx, dqnwfa_dy, dqnwfa_dz, dqnifa_dx, dqnifa_dy, dqnifa_dz
       logical, parameter :: DEBUG = .false.
       integer :: i, j, k, i_start, i_end, j_start, j_end, ktf
+
+        ! Opt-in corrections (OPEN_ISSUES A37, A38); 0 = previous behaviour, bit for bit
+      THM_FLUX_OPT = config_flags%pbl3d_thm_flux
+      PBLH_AGL_OPT = config_flags%pbl3d_pblh_agl
+      if (THM_FLUX_OPT > 0 .and. config_flags%use_theta_m /= 1) &
+        call wrf_error_fatal ('PBL3D: pbl3d_thm_flux > 0 requires use_theta_m = 1')
 
         ! Calculate derivatives at the faces to prepare for fluxes
       call Calc_wind_derivatives (config_flags, u, v, w, du_dx, dv_dy, dw_dz,  &
@@ -1689,7 +1695,14 @@
         do k = kts, ktf
           do i = i_start - 1, i_end + 1
             sqv = qv(i, k, j) / (1.0 + qv(i, k, j))
-            thetav(i, k, j) = th(i, k, j) * (1.0 + P608 * sqv)
+            if (THM_FLUX_OPT == 2) then
+                ! Physical theta_v - T0 = theta_dry (1 + 0.608 q) - T0 with theta_dry = (T0 + th) / (1 + (Rv/Rd) qv),
+                ! th = theta_m - T0 (use_theta_m = 1), written without the T0 cancellation. OPEN_ISSUES A23.2
+              thetav(i, k, j) = (th(i, k, j) * (1.0 + P608 * sqv) + T0 * (P608 * sqv - RVOVRD * qv(i, k, j))) &
+                  / (1.0 + RVOVRD * qv(i, k, j))
+            else
+              thetav(i, k, j) = th(i, k, j) * (1.0 + P608 * sqv)
+            end if
           end do
         end do
       end do

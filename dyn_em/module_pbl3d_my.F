@@ -38,7 +38,7 @@
 
     use, intrinsic :: iso_fortran_env
 
-    use module_model_constants, only: KARMAN, G, P608, T0, CP, RCP
+    use module_model_constants, only: KARMAN, G, P608, T0, CP, RCP, RVOVRD
     use module_state_description, only: p_qc, p_qr, p_qi, p_qs, p_qg, p_qnc, p_qnr, p_qni, p_qnwfa, p_qnifa, param_first_scalar
     use module_big_step_utilities_em, only: grid_config_rec_type
 
@@ -51,6 +51,10 @@
     real, parameter :: G_OVER_TREF = G / T0
     real, parameter :: DWIND_DZ_MIN = 1.0E-10
     real, public    :: Q_SQ_MIN, TURB_FLUX_MIN
+      ! Opt-in corrections, copied from the namelist by Calc_turb_fluxes_driver at every call;
+      ! 0 = previous behaviour, bit for bit. THM_FLUX_OPT = pbl3d_thm_flux (OPEN_ISSUES A38, A23.2),
+      ! PBLH_AGL_OPT = pbl3d_pblh_agl (OPEN_ISSUES A37).
+    integer, public :: THM_FLUX_OPT = 0, PBLH_AGL_OPT = 0
     logical, parameter :: USE_HIGH_ORDER = .true.
 
       ! Safeguards for the full 3D closure (pbl3d_opt = 2) only. The A matrix of the
@@ -2760,19 +2764,39 @@
       real, intent(out) :: tf_ut, tf_vt, tf_wt
 
         ! Local vars
-      real :: th_wall, qv_wall
+      real :: th_wall, qv_wall, th_pert, th_dry, qm
 
       th_wall = T0 + fnm(k) * th2(i, k, j) + fnp(k) * th2(i, k - 1, j)
       qv_wall = fnm(k) * qv(i, k, j) + fnp(k) * qv(i, k - 1, j)
 
-      tf_ut = Real ((tf_utv - P608 * th_wall * tf_uqv) / (1.0 + P608 * qv_wall), &
-          kind = WORKING_PREC)
+      if (THM_FLUX_OPT == 0) then
+        tf_ut = Real ((tf_utv - P608 * th_wall * tf_uqv) / (1.0 + P608 * qv_wall), &
+            kind = WORKING_PREC)
 
-      tf_vt = Real ((tf_vtv - P608 * th_wall * tf_vqv) / (1.0 + P608 * qv_wall), &
-          kind = WORKING_PREC)
+        tf_vt = Real ((tf_vtv - P608 * th_wall * tf_vqv) / (1.0 + P608 * qv_wall), &
+            kind = WORKING_PREC)
 
-      tf_wt = Real ((tf_wtv - P608 * th_wall * tf_wqv) / (1.0 + P608 * qv_wall), &
-          kind = WORKING_PREC)
+        tf_wt = Real ((tf_wtv - P608 * th_wall * tf_wqv) / (1.0 + P608 * qv_wall), &
+            kind = WORKING_PREC)
+      else if (THM_FLUX_OPT == 1) then
+          ! The closure's theta_v is th2 (1 + 0.608 q) with th2 = theta_m - T0 (Calc_thetav): invert
+          ! with the same th2, so the returned flux is the flux of theta_m. OPEN_ISSUES A38
+        th_pert = fnm(k) * th2(i, k, j) + fnp(k) * th2(i, k - 1, j)
+        tf_ut = Real ((tf_utv - P608 * th_pert * tf_uqv) / (1.0 + P608 * qv_wall), kind = WORKING_PREC)
+        tf_vt = Real ((tf_vtv - P608 * th_pert * tf_vqv) / (1.0 + P608 * qv_wall), kind = WORKING_PREC)
+        tf_wt = Real ((tf_wtv - P608 * th_pert * tf_wqv) / (1.0 + P608 * qv_wall), kind = WORKING_PREC)
+      else
+          ! Physical theta_v = theta_dry (1 + 0.608 q) (Calc_thetav, THM_FLUX_OPT = 2): dry-theta flux,
+          ! then the theta_m flux (1 + (Rv/Rd) q) w'theta' + (Rv/Rd) theta w'q'. OPEN_ISSUES A38, A23.2
+        qm = 1.0 + RVOVRD * qv_wall
+        th_dry = th_wall / qm
+        tf_ut = Real (qm * (tf_utv - P608 * th_dry * tf_uqv) / (1.0 + P608 * qv_wall) &
+            + RVOVRD * th_dry * tf_uqv, kind = WORKING_PREC)
+        tf_vt = Real (qm * (tf_vtv - P608 * th_dry * tf_vqv) / (1.0 + P608 * qv_wall) &
+            + RVOVRD * th_dry * tf_vqv, kind = WORKING_PREC)
+        tf_wt = Real (qm * (tf_wtv - P608 * th_dry * tf_wqv) / (1.0 + P608 * qv_wall) &
+            + RVOVRD * th_dry * tf_wqv, kind = WORKING_PREC)
+      end if
 
     end subroutine Calc_heat_flux
 
@@ -3277,7 +3301,7 @@
       integer :: i, j, k, i_start, i_end, j_start, j_end, ktf
       real :: zet, pmz1, pmz2, phz
       real :: qss, prt, gamma1, kz, elv
-      real :: c_p, u1, v1, wind_speed
+      real :: c_p, u1, v1, wind_speed, th_dry
       real, dimension (its:ite, jts:jte) :: cosa, sina, ust_sq
       ! The parameters below depend on stability functions of module_sf_mynn
       REAL, PARAMETER :: cphm_st=5.0, cphm_unst=16.0, &
@@ -3294,8 +3318,23 @@
       do j = j_start, j_end
         do i = i_start, i_end
           c_p = CP * (1.0 + 0.84 * qv(i, kts, j))
-          wth(i, kts, j) = hfx(i, j) / (rho(i, kts, j) * c_p)
-          wthv(i, kts, j) = hfx(i, j) / (rho(i, kts, j) * CP)
+          if (THM_FLUX_OPT == 0) then
+            wth(i, kts, j) = hfx(i, j) / (rho(i, kts, j) * c_p)
+            wthv(i, kts, j) = hfx(i, j) / (rho(i, kts, j) * CP)
+          else
+              ! t = theta_m - T0 (use_theta_m = 1): the theta_m surface flux carries the vapour term,
+              ! as in WRF's own diffusion (module_diffusion_em, use_theta_m = 1). OPEN_ISSUES A38.
+            th_dry = (T0 + t(i, kts, j)) / (1.0 + RVOVRD * qv(i, kts, j))
+            wth(i, kts, j) = hfx(i, j) / (rho(i, kts, j) * c_p) * (1.0 + RVOVRD * qv(i, kts, j)) &
+                + RVOVRD * th_dry * qfx(i, j) / rho(i, kts, j)
+            if (THM_FLUX_OPT == 2) then
+                ! Physical surface buoyancy flux (vapour term included). OPEN_ISSUES A23.2
+              wthv(i, kts, j) = hfx(i, j) / (rho(i, kts, j) * c_p) * (1.0 + P608 * qv(i, kts, j)) &
+                  + P608 * th_dry * qfx(i, j) / rho(i, kts, j)
+            else
+              wthv(i, kts, j) = hfx(i, j) / (rho(i, kts, j) * CP)
+            end if
+          end if
           wqv(i, kts, j) = qfx(i, j) / rho(i, kts, j)
         end do
       end do
@@ -4096,7 +4135,8 @@
         ! local vars
       integer :: i, j, k, i_start, i_end, j_start, j_end
       integer :: kthv, ktke
-      real    :: minthv, delt_thv, tke_eps, maxqke, qtke, qtkem1, pblh_tke, wt
+      real    :: minthv, delt_thv, tke_eps, maxqke, qtke, qtkem1, pblh_tke, wt, zb
+      integer :: ks
       real, parameter :: sbl_lim  = 200.0 ! Upper limit of stable BL height (m)
       real, parameter :: sbl_damp = 400.0 ! Transition length for blending (m)
 
@@ -4109,11 +4149,14 @@
         ! Find minimum thetav in the lowest 200 m AGL
       do j = j_start, j_end
         do i = i_start, i_end
+            ! PBLH_AGL_OPT = 1 (OPEN_ISSUES A37): z_at_w is height ASL; measure from the ground
+          zb = 0.0
+          if (PBLH_AGL_OPT == 1) zb = z_at_w(i, kts, j)
           k = kts + 1
           kthv = 1
           minthv = 9.E9
 
-          do while (z_at_w(i, k, j) .le. 200.)
+          do while (z_at_w(i, k, j) - zb .le. 200.)
             if (minthv > thetav(i, k, j)) then
               minthv = thetav(i, k, j)
               kthv = k
@@ -4133,12 +4176,15 @@
 
           zi(i, j) = 0.
           k = kthv + 1
-          do k = kts + 1, kte - 1
+            ! PBLH_AGL_OPT = 1: search upward from the theta_v minimum, as in MYNN/YSU get_pblh
+          ks = kts + 1
+          if (PBLH_AGL_OPT == 1) ks = Max (kthv + 1, kts + 1)
+          do k = ks, kte - 1
             if (thetav(i, k, j) .ge. (minthv + delt_thv)) then
-              zi(i, j) = z_at_w(i, k, j) - dz(i, k - 1, j) * &
+              zi(i, j) = z_at_w(i, k, j) - zb - dz(i, k - 1, j) * &
                      Min ((thetav(i, k, j) - (minthv + delt_thv)) / Max (thetav(i, k, j) - thetav(i, k - 1, j), 1E-6), 1.0)
             end if
-            if (k .eq. kte - 1) zi(i, j) = z_at_w(i, kts + 1, j)
+            if (k .eq. kte - 1) zi(i, j) = z_at_w(i, kts + 1, j) - zb
             if (zi(i, j) .ne. 0.0) exit
           end do
 
@@ -4158,12 +4204,12 @@
             qtke = Max (q_sq(i, k, j) / 2., Q_SQ_MIN)
             qtkem1 = Max (q_sq(i, k - 1, j) / 2., Q_SQ_MIN)
             if (qtke .le. tke_eps) then
-              pblh_tke = z_at_w(i, k, j) - dz(i, k - 1, j) * &
+              pblh_tke = z_at_w(i, k, j) - zb - dz(i, k - 1, j) * &
                            Min ((tke_eps - qtke) / Max (qtkem1 - qtke, 1E-6), 1.0)
                 ! In case of near zero TKE, set PBLH = lowest level
-              pblh_tke = Max (pblh_tke, z_at_w(i, kts + 1, j))
+              pblh_tke = Max (pblh_tke, z_at_w(i, kts + 1, j) - zb)
             end if
-            if (k .eq. kte - 1) pblh_tke = z_at_w(i, kts + 1, j)
+            if (k .eq. kte - 1) pblh_tke = z_at_w(i, kts + 1, j) - zb
             if (pblh_tke .ne. 0.) exit
           end do
 
