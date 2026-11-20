@@ -2603,8 +2603,8 @@
       !                                                                          !
       ! Method:  1. Row and column scale factors and the decision whether to     !
       !             apply them exactly as LAPACK's dgeequ and dlaqge take it     !
-      !             (scale rows only if their maxima differ by more than a      !
-      !             factor 10, likewise columns), so that cond refers to the    !
+      !             (scale rows only if their maxima differ by more than a       !
+      !             factor 10, likewise columns), so that cond refers to the     !
       !             same equilibrated matrix as dgesvx's rcond did.              !
       !          2. LU factorisation with partial pivoting (first largest entry, !
       !             as LAPACK), multipliers formed with the reciprocal pivot.    !
@@ -2619,14 +2619,15 @@
       !          99th-percentile error against a quadruple-precision solve from  !
       !          1e-14 to 7e-15, far below the single precision of the fluxes.   !
       !                                                                          !
-      ! Failure: info > 0 leaves x = 0 and cond = Huge, as dgesvx's info did:    !
-      !          a zero row or column or a pivot below Tiny (singular), or a      !
-      !          non-finite result or cond above 2 / epsilon (singular to       !
+      ! Failure: info /= 0 leaves x = 0 and cond = Huge, as dgesvx's info did    !
+      !          (info = -1: n outside 1..N_MAX_SOLVE); info > 0:                !
+      !          a zero row or column or a pivot below Tiny (singular), or a     !
+      !          non-finite result or cond above 2 / epsilon (singular to        !
       !          working precision, dgesvx's info = n + 1). NaN or Inf input     !
       !          ends here as well; nothing in this routine stops the model.     !
       !                                                                          !
-      ! Every loop updates array elements independently (no reductions whose   !
-      ! order depends on the vector length), so results do not depend on how   !
+      ! Every loop updates array elements independently (no reductions whose     !
+      ! order depends on the vector length), so results do not depend on how     !
       ! the compiler vectorises them.                                            !
       !                                                                          !
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -2653,6 +2654,10 @@
       x = ZERO
       cond = Huge (ONE)
       info = 0
+      if (n < 1 .or. n > N_MAX_SOLVE) then
+        info = -1
+        return
+      end if
 
         ! 1. Equilibration (dgeequ): row maxima, then column maxima of the row-scaled matrix
       do i = 1, n
@@ -2844,7 +2849,7 @@
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !                                                                          !
       ! Purpose: Solve the moist 4x4 system A x = b in closed form and return    !
-      !          the exact 1-norm condition number of A equilibrated by the     !
+      !          the exact 1-norm condition number of A equilibrated by the      !
       !          dgeequ/dlaqge rule (as Solve_lu_equilibrated), the quantity     !
       !          MOIST_COND_MAX is compared with (OPEN_ISSUES A14).              !
       !                                                                          !
@@ -2852,11 +2857,11 @@
       !          so that |det E| <= 16 (Hadamard) and no product below can       !
       !          overflow. E^-1 = adj(E) / det(E) from the twelve 2x2 minors of  !
       !          rows 1-2 and 3-4 (Laplace expansion); x = E^-1 D b. The inverse !
-      !          comes with the solution, so the condition number is exact at   !
+      !          comes with the solution, so the condition number is exact at    !
       !          no extra cost: A^-1 = E^-1 D, and A_e = R A C (R, C as dlaqge   !
       !          applies them) gives A_e^-1 = C^-1 A^-1 R^-1. Near the           !
       !          determinant pole of A14 the solution degrades as cond eps, like !
-      !          any solver; such solves are rejected by MOIST_COND_MAX.        !
+      !          any solver; such solves are rejected by MOIST_COND_MAX.         !
       !                                                                          !
       ! Failure: as Solve_lu_equilibrated (x = 0, cond = Huge, info > 0).        !
       !                                                                          !
