@@ -36,9 +36,7 @@
     !                                                                         !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-    use, intrinsic :: iso_fortran_env
-
-    use module_model_constants, only: KARMAN, G, P608, T0, CP, RCP, RVOVRD
+    use module_model_constants, only: G, P608, T0, RCP, RVOVRD
     use module_state_description, only: p_qc, p_qr, p_qi, p_qs, p_qg, p_qnc, p_qnr, p_qni, p_qnwfa, p_qnifa, param_first_scalar
     use module_domain, only: domain
     use module_big_step_utilities_em, only: grid_config_rec_type
@@ -46,7 +44,7 @@
     use module_comm_dm, only: halo_em_phys_hdiff_pbl3d_sub, period_bdy_em_hdiff_pbl3d_sub
     use module_bc, only: set_physical_bc3d
     use module_pbl3d_my, only: Set_init_turb_state_my, Calc_turb_fluxes_my, THM_FLUX_OPT, PBLH_AGL_OPT
-    use module_pbl3d_my, only: Q_SQ_MIN, TURB_FLUX_MIN, a_2, b_1, SQ_DIFF, SFC_QSQ_BC, SQ_IMPLICIT
+    use module_pbl3d_my, only: Q_SQ_MIN, a_2, b_1, SQ_DIFF, SFC_QSQ_BC, SQ_IMPLICIT
 
     implicit none
 
@@ -6421,8 +6419,6 @@
 
       implicit none
 
-      logical, parameter :: DEBUG = .true.
-
       logical, intent(in) :: restart
       integer, intent(in) :: pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt, pbl3d_nsteps
       integer, intent(in) :: pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt
@@ -6462,8 +6458,6 @@
       itf = Min (ite, ide - 1)
       ktf = Min (kte, kde - 1)
 
-      if (DEBUG) write (OUTPUT_UNIT, *) "ktf = ", ktf, "itf = ", itf, "jtf = ", jtf , "kte = ", kte, "kde = ", kde, "kme = ", kme
-
       i_start = its
       i_end = Min (ite, ide - 1)
       j_start = jts
@@ -6495,8 +6489,6 @@
           q_sq, q_sq_prog, q_sq_vdiff, q_sq_hdiff, q_sq_shear, q_sq_buoyancy, q_sq_dissip, l_master, l_master_at_mass, l0_asym, turb_flux_u2, turb_flux_v2, &
           turb_flux_w2, turb_flux_uv, turb_flux_uw, turb_flux_vw, turb_flux_utheta_v, turb_flux_vtheta_v, turb_flux_wtheta_v, turb_flux_theta2_v, &
           turb_flux_utheta, turb_flux_vtheta, turb_flux_wtheta, turb_flux_uqv, turb_flux_vqv, turb_flux_wqv)
-
-      if (DEBUG) print *, 'Done Set_init_turb_state_driver...'
 
     end subroutine Set_init_turb_state_driver
 
