@@ -4209,7 +4209,7 @@
       ! Author: Timothy W. Juliano & Pedro A. Jimenez                                          !
       !                                                                                        !
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
+      use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
       implicit none
 
       character (len = *), intent(in)                             :: my_level
@@ -4258,7 +4258,7 @@
                 ! rank targets the same file name, and there is no frequency limit, so a single
                 ! NaN field could fill the run directory mid-run. Routed through wrf_debug
                 ! instead, which is rank tagged and level gated like every other diagnostic here.
-              if (rif(i, k, j) /= rif(i, k, j)) then
+              if (ieee_is_nan (rif(i, k, j))) then
                 write (wrf_err_message, '(A,3I6,A,3(1X,E13.6))')            &
                     'pbl3d: NaN in rif at i,k,j =', i, k, j,                &
                     ' ; dthetav_dz, du_dz, dv_dz =',                        &
