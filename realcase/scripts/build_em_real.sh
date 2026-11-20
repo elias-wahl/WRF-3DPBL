@@ -2,12 +2,23 @@
 # Build main/real.exe and main/wrf.exe for the ICON-forced Inn Valley case.
 #
 #   realcase/scripts/build_em_real.sh env/levante.sh [--reconfigure]
+#   PBL3D_SOLVER=internal realcase/scripts/build_em_real.sh env/vsc5.sh --reconfigure
+#
+# PBL3D_SOLVER selects the linear solver of the 3D PBL closure (module_pbl3d_my):
+#   lapack   (default here = previous behaviour, bit for bit) -- defines the cpp macro
+#            PBL3D_USE_LAPACK (ARCH_LOCAL) and links LAPACK_LIBS (LIB_LOCAL), so the
+#            closure calls dgesvx as before;
+#   internal -- the module's own LU / closed-form solver, no LAPACK at all; this is
+#            what a stock "./configure && ./compile em_real" builds. Not bit-identical
+#            to lapack (round-off; the condition-number fields are exact, not estimates).
+# Switching between the two needs a rebuild of module_pbl3d_my (the script's ./clean
+# does that).
 #
 # What this does that a bare "./configure && ./compile em_real" does not:
 #
-#   1. Injects LAPACK/BLAS into configure.wrf as LIB_LOCAL.  WRF's configure
-#      has no notion of LAPACK, but the 3D PBL closure calls dgesvx at every
-#      grid point, so without this the link ends in "undefined reference to
+#   1. (PBL3D_SOLVER=lapack) Injects LAPACK/BLAS into configure.wrf as LIB_LOCAL
+#      and -DPBL3D_USE_LAPACK into ARCH_LOCAL. WRF's configure has no notion of
+#      LAPACK, so without LIB_LOCAL the link ends in "undefined reference to
 #      dgesvx_" -- or, worse, in EXIT=0 with no executables.
 #   2. Strips -DMTN from ARCHFLAGS.  That flag belongs to the em_les test
 #      mountain; it is inert for em_real but leaving it in makes configure.wrf
@@ -19,7 +30,7 @@
 #      is how the gcc-12/mambaforge contamination in KNOWN_ISSUES E1 showed up.
 set -u -o pipefail
 
-usage() { sed -n '2,20p' "$0"; exit 1; }
+usage() { sed -n '2,31p' "$0"; exit 1; }
 
 ENVFILE=${1:-}
 [ -n "$ENVFILE" ] || usage
@@ -49,12 +60,18 @@ set +u
 set -u
 
 : "${NETCDF:?NETCDF is not set -- check your env file}"
-: "${LAPACK_LIBS:?LAPACK_LIBS is not set -- the 3D PBL closure needs LAPACK}"
+PBL3D_SOLVER=${PBL3D_SOLVER:-lapack}
+case "$PBL3D_SOLVER" in
+  lapack)   : "${LAPACK_LIBS:?LAPACK_LIBS is not set -- PBL3D_SOLVER=lapack needs LAPACK}" ;;
+  internal) LAPACK_LIBS="" ;;
+  *) echo "PBL3D_SOLVER must be lapack or internal, not '$PBL3D_SOLVER'" >&2; exit 1 ;;
+esac
 : "${WRF_CONFIGURE_OPTION:?WRF_CONFIGURE_OPTION is not set}"
 : "${WRF_NEST_OPTION:=1}"
 
 echo "    NETCDF      = $NETCDF"
-echo "    LAPACK_LIBS = $LAPACK_LIBS"
+echo "    PBL3D_SOLVER = $PBL3D_SOLVER"
+echo "    LAPACK_LIBS = ${LAPACK_LIBS:-(none)}"
 echo "    mpif90      = $(command -v mpif90 || echo MISSING)"
 echo "    gfortran    = $(command -v gfortran || echo MISSING)"
 command -v mpif90 >/dev/null || { echo "mpif90 not on PATH -- did module load get piped?" >&2; exit 1; }
@@ -62,6 +79,7 @@ command -v mpif90 >/dev/null || { echo "mpif90 not on PATH -- did module load ge
 cd "$WRF" || exit 1
 
 # --- 1. link check for LAPACK before spending an hour on the build ----------
+if [ "$PBL3D_SOLVER" = lapack ]; then
 echo "=== checking that LAPACK links"
 TMPD=$(mktemp -d)
 cat > "$TMPD/t.f90" <<'EOF'
@@ -95,6 +113,7 @@ if ! "$TMPD/t" > "$TMPD/runlog" 2>&1; then
 fi
 rm -rf "$TMPD"
 echo "    dgesvx links, loads and gives the right answer"
+fi
 
 # --- 2. configure ----------------------------------------------------------
 if [ ! -f configure.wrf ] || [ "$RECONFIGURE" = 1 ]; then
@@ -110,17 +129,38 @@ fi
 
 # --- 3. patch configure.wrf ------------------------------------------------
 echo "=== patching configure.wrf"
-python3 - "$WRF/configure.wrf" "$LAPACK_LIBS" <<'PYEOF'
+python3 - "$WRF/configure.wrf" "$LAPACK_LIBS" "$PBL3D_SOLVER" <<'PYEOF'
 import sys
-path, lapack = sys.argv[1], sys.argv[2]
+path, lapack, solver = sys.argv[1], sys.argv[2], sys.argv[3]
 lines = open(path).read().splitlines()
+
+# ARCH_LOCAL: -DPBL3D_USE_LAPACK selects the dgesvx path of module_pbl3d_my
+# (PBL3D_SOLVER=lapack); without it the module uses its own solver.
+MACRO = '-DPBL3D_USE_LAPACK'
+for i, line in enumerate(lines):
+    if not line.startswith('ARCH_LOCAL'):
+        continue
+    key, _, cur = line.partition('=')
+    toks = cur.split()
+    if solver == 'lapack' and MACRO not in toks:
+        lines[i] = '%s= %s' % (key, ' '.join(toks + [MACRO]))
+        print('    ARCH_LOCAL  <- added %s' % MACRO)
+    elif solver != 'lapack' and MACRO in toks:
+        lines[i] = '%s= %s' % (key, ' '.join(t for t in toks if t != MACRO))
+        print('    ARCH_LOCAL  <- removed %s' % MACRO)
+    break
+else:
+    if solver == 'lapack':
+        sys.exit('!!! configure.wrf has no ARCH_LOCAL line -- cannot define %s' % MACRO)
 
 # LIB_LOCAL: LAPACK/BLAS for the 3D PBL closure (dgesvx).  Done line by line
 # rather than with a multiline regex -- python's \s matches newlines, so
 # ^LIB_LOCAL\s*=\s*(.*)$ silently runs past the end of a blank LIB_LOCAL and
 # appends the libraries to whatever line comes next.
-done = False
+done = solver != 'lapack'      # internal solver: nothing to link
 for i, line in enumerate(lines):
+    if done:
+        break
     if not line.startswith('LIB_LOCAL'):
         continue
     key, _, cur = line.partition('=')
@@ -151,6 +191,7 @@ if any('-DMTN' in l for l in lines):
 open(path, 'w').write('\n'.join(lines) + '\n')
 PYEOF
 grep -m1 '^LIB_LOCAL' configure.wrf
+grep -m1 '^ARCH_LOCAL' configure.wrf
 
 # --- 4. compile ------------------------------------------------------------
 LOG="$WRF/compile_em_real.log"
