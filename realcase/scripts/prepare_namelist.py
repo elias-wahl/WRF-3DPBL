@@ -489,11 +489,8 @@ def check(nl):
         if g("pbl3d_l_opt", int, 1) in (2, 5) and dnmax == 0:
             note(WARN, "pbl3d_l_opt=2/5 (MYNN-form length) crashed a heated crest within 14 min without "
                        "a diffusion-number cap (OPEN_ISSUES A25); set pbl3d_dn_max = 0.4")
-        sq = g("pbl3d_sq", float, 0.2)
-        if sq <= 0:
-            note(FATAL, "pbl3d_sq must be > 0 (0.2 = MY82; it is the coefficient of the q^2 vertical diffusivity)")
-        elif sq > 1.5:
-            note(WARN, "pbl3d_sq=%g is above MYNN's effective 3 K_m / (l q) range (about 0.6-1.4 in a convective layer)" % sq)
+        if g("pbl3d_sq", float, None) is not None:
+            note(FATAL, "pbl3d_sq was removed 2026-11-20 (S_q of the q^2 diffusion is fixed at 0.2 = MY82 in both directions); delete the line")
         if g("pbl3d_sfc_qsq_bc", int, 0) not in (0, 1, 2):
             note(FATAL, "pbl3d_sfc_qsq_bc must be 0 (none), 1 (q^2 >= B1^(2/3) u*^2 at the lowest level) or 2 (plus l >= kappa z)")
         if g("pbl3d_sfc_qsq_zmax", float, 100.0) < 0:
@@ -503,10 +500,6 @@ def check(nl):
         sqi = g("pbl3d_sq_implicit", int, 0)
         if sqi not in (0, 1):
             note(FATAL, "pbl3d_sq_implicit must be 0 (explicit, previous behaviour) or 1 (implicit tridiagonal)")
-        if sqi == 0 and sq > 0.6:
-            note(WARN, "pbl3d_sq=%g with the explicit vertical q^2 diffusion: stable only while "
-                       "S_q l q dt/dz^2 < 1/2 -- S_q = 1.0 blew up at 08:48 in the convective morning "
-                       "(KNOWN_ISSUES E28); set pbl3d_sq_implicit = 1" % sq)
         ssi = g("pbl3d_scalar_implicit", int, 0)
         if ssi not in (0, 1):
             note(FATAL, "pbl3d_scalar_implicit must be 0 (explicit, previous behaviour) or 1 (implicit theta/qv, A31)")

@@ -1349,11 +1349,11 @@ BENCH_END(hor_diff_tim)
              DO ij = 1 , grid%num_tiles
                CALL wrf_debug ( 200 , ' call scalar_bc_pbl3d' )
                CALL scalar_bc_pbl3d (config_flags,                                  &
-                    grid%turb_flux_uqc, grid%turb_flux_vqc, grid%turb_flux_uqc,     &
-                    grid%turb_flux_uqr, grid%turb_flux_vqr, grid%turb_flux_uqr,     &
-                    grid%turb_flux_uqi, grid%turb_flux_vqi, grid%turb_flux_uqi,     &
-                    grid%turb_flux_uqs, grid%turb_flux_vqs, grid%turb_flux_uqs,     &
-                    grid%turb_flux_uqg, grid%turb_flux_vqg, grid%turb_flux_uqg,     &
+                    grid%turb_flux_uqc, grid%turb_flux_vqc, grid%turb_flux_wqc,     &
+                    grid%turb_flux_uqr, grid%turb_flux_vqr, grid%turb_flux_wqr,     &
+                    grid%turb_flux_uqi, grid%turb_flux_vqi, grid%turb_flux_wqi,     &
+                    grid%turb_flux_uqs, grid%turb_flux_vqs, grid%turb_flux_wqs,     &
+                    grid%turb_flux_uqg, grid%turb_flux_vqg, grid%turb_flux_wqg,     &
                     grid%turb_flux_uqnc, grid%turb_flux_vqnc, grid%turb_flux_wqnc,  &
                     grid%turb_flux_uqnr, grid%turb_flux_vqnr, grid%turb_flux_wqnr,  &
                     grid%turb_flux_uqni, grid%turb_flux_vqni, grid%turb_flux_wqni,  &

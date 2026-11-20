@@ -146,11 +146,10 @@
       ! its neutral meaning ("twice the equilibrium value") in stable shear, where
       ! equilibrium S k / eps rises as Sm falls. Default 1.
     integer, public    :: LIMITER_OPT
-      ! Coefficient S_q of the q^2 vertical diffusivity K_q = S_q l q (MY82 Eq. 24;
-      ! pbl3d_sq, default 0.2 = MY82, previous behaviour bit for bit). MYNN's q^2 diffusivity
-      ! is 3 K_m, 1.5-7 x this one in a convective layer (DECISIONS 2026-08-27). Pure
-      ! transport: it moves q^2, it does not create it.
-    real,    public    :: SQ_DIFF
+      ! Coefficient S_q of the q^2 diffusivity K_q = S_q l q (MY82 Eq. 24), used by the vertical
+      ! and the horizontal q^2 diffusion. MYNN's q^2 diffusivity is 3 K_m, 1.5-7 x this one in a
+      ! convective layer. Pure transport: it moves q^2, it does not create it.
+    real,    parameter, public :: SQ_DIFF = 0.2
       ! Surface q^2 condition (pbl3d_sfc_qsq_bc): 0 = none (previous behaviour; the only
       ! lower condition is the Q_SQ_MIN floor on the ground face). 1 = the lowest
       ! prognostic level is held at or above the neutral surface-layer equilibrium
@@ -187,7 +186,7 @@
     integer, parameter :: WORKING_PREC = Kind (1.0)   ! the model's REAL: REAL32, or REAL64 in -r8 builds
 
       ! Model constants
-    real         :: a_1, b_2, c_1, c_2, c_3, alpha, lambda
+    real         :: a_1, b_2, c_1, c_2, c_3, alpha
     real, public :: a_2, b_1
 
       ! For the level 2 model
@@ -4538,8 +4537,7 @@
                          C1_M73 = 0.056,&
                          C2_M73 = 0.0  ,&
                          C3_M73 = 0.0  ,&
-                         ALPHA_M73 = 0.1, &
-                         LAMBDA_M73 = 0.23
+                         ALPHA_M73 = 0.1
 
       real, parameter :: A1_MY74 = 0.78, &
                          A2_MY74 = 0.78, &
@@ -4548,8 +4546,7 @@
                          C1_MY74 = 0.056,&
                          C2_MY74 = 0.0  ,&
                          C3_MY74 = 0.0  ,&
-                         ALPHA_MY74 = 0.1, &
-                         LAMBDA_MY74 = 0.23
+                         ALPHA_MY74 = 0.1
 
       real, parameter :: A1_MY82 = 0.92, &
                          A2_MY82 = 0.74, &
@@ -4558,8 +4555,7 @@
                          C1_MY82 = 0.08 ,&
                          C2_MY82 = 0.0  ,&
                          C3_MY82 = 0.0  ,&
-                         ALPHA_MY82 = 0.1, &
-                         LAMBDA_MY82 = 0.23
+                         ALPHA_MY82 = 0.1
 
       real, parameter :: A1_MYJ = 0.659888514560862645,    &
                          A2_MYJ = 0.6574209922667784586,   &
@@ -4568,8 +4564,7 @@
                          C1_MYJ = 0.000830955950095854396, &
                          C2_MYJ = 0.0,                     &
                          C3_MYJ = 0.0,                     &
-                         ALPHA_MYJ = 0.3,                  &
-                         LAMBDA_MYJ = 0.23
+                         ALPHA_MYJ = 0.3
 
       real, parameter :: A1_Boulac = 0.3,     &
                          A2_Boulac = 0.33,    &
@@ -4578,8 +4573,7 @@
                          C1_Boulac = 0.08,    &
                          C2_Boulac = 0.0,     &
                          C3_Boulac = 0.0,     &
-                         ALPHA_Boulac = 0.1,  &
-                         LAMBDA_Boulac = 0.23
+                         ALPHA_Boulac = 0.1
 
         ! Set model contants
       select case (trim(pbl3d_constants))
@@ -4594,7 +4588,6 @@
           c_2 = C2_M73
           c_3 = C3_M73
           alpha = ALPHA_M73
-          lambda = LAMBDA_M73
 
         case('MY74')
 
@@ -4606,7 +4599,6 @@
           c_2 = C2_MY74
           c_3 = C3_MY74
           alpha = ALPHA_MY74
-          lambda = LAMBDA_MY74
 
         case('MY82')
 
@@ -4618,7 +4610,6 @@
           c_2 = C2_MY82
           c_3 = C3_MY82
           alpha = ALPHA_MY82
-          lambda = LAMBDA_MY82
 
         case('MYJ')
 
@@ -4630,7 +4621,6 @@
           c_2 = C2_MYJ
           c_3 = C3_MYJ
           alpha = ALPHA_MYJ
-          lambda = LAMBDA_MYJ
 
         case('Boulac')
 
@@ -4642,7 +4632,6 @@
           c_2 = C2_Boulac
           c_3 = C3_Boulac
           alpha = ALPHA_Boulac
-          lambda = LAMBDA_Boulac
 
         case default
 
@@ -4760,7 +4749,7 @@
               pbl3d_nsteps, pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt,  &
               pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt,                  &
               pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_dn_max, pbl3d_moist_cond_max,                  &
-              pbl3d_sq, pbl3d_sfc_qsq_bc, pbl3d_sq_implicit, pbl3d_t2_scalar, pbl3d_sfc_qsq_zmax,   &
+              pbl3d_sfc_qsq_bc, pbl3d_sq_implicit, pbl3d_t2_scalar, pbl3d_sfc_qsq_zmax,   &
               ids, ide, jds, jde, kds, kde,                                     &
               ims, ime, jms, jme, kms, kme,                                     &
               its, ite, jts, jte, kts, kte,                                     &
@@ -4792,7 +4781,7 @@
       integer, intent(in) :: pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt, pbl3d_nsteps
       integer, intent(in) :: pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt
       real,    intent(in) :: pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_dn_max, pbl3d_moist_cond_max
-      real,    intent(in) :: pbl3d_sq, pbl3d_sfc_qsq_zmax
+      real,    intent(in) :: pbl3d_sfc_qsq_zmax
       integer, intent(in) :: pbl3d_sfc_qsq_bc, pbl3d_sq_implicit, pbl3d_t2_scalar
       character (len = 160) :: msg
       character (len = *), intent(in) :: pbl3d_constants
@@ -4872,19 +4861,6 @@
       else
         LIMITER_OPT = 1
         call wrf_message ('--- WARNING: pbl3d_limiter_opt must be 1 or 2; using 1')
-      end if
-
-        ! q^2 diffusivity coefficient (see SQ_DIFF at the top of the module). Zero or
-        ! negative would switch vertical q^2 transport off, which is a silent failure.
-      if (pbl3d_sq > 0.0) then
-        SQ_DIFF = pbl3d_sq
-      else
-        SQ_DIFF = 0.2
-        call wrf_message ('--- WARNING: pbl3d_sq must be > 0; using 0.2')
-      end if
-      if (Abs (SQ_DIFF - 0.2) > 1.0E-6) then
-        write (msg, '(a, f6.3)') 'PBL3D: q^2 vertical diffusivity coefficient S_q = ', SQ_DIFF
-        call wrf_message (msg)
       end if
 
         ! Explicit or implicit vertical q^2 diffusion (see SQ_IMPLICIT at the top of the module).
