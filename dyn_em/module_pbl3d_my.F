@@ -272,6 +272,7 @@
         ! Local vars
       logical, parameter :: DEBUG = .false.
       integer :: i, j, k, i_start, i_end, j_start, j_end, ktf
+      real    :: strain_mag, q, l_raw, p0, eps0
 
         ! Diagnose PBL height
       call Diagnose_pbl_height (thetav, q_sq, z_at_w, dz, xland, pblh, ids, ide, jds, jde, kds, kde, &
@@ -284,6 +285,18 @@
       DT_DN = dt   ! for the diffusion-number cap on l (DN_MAX); unused when DN_MAX = 0
 
       if (config_flags%pbl3d_opt < 2) then  ! PBL approx analytical solution only
+          ! Per-point diagnostic fields of the full form (Calc_fluxes), so that both forms write
+          ! them. The approximate form has no solve, no escalation and no projection, so the
+          ! solver fields stay at these values; S k / eps, N tau and P / eps follow the call.
+        pbl3d_t1_ratio(its:ite, kts:kte, jts:jte) = 1.0
+        pbl3d_t2_steps(its:ite, kts:kte, jts:jte) = 0.0
+        pbl3d_t3_flags(its:ite, kts:kte, jts:jte) = 0.0
+        pbl3d_sk_eps  (its:ite, kts:kte, jts:jte) = 0.0
+        pbl3d_n_tau   (its:ite, kts:kte, jts:jte) = 0.0
+        pbl3d_cond_a  (its:ite, kts:kte, jts:jte) = 0.0
+        pbl3d_cond_m  (its:ite, kts:kte, jts:jte) = 0.0
+        pbl3d_qv2     (its:ite, kts:kte, jts:jte) = 0.0
+        pbl3d_p_eps   (its:ite, kts:kte, jts:jte) = 0.0
         call Calc_fluxes_pbl_approx (config_flags, ss, Psig_bl, l_master, l_boulac, l0_asym, du_dz, dv_dz, dthetav_dz, dqv_dz, &
             dqc_dz, dqr_dz, dqi_dz, dqs_dz, dqg_dz, dqnc_dz, dqnr_dz, dqni_dz, dqnwfa_dz, dqnifa_dz, &
             th2, qv, dn, dnw, fnm, fnp, dx, dy, dz, z_at_w, zx, zy, msftx, msfty, rdz, rdzw, cf1, cf2, cf3, dt, id, &
@@ -298,6 +311,41 @@
             turb_flux_uqnr, turb_flux_vqnr, turb_flux_wqnr, turb_flux_uqni, turb_flux_vqni, turb_flux_wqni, &
             turb_flux_uqnwfa, turb_flux_vqnwfa, turb_flux_wqnwfa, turb_flux_uqnifa, turb_flux_vqnifa, turb_flux_wqnifa, &
             u, v, w, thetav, rho, ust, hfx, qfx, rmol)
+
+          ! Diagnose_fluxes definitions at the faces that carry turbulence: |S| from the nine
+          ! resolved velocity gradients (computed for both forms), S k / eps = |S| b_1 l / (2 q)
+          ! and the signed N tau with l before the strain limit (l_master / PBL3D_T1_RATIO), and
+          ! P / eps with P = -tau_ij dU_i/dx_j from the face stresses and eps = q^3 / (b_1 l) with
+          ! the limited l. The q^2 budget of this form is credited only with the vertical-shear
+          ! part of that P unless pbl3d_sf_pair = 2. Diagnostic only; nothing reads these fields.
+        i_start = its
+        i_end = Min (ite, ide - 1)
+        j_start = jts
+        j_end = Min (jte, jde - 1)
+        ktf = Min (kte, kde - 1)
+        do j = j_start, j_end
+          do k = kts + 1, ktf
+            do i = i_start, i_end
+              if (q_sq(i, k, j) > Q_SQ_MIN) then
+                strain_mag = Sqrt ( 2.0 * (du_dx(i, k, j) ** 2 + dv_dy(i, k, j) ** 2 + dw_dz(i, k, j) ** 2)      &
+                                  + (du_dy(i, k, j) + dv_dx(i, k, j)) ** 2 + (du_dz(i, k, j) + dw_dx(i, k, j)) ** 2 &
+                                  + (dv_dz(i, k, j) + dw_dy(i, k, j)) ** 2 )
+                q     = Sqrt (q_sq(i, k, j))
+                l_raw = l_master(i, k, j) / Max (pbl3d_t1_ratio(i, k, j), Tiny (q))
+                pbl3d_sk_eps(i, k, j) = strain_mag * b_1 * l_raw / (2.0 * q)
+                pbl3d_n_tau(i, k, j)  = Sign (Sqrt (Abs (G_OVER_TREF * dthetav_dz(i, k, j))), dthetav_dz(i, k, j)) &
+                                      * l_raw / q
+                p0   = - ( turb_flux_u2(i, k, j) * du_dx(i, k, j) + turb_flux_v2(i, k, j) * dv_dy(i, k, j)         &
+                         + turb_flux_w2(i, k, j) * dw_dz(i, k, j)                                                  &
+                         + turb_flux_uv(i, k, j) * (du_dy(i, k, j) + dv_dx(i, k, j))                               &
+                         + turb_flux_uw(i, k, j) * (du_dz(i, k, j) + dw_dx(i, k, j))                               &
+                         + turb_flux_vw(i, k, j) * (dv_dz(i, k, j) + dw_dy(i, k, j)) )
+                eps0 = q ** 3 / (b_1 * Max (l_master(i, k, j), Tiny (q)))
+                pbl3d_p_eps(i, k, j) = p0 / Max (eps0, Tiny (eps0))
+              end if
+            end do
+          end do
+        end do
       else if (config_flags%pbl3d_opt == 2) then  ! Full 3D numerical solution
         call Calc_fluxes (config_flags, id, config_flags%specified, q_sq, q_sq_prog, Psig_bl, l_master, l_boulac, l0_asym, &
             du_dx, du_dy, du_dz, dv_dx, dv_dy,   &
@@ -970,7 +1018,7 @@
       real, dimension (ims:ime, jms:jme),          intent (inout) :: l0_asym
       real, dimension (ims:ime, kms:kme, jms:jme), intent (out)   :: turb_flux_u2, &
           turb_flux_v2, turb_flux_w2, turb_flux_uv, turb_flux_uw, turb_flux_vw,        &
-          turb_flux_utheta_v, turb_flux_vtheta_v, turb_flux_wtheta_v,                  &
+          turb_flux_utheta_v, turb_flux_vtheta_v,                                      &
           turb_flux_theta2_v, turb_flux_uqv, turb_flux_vqv, turb_flux_wqv,             &
           turb_flux_utheta, turb_flux_vtheta, turb_flux_wtheta,                        &
           turb_flux_uqc, turb_flux_vqc, turb_flux_wqc,                                 &
@@ -983,6 +1031,9 @@
           turb_flux_uqni, turb_flux_vqni, turb_flux_wqni,                              &
           turb_flux_uqnwfa, turb_flux_vqnwfa, turb_flux_wqnwfa,                        &
           turb_flux_uqnifa, turb_flux_vqnifa, turb_flux_wqnifa
+        ! inout, not out: Calc_l_master_algebra and Calc_l_messinger_master_algebra read the
+        ! previous call's buoyancy flux before Diagnose_fluxes_pbl_approx overwrites it.
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (inout) :: turb_flux_wtheta_v
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: u, v, w, t, thetav, rho, qv
       real, dimension (ims:ime, jms:jme),          intent (in)  :: msftx, msfty, ust, hfx, qfx, rmol
       integer, intent (in)    :: id
