@@ -6905,7 +6905,7 @@
 
       implicit none
 
-      logical, parameter :: DEBUG = .true.
+      logical, parameter :: DEBUG = .false.
 
       logical, intent(in) :: restart
       integer, intent(in) :: pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt, pbl3d_nsteps
