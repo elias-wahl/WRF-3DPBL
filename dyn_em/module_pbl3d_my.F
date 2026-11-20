@@ -38,7 +38,7 @@
 
     use, intrinsic :: iso_fortran_env
 
-    use module_model_constants, only: KARMAN, G, P608, T0, CP, RCP, RVOVRD
+    use module_model_constants, only: KARMAN, G, P608, T0, CP, RVOVRD
     use module_state_description, only: p_qc, p_qr, p_qi, p_qs, p_qg, p_qnc, p_qnr, p_qni, p_qnwfa, p_qnifa, param_first_scalar
     use module_big_step_utilities_em, only: grid_config_rec_type
 
@@ -55,7 +55,6 @@
       ! 0 = previous behaviour, bit for bit. THM_FLUX_OPT = pbl3d_thm_flux (OPEN_ISSUES A38, A23.2),
       ! PBLH_AGL_OPT = pbl3d_pblh_agl (OPEN_ISSUES A37).
     integer, public :: THM_FLUX_OPT = 0, PBLH_AGL_OPT = 0
-    logical, parameter :: USE_HIGH_ORDER = .true.
 
       ! Safeguards for the full 3D closure (pbl3d_opt = 2) only. The A matrix of the
       ! algebraic second-moment system has the structure A = (1/tau) I + S, where
@@ -90,9 +89,7 @@
       !   It is applied in Calc_l_master_algebra, i.e. to l_master itself, not as a local
       !   fix-up inside the solver, because it is part of how the length scale is defined:
       !   pbl3d_l_opt = 2 (MYNN, l_f = alpha_2 q / N) and pbl3d_l_opt = 3 (Messinger,
-      !   l_d = c_r q / N) already carry exactly this limit. pbl3d_l_opt = 1 (MY74) was the
-      !   only branch without one, even though the comments here and in Diagnose_fluxes have
-      !   always claimed otherwise.
+      !   l_d = c_r q / N) already carry exactly this limit.
       !   Why it is needed: q and l are computed by independent routes and nothing couples
       !   them. q_sq is a local production/dissipation balance and correctly collapses to
       !   Q_SQ_MIN in laminar air; l = l0 kappa z / (kappa z + l0) is geometric and asymptotes
@@ -111,9 +108,8 @@
       ! sit at their SMALL_VAL seeds, so l0 = alpha * SMALL_VAL / SMALL_VAL = alpha, i.e.
       ! 0.1 m. Every bound on l downstream (kappa z blend, buoyancy limit, strain limit)
       ! is then either at or below that, the stresses scale like l q, and a layer at the
-      ! floor cannot produce its way off it: a spurious laminar fixed point, measured in
-      ! job 8476273 as l = 0.09-0.10 m over 27-65 % of the lowest five levels in the first
-      ! hour. The floor removes that branch and nothing else: kappa z still binds near
+      ! floor cannot produce its way off it: a spurious laminar fixed point (DECISIONS
+      ! 2026-08-20). The floor removes that branch and nothing else: kappa z still binds near
       ! the wall, the buoyancy limit still binds in stable air, so stable free air stays
       ! laminar and neutral sheared layers can ignite, which is what the level-2 criterion
       ! says they should. MYNN bounds its equivalent to [8, 400] m. Default 0 keeps the
@@ -151,11 +147,9 @@
       ! equilibrium S k / eps rises as Sm falls. Default 1.
     integer, public    :: LIMITER_OPT
       ! Coefficient S_q of the q^2 vertical diffusivity K_q = S_q l q (MY82 Eq. 24;
-      ! pbl3d_sq, default 0.2 = MY82, previous behaviour bit for bit). Why it is a switch:
-      ! the morning transition is transport-limited (DECISIONS 2026-08-27 14:00: q^2
-      ! transport into the interface 50 x smaller than MYNN's, whose q^2 diffusivity is
-      ! 3 K_m, i.e. 1.5-7 x this one in a convective layer). Pure transport: it moves q^2,
-      ! it does not create it.
+      ! pbl3d_sq, default 0.2 = MY82, previous behaviour bit for bit). MYNN's q^2 diffusivity
+      ! is 3 K_m, 1.5-7 x this one in a convective layer (DECISIONS 2026-08-27). Pure
+      ! transport: it moves q^2, it does not create it.
     real,    public    :: SQ_DIFF
       ! Surface q^2 condition (pbl3d_sfc_qsq_bc): 0 = none (previous behaviour; the only
       ! lower condition is the Q_SQ_MIN floor on the ground face). 1 = the lowest
@@ -163,14 +157,13 @@
       ! q^2 = B1^(2/3) u*^2 (MY82 Eq. 47b; 6.5 u*^2 for the MY82 set, B1 = 16.6; 8.3 u*^2 for MYNN, B1 = 24), the condition the MYNN
       ! family imposes at its lowest level (applied in Calc_q_sq_rhs, module_pbl3d).
       ! 2 = as 1, plus l >= kappa z below SFC_QSQ_ZMAX in unstable air (Eq. 71 gives
-      ! l < kappa z whenever l0 is not >> kappa z; measured 2026-08-27: l = 0.6 kappa z in
-      ! the lowest levels by day, DECISIONS 14:30).
+      ! l < kappa z whenever l0 is not >> kappa z).
     integer, public    :: SFC_QSQ_BC
       ! Time integration of the vertical q^2 diffusion (pbl3d_sq_implicit): 0 = explicit
       ! forward step (previous behaviour; stable only while S_q l q dt/dz^2 < 1/2, which
       ! S_q = 1.0 violates in the convective morning -- KNOWN_ISSUES E28); 1 = backward-Euler
       ! tridiagonal solve with the same face diffusivity and boundary conditions, handed to
-      ! the dynamics as the tendency (q* - q^2)/dt, as MYNN does for QKE. 2026-08-29.
+      ! the dynamics as the tendency (q* - q^2)/dt, as MYNN does for QKE.
     integer, public    :: SQ_IMPLICIT
       ! Tier-2 acceptance (pbl3d_t2_scalar): 0 = a solve is accepted when the stress tensor is
       ! positive semi-definite (previous behaviour); 1 = the scalar block must be realizable
@@ -179,8 +172,7 @@
       ! flat terrain the solve at the first interior face returns theta_v'^2 <= 0 with a
       ! realizable stress tensor; Tier 3 then clips the variance to zero and the
       ! Cauchy-Schwarz bound zeroes the heat flux, so the surface heat stays in an 18-m skin
-      ! (OPEN_ISSUES A18, 2026-08-29: 83-90 % of heated Inn-valley columns). The heat-side
-      ! twin of A14 (the divergent direction lives in the unchecked scalar block).
+      ! (OPEN_ISSUES A18).
     integer, public    :: T2_SCALAR
     real,    public    :: SFC_QSQ_ZMAX
     real,    parameter :: STRAIN_MIN = 1.0E-10   ! avoids 0/0 in the strain limiter
@@ -202,8 +194,6 @@
     real :: rif_c, rf1, rf2, cm, ch2
     real :: fac1, fac2, fac3, fac4
     real :: sm_neutral_l2   ! level-2 Sm at Rif = 0, used by LIMITER_OPT = 2
-
-    integer, parameter :: I_TO_TEST = 4, J_TO_TEST = 4, K_TO_TEST = 3
 
   contains
 
@@ -270,7 +260,6 @@
                                                                      its, ite, jts, jte, kts, kte
 
         ! Local vars
-      logical, parameter :: DEBUG = .false.
       integer :: i, j, k, i_start, i_end, j_start, j_end, ktf
       real    :: strain_mag, q, l_raw, p0, eps0
 
@@ -360,8 +349,6 @@
             its, ite, jts, jte, kts, kte)
       end if
 
-      if (DEBUG) print *, 'Done Calc_turb_fluxes_my...'
-
     end subroutine Calc_turb_fluxes_my
 
 
@@ -381,8 +368,7 @@
 
         ! Local vars
       integer :: i, j, k
-      integer :: ktf, ktes1, ktes2, i_start, i_end, j_start, j_end
-      real    :: cft1, cft2
+      integer :: ktf, i_start, i_end, j_start, j_end
 
         ! Define some indexes
       i_start = its
@@ -425,8 +411,7 @@
 
         ! Local vars
       integer :: i, j, k
-      integer :: ktf, ktes1, ktes2, i_start, i_end, j_start, j_end
-      real    :: cft1, cft2
+      integer :: ktf, i_start, i_end, j_start, j_end
 
         ! Define some indexes
       i_start = its
@@ -480,23 +465,8 @@
       real, dimension (kts:kte) :: z_at_walls_1d
       integer :: i, j, k, i_start, i_end, j_start, j_end, ktf
       real, parameter :: SMALL_VAL = 0.00001
-!      real, parameter :: alpha_1 = 0.23
-        ! Original MYNN vals
-!      real, parameter :: alpha_2 = 1.0
-!      real, parameter :: alpha_3 = 5.0
-!      real, parameter :: alpha_4 = 100.0
-!      real, parameter :: cns = 2.7
-        ! Operational MYNN vals
-!      real, parameter :: alpha_2 = 0.65
-!      real, parameter :: alpha_3 = 3.0
-!      real, parameter :: alpha_4 = 20.0
-!      real, parameter :: cns = 2.3
-        ! Experimental MYNN vals
-!      real, parameter :: alpha_2 = 0.3
-!      real, parameter :: alpha_3 = 2.0
-!      real, parameter :: alpha_4 = 10.0
-!      real, parameter :: cns = 3.5
-        ! 3DTKE MYNN vals
+        ! 3DTKE MYNN vals. Sets listed in earlier versions (alpha_2, alpha_3, alpha_4, cns; alpha_1 = 0.23):
+        ! original MYNN 1.0, 5.0, 100.0, 2.7; operational 0.65, 3.0, 20.0, 2.3; experimental 0.3, 2.0, 10.0, 3.5
       real, parameter :: alpha_1 = 0.8
       real, parameter :: alpha_2 = 1.0
       real, parameter :: alpha_3 = 1.0
@@ -513,12 +483,10 @@
         ! MYNN's diffusivity. Needs pbl3d_dn_max > 0 at heated crests (A25).
       real, parameter :: A1_OP = 0.23, A2_OP = 0.3, A3_OP = 5.0, A4_OP = 15.0, CNS_OP = 3.5
       real, parameter :: L0_OP_MIN = 8.0, L0_OP_MAX = 400.0, QKW_ELB_MIN = 0.05, BV_MIN = 0.001
-      real :: l0, l0_num, l0_den, qdz
+      real :: l0, l0_num, l0_den
       real :: q, q_dz, dz_wall, q_min
       real :: l_s, l_b, l_f, zet, kz, N, q_c
       real :: l_sm, z_m, q_b, stab_fn
-
-      logical, parameter :: DEBUG = .false.
 
         ! Define dimensions
       i_start = its
@@ -673,32 +641,8 @@
           l_master(i, kte, j) = l_master(i, ktf, j)
           l_boulac(i, kte, j) = l_boulac(i, ktf, j)
 
-          if (DEBUG) call Debug_l_master_algebra
-
         end do
       end do
-
-      contains
-
-        subroutine Debug_l_master_algebra
-
-          if (i == I_TO_TEST .and. j == J_TO_TEST) then
-              print *, 'l_master = '
-              print *, l_master(I_TO_TEST, :, J_TO_TEST)
-              print *, 'l0 =', l0
-              print *, 'l0_num =', l0_num
-              print *, 'l0_den =', l0_den
-              print *, 'z_at_walls = '
-              print *, z_at_walls_1d
-              print *, 'dz = '
-              print *, dz(i, :, j)
-              print *, 'rdzw = '
-              print *, rdzw(i, :, j)
-              print *, 'dzw = '
-              print *, 1.0 / rdzw(i, :, j)
-            end if
-
-        end subroutine Debug_l_master_algebra
 
     end subroutine Calc_l_master_algebra
 
@@ -831,15 +775,12 @@
       real, dimension (kts:kte) :: z_at_walls_1d
       integer :: i, j, k, i_start, i_end, j_start, j_end, ktf
       real, parameter :: SMALL_VAL = 0.00001
-      real, parameter :: alpha_1 = 0.23
-      real :: l0, l0_num, l0_den, qdz
+      real :: l0, l0_num, l0_den
       real :: q, q_dz, dz_wall, q_min
       real :: l_b, l_d, l_del, N, zi
       real, parameter :: c_r = 0.25
       real, parameter :: c_g = 10.
       real, parameter :: c_s = 0.23
-
-      logical, parameter :: DEBUG = .false.
 
         ! Define dimensions
       i_start = its
@@ -1108,7 +1049,6 @@
         ! local vars
       real, dimension (its:ite, kts:kte, jts:jte) :: rif, sm_l2, sh_l2, sm, sh, q_ratio, q_sq_hl88
       real, dimension (its:ite, kts:kte, jts:jte) :: dlu, dld, dls, dlk
-      integer :: i, j
       logical :: lag_free
 
         ! pbl3d_approx_limits = 1 with prognostic q^2 (pbl3d_opt = 1): Sm, Sh and the level-2 q^2 of
@@ -1161,27 +1101,12 @@
           sm_l2, sh_l2, sm, sh, q_ratio, q_sq_hl88, du_dz, dv_dz, dthetav_dz, id, dn, dnw, fnm, fnp, cf1, cf2, cf3, &
           ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
-        ! Diagnose momentum, heat, moisture fluxes for pbl approx
-      if ( config_flags%pbl3d_prog .eq. 0 ) then  ! For level 2 model, no need for realizability
+        ! Diagnose momentum, heat, moisture fluxes for pbl approx (at level 2.5, sm and sh already carry
+        ! the HL88 limit of Prep_for_fluxes_l2p5_pbl_approx)
+      if ( config_flags%pbl3d_prog .ge. 0 ) then
         call Diagnose_fluxes_pbl_approx (do_scalar_mix=config_flags%pbl3d_scalar_mix, ss=ss, nsteps=config_flags%pbl3d_nsteps, &
-            fnm=fnm, fnp=fnp, t=t, qv=qv, ust=ust, hfx=hfx, qfx=qfx, sm_tilde=sm, sh_tilde=sh, rif=rif, &
+            fnm=fnm, fnp=fnp, t=t, qv=qv, sm_tilde=sm, sh_tilde=sh, rif=rif, &
             q_sq=q_sq, l_master=l_master, du_dz=du_dz, dv_dz=dv_dz, dthetav_dz=dthetav_dz, dqv_dz=dqv_dz, &
-            dqc_dz=dqc_dz, dqr_dz=dqr_dz, dqi_dz=dqi_dz, dqs_dz=dqs_dz, dqg_dz=dqg_dz, dqnc_dz=dqnc_dz, &
-            dqnr_dz=dqnr_dz, dqni_dz=dqni_dz, dqnwfa_dz=dqnwfa_dz, dqnifa_dz=dqnifa_dz, u2=turb_flux_u2, &
-            v2=turb_flux_v2, w2=turb_flux_w2, uv=turb_flux_uv, uw=turb_flux_uw, vw=turb_flux_vw, uthv=turb_flux_utheta_v, vthv=turb_flux_vtheta_v, &
-            wthv=turb_flux_wtheta_v, th2v=turb_flux_theta2_v, uqv=turb_flux_uqv, vqv=turb_flux_vqv, wqv=turb_flux_wqv, &
-            uqc=turb_flux_uqc, vqc=turb_flux_vqc, wqc=turb_flux_wqc, uqr=turb_flux_uqr, vqr=turb_flux_vqr, wqr=turb_flux_wqr, &
-            uqi=turb_flux_uqi, vqi=turb_flux_vqi, wqi=turb_flux_wqi, uqs=turb_flux_uqs, vqs=turb_flux_vqs, wqs=turb_flux_wqs, &
-            uqg=turb_flux_uqg, vqg=turb_flux_vqg, wqg=turb_flux_wqg, uqnc=turb_flux_uqnc, vqnc=turb_flux_vqnc, &
-            wqnc=turb_flux_wqnc, uqnr=turb_flux_uqnr, vqnr=turb_flux_vqnr, wqnr=turb_flux_wqnr, uqni=turb_flux_uqni, &
-            vqni=turb_flux_vqni, wqni=turb_flux_wqni, uqnwfa=turb_flux_uqnwfa, vqnwfa=turb_flux_vqnwfa, wqnwfa=turb_flux_wqnwfa, &
-            uqnifa=turb_flux_uqnifa, vqnifa=turb_flux_vqnifa, wqnifa=turb_flux_wqnifa, uth=turb_flux_utheta, &
-            vth=turb_flux_vtheta, wth=turb_flux_wtheta, ids=ids, ide=ide, jds=jds, jde=jde, kds=kds, kde=kde, &
-            ims=ims, ime=ime, jms=jms, jme=jme, kms=kms, kme=kme, its=its, ite=ite, jts=jts, jte=jte, kts=kts, kte=kte)
-      else if ( config_flags%pbl3d_prog .gt. 0 ) then  ! For level 2.5 model, include information for HL88 mod
-        call Diagnose_fluxes_pbl_approx (do_scalar_mix=config_flags%pbl3d_scalar_mix, ss=ss, nsteps=config_flags%pbl3d_nsteps, &
-            fnm=fnm, fnp=fnp, t=t, qv=qv, ust=ust, hfx=hfx, qfx=qfx, sm_tilde=sm, sh_tilde=sh, sm_l2=sm_l2, sh_l2=sh_l2, rif=rif, &
-            q_sq=q_sq, q_sq_hl88=q_sq_hl88, q_ratio=q_ratio, l_master=l_master, du_dz=du_dz, dv_dz=dv_dz, dthetav_dz=dthetav_dz, dqv_dz=dqv_dz, &
             dqc_dz=dqc_dz, dqr_dz=dqr_dz, dqi_dz=dqi_dz, dqs_dz=dqs_dz, dqg_dz=dqg_dz, dqnc_dz=dqnc_dz, &
             dqnr_dz=dqnr_dz, dqni_dz=dqni_dz, dqnwfa_dz=dqnwfa_dz, dqnifa_dz=dqnifa_dz, u2=turb_flux_u2, &
             v2=turb_flux_v2, w2=turb_flux_w2, uv=turb_flux_uv, uw=turb_flux_uw, vw=turb_flux_vw, uthv=turb_flux_utheta_v, vthv=turb_flux_vtheta_v, &
@@ -1293,14 +1218,9 @@
       real, dimension (its:ite, kts:kte, jts:jte) :: l_dissip
       character (4) :: my_level
 
-        ! Calc sm and sh then q_sq for the level 2 model to prepare for the HL88 fix.
-        !
-        ! This used to sit inside "if (use_hl88)" with use_hl88 a local parameter fixed at
-        ! .true. and no else branch. Flipping it would have left rif, sm_l2, sh_l2 and
-        ! q_sq_hl88 undefined while still passing them to Calc_sm_sh_l2_or_l2p5 below, which
-        ! reads all four. There is no defined physics for "HL88 off" - the else branch of the
-        ! limiter is not the identity - so the flag is removed rather than given an invented
-        ! meaning. Disabling HL88 would need a namelist option and a stated definition.
+        ! Calc sm and sh then q_sq for the level 2 model to prepare for the HL88 fix. HL88 is
+        ! always applied: the limiter has no defined "off" state (its else branch is not the
+        ! identity); disabling it would need a namelist option and a stated definition.
       my_level = 'l2'
       call Calc_sm_sh_l2_or_l2p5 (my_level=my_level, du_dz=du_dz, dv_dz=dv_dz, dthetav_dz=dthetav_dz, &
           ids=ids, ide=ide, jds=jds, jde=jde, kds=kds, kde=kde, ims=ims, ime=ime, jms=jms, jme=jme, kms=kms, kme=kme, &
@@ -1385,7 +1305,7 @@
 
       real (kind = SOLVER_PREC) :: tf_utv, tf_vtv, tf_wtv, tf_uqv, tf_vqv, tf_wqv
 
-      integer :: n_backoff_pt, n_backoff_tot, n_pts_limited
+      integer :: n_backoff_pt, n_backoff_tot
       real    :: dg_t1_ratio, dg_t3_flags, dg_sk_eps, dg_n_tau, dg_qv2, dg_p_eps
         ! Summary counters, binned by stratification so the report says under WHICH
         ! conditions each tier fired, not only how often.
@@ -1402,7 +1322,6 @@
       real, parameter :: S_M_NEUTRAL_LH = 0.39, PR_INV_LH = 1.0
       real    :: lh_extra, kh_extra
 
-      character (4) :: my_level
       character (len = 256) :: wrf_err_message
 
         ! Define dimensions
@@ -1490,7 +1409,6 @@
 
       n_backoff_pt  = 0
       n_backoff_tot = 0
-      n_pts_limited = 0
 
       n_pts_tot = 0 ; n_t1 = 0 ; n_t2 = 0 ; n_t2_max = 0
       n_t3(:) = 0 ; n_bin(:) = 0 ; n_t2_bin(:) = 0 ; n_t3_bin(:) = 0
@@ -1537,7 +1455,6 @@
 
               if (n_backoff_pt > 0) then
                 n_backoff_tot = n_backoff_tot + n_backoff_pt
-                n_pts_limited = n_pts_limited + 1
               end if
 
                 ! Per-point diagnostic fields, written to history
@@ -1656,8 +1573,6 @@
         end do
       end do
 
-        ! Report how often the algebraic system had to be pushed back inside its
-        ! validity range. A healthy run should show this rarely or never.
         ! How often each safeguard acted, and under which conditions. A healthy run shows
         ! Tier 1 doing most of the work, Tier 2 occasional, Tier 3 rare, and the isotropic
         ! fallback (TIER2 exhausted) never. Emitted at debug_level 100, per tile.
@@ -1801,9 +1716,8 @@
       real, dimension (its:ite, kts:kte, jts:jte) :: l_dissip
       character (4) :: my_level
 
-        ! Calc sm and sh then q_sq for the level 2 model to prepare for the HL88 fix.
-        ! See Prep_for_fluxes_l2p5_pbl_approx for why the use_hl88 parameter was removed
-        ! rather than given an else branch.
+        ! Calc sm and sh then q_sq for the level 2 model to prepare for the HL88 fix
+        ! (always applied; see Prep_for_fluxes_l2p5_pbl_approx).
       my_level = 'l2'
       call Calc_sm_sh_l2_or_l2p5 (my_level=my_level, du_dz=du_dz, dv_dz=dv_dz, dthetav_dz=dthetav_dz, &
           ids=ids, ide=ide, jds=jds, jde=jde, kds=kds, kde=kde, ims=ims, ime=ime, jms=jms, jme=jme, kms=kms, kme=kme, &
@@ -1842,8 +1756,6 @@
 
         ! Local vars
       integer :: i, j, k, i_start, i_end, j_start, j_end
-      real :: l
-      logical, parameter :: DEBUG = .false.
 
         ! Define dimensions
       i_start = its
@@ -1953,8 +1865,6 @@
       real                      :: sm_loc
       integer :: n_try, n_t3_flags
       logical :: solve_ok
-
-      logical, parameter :: DEBUG = .false.
 
         ! Convert vars from single prec to double prec
       q_sq = Working_to_solver_prec(q_sq_at_walls_1dpbl)
@@ -2133,8 +2043,7 @@
         ! ---------------------------------------------------------------------------
         ! Tier 3, moisture side. Diagnose <qv'^2> from the moisture fluxes on the length
         ! scale the moist solve actually accepted, then apply the same realizability
-        ! constraints the heat side already obeys. Until this existed the moisture fluxes
-        ! were the only moments in the scheme with no realizability constraint at all.
+        ! constraints the heat side already obeys.
         ! ---------------------------------------------------------------------------
       call Calc_qv_variance (q, l_use, dqv_dx_tmp, dqv_dy_tmp, dqv_dz_tmp, &
           tf_uqv, tf_vqv, tf_wqv, tf_qv2)
@@ -2291,9 +2200,8 @@
       real (kind = SOLVER_PREC) :: uv_in, uw_in, vw_in, t2v_in, utv_in, vtv_in, wtv_in
       integer :: n_bis
         ! Relative tolerance for calling the trace rescale a real correction rather than
-        ! round-off. 1e-10 was too tight: the trace identity is recovered from the solve
-        ! only to accumulated round-off, so it flagged essentially every point and told
-        ! us nothing. 1e-6 is still far below any physically meaningful rescaling.
+        ! round-off (the solve recovers the trace identity only to accumulated round-off);
+        ! far below any physically meaningful rescaling.
       real (kind = SOLVER_PREC), parameter :: TIER3_TOL = 1.0E-6_SOLVER_PREC
 
       t3_flags = 0
@@ -3374,8 +3282,8 @@
     end subroutine Calc_heat_flux
 
 
-    subroutine Diagnose_fluxes_pbl_approx (do_scalar_mix, ss, nsteps, fnm, fnp, t, qv, ust, hfx, qfx, sm_tilde, sh_tilde, &
-              sm_l2, sh_l2, rif, q_sq, q_sq_hl88, q_ratio, l_master, du_dz, dv_dz, dthetav_dz, dqv_dz, dqc_dz, &
+    subroutine Diagnose_fluxes_pbl_approx (do_scalar_mix, ss, nsteps, fnm, fnp, t, qv, sm_tilde, sh_tilde, &
+              rif, q_sq, l_master, du_dz, dv_dz, dthetav_dz, dqv_dz, dqc_dz, &
               dqr_dz, dqi_dz, dqs_dz, dqg_dz, dqnc_dz, dqnr_dz, dqni_dz, dqnwfa_dz, dqnifa_dz, &
               u2, v2, w2, uv, uw, vw, uthv, vthv, wthv, th2v, uqv, vqv, wqv, uth, vth, wth, &
               uqc, vqc, wqc, uqr, vqr, wqr, uqi, vqi, wqi, uqs, vqs, wqs, uqg, vqg, wqg, uqnc, vqnc, wqnc, &
@@ -3396,21 +3304,16 @@
           uqc, vqc, wqc, uqr, vqr, wqr, uqi, vqi, wqi, uqs, vqs, wqs, uqg, vqg, wqg, &
           uqnc, vqnc, wqnc, uqnr, vqnr, wqnr, uqni, vqni, wqni, uqnwfa, vqnwfa, wqnwfa, uqnifa, vqnifa, wqnifa
       real, dimension (its:ite, kts:kte, jts:jte), intent (in)  :: sm_tilde, sh_tilde, rif
-      real, dimension (its:ite, kts:kte, jts:jte), optional, intent (in)  :: q_ratio, q_sq_hl88, sm_l2, sh_l2
-      real, dimension (ims:ime, jms:jme),          intent (in)  :: ust, hfx, qfx
       integer, intent (in)    :: ids, ide, jds, jde, kds, kde, &
                                  ims, ime, jms, jme, kms, kme, &
                                  its, ite, jts, jte, kts, kte
 
         ! local vars
       integer :: i, j, k, i_start, i_end, j_start, j_end, ktf
-      real :: qsq, l, sm, sh, ri, dudz, dvdz, dthvdz, dqvdz, dqcdz, dqrdz, dqidz, dqsdz, dqgdz, &
-              dqncdz, dqnrdz, dqnidz, dqnwfadz, dqnifadz
+      real :: qsq, l, sm, sh, ri, dudz, dvdz, dthvdz, dqvdz
+      logical :: mix_q
       real :: t_wall, qv_wall
       real :: th_pert, th_dry, qm
-      real :: dxm, dym, tmpzx, tmpzy, sf_alpha
-      real :: c_p, u1, v1, wind_speed, ust_sq
-      logical, parameter :: DEBUG = .false.
 
         ! Define dimensions
       i_start = its
@@ -3456,10 +3359,6 @@
               v2(i, k, j) = Diag_v2_pbl_approx (qsq, l, ri, dudz, dvdz, uw(i, k, j), vw(i, k, j), wthv(i, k, j))
               w2(i, k, j) = Diag_w2_pbl_approx (qsq, l, ri, dudz, dvdz, uw(i, k, j), vw(i, k, j), wthv(i, k, j))
 
-              if (DEBUG) call Debug_negative_flux
-
-              if (DEBUG) call Debug_big_qsq
-
                 ! Diagnose the rest of qv fluxes
               uqv(i, k, j) = Diag_uqv_pbl_approx (qsq, l, dudz, dqvdz, uw(i, k, j), wqv(i, k, j))
               vqv(i, k, j) = Diag_vqv_pbl_approx (qsq, l, dvdz, dqvdz, vw(i, k, j), wqv(i, k, j))
@@ -3491,163 +3390,32 @@
                     + RVOVRD * th_dry * wqv(i, k, j)
               end if
 
-              if ( do_scalar_mix .eq. 1 .and. ss .eq. nsteps) then
-                  ! Cloud mass
-                if ( p_qc .ge. param_first_scalar ) then
-                  dqcdz = dqc_dz(i, k, j)
-                  wqc(i, k, j) = Diag_wqv_pbl_approx (qsq, l, sh, dqcdz)
-                  uqc(i, k, j) = Diag_uqv_pbl_approx (qsq, l, dudz, dqcdz, uw(i, k, j), wqc(i, k, j))
-                  vqc(i, k, j) = Diag_vqv_pbl_approx (qsq, l, dvdz, dqcdz, vw(i, k, j), wqc(i, k, j))
-                else
-                  wqc(i, k, j) = TURB_FLUX_MIN
-                  uqc(i, k, j) = TURB_FLUX_MIN
-                  vqc(i, k, j) = TURB_FLUX_MIN
-                end if
-                  ! Rain mass
-                if ( p_qr .ge. param_first_scalar ) then
-                  dqrdz = dqr_dz(i, k, j)
-                  wqr(i, k, j) = Diag_wqv_pbl_approx (qsq, l, sh, dqrdz)
-                  uqr(i, k, j) = Diag_uqv_pbl_approx (qsq, l, dudz, dqrdz, uw(i, k, j), wqr(i, k, j))
-                  vqr(i, k, j) = Diag_vqv_pbl_approx (qsq, l, dvdz, dqrdz, vw(i, k, j), wqr(i, k, j))
-                else
-                  wqr(i, k, j) = TURB_FLUX_MIN
-                  uqr(i, k, j) = TURB_FLUX_MIN
-                  vqr(i, k, j) = TURB_FLUX_MIN
-                end if
-                  ! Ice mass
-                if ( p_qi .ge. param_first_scalar ) then
-                  dqidz = dqi_dz(i, k, j)
-                  wqi(i, k, j) = Diag_wqv_pbl_approx (qsq, l, sh, dqidz)
-                  uqi(i, k, j) = Diag_uqv_pbl_approx (qsq, l, dudz, dqidz, uw(i, k, j), wqi(i, k, j))
-                  vqi(i, k, j) = Diag_vqv_pbl_approx (qsq, l, dvdz, dqidz, vw(i, k, j), wqi(i, k, j))
-                else
-                  wqi(i, k, j) = TURB_FLUX_MIN
-                  uqi(i, k, j) = TURB_FLUX_MIN
-                  vqi(i, k, j) = TURB_FLUX_MIN
-                end if
-                  ! Snow mass
-                if ( p_qs .ge. param_first_scalar ) then
-                  dqsdz = dqs_dz(i, k, j)
-                  wqs(i, k, j) = Diag_wqv_pbl_approx (qsq, l, sh, dqsdz)
-                  uqs(i, k, j) = Diag_uqv_pbl_approx (qsq, l, dudz, dqsdz, uw(i, k, j), wqs(i, k, j))
-                  vqs(i, k, j) = Diag_vqv_pbl_approx (qsq, l, dvdz, dqsdz, vw(i, k, j), wqs(i, k, j))
-                else
-                  wqs(i, k, j) = TURB_FLUX_MIN
-                  uqs(i, k, j) = TURB_FLUX_MIN
-                  vqs(i, k, j) = TURB_FLUX_MIN
-                end if
-                  ! Graupel mass
-                if ( p_qg .ge. param_first_scalar ) then
-                  dqgdz = dqg_dz(i, k, j)
-                  wqg(i, k, j) = Diag_wqv_pbl_approx (qsq, l, sh, dqgdz)
-                  uqg(i, k, j) = Diag_uqv_pbl_approx (qsq, l, dudz, dqgdz, uw(i, k, j), wqg(i, k, j))
-                  vqg(i, k, j) = Diag_vqv_pbl_approx (qsq, l, dvdz, dqgdz, vw(i, k, j), wqg(i, k, j))
-                else
-                  wqg(i, k, j) = TURB_FLUX_MIN
-                  uqg(i, k, j) = TURB_FLUX_MIN
-                  vqg(i, k, j) = TURB_FLUX_MIN
-                end if
-                  ! Cloud number
-                if ( p_qnc .ge. param_first_scalar ) then
-                  dqncdz = dqnc_dz(i, k, j)
-                  wqnc(i, k, j) = Diag_wqv_pbl_approx (qsq, l, sh, dqncdz)
-                  uqnc(i, k, j) = Diag_uqv_pbl_approx (qsq, l, dudz, dqncdz, uw(i, k, j), wqnc(i, k, j))
-                  vqnc(i, k, j) = Diag_vqv_pbl_approx (qsq, l, dvdz, dqncdz, vw(i, k, j), wqnc(i, k, j))
-                else
-                  wqnc(i, k, j) = TURB_FLUX_MIN
-                  uqnc(i, k, j) = TURB_FLUX_MIN
-                  vqnc(i, k, j) = TURB_FLUX_MIN
-                end if
-                  ! Rain number
-                if ( p_qnr .ge. param_first_scalar ) then
-                  dqnrdz = dqnr_dz(i, k, j)
-                  wqnr(i, k, j) = Diag_wqv_pbl_approx (qsq, l, sh, dqnrdz)
-                  uqnr(i, k, j) = Diag_uqv_pbl_approx (qsq, l, dudz, dqnrdz, uw(i, k, j), wqnr(i, k, j))
-                  vqnr(i, k, j) = Diag_vqv_pbl_approx (qsq, l, dvdz, dqnrdz, vw(i, k, j), wqnr(i, k, j))
-                else
-                  wqnr(i, k, j) = TURB_FLUX_MIN
-                  uqnr(i, k, j) = TURB_FLUX_MIN
-                  vqnr(i, k, j) = TURB_FLUX_MIN
-                end if
-                  ! Ice number
-                if ( p_qni .ge. param_first_scalar ) then
-                  dqnidz = dqni_dz(i, k, j)
-                  wqni(i, k, j) = Diag_wqv_pbl_approx (qsq, l, sh, dqnidz)
-                  uqni(i, k, j) = Diag_uqv_pbl_approx (qsq, l, dudz, dqnidz, uw(i, k, j), wqni(i, k, j))
-                  vqni(i, k, j) = Diag_vqv_pbl_approx (qsq, l, dvdz, dqnidz, vw(i, k, j), wqni(i, k, j))
-                else
-                  wqni(i, k, j) = TURB_FLUX_MIN
-                  uqni(i, k, j) = TURB_FLUX_MIN
-                  vqni(i, k, j) = TURB_FLUX_MIN
-                end if
-                  ! Water friendly aerosol number
-                if ( p_qnwfa .ge. param_first_scalar ) then
-                  dqnwfadz = dqnwfa_dz(i, k, j)
-                  wqnwfa(i, k, j) = Diag_wqv_pbl_approx (qsq, l, sh, dqnwfadz)
-                  uqnwfa(i, k, j) = Diag_uqv_pbl_approx (qsq, l, dudz, dqnwfadz, uw(i, k, j), wqnwfa(i, k, j))
-                  vqnwfa(i, k, j) = Diag_vqv_pbl_approx (qsq, l, dvdz, dqnwfadz, vw(i, k, j), wqnwfa(i, k, j))
-                else
-                  wqnwfa(i, k, j) = TURB_FLUX_MIN
-                  uqnwfa(i, k, j) = TURB_FLUX_MIN
-                  vqnwfa(i, k, j) = TURB_FLUX_MIN
-                end if
-                  ! Ice friendly aerosol number
-                if ( p_qnifa .ge. param_first_scalar ) then
-                  dqnifadz = dqnifa_dz(i, k, j)
-                  wqnifa(i, k, j) = Diag_wqv_pbl_approx (qsq, l, sh, dqnifadz)
-                  uqnifa(i, k, j) = Diag_uqv_pbl_approx (qsq, l, dudz, dqnifadz, uw(i, k, j), wqnifa(i, k, j))
-                  vqnifa(i, k, j) = Diag_vqv_pbl_approx (qsq, l, dvdz, dqnifadz, vw(i, k, j), wqnifa(i, k, j))
-                else
-                  wqnifa(i, k, j) = TURB_FLUX_MIN
-                  uqnifa(i, k, j) = TURB_FLUX_MIN
-                  vqnifa(i, k, j) = TURB_FLUX_MIN
-                end if
-              else
-                  ! Cloud mas
-                wqc(i, k, j) = TURB_FLUX_MIN
-                uqc(i, k, j) = TURB_FLUX_MIN
-                vqc(i, k, j) = TURB_FLUX_MIN
-                  ! Rain mass
-                wqr(i, k, j) = TURB_FLUX_MIN
-                uqr(i, k, j) = TURB_FLUX_MIN
-                vqr(i, k, j) = TURB_FLUX_MIN
-                  ! Ice mass
-                wqi(i, k, j) = TURB_FLUX_MIN
-                uqi(i, k, j) = TURB_FLUX_MIN
-                vqi(i, k, j) = TURB_FLUX_MIN
-                  ! Snow mass
-                wqs(i, k, j) = TURB_FLUX_MIN
-                uqs(i, k, j) = TURB_FLUX_MIN
-                vqs(i, k, j) = TURB_FLUX_MIN
-                  ! Graupel mass
-                wqg(i, k, j) = TURB_FLUX_MIN
-                uqg(i, k, j) = TURB_FLUX_MIN
-                vqg(i, k, j) = TURB_FLUX_MIN
-                  ! Cloud number
-                wqnc(i, k, j) = TURB_FLUX_MIN
-                uqnc(i, k, j) = TURB_FLUX_MIN
-                vqnc(i, k, j) = TURB_FLUX_MIN
-                  ! Rain number
-                wqnr(i, k, j) = TURB_FLUX_MIN
-                uqnr(i, k, j) = TURB_FLUX_MIN
-                vqnr(i, k, j) = TURB_FLUX_MIN
-                  ! Ice number
-                wqni(i, k, j) = TURB_FLUX_MIN
-                uqni(i, k, j) = TURB_FLUX_MIN
-                vqni(i, k, j) = TURB_FLUX_MIN
-                  ! Water friendly aerosol number
-                wqnwfa(i, k, j) = TURB_FLUX_MIN
-                uqnwfa(i, k, j) = TURB_FLUX_MIN
-                vqnwfa(i, k, j) = TURB_FLUX_MIN
-                  ! Ice friendly aerosol number
-                wqnifa(i, k, j) = TURB_FLUX_MIN
-                uqnifa(i, k, j) = TURB_FLUX_MIN
-                vqnifa(i, k, j) = TURB_FLUX_MIN
-              end if
+                ! Fluxes of hydrometeor masses and numbers (TURB_FLUX_MIN where not mixed or not carried)
+              mix_q = do_scalar_mix .eq. 1 .and. ss .eq. nsteps
+              call Diag_hydrometeor_fluxes (mix_q .and. p_qc .ge. param_first_scalar, dqc_dz(i, k, j), &
+                  uqc(i, k, j), vqc(i, k, j), wqc(i, k, j))            ! Cloud mass
+              call Diag_hydrometeor_fluxes (mix_q .and. p_qr .ge. param_first_scalar, dqr_dz(i, k, j), &
+                  uqr(i, k, j), vqr(i, k, j), wqr(i, k, j))            ! Rain mass
+              call Diag_hydrometeor_fluxes (mix_q .and. p_qi .ge. param_first_scalar, dqi_dz(i, k, j), &
+                  uqi(i, k, j), vqi(i, k, j), wqi(i, k, j))            ! Ice mass
+              call Diag_hydrometeor_fluxes (mix_q .and. p_qs .ge. param_first_scalar, dqs_dz(i, k, j), &
+                  uqs(i, k, j), vqs(i, k, j), wqs(i, k, j))            ! Snow mass
+              call Diag_hydrometeor_fluxes (mix_q .and. p_qg .ge. param_first_scalar, dqg_dz(i, k, j), &
+                  uqg(i, k, j), vqg(i, k, j), wqg(i, k, j))            ! Graupel mass
+              call Diag_hydrometeor_fluxes (mix_q .and. p_qnc .ge. param_first_scalar, dqnc_dz(i, k, j), &
+                  uqnc(i, k, j), vqnc(i, k, j), wqnc(i, k, j))         ! Cloud number
+              call Diag_hydrometeor_fluxes (mix_q .and. p_qnr .ge. param_first_scalar, dqnr_dz(i, k, j), &
+                  uqnr(i, k, j), vqnr(i, k, j), wqnr(i, k, j))         ! Rain number
+              call Diag_hydrometeor_fluxes (mix_q .and. p_qni .ge. param_first_scalar, dqni_dz(i, k, j), &
+                  uqni(i, k, j), vqni(i, k, j), wqni(i, k, j))         ! Ice number
+              call Diag_hydrometeor_fluxes (mix_q .and. p_qnwfa .ge. param_first_scalar, dqnwfa_dz(i, k, j), &
+                  uqnwfa(i, k, j), vqnwfa(i, k, j), wqnwfa(i, k, j))   ! Water friendly aerosol number
+              call Diag_hydrometeor_fluxes (mix_q .and. p_qnifa .ge. param_first_scalar, dqnifa_dz(i, k, j), &
+                  uqnifa(i, k, j), vqnifa(i, k, j), wqnifa(i, k, j))   ! Ice friendly aerosol number
 
             else
 
-              call Set_turb_flux_min
+              call Set_turb_flux_min (i, k, j)
 
             end if if_low_q_sq
 
@@ -3655,49 +3423,47 @@
         end do k_loop
       end do j_loop
 
-        ! Zero fluxes at the suface
-      call Set_turb_flux_min_surface
-
-        ! Zero fluxes at the top
-      call Set_turb_flux_min_top
+        ! Zero fluxes at the surface and at the top
+      do j = j_start, j_end
+        do i = i_start, i_end
+          call Set_turb_flux_min (i, kts, j)
+        end do
+      end do
+      do j = j_start, j_end
+        do i = i_start, i_end
+          call Set_turb_flux_min (i, ktf + 1, j)
+        end do
+      end do
 
       contains
 
-        subroutine Debug_negative_flux
+        subroutine Diag_hydrometeor_fluxes (mixed, dq_dz, uq, vq, wq)
 
-          if (u2(i, k, j) < 0 .or. v2(i, k, j) < 0 .or. w2(i, k, j) < 0) then
-            print *, '------------------------------------------------------'
-            print *, 'NEGATIVE FLUX'
-            print *, 'i, k, j = ', i, k, j
-            if (u2(i, k, j) < 0) then
-              print *, 'u2, qsq, u2/qsq = ', u2(i, k, j), qsq, ABS( u2(i, k, j) / qsq )
-            else if (v2(i, k, j) < 0) then
-              print *, 'v2, qsq, v2/qsq = ', v2(i, k, j), qsq, ABS( v2(i, k, j) / qsq )
-            else if (w2(i, k, j) < 0) then
-              print *, 'w2, qsq, w2/qsq = ', w2(i, k, j), qsq, ABS( w2(i, k, j) / qsq )
-            end if
+            ! Fluxes of one hydrometeor mass or number at face (i, k, j) in the form of the qv fluxes,
+            ! from its vertical gradient dq_dz; TURB_FLUX_MIN where it is not mixed (mixed = .false.)
+
+          logical, intent (in)  :: mixed
+          real,    intent (in)  :: dq_dz
+          real,    intent (out) :: uq, vq, wq
+
+          if (mixed) then
+            wq = Diag_wqv_pbl_approx (qsq, l, sh, dq_dz)
+            uq = Diag_uqv_pbl_approx (qsq, l, dudz, dq_dz, uw(i, k, j), wq)
+            vq = Diag_vqv_pbl_approx (qsq, l, dvdz, dq_dz, vw(i, k, j), wq)
+          else
+            wq = TURB_FLUX_MIN
+            uq = TURB_FLUX_MIN
+            vq = TURB_FLUX_MIN
           end if
 
-        end subroutine Debug_negative_flux
+        end subroutine Diag_hydrometeor_fluxes
 
 
-        subroutine Debug_big_qsq
+        subroutine Set_turb_flux_min (i, k, j)
 
-          if (u2(i, k, j) + v2(i, k, j) + w2(i, k, j) > (1.0 + epsilon(qsq)) * qsq) then
-            print *, '------------------------------------------------------'
-            print *, 'BIG QSQ'
-            print *, 'i, k, j = ', i, k, j
-            print *, 'u2, v2, w2, sum, = ', u2(i, k, j), v2(i, k, j), w2(i, k, j), (u2(i, k, j) + v2(i, k, j) + w2(i, k, j))
-            print *, 'qsq, sum/qsq = ', qsq, (u2(i, k, j) + v2(i, k, j) + w2(i, k, j)) / qsq
-            u2(i, k, j) = qsq / 3.0
-            v2(i, k, j) = qsq / 3.0
-            w2(i, k, j) = qsq / 3.0
-          end if
+            ! All fluxes at face (i, k, j) to their floor
 
-        end subroutine Debug_big_qsq
-
-
-        subroutine Set_turb_flux_min
+          integer, intent (in) :: i, k, j
 
           u2(i, k, j) = TURB_FLUX_MIN
           v2(i, k, j) = TURB_FLUX_MIN
@@ -3749,116 +3515,6 @@
         end subroutine Set_turb_flux_min
 
 
-        subroutine Set_turb_flux_min_surface
-
-          do j = j_start, j_end
-            do i = i_start, i_end
-              u2(i, kts, j) = TURB_FLUX_MIN
-              v2(i, kts, j) = TURB_FLUX_MIN
-              w2(i, kts, j) = TURB_FLUX_MIN
-              uv(i, kts, j) = TURB_FLUX_MIN
-              uw(i, kts, j) = TURB_FLUX_MIN
-              vw(i, kts, j) = TURB_FLUX_MIN
-              uqv(i, kts, j) = TURB_FLUX_MIN
-              vqv(i, kts, j) = TURB_FLUX_MIN
-              wqv(i, kts, j) = TURB_FLUX_MIN
-              uqc(i, kts, j) = TURB_FLUX_MIN
-              vqc(i, kts, j) = TURB_FLUX_MIN
-              wqc(i, kts, j) = TURB_FLUX_MIN
-              uqr(i, kts, j) = TURB_FLUX_MIN
-              vqr(i, kts, j) = TURB_FLUX_MIN
-              wqr(i, kts, j) = TURB_FLUX_MIN
-              uqi(i, kts, j) = TURB_FLUX_MIN
-              vqi(i, kts, j) = TURB_FLUX_MIN
-              wqi(i, kts, j) = TURB_FLUX_MIN
-              uqs(i, kts, j) = TURB_FLUX_MIN
-              vqs(i, kts, j) = TURB_FLUX_MIN
-              wqs(i, kts, j) = TURB_FLUX_MIN
-              uqg(i, kts, j) = TURB_FLUX_MIN
-              vqg(i, kts, j) = TURB_FLUX_MIN
-              wqg(i, kts, j) = TURB_FLUX_MIN
-              uqnc(i, kts, j) = TURB_FLUX_MIN
-              vqnc(i, kts, j) = TURB_FLUX_MIN
-              wqnc(i, kts, j) = TURB_FLUX_MIN
-              uqnr(i, kts, j) = TURB_FLUX_MIN
-              vqnr(i, kts, j) = TURB_FLUX_MIN
-              wqnr(i, kts, j) = TURB_FLUX_MIN
-              uqni(i, kts, j) = TURB_FLUX_MIN
-              vqni(i, kts, j) = TURB_FLUX_MIN
-              wqni(i, kts, j) = TURB_FLUX_MIN
-              uqnwfa(i, kts, j) = TURB_FLUX_MIN
-              vqnwfa(i, kts, j) = TURB_FLUX_MIN
-              wqnwfa(i, kts, j) = TURB_FLUX_MIN
-              uqnifa(i, kts, j) = TURB_FLUX_MIN
-              vqnifa(i, kts, j) = TURB_FLUX_MIN
-              wqnifa(i, kts, j) = TURB_FLUX_MIN
-              uth(i, kts, j) = TURB_FLUX_MIN
-              uthv(i, kts, j) = TURB_FLUX_MIN
-              vth(i, kts, j) = TURB_FLUX_MIN
-              vthv(i, kts, j) = TURB_FLUX_MIN
-              wth(i, kts, j) = TURB_FLUX_MIN
-              wthv(i, kts, j) = TURB_FLUX_MIN
-              th2v(i, kts, j) = TURB_FLUX_MIN
-            end do
-          end do
-
-        end subroutine Set_turb_flux_min_surface
-
-        subroutine Set_turb_flux_min_top
-
-          do j = j_start, j_end
-            do i = i_start, i_end
-              u2(i, ktf + 1, j) = TURB_FLUX_MIN
-              v2(i, ktf + 1, j) = TURB_FLUX_MIN
-              w2(i, ktf + 1, j) = TURB_FLUX_MIN
-              uv(i, ktf + 1, j) = TURB_FLUX_MIN
-              uw(i, ktf + 1, j) = TURB_FLUX_MIN
-              vw(i, ktf + 1, j) = TURB_FLUX_MIN
-              uqv(i, ktf + 1, j) = TURB_FLUX_MIN
-              vqv(i, ktf + 1, j) = TURB_FLUX_MIN
-              wqv(i, ktf + 1, j) = TURB_FLUX_MIN
-              uqc(i, ktf + 1, j) = TURB_FLUX_MIN
-              vqc(i, ktf + 1, j) = TURB_FLUX_MIN
-              wqc(i, ktf + 1, j) = TURB_FLUX_MIN
-              uqr(i, ktf + 1, j) = TURB_FLUX_MIN
-              vqr(i, ktf + 1, j) = TURB_FLUX_MIN
-              wqr(i, ktf + 1, j) = TURB_FLUX_MIN
-              uqi(i, ktf + 1, j) = TURB_FLUX_MIN
-              vqi(i, ktf + 1, j) = TURB_FLUX_MIN
-              wqi(i, ktf + 1, j) = TURB_FLUX_MIN
-              uqs(i, ktf + 1, j) = TURB_FLUX_MIN
-              vqs(i, ktf + 1, j) = TURB_FLUX_MIN
-              wqs(i, ktf + 1, j) = TURB_FLUX_MIN
-              uqg(i, ktf + 1, j) = TURB_FLUX_MIN
-              vqg(i, ktf + 1, j) = TURB_FLUX_MIN
-              wqg(i, ktf + 1, j) = TURB_FLUX_MIN
-              uqnc(i, ktf + 1, j) = TURB_FLUX_MIN
-              vqnc(i, ktf + 1, j) = TURB_FLUX_MIN
-              wqnc(i, ktf + 1, j) = TURB_FLUX_MIN
-              uqnr(i, ktf + 1, j) = TURB_FLUX_MIN
-              vqnr(i, ktf + 1, j) = TURB_FLUX_MIN
-              wqnr(i, ktf + 1, j) = TURB_FLUX_MIN
-              uqni(i, ktf + 1, j) = TURB_FLUX_MIN
-              vqni(i, ktf + 1, j) = TURB_FLUX_MIN
-              wqni(i, ktf + 1, j) = TURB_FLUX_MIN
-              uqnwfa(i, ktf + 1, j) = TURB_FLUX_MIN
-              vqnwfa(i, ktf + 1, j) = TURB_FLUX_MIN
-              wqnwfa(i, ktf + 1, j) = TURB_FLUX_MIN
-              uqnifa(i, ktf + 1, j) = TURB_FLUX_MIN
-              vqnifa(i, ktf + 1, j) = TURB_FLUX_MIN
-              wqnifa(i, ktf + 1, j) = TURB_FLUX_MIN
-              uth(i, ktf + 1, j) = TURB_FLUX_MIN
-              uthv(i, ktf + 1, j) = TURB_FLUX_MIN
-              vth(i, ktf + 1, j) = TURB_FLUX_MIN
-              vthv(i, ktf + 1, j) = TURB_FLUX_MIN
-              wth(i, ktf + 1, j) = TURB_FLUX_MIN
-              wthv(i, ktf + 1, j) = TURB_FLUX_MIN
-              th2v(i, ktf + 1, j) = TURB_FLUX_MIN
-            end do
-          end do
-
-        end subroutine Set_turb_flux_min_top
-
     end subroutine Diagnose_fluxes_pbl_approx
 
 
@@ -3891,7 +3547,7 @@
                                  its, ite, jts, jte, kts, kte
 
         ! local vars
-      integer :: i, j, k, i_start, i_end, j_start, j_end, ktf
+      integer :: i, j, i_start, i_end, j_start, j_end
       real :: zet, pmz1, pmz2, phz
       real :: qss, prt, gamma1, kz, elv
       real :: c_p, u1, v1, wind_speed, th_dry
@@ -3905,8 +3561,6 @@
       i_end = Min (ite, ide - 1)
       j_start = jts
       j_end = Min (jte, jde - 1)
-
-      ktf = Min (kte, kde - 1)
 
       do j = j_start, j_end
         do i = i_start, i_end
@@ -3973,22 +3627,6 @@
                 pmz2 = 1.0 / (1.0 - cphm_unst * zet) ** 0.25
                 phz = prt / sqrt(1.0 - cphh_unst * zet) ! cphh_unst does not match businger
               end if
-
-!              pmz1 = psim(i, j) - zet ! This will always appear in the denomenator
-!              pmz2 = psim(i, j)
-!              phz = psih(i, j)
-
-!              if (pmz1 .le. 0.0) then
-!                write(90, *) '-----------------------------'
-!                write(90, *) 'i =', i, 'j = ', j, 'k = ', k
-!                write(90, *) 'kz = ', kz
-!                write(90, *) 'zet = ', zet
-!                write(90, *) 'elv = ', elv
-!                write(90, *) 'pmz1 = ', pmz1
-!                write(90, *) 'pmz1 - zet = ', pmz1 - zet
-!                write(90, *) 'pmz2 = ', pmz2
-!                write(90, *) 'phz = ', phz
-!              end if
 
             end if
 
@@ -4225,8 +3863,8 @@
                                  its, ite, jts, jte, kts, kte
 
         ! local vars
-      integer :: i, j, k, i_start, i_end, j_start, j_end, ktf, k_start, n_iter_sor
-      real :: ri, turb_prtl_num, gm, gh, phi1, phi2, phi3, phi4, phi5, N, D
+      integer :: i, j, k, i_start, i_end, j_start, j_end, ktf, k_start
+      real :: ri, turb_prtl_num, gm, gh, phi1, phi2, phi3, phi4, N, D
       character (len = 256) :: wrf_err_message
       real, dimension (its:ite, kts:kte, jts:jte) :: l_master
 
@@ -4342,7 +3980,6 @@
                   phi2 = 1.0 - 9.0  * a_1 * a_2 * gh
                   phi3 = phi1 + 9.0 * a_2 * a_2 * gh
                   phi4 = phi1 - 12.0 * a_1 * a_2 * gh
-                  phi5 = phi1 - 18.0 * a_1 * a_2 * gh
                   N = phi2 + 18.0 * c_1 * a_1 * a_1 * gm
                   D = phi2 * phi4 + 6.0 * a_1 * a_1 * phi3 * gm
 
@@ -4399,9 +4036,7 @@
 
         ! local vars
       integer :: i, j, k, i_start, i_end, j_start, j_end, kts1, ktf
-      real :: ri, turb_prtl_num
       real, dimension (its:ite, kts:kte, jts:jte) :: q_sq
-      logical, parameter :: DEBUG = .false.
 
         ! Define dimensions
       i_start = its
@@ -4423,15 +4058,12 @@
                 ! the mixing length (l_master), the l on the dissipation side is l_dissip,
                 ! which is what Fill_dissip_length_scale is called to supply. They coincide
                 ! for pbl3d_l_opt < 3 and differ for pbl3d_l_opt >= 3, where l_dissip is the
-                ! BouLac length. This previously used l_master for both, so l_dissip was
-                ! passed in and never used.
+                ! BouLac length.
               q_sq(i, k, j) =  b_1 * l_dissip(i, k, j) * l_master(i, k, j) *  &
                   (du_dz(i, k, j) ** 2.0 + dv_dz(i, k, j) ** 2.0) *           &
                   (1.0 - rif(i, k, j)) * sm(i, k, j)
 
               q_sq(i, k, j) = Max (q_sq(i, k, j), Q_SQ_MIN)
-
-              if (DEBUG) call Debug_big_qsq
 
             else
 
@@ -4474,25 +4106,6 @@
         end do
 
       end if
-
-      contains
-
-        subroutine Debug_big_qsq
-
-          if (q_sq(i, k, j) > 20.0) then
-            print *, '-----------------------------'
-            print *, 'i, k, j = ', i, k, j
-            print *, 'q_sq = ', q_sq(i, k, j)
-            print *, 'du_dz = ', du_dz(i, k, j)
-            print *, 'dv_dz = ', dv_dz(i, k, j)
-            print *, 'dthetav_dz = ', dthetav_dz(i, k, j)
-            print *, 'l dissip = ', l_dissip(i, k, j)
-            print *, 'Ri = ', ri
-            print *, 'Ri flux = ', rif(i, k, j)
-            print *, 'sm = ', sm(i, k, j)
-          end if
-
-        end subroutine Debug_big_qsq
 
     end subroutine Calc_q_sq_l2_pbl_approx
 
@@ -4538,7 +4151,6 @@
       integer :: i, j, k, i_start, i_end, j_start, j_end, kts1, ktf
       real :: q_cubed, q_sq_3d
       real, dimension (its:ite, kts:kte, jts:jte) :: q_sq
-      logical, parameter :: DEBUG = .false.
 
         ! Define dimensions
       i_start = its
@@ -4588,8 +4200,6 @@
 
               q_sq(i, k, j) = Max (q_sq(i, k, j), Q_SQ_MIN)
 
-              if (DEBUG) call Debug_big_qsq
-
             else
 
               q_sq(i, k, j) = Q_SQ_MIN
@@ -4631,25 +4241,6 @@
         end do
 
       end if
-
-      contains
-
-        subroutine Debug_big_qsq
-
-          if (q_sq(i, k, j) > 20.0) then
-            print *, '-----------------------------'
-            print *, 'i, k, j = ', i, k, j
-            print *, 'q_sq = ', q_sq(i, k, j)
-            print *, 'du_dz = ', du_dz(i, k, j)
-            print *, 'dv_dz = ', dv_dz(i, k, j)
-            print *, 'dthetav_dz = ', dthetav_dz(i, k, j)
-            print *, 'l dissip = ', l_dissip(i, k, j)
-            print *, 'q^3 (3D production x b_1 l) = ', q_cubed
-            print *, 'q_sq from 3D production = ', q_sq_3d
-            print *, 'Ri flux = ', rif(i, k, j)
-          end if
-
-        end subroutine Debug_big_qsq
 
     end subroutine Calc_q_sq_l2
 
@@ -4854,7 +4445,7 @@
                                                                      its, ite, jts, jte, kts, kte
 
         ! local vars
-      integer :: i, j, k, i_start, i_end, j_start, j_end
+      integer :: i, j, i_start, i_end, j_start, j_end
       real :: dxdy, dxdh
 
         ! Define dimensions
@@ -4939,8 +4530,6 @@
       implicit none
 
       character (len = *), intent(in) :: pbl3d_constants
-
-      logical, parameter :: DEBUG = .false.
 
       real, parameter :: A1_M73 = 0.78, &
                          A2_M73 = 0.79, &
@@ -5063,22 +4652,6 @@
 
       end select
 
-      if (DEBUG) then
-        write (OUTPUT_UNIT, *) 'Inside subroutine Set_model_constants:'
-        write (OUTPUT_UNIT, *) 'Model constants:'
-        write (OUTPUT_UNIT, *) 'a1 = ', a_1
-        write (OUTPUT_UNIT, *) 'a2 = ', a_2
-        write (OUTPUT_UNIT, *) 'b1 = ', b_1
-        write (OUTPUT_UNIT, *) 'b2 = ', b_2
-        write (OUTPUT_UNIT, *) 'c1 = ', c_1
-        write (OUTPUT_UNIT, *) 'c2 = ', c_2
-        write (OUTPUT_UNIT, *) 'c3 = ', c_3
-        write (OUTPUT_UNIT, *) 'Alpha = ', alpha
-        write (OUTPUT_UNIT, *) 'Lambda = ', lambda
-      end if
-
-      if (DEBUG) print *, 'Done Set_model_constants...'
-
     end subroutine Set_model_constants
 
 
@@ -5095,8 +4668,6 @@
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
       implicit none
-
-      logical, parameter :: DEBUG = .false.
 
       real              :: e1, e2, e3, e4, e5
 
@@ -5120,8 +4691,6 @@
 
         ! Eq. 9a Y75 at Rif = 0 (neutral): the reference value for the Ri-aware strain cap.
       sm_neutral_l2 = cm * rif_c * rf1 / rf2
-
-      if (DEBUG) print *, 'Done Set_my_l2_global_vars...'
 
     end subroutine Set_my_l2_global_vars
 
@@ -5176,8 +4745,6 @@
 
       integer, intent(in) :: pbl3d_prog
 
-      logical, parameter :: DEBUG = .false.
-
       if (pbl3d_prog == 0) then
         Q_SQ_MIN = 1.0E-5
         TURB_FLUX_MIN = 1.0E-12
@@ -5185,8 +4752,6 @@
         Q_SQ_MIN = 1.0E-5
         TURB_FLUX_MIN = 0.0
       end if
-
-      if (DEBUG) print *, 'Done Set_my_qsq_min...'
 
     end subroutine Set_my_qsq_min
 
@@ -5222,8 +4787,6 @@
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
       implicit none
-
-      logical, parameter :: DEBUG = .false.
 
       logical, intent(in) :: restart
       integer, intent(in) :: pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt, pbl3d_nsteps
@@ -5265,13 +4828,6 @@
       real, dimension (its:ite, kts:kte, jts:jte) :: l_dissip_init
       real, dimension (:, :, :), allocatable      :: l_boulac_init
 
-      if (DEBUG) then
-        write (OUTPUT_UNIT, *) 'Inside subroutine Init_turb_mixing_3d:'
-        write (OUTPUT_UNIT, *) 'PBL3D option = ', pbl3d_opt
-        write (OUTPUT_UNIT, *) 'Model constants = ', trim(pbl3d_constants)
-        write (OUTPUT_UNIT, *) 'PBL3D number of substeps = ', pbl3d_nsteps
-      end if
-
       call Set_model_constants (pbl3d_constants)
 
       call Set_my_l2_global_vars
@@ -5301,7 +4857,7 @@
       end if
 
         ! Floor on the asymptotic length scale (see L0_MIN at the top of the module).
-        ! Zero or negative disables it, which is the pre-2026-08-20 behaviour.
+        ! Zero or negative disables it.
       L0_MIN = Max (pbl3d_l0_min, 0.0)
 
         ! Diffusion-number cap on l (see DN_MAX at the top of the module); 0 disables it.
@@ -5406,11 +4962,9 @@
         ! ---------------------------------------------------------------------------
         ! Initial turbulence state (pbl3d_init_opt).
         !
-        ! 0: leave q^2 at its floor everywhere (the pre-2026-08-20 behaviour). In the
-        !    full-3D path every bound on l scales with q, so a column that starts at the
-        !    floor can only be lifted off it by the surface boundary condition diffusing
-        !    upward: job 8476273 took more than an hour and was still rising linearly
-        !    while the MYNN control, which starts at equilibrium, had settled by 01:30.
+        ! 0: leave q^2 at its floor everywhere. In the full-3D path every bound on l scales
+        !    with q, so a column that starts at the floor can only be lifted off it by the
+        !    surface boundary condition diffusing upward, which takes more than an hour.
         ! 1: level-2 equilibrium, the construction of MYNN's mym_initialize. Iterate
         !    { stability functions at the local Ri -> q^2 = b_1 l_dissip l_master S^2
         !    (1 - Rif) Sm, floored -> master length scale from that q^2 }. l_master is
@@ -5483,7 +5037,6 @@
         end if
 
       end if
-      if (DEBUG) print *, 'Done Set_init_turb_state_my...'
 
     end subroutine Set_init_turb_state_my
 

@@ -36,9 +36,7 @@
     !                                                                         !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-    use, intrinsic :: iso_fortran_env
-
-    use module_model_constants, only: KARMAN, G, P608, T0, CP, RCP, RVOVRD
+    use module_model_constants, only: G, P608, T0, RCP, RVOVRD
     use module_state_description, only: p_qc, p_qr, p_qi, p_qs, p_qg, p_qnc, p_qnr, p_qni, p_qnwfa, p_qnifa, param_first_scalar
     use module_domain, only: domain
     use module_big_step_utilities_em, only: grid_config_rec_type
@@ -48,7 +46,7 @@
 #endif
     use module_bc, only: set_physical_bc3d
     use module_pbl3d_my, only: Set_init_turb_state_my, Calc_turb_fluxes_my, THM_FLUX_OPT, PBLH_AGL_OPT
-    use module_pbl3d_my, only: Q_SQ_MIN, TURB_FLUX_MIN, a_2, b_1, SQ_DIFF, SFC_QSQ_BC, SQ_IMPLICIT
+    use module_pbl3d_my, only: Q_SQ_MIN, a_2, b_1, SQ_DIFF, SFC_QSQ_BC, SQ_IMPLICIT
 
     implicit none
 
@@ -59,9 +57,6 @@
               Fill_l_mass_with_l_face, Calc_turb_fluxes_driver, Vertical_turb_mix, Horizontal_turb_mix, Populate_wrflux_sgs_from_pbl3d
 
     real, parameter :: G_OVER_TREF = G / T0
-    logical, parameter :: USE_HIGH_ORDER = .true.
-
-    integer, parameter :: I_TO_TEST = 4, J_TO_TEST = 4, K_TO_TEST = 3
 
   contains
 
@@ -688,8 +683,6 @@
           dqc_dx, dqc_dy, dqc_dz, dqr_dx, dqr_dy, dqr_dz, dqi_dx, dqi_dy, dqi_dz, dqs_dx, dqs_dy, dqs_dz, &
           dqg_dx, dqg_dy, dqg_dz, dqnc_dx, dqnc_dy, dqnc_dz, dqnr_dx, dqnr_dy, dqnr_dz, &
           dqni_dx, dqni_dy, dqni_dz, dqnwfa_dx, dqnwfa_dy, dqnwfa_dz, dqnifa_dx, dqnifa_dy, dqnifa_dz
-      logical, parameter :: DEBUG = .false.
-      integer :: i, j, k, i_start, i_end, j_start, j_end, ktf
 
         ! Opt-in corrections (OPEN_ISSUES A37, A38); 0 = previous behaviour, bit for bit
       THM_FLUX_OPT = config_flags%pbl3d_thm_flux
@@ -722,20 +715,6 @@
             dqi_dx, dqi_dy, dqi_dz, dqs_dx, dqs_dy, dqs_dz, dqg_dx, dqg_dy, dqg_dz, dqnc_dx, dqnc_dy, dqnc_dz, &
             dqnr_dx, dqnr_dy, dqnr_dz, dqni_dx, dqni_dy, dqni_dz, dqnwfa_dx, dqnwfa_dy, dqnwfa_dz, dqnifa_dx, dqnifa_dy, dqnifa_dz, &
             ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-      end if
-
-        ! Calculate indexes
-      i_start = its
-      i_end = Min (ite, ide - 1)
-      j_start = jts
-      j_end = Min (jte, jde - 1)
-      ktf = Min (kte, kde - 1)
-
-      if (DEBUG .and. itimestep == 1) then
-        print *, 'its = ', its, 'ite = ', ite
-        print *, 'ims = ', ims, 'ime = ', ime
-        print *, 'jts = ', jts, 'jte = ', jte
-        print *, 'jms = ', jms, 'jme = ', jme
       end if
 
       call Calc_turb_fluxes_my (config_flags, dz, z_at_mass, z_at_w, u, v, w, th, th2, qv, thetav, tsk, t2, q2, psfc, rho, ust, hfx, qfx, rmol, &
@@ -772,8 +751,6 @@
             ips, ipe, jps, jpe, kps, kpe, its, ite, jts, jte, kts, kte)
       end if
 
-      if (DEBUG) print *, 'Done Calc_turb_fluxes_driver...'
-
     end subroutine Calc_turb_fluxes_driver
 
 
@@ -803,58 +780,66 @@
       real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: du_dx, dv_dy, dw_dz, du_dy, dv_dx, &
                                                                    dw_dx, du_dz, dw_dy, dv_dz
 
-      logical, parameter :: DEBUG = .false.
+        ! Local vars: u and v divided by their map factors, at u points (x derivatives) and at v points (y derivatives)
+      real, dimension (its - 1:ite + 1, kts:kte, jts - 1:jte + 1) :: u_mux, v_mvx, u_muy, v_mvy
 
-      call Calc_du_dz (u, rdz, dnw, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dz)
+      call Calc_dvel_dz (u, 1, 0, 0, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dz)
 
-      call Calc_dv_dz (v, rdz, dnw, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dv_dz)
+      call Calc_dvel_dz (v, 0, 0, 1, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dv_dz)
 
-      call Calc_dw_dz (w, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dw_dz)
+      call Calc_dvel_dz (w, 0, 1, 0, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dw_dz)
 
-      call Calc_du_dx (u, zx, rdz, dn, dnw, fnm, fnp, msftx, msfux, rdx, cf1, cf2, cf3,     &
-          ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dx  )
+      call Scale_uv_by_map_factors (config_flags, u, v, msfux, msfuy, msfvx, msfvy, u_mux, v_mvx, u_muy, v_mvy, &
+          ide, jds, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
-      call Calc_dv_dx (v, zx, rdz, dn, dnw, fnm, fnp, msftx, msfvx, rdx, cf1, cf2, cf3, ide, jde,  &
-          kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, config_flags, dv_dx     )
+      call Calc_duv_dx (.true., u_mux, msfux, zx, rdz, dn, dnw, fnm, fnp, msftx, rdx, cf1, cf2, cf3, &
+          ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dx)
 
-      call Calc_dw_dx (w, zx, rdz, msftx, rdx, ims, ime, jms, jme, kms, kme,  &
-          ide, jde, kde, its, ite, jts, jte, kts, kte, config_flags, dw_dx    )
+      call Calc_duv_dx (.true., v_mvx, msfvx, zx, rdz, dn, dnw, fnm, fnp, msftx, rdx, cf1, cf2, cf3, &
+          ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dv_dx)
 
-      call Calc_du_dy (u, zy, rdz, dn, dnw, fnm, fnp, msfty, msfuy, rdy, cf1, cf2, cf3,     &
-          ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dy  )
+      call Calc_dw_dx (.true., w, zx, rdz, msftx, rdx, ide, jde, kde, ims, ime, jms, jme, kms, kme, &
+          its, ite, jts, jte, kts, kte, dw_dx)
 
-      call Calc_dv_dy (v, zy, rdz, dn, dnw, fnm, fnp, msfty, msfvy, rdy, cf1, cf2, cf3, ide, jds,    &
-          jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, config_flags, dv_dy  )
+      call Calc_duv_dy (.true., u_muy, msfuy, zy, rdz, dn, dnw, fnm, fnp, msfty, rdy, cf1, cf2, cf3, &
+          ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dy)
 
-      call Calc_dw_dy (w, zy, rdz, msfty, rdy, ims, ime, jms, jme, kms, kme,  &
-          ide, jde, kde, its, ite, jts, jte, kts, kte, dw_dy                  )
+      call Calc_duv_dy (.true., v_mvy, msfvy, zy, rdz, dn, dnw, fnm, fnp, msfty, rdy, cf1, cf2, cf3, &
+          ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dv_dy)
 
-      if (DEBUG) print *, 'Done Calc_wind_derivatives...'
+      call Calc_dw_dy (.true., w, zy, rdz, msfty, rdy, ide, jde, kde, ims, ime, jms, jme, kms, kme, &
+          its, ite, jts, jte, kts, kte, dw_dy)
 
     end subroutine Calc_wind_derivatives
 
 
-    subroutine Calc_du_dz (u, rdz, dnw, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dz)
+    subroutine Calc_dvel_dz (vel, di, dk, dj, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, &
+              dvel_dz)
 
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !                                                      !
-      ! Purpose: Calculate du/dz                             !
-      !                                                      !
-      ! Authors: Pedro A. Jimenez & Timothy W. Juliano       !
-      !                                                      !
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !                                                                                        !
+      ! Purpose: Calculate du/dz, dv/dz or dw/dz at the center of the faces. The component is  !
+      !          first averaged to the mass points from its two staggered neighbours (i, k, j) !
+      !          and (i + di, k + dk, j + dj): (di, dk, dj) = (1, 0, 0) for u, (0, 0, 1) for v, !
+      !          (0, 1, 0) for w.                                                              !
+      !                                                                                        !
+      ! Authors: Pedro A. Jimenez & Timothy W. Juliano                                         !
+      !                                                                                        !
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: u, rdz
-      real, dimension (kms:kme),                   intent (in)  :: dnw
+      implicit none
+
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: vel, rdz
+      integer,                                     intent (in)  :: di, dk, dj
       integer,                                     intent (in)  :: ide, jde, kde,                 &
                                                                    ims, ime, jms, jme, kms, kme,  &
                                                                    its, ite, jts, jte, kts, kte
 
-      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: du_dz
+      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dvel_dz
 
         ! Local vars
       integer :: i, j, k
-      real, dimension (its:ite, kts:kte, jts:jte) :: u_at_mass
+      real, dimension (its:ite, kts:kte, jts:jte) :: vel_at_mass
       integer :: ktf, i_start, i_end, j_start, j_end
 
         ! Define some indexes
@@ -864,11 +849,11 @@
       j_end = Min (jte, jde - 1)
       ktf = Min (kte, kde - 1)
 
-        ! Unstagger U
+        ! Velocity component at mass points
       do j = j_start, j_end
         do k = kts, ktf
           do i = i_start, i_end
-            u_at_mass(i, k, j) = 0.5 * (u(i, k, j) + u(i + 1, k, j)) 
+            vel_at_mass(i, k, j) = 0.5 * (vel(i, k, j) + vel(i + di, k + dk, j + dj))
           end do
         end do
       end do
@@ -877,7 +862,7 @@
       do j = j_start, j_end
         do k = kts + 1, ktf
           do i = i_start, i_end
-            du_dz(i, k, j) = (u_at_mass(i, k, j) - u_at_mass(i, k - 1, j)) * rdz(i, k, j) 
+            dvel_dz(i, k, j) = (vel_at_mass(i, k, j) - vel_at_mass(i, k - 1, j)) * rdz(i, k, j)
           end do
         end do
       end do
@@ -885,36 +870,41 @@
       do j = j_start, j_end
         do i = i_start, i_end
             ! Surface
-          du_dz(i, kts, j) = 0.0
-            ! Top
-          du_dz(i, kte, j) = 0.0
+          dvel_dz(i, kts, j) = 0.0
+            ! Top face
+          dvel_dz(i, kte, j) = 0.0
         end do
       end do
 
-    end subroutine Calc_du_dz
+    end subroutine Calc_dvel_dz
 
 
-    subroutine Calc_dv_dz (v, rdz, dnw, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dv_dz)
+    subroutine Scale_uv_by_map_factors (config_flags, u, v, msfux, msfuy, msfvx, msfvy, u_mux, v_mvx, u_muy, v_mvy, &
+              ide, jds, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !                                                      !
-      ! Purpose: Calculate dv/dz                             !
-      !                                                      !
-      ! Authors: Pedro A. Jimenez & Timothy W. Juliano       !
-      !                                                      !
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !                                                                                      !
+      ! Purpose: Scale the horizontal wind components to account for the map projection, at  !
+      !          the points where Calc_duv_dx (u points) and Calc_duv_dy (v points) need them: !
+      !          u / msfux and v / msfvx at u points, u / msfuy and v / msfvy at v points      !
+      !                                                                                      !
+      ! Authors: Pedro A. Jimenez & Timothy W. Juliano                                       !
+      !                                                                                      !
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: v, rdz
-      real, dimension (kms:kme),                   intent (in)  :: dnw
-      integer,                                     intent (in)  :: ide, jde, kde,                 &
+      implicit none
+
+      type (grid_config_rec_type),                 intent (in)  :: config_flags
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: u, v
+      real, dimension (ims:ime, jms:jme),          intent (in)  :: msfux, msfuy, msfvx, msfvy
+      integer,                                     intent (in)  :: ide, jds, jde, kde,            &
                                                                    ims, ime, jms, jme, kms, kme,  &
                                                                    its, ite, jts, jte, kts, kte
 
-      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dv_dz
+      real, dimension (its - 1:ite + 1, kts:kte, jts - 1:jte + 1), intent (out) :: u_mux, v_mvx, u_muy, v_mvy
 
         ! Local vars
       integer :: i, j, k
-      real, dimension (its:ite, kts:kte, jts:jte) :: v_at_mass
       integer :: ktf, i_start, i_end, j_start, j_end
 
         ! Define some indexes
@@ -924,267 +914,97 @@
       j_end = Min (jte, jde - 1)
       ktf = Min (kte, kde - 1)
 
-        ! Unstagger V
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end
-            v_at_mass(i, k, j) = 0.5 * (v(i, k, j) + v(i, k, j + 1))
-          end do
-        end do
-      end do
-
-        ! Calculate derivative at the center of the faces
-      do j = j_start, j_end
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-            dv_dz(i, k, j) = (v_at_mass(i, k, j) - v_at_mass(i, k - 1, j)) * rdz(i, k, j)
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end
-        do i = i_start, i_end
-            ! Surface
-          dv_dz(i, kts, j) = 0.0
-            ! Top face
-          dv_dz(i, kte, j) = 0.0
-        end do
-      end do
-
-    end subroutine Calc_dv_dz
-
-
-    subroutine Calc_dw_dz (w, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dw_dz)
-
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !                                                      !
-      ! Purpose: Calculate dw/dz                             !
-      !                                                      !
-      ! Authors: Pedro A. Jimenez & Timothy W. Juliano       !
-      !                                                      !
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: w, rdz
-      integer,                                     intent (in)  :: ide, jde, kde,                 &
-                                                                   ims, ime, jms, jme, kms, kme,  &
-                                                                   its, ite, jts, jte, kts, kte
-
-      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dw_dz
-
-        ! Local vars
-      integer :: i, j, k
-      real, dimension (its:ite, kts:kte, jts:jte) :: w_at_mass
-      integer :: ktf, i_start, i_end, j_start, j_end
-
-        ! Define some indexes
-      i_start = its
-      i_end = Min (ite, ide - 1)
-      j_start = jts
-      j_end = Min (jte, jde - 1)
-      ktf = Min (kte, kde - 1)
-
-        ! Calculate w at mass points
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end
-            w_at_mass(i, k, j) = 0.5 * (w(i, k, j) + w(i, k + 1, j))
-          end do
-        end do
-      end do
-
-        ! Calculate partial w / partial z
-      do j = j_start, j_end
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-            dw_dz(i, k, j) = (w_at_mass(i, k, j) - w_at_mass(i, k - 1, j)) * rdz(i, k, j)
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end
-        do i = i_start, i_end
-            ! Surface
-          dw_dz(i, kts, j) =  0.0
-            ! Top face
-          dw_dz(i, kte, j) =  0.0
-        end do
-      end do
-
-    end subroutine Calc_dw_dz
-
-
-    subroutine Calc_du_dx (u, zx, rdz, dn, dnw, fnm, fnp, msftx, msfux, rdx, cf1, cf2, cf3,         &
-              ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dx      )
-
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !                                                      !
-      ! Purpose: Calculate du/dx                             !
-      !                                                      !
-      ! Authors: Pedro A. Jimenez & Timothy W. Juliano       !
-      !                                                      !
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: u, zx, rdz
-      real, dimension (kms:kme),                   intent (in)  :: dn, dnw, fnm, fnp
-      real, dimension (ims:ime, jms:jme),          intent (in)  :: msftx, msfux
-      real,                                        intent (in)  :: rdx, cf1, cf2, cf3
-      integer,                                     intent (in)  :: ide, jde, kde,                 &
-                                                                   ims, ime, jms, jme, kms, kme,  &
-                                                                   its, ite, jts, jte, kts, kte
-
-      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: du_dx
-
-        ! Local vars
-      integer :: i, j, k
-      real    :: dz_dx, cft1, cft2
-      real, dimension (its:ite, jts:jte) :: msf_tx_ux
-      real, dimension (its - 1:ite + 1, kts:kte, jts - 1:jte + 1) :: du_dz_dz_dx, u_mux, u_mux_at_full
-      integer :: ktf, ktes1, ktes2, i_start, i_end, j_start, j_end
-
-        ! Define some indexes
-      ktes1 = kte - 1
-      ktes2 = kte - 2
-      cft2 = - 0.5 * dnw(ktes1) / dn(ktes1)
-      cft1 = 1.0 - cft2
-
-      i_start = its
-      i_end = Min (ite, ide - 1)
-      j_start = jts
-      j_end = Min (jte, jde - 1)
-      ktf = Min (kte, kde - 1)
-
-        ! Map factor at mass points multiplied by map factor at u points
-      do j = j_start, j_end
-        do i = i_start, i_end
-          msf_tx_ux(i, j) = msftx(i, j) * msfux(i, j)
-        end do
-      end do
-
-        ! Scale u component of vector to account for map projection
+        ! At u points
       do j = j_start, j_end
         do k = kts, ktf
           do i = i_start, i_end + 1
             u_mux(i, k, j) = u(i, k, j) / msfux(i, j)
-          end do
-        end do
-      end do
-
-        ! Interpolate u_mux from half levels to full levels (u points at faces)
-      do j = j_start, j_end
-        do k = kts + 1, ktf
-          do i = i_start, i_end + 1
-            u_mux_at_full(i, k, j) = fnm(k) * u_mux(i, k, j) + fnp(k) * u_mux(i, k - 1, j)
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end
-        do i = i_start, i_end + 1
-            ! Surface
-          u_mux_at_full(i, 1, j) =  cf1 * u_mux(i, 1, j) + cf2 * u_mux(i, 2, j) + cf3 * u_mux(i, 3, j) 
-            ! Top face
-          u_mux_at_full(i, kte, j) =  cft1 *  u_mux(i, ktes1, j) +  cft2 * u_mux(i, ktes2, j)
-        end do
-      end do
-
-        ! Calculate component associated with slope in sigma surfaces (du_dz_dz_dx)
-      do j = j_start, j_end
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-              ! dz_dx = (partial z / partial x)|sigma at center of faces
-            dz_dx = 0.5 * (zx(i, k, j) + zx(i + 1, k, j))
-              ! du_dz_dz_dx = (partial u_mux / partial z)|sigma (du_dz) * 
-              ! (partial z / partial x)|sigma (dz_dx)
-            du_dz_dz_dx(i, k, j) = (0.5 * (u_mux(i, k, j) + u_mux(i + 1, k, j)) - &
-                0.5 * (u_mux(i, k - 1, j) + u_mux(i + 1, k - 1, j))) * rdz(i, k, j) * dz_dx
-          end do
-        end do
-      end do
-
-        ! (partial u / partial x)|z = msf_tx_ux * (partial u_mux_at_full / partial x)|sigma - du_dz_dz_dx)
-      do j = j_start, j_end
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-            du_dx(i, k, j) = msf_tx_ux(i, j) * ((u_mux_at_full(i + 1, k, j) - u_mux_at_full(i, k, j)) * rdx -  &
-                du_dz_dz_dx(i, k, j))
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end
-        do i = i_start, i_end
-            ! Surface
-          du_dx(i, kts, j) = 0.0
-            ! Top face
-          du_dx(i, kte, j) = 0.0
-        end do
-      end do
-
-    end subroutine Calc_du_dx
-
-
-    subroutine Calc_dv_dx (v, zx, rdz, dn, dnw, fnm, fnp, msftx, msfvx, rdx, cf1, cf2, cf3, ide, jde,         &
-              kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, config_flags, dv_dx            )
-
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !                                                      !
-      ! Purpose: Calculate dv/dx                             !
-      !                                                      !
-      ! Authors: Pedro A. Jimenez & Timothy W. Juliano       !
-      !                                                      !
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: v, zx, rdz
-      real, dimension (kms:kme),                   intent (in)  :: dn, dnw, fnm, fnp
-      real, dimension (ims:ime, jms:jme),          intent (in)  :: msftx, msfvx
-      real,                                        intent (in)  :: rdx, cf1, cf2, cf3
-      integer,                                     intent (in)  :: ide, jde, kde,                 &
-                                                                   ims, ime, jms, jme, kms, kme,  &
-                                                                   its, ite, jts, jte, kts, kte
-      type (grid_config_rec_type),                 intent (in)  :: config_flags
-
-      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dv_dx
-
-        ! Local vars
-      integer :: i, j, k
-      real    :: dz_dx, cft1, cft2
-      real, dimension (its:ite, jts:jte) :: msf_tx_vx
-      real, dimension (its - 1:ite + 1, kts:kte, jts - 1:jte + 1) :: dv_dz_dz_dx, v_mvx, v_mvx_at_full
-      integer :: ktf, ktes1, ktes2, i_start, i_end, j_start, j_end
-
-        ! Define some indexes
-      ktes1 = kte - 1
-      ktes2 = kte - 2
-      cft2 = - 0.5 * dnw(ktes1) / dn(ktes1)
-      cft1 = 1.0 - cft2
-
-      i_start = its
-      i_end = Min (ite, ide - 1)
-      j_start = jts
-      j_end = Min (jte, jde - 1)
-      ktf = Min (kte, kde - 1)
-
-        ! Map factor at mass points multiplied by map factor at v points
-      do j = j_start, j_end
-        do i = i_start, i_end
-          msf_tx_vx(i, j) = msftx(i, j) * msfvx(i, j)
-        end do
-      end do
-
-        ! Scale v component of vector to account for map projection (at u points)
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end + 1
             v_mvx(i, k, j) = 0.25 * (v(i, k, j) + v(i, k, j + 1) + v(i - 1, k, j) + v(i - 1, k, j + 1)) / msfvx(i, j)
           end do
         end do
       end do
 
-        ! Interpolate v_mvx from half levels to full levels (u points at faces)
+        ! At v points
+      do j = j_start, j_end + 1
+        do k = kts, ktf
+          do i = i_start, i_end
+            u_muy(i, k, j) = 0.25 * (u(i, k, j) + u(i + 1, k, j) + u(i, k, j - 1) + u(i + 1, k, j - 1)) / msfuy(i, j)
+              ! Because msfvy at the poles will be undefined (1./0.),
+              ! we will have trouble. But we are OK since v at the
+              ! poles is 0., and that takes precedence in this case
+            if ((config_flags%polar) .and. ((j == jds) .or. (j == jde))) then
+              v_mvy(i, k, j) = 0.0
+            else
+              v_mvy(i, k, j) = v(i, k, j) / msfvy(i, j)
+            end if
+          end do
+        end do
+      end do
+
+    end subroutine Scale_uv_by_map_factors
+
+
+    subroutine Calc_duv_dx (at_faces, phi_m, msf_phi, zx, rdz_out, dn, dnw, fnm, fnp, msftx, rdx, cf1, cf2, cf3, &
+              ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dphi_dx)
+
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !                                                                                           !
+      ! Purpose: Calculate du/dx or dv/dx at constant height, at the center of the faces          !
+      !          (at_faces) or at mass points, from the component divided by its map factor at u  !
+      !          points (phi_m, Scale_uv_by_map_factors); rdz_out is the inverse layer depth at   !
+      !          the output points (rdz at the faces, rdzw at mass points):                       !
+      !            (partial phi / partial x)|z = msftx msf_phi ( (partial phi_m / partial x)|sigma !
+      !               - (partial phi_m / partial z)|sigma (partial z / partial x)|sigma )         !
+      !                                                                                           !
+      ! Authors: Pedro A. Jimenez & Timothy W. Juliano                                            !
+      !                                                                                           !
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+      implicit none
+
+      logical,                                     intent (in)  :: at_faces
+      real, dimension (its - 1:ite + 1, kts:kte, jts - 1:jte + 1), intent (in) :: phi_m
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: zx, rdz_out
+      real, dimension (kms:kme),                   intent (in)  :: dn, dnw, fnm, fnp
+      real, dimension (ims:ime, jms:jme),          intent (in)  :: msftx, msf_phi
+      real,                                        intent (in)  :: rdx, cf1, cf2, cf3
+      integer,                                     intent (in)  :: ide, jde, kde,                 &
+                                                                   ims, ime, jms, jme, kms, kme,  &
+                                                                   its, ite, jts, jte, kts, kte
+
+      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dphi_dx
+
+        ! Local vars
+      integer :: i, j, k
+      real    :: dz_dx, cft1, cft2
+      real, dimension (its:ite, jts:jte) :: msf_tx_phi
+      real, dimension (its - 1:ite + 1, kts:kte, jts - 1:jte + 1) :: dphi_dz_dz_dx, phi_m_at_full
+      integer :: ktf, ktes1, ktes2, i_start, i_end, j_start, j_end
+
+        ! Define some indexes
+      ktes1 = kte - 1
+      ktes2 = kte - 2
+      cft2 = - 0.5 * dnw(ktes1) / dn(ktes1)
+      cft1 = 1.0 - cft2
+
+      i_start = its
+      i_end = Min (ite, ide - 1)
+      j_start = jts
+      j_end = Min (jte, jde - 1)
+      ktf = Min (kte, kde - 1)
+
+        ! Map factor at mass points multiplied by map factor at the points of the component
+      do j = j_start, j_end
+        do i = i_start, i_end
+          msf_tx_phi(i, j) = msftx(i, j) * msf_phi(i, j)
+        end do
+      end do
+
+        ! Interpolate phi_m from half levels to full levels (u points at faces)
       do j = j_start, j_end
         do k = kts + 1, ktf
           do i = i_start, i_end + 1
-            v_mvx_at_full(i, k, j) = fnm(k) * v_mvx(i, k, j) + fnp(k) * v_mvx(i, k - 1, j)
+            phi_m_at_full(i, k, j) = fnm(k) * phi_m(i, k, j) + fnp(k) * phi_m(i, k - 1, j)
           end do
         end do
       end do
@@ -1192,64 +1012,246 @@
       do j = j_start, j_end
         do i = i_start, i_end + 1
             ! Surface
-          v_mvx_at_full(i, 1, j) = cf1 * v_mvx(i, 1, j) + cf2 * v_mvx(i, 2, j) + cf3 * v_mvx(i, 3, j)
+          phi_m_at_full(i, 1, j) =  cf1 * phi_m(i, 1, j) + cf2 * phi_m(i, 2, j) + cf3 * phi_m(i, 3, j)
             ! Top face
-          v_mvx_at_full(i, kte, j) = cft1 * v_mvx(i, ktes1, j) + cft2 * v_mvx(i, ktes2, j)
+          phi_m_at_full(i, kte, j) =  cft1 *  phi_m(i, ktes1, j) +  cft2 * phi_m(i, ktes2, j)
         end do
       end do
 
-        ! Calculate component associated with slope in sigma surfaces (dv_dz_dz_dx)
-      do j = j_start, j_end
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-              ! dz_dx = (partial z / partial x)|sigma at center of faces
-            dz_dx = 0.5 * (zx(i, k, j) + zx(i + 1, k, j))
-              ! dv_dz_dz_dx = (partial v_mvx / partial z)|sigma (dv_dz) *
-              ! (partial z / partial x)|sigma (dz_dx)
-            dv_dz_dz_dx(i, k, j) = (0.5 * (v_mvx(i, k, j) + v_mvx(i + 1, k, j)) - &
-                0.5 * (v_mvx(i, k - 1, j) + v_mvx(i + 1, k - 1, j))) * rdz(i, k, j) * dz_dx
+      if (at_faces) then
+
+          ! Component associated with slope in sigma surfaces (dphi_dz_dz_dx) at the center of the
+          ! faces: z difference of the half-level values averaged to the face
+        do j = j_start, j_end
+          do k = kts + 1, ktf
+            do i = i_start, i_end
+                ! dz_dx = (partial z / partial x)|sigma at center of faces
+              dz_dx = 0.5 * (zx(i, k, j) + zx(i + 1, k, j))
+              dphi_dz_dz_dx(i, k, j) = (0.5 * (phi_m(i, k, j) + phi_m(i + 1, k, j)) - &
+                  0.5 * (phi_m(i, k - 1, j) + phi_m(i + 1, k - 1, j))) * rdz_out(i, k, j) * dz_dx
+            end do
           end do
         end do
-      end do
 
-        ! (partial v / partial x)|z = msf_tx_vx * (partial v_mvx_at_full / partial x)|sigma - dv_dz_dz_dx)
-      do j = j_start, j_end
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-            dv_dx(i, k, j) = msf_tx_vx(i, j) * ((v_mvx_at_full(i + 1, k, j) - v_mvx_at_full(i, k, j)) * rdx -  &
-                dv_dz_dz_dx(i, k, j))
+          ! x difference of the full-level values
+        do j = j_start, j_end
+          do k = kts + 1, ktf
+            do i = i_start, i_end
+              dphi_dx(i, k, j) = msf_tx_phi(i, j) * ((phi_m_at_full(i + 1, k, j) - phi_m_at_full(i, k, j)) * rdx -  &
+                  dphi_dz_dz_dx(i, k, j))
+            end do
           end do
         end do
-      end do
 
+        do j = j_start, j_end
+          do i = i_start, i_end
+              ! Surface
+            dphi_dx(i, kts, j) = 0.0
+              ! Top face
+            dphi_dx(i, kte, j) = 0.0
+          end do
+        end do
+
+      else
+
+          ! Component associated with slope in sigma surfaces (dphi_dz_dz_dx) at mass points:
+          ! z difference of the full-level values averaged to the mass point
+        do j = j_start, j_end
+          do k = kts, ktf
+            do i = i_start, i_end
+                ! dz_dx = (partial z / partial x)|sigma at mass points
+              dz_dx = 0.25 * (zx(i, k, j) + zx(i + 1, k, j) + zx(i, k + 1, j) + zx(i + 1, k + 1, j))
+              dphi_dz_dz_dx(i, k, j) = (0.5 * (phi_m_at_full(i, k + 1, j) + phi_m_at_full(i + 1, k + 1, j)) - &
+                  0.5 * (phi_m_at_full(i, k, j) + phi_m_at_full(i + 1, k, j))) * rdz_out(i, k, j) * dz_dx
+            end do
+          end do
+        end do
+
+          ! x difference of the half-level values
+        do j = j_start, j_end
+          do k = kts, ktf
+            do i = i_start, i_end
+              dphi_dx(i, k, j) = msf_tx_phi(i, j) * ((phi_m(i + 1, k, j) - phi_m(i, k, j)) * rdx - dphi_dz_dz_dx(i, k, j))
+            end do
+          end do
+        end do
+
+        do j = j_start, j_end
+          do i = i_start, i_end
+              ! Top
+            dphi_dx(i, kte, j) = 0.0
+          end do
+        end do
+
+      end if
+
+    end subroutine Calc_duv_dx
+
+
+    subroutine Calc_duv_dy (at_faces, phi_m, msf_phi, zy, rdz_out, dn, dnw, fnm, fnp, msfty, rdy, cf1, cf2, cf3, &
+              ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dphi_dy)
+
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !                                                                                           !
+      ! Purpose: Calculate du/dy or dv/dy at constant height, at the center of the faces          !
+      !          (at_faces) or at mass points, from the component divided by its map factor at v  !
+      !          points (phi_m, Scale_uv_by_map_factors); the y counterpart of Calc_duv_dx;       !
+      !          rdz_out as there                                                                 !
+      !                                                                                           !
+      ! Authors: Pedro A. Jimenez & Timothy W. Juliano                                            !
+      !                                                                                           !
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+      implicit none
+
+      logical,                                     intent (in)  :: at_faces
+      real, dimension (its - 1:ite + 1, kts:kte, jts - 1:jte + 1), intent (in) :: phi_m
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: zy, rdz_out
+      real, dimension (kms:kme),                   intent (in)  :: dn, dnw, fnm, fnp
+      real, dimension (ims:ime, jms:jme),          intent (in)  :: msfty, msf_phi
+      real,                                        intent (in)  :: rdy, cf1, cf2, cf3
+      integer,                                     intent (in)  :: ide, jde, kde,                 &
+                                                                   ims, ime, jms, jme, kms, kme,  &
+                                                                   its, ite, jts, jte, kts, kte
+
+      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dphi_dy
+
+        ! Local vars
+      integer :: i, j, k
+      real    :: dz_dy, cft1, cft2
+      real, dimension (its:ite, jts:jte) :: msf_ty_phi
+      real, dimension (its - 1:ite + 1, kts:kte, jts - 1:jte + 1) :: dphi_dz_dz_dy, phi_m_at_full
+      integer :: ktf, ktes1, ktes2, i_start, i_end, j_start, j_end
+
+        ! Define some indexes
+      ktes1 = kte - 1
+      ktes2 = kte - 2
+      cft2 = - 0.5 * dnw(ktes1) / dn(ktes1)
+      cft1 = 1.0 - cft2
+
+      i_start = its
+      i_end = Min (ite, ide - 1)
+      j_start = jts
+      j_end = Min (jte, jde - 1)
+      ktf = Min (kte, kde - 1)
+
+        ! Map factor at mass points multiplied by map factor at the points of the component
       do j = j_start, j_end
         do i = i_start, i_end
-          dv_dx(i, 1, j) =  0.0
-          dv_dx(i, kte, j) =  0.0
+          msf_ty_phi(i, j) = msfty(i, j) * msf_phi(i, j)
         end do
       end do
 
-    end subroutine Calc_dv_dx
+        ! Interpolate phi_m from half levels to full levels (v points at faces)
+      do j = j_start, j_end + 1
+        do k = kts + 1, ktf
+          do i = i_start, i_end
+            phi_m_at_full(i, k, j) = fnm(k) * phi_m(i, k, j) + fnp(k) * phi_m(i, k - 1, j)
+          end do
+        end do
+      end do
+
+      do j = j_start, j_end + 1
+        do i = i_start, i_end
+            ! Surface
+          phi_m_at_full(i, 1, j) =  cf1 * phi_m(i, 1, j) + cf2 * phi_m(i, 2, j) + cf3 * phi_m(i, 3, j)
+            ! Top face
+          phi_m_at_full(i, kte, j) = cft1 * phi_m(i, ktes1, j) +  cft2 * phi_m(i, ktes2, j)
+        end do
+      end do
+
+      if (at_faces) then
+
+          ! Component associated with slope in sigma surfaces (dphi_dz_dz_dy) at the center of the
+          ! faces: z difference of the half-level values averaged to the face
+        do j = j_start, j_end
+          do k = kts + 1, ktf
+            do i = i_start, i_end
+                ! dz_dy = (partial z / partial y)|sigma at center of faces
+              dz_dy = 0.5 * (zy(i, k, j) + zy(i, k, j + 1))
+              dphi_dz_dz_dy(i, k, j) = (0.5 * (phi_m(i, k, j) + phi_m(i, k, j + 1)) - &
+                  0.5 * (phi_m(i, k - 1, j) + phi_m(i, k - 1, j + 1))) * rdz_out(i, k, j) * dz_dy
+            end do
+          end do
+        end do
+
+          ! y difference of the full-level values
+        do j = j_start, j_end
+          do k = kts + 1, ktf
+            do i = i_start, i_end
+              dphi_dy(i, k, j) = msf_ty_phi(i, j) * ((phi_m_at_full(i, k, j + 1) - phi_m_at_full(i, k, j)) * rdy -  &
+                  dphi_dz_dz_dy(i, k, j))
+            end do
+          end do
+        end do
+
+        do j = j_start, j_end
+          do i = i_start, i_end
+              ! Surface
+            dphi_dy(i, kts, j) = 0.0
+              ! Top face
+            dphi_dy(i, kte, j) = 0.0
+          end do
+        end do
+
+      else
+
+          ! Component associated with slope in sigma surfaces (dphi_dz_dz_dy) at mass points:
+          ! z difference of the full-level values averaged to the mass point
+        do j = j_start, j_end
+          do k = kts, ktf
+            do i = i_start, i_end
+                ! dz_dy = (partial z / partial y)|sigma at mass points
+              dz_dy = 0.25 * (zy(i, k, j) + zy(i, k, j + 1) + zy(i, k + 1, j) + zy(i, k + 1, j + 1))
+              dphi_dz_dz_dy(i, k, j) = (0.5 * (phi_m_at_full(i, k + 1, j) + phi_m_at_full(i, k + 1, j + 1)) - &
+                  0.5 * (phi_m_at_full(i, k, j) + phi_m_at_full(i, k, j + 1))) * rdz_out(i, k, j) * dz_dy
+            end do
+          end do
+        end do
+
+          ! y difference of the half-level values
+        do j = j_start, j_end
+          do k = kts, ktf
+            do i = i_start, i_end
+              dphi_dy(i, k, j) = msf_ty_phi(i, j) * ((phi_m(i, k, j + 1) - phi_m(i, k, j)) * rdy - dphi_dz_dz_dy(i, k, j))
+            end do
+          end do
+        end do
+
+        do j = j_start, j_end
+          do i = i_start, i_end
+              ! Top
+            dphi_dy(i, kte, j) = 0.0
+          end do
+        end do
+
+      end if
+
+    end subroutine Calc_duv_dy
 
 
-    subroutine Calc_dw_dx (w, zx, rdz, msftx, rdx, ims, ime, jms, jme, kms, kme,  &
-              ide, jde, kde, its, ite, jts, jte, kts, kte, config_flags, dw_dx           )
+    subroutine Calc_dw_dx (at_faces, w, zx, rdz_out, msftx, rdx, ide, jde, kde, ims, ime, jms, jme, kms, kme, &
+              its, ite, jts, jte, kts, kte, dw_dx)
 
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !                                                      !
-      ! Purpose: Calculate dw/dx                             !
-      !                                                      !
-      ! Authors: Pedro A. Jimenez & Timothy W. Juliano       !
-      !                                                      !
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !                                                                                     !
+      ! Purpose: Calculate dw/dx at constant height, at the center of the faces (at_faces)  !
+      !          or at mass points; fourth-order centred x difference. rdz_out is the       !
+      !          inverse layer depth at the output points (rdz at the faces, rdzw at mass points) !
+      !                                                                                     !
+      ! Authors: Pedro A. Jimenez & Timothy W. Juliano                                      !
+      !                                                                                     !
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: w, zx, rdz
+      implicit none
+
+      logical,                                     intent (in)  :: at_faces
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: w, zx, rdz_out
       real, dimension (ims:ime, jms:jme),          intent (in)  :: msftx
       real,                                        intent (in)  :: rdx
       integer,                                     intent (in)  :: ide, jde, kde,                 &
                                                                    ims, ime, jms, jme, kms, kme,  &
                                                                    its, ite, jts, jte, kts, kte
-      type (grid_config_rec_type),                 intent (in)  :: config_flags
 
       real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dw_dx
 
@@ -1274,12 +1276,8 @@
         end do
       end do
 
-        ! Scale w component of vector to account for map projection
-      if (USE_HIGH_ORDER) then
-        i_offset = 2
-      else
-        i_offset = 1
-      end if
+        ! Scale w component of vector to account for map projection (two extra points for the fourth-order x difference)
+      i_offset = 2
       do j = j_start, j_end
         do k = kts, kte
           do i = i_start - i_offset, i_end + i_offset
@@ -1291,288 +1289,93 @@
         ! Average w_mtx to the mass points (half levels)
       do j = j_start, j_end
         do k = kts, ktf
-          do i = i_start - 1, i_end + 1
+          do i = i_start - i_offset, i_end + i_offset
             w_mtx_at_half(i, k, j) = 0.5 * (w_mtx(i, k, j) + w_mtx(i, k + 1, j))
           end do
         end do
       end do
 
-        ! Calculate component associated with slope in sigma surfaces (dw_dz_dz_dx)
-      do j = j_start, j_end
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-              ! dz_dx = (partial z / partial x)|sigma at center of faces
-            dz_dx = 0.5 * (zx(i, k, j) + zx(i + 1, k, j))
-              ! dw_dz_dz_dx = (partial w_mtx / partial z)|sigma (dw_dz) *
-              ! (partial z / partial x)|sigma (dz_dx)
-            dw_dz_dz_dx(i, k, j) = (w_mtx_at_half(i, k, j) - w_mtx_at_half(i, k - 1, j)) * rdz(i, k, j) * dz_dx
+      if (at_faces) then
+
+          ! Component associated with slope in sigma surfaces (dw_dz_dz_dx) at the center of the
+          ! faces: z difference of the half-level values
+        do j = j_start, j_end
+          do k = kts + 1, ktf
+            do i = i_start, i_end
+                ! dz_dx = (partial z / partial x)|sigma at center of faces
+              dz_dx = 0.5 * (zx(i, k, j) + zx(i + 1, k, j))
+              dw_dz_dz_dx(i, k, j) = (w_mtx_at_half(i, k, j) - w_mtx_at_half(i, k - 1, j)) * rdz_out(i, k, j) * dz_dx
+            end do
           end do
         end do
-      end do
 
-        ! (partial w / partial x)|z = msf_tx_tx * (partial w_mtx / partial x)|sigma - dw_dz_dz_dx)
-      do j = j_start, j_end
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-            if (USE_HIGH_ORDER) then
+          ! (partial w / partial x)|z = msf_tx_tx * (partial w_mtx / partial x)|sigma - dw_dz_dz_dx), full levels
+        do j = j_start, j_end
+          do k = kts + 1, ktf
+            do i = i_start, i_end
               dw_dx(i, k, j) = msf_tx_tx(i, j) * (rdx * (8.0 * (w_mtx(i + 1, k, j) - w_mtx(i - 1, k, j)) - (w_mtx(i + 2, k, j) - w_mtx(i - 2, k, j)) ) / 12.0 - dw_dz_dz_dx(i, k, j))
-            else
-              dw_dx(i, k, j) = msf_tx_tx(i, j) * (rdx * 0.5 * (w_mtx(i + 1, k, j) - w_mtx(i - 1, k, j)) - dw_dz_dz_dx(i, k, j))
-            end if
+            end do
           end do
         end do
-      end do
 
-      do j = j_start, j_end
-        do i = i_start, i_end
-          dw_dx(i, 1, j) = 0.0
-          dw_dx(i, kte, j) = 0.0
+        do j = j_start, j_end
+          do i = i_start, i_end
+            dw_dx(i, 1, j) = 0.0
+            dw_dx(i, kte, j) = 0.0
+          end do
         end do
-      end do
+
+      else
+
+          ! Component associated with slope in sigma surfaces (dw_dz_dz_dx) at mass points:
+          ! z difference of the full-level values
+        do j = j_start, j_end
+          do k = kts, ktf
+            do i = i_start, i_end
+                ! dz_dx = (partial z / partial x)|sigma at mass points
+              dz_dx = 0.25 * (zx(i, k, j) + zx(i + 1, k, j) + zx(i, k + 1, j) + zx(i + 1, k + 1, j))
+              dw_dz_dz_dx(i, k, j) = (w_mtx(i, k + 1, j) - w_mtx(i, k, j)) * rdz_out(i, k, j) * dz_dx
+            end do
+          end do
+        end do
+
+          ! (partial w / partial x)|z = msf_tx_tx * (partial w_mtx / partial x)|sigma - dw_dz_dz_dx), half levels
+        do j = j_start, j_end
+          do k = kts, ktf
+            do i = i_start, i_end
+              dw_dx(i, k, j) = msf_tx_tx(i, j) * (rdx * (8.0 * (w_mtx_at_half(i + 1, k, j) - w_mtx_at_half(i - 1, k, j)) - (w_mtx_at_half(i + 2, k, j) - w_mtx_at_half(i - 2, k, j)) ) / 12.0 - dw_dz_dz_dx(i, k, j))
+            end do
+          end do
+        end do
+
+        do j = j_start, j_end
+          do i = i_start, i_end
+            dw_dx(i, kte, j) = 0.0
+          end do
+        end do
+
+      end if
 
     end subroutine Calc_dw_dx
 
 
-    subroutine Calc_du_dy (u, zy, rdz, dn, dnw, fnm, fnp, msfty, msfuy, rdy, cf1, cf2, cf3,       &
-              ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dy    )
+    subroutine Calc_dw_dy (at_faces, w, zy, rdz_out, msfty, rdy, ide, jde, kde, ims, ime, jms, jme, kms, kme, &
+              its, ite, jts, jte, kts, kte, dw_dy)
 
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !                                                      !
-      ! Purpose: Calculate du/dy                             !
-      !                                                      !
-      ! Authors: Pedro A. Jimenez & Timothy W. Juliano       !
-      !                                                      !
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !                                                                                     !
+      ! Purpose: Calculate dw/dy at constant height, at the center of the faces (at_faces)  !
+      !          or at mass points; fourth-order centred y difference. rdz_out is the       !
+      !          inverse layer depth at the output points (rdz at the faces, rdzw at mass points) !
+      !                                                                                     !
+      ! Authors: Pedro A. Jimenez & Timothy W. Juliano                                      !
+      !                                                                                     !
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: u, zy, rdz
-      real, dimension (kms:kme),                   intent (in)  :: dn, dnw, fnm, fnp
-      real, dimension (ims:ime, jms:jme),          intent (in)  :: msfty, msfuy
-      real,                                        intent (in)  :: rdy, cf1, cf2, cf3
-      integer,                                     intent (in)  :: ide, jde, kde,                 &
-                                                                   ims, ime, jms, jme, kms, kme,  &
-                                                                   its, ite, jts, jte, kts, kte
+      implicit none
 
-      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: du_dy
-
-        ! Local vars
-      integer :: i, j, k
-      real    :: dz_dy, cft1, cft2
-      real, dimension (its:ite, jts:jte) :: msf_ty_uy
-      real, dimension (its - 1:ite + 1, kts:kte, jts - 1:jte + 1) :: du_dz_dz_dy, u_muy, u_muy_at_full
-      integer :: ktf, ktes1, ktes2, i_start, i_end, j_start, j_end
-
-        ! Define some indexes
-      ktes1 = kte - 1
-      ktes2 = kte - 2
-      cft2 = - 0.5 * dnw(ktes1) / dn(ktes1)
-      cft1 = 1.0 - cft2
-
-      i_start = its
-      i_end = Min (ite, ide - 1)
-      j_start = jts
-      j_end = Min (jte, jde - 1)
-      ktf = Min (kte, kde - 1)
-
-        ! Map factor at mass points multiplied by map factor at v points
-      do j = j_start, j_end
-        do i = i_start, i_end
-          msf_ty_uy(i, j) = msfty(i, j) * msfuy(i, j)
-        end do
-      end do
-
-        ! Scale u component of vector to account for map projection (at v points)
-      do j = j_start, j_end + 1
-        do k = kts, ktf
-          do i = i_start, i_end
-            u_muy(i, k, j) = 0.25 * (u(i, k, j) + u(i + 1, k, j) + u(i, k, j - 1) + u(i + 1, k, j - 1)) / msfuy(i, j) 
-          end do
-        end do
-      end do
-
-        ! Interpolate u_muy from half levels to full levels (v points at faces)
-      do j = j_start, j_end + 1
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-            u_muy_at_full(i, k, j) = fnm(k) * u_muy(i, k, j) + fnp(k) * u_muy(i, k - 1, j)
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end + 1
-        do i = i_start, i_end
-            ! Surface
-          u_muy_at_full(i, 1, j) =  cf1 * u_muy(i, 1, j) + cf2 * u_muy(i, 2, j) + cf3 * u_muy(i, 3, j)
-            ! Top face
-          u_muy_at_full(i, kte, j) = cft1 * u_muy(i, ktes1, j) +  cft2 * u_muy(i, ktes2, j)
-        end do
-      end do
-
-        ! Calculate component associated with slope in sigma surfaces (du_dz_dz_dy)
-      do j = j_start, j_end 
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-              ! dz_dy = (partial z / partial y)|sigma at center of faces 
-            dz_dy = 0.5 * (zy(i, k, j) + zy(i, k, j + 1))
-              ! du_dz_dz_dy = (partial u_muy / partial z)|sigma (du_dz) *
-              ! (partial z / partial y)|sigma (dz_dy)
-            du_dz_dz_dy(i, k, j) = (0.5 * (u_muy(i, k, j) + u_muy(i, k, j + 1)) - &
-                0.5 * (u_muy(i, k - 1, j) + u_muy(i, k - 1, j + 1))) * rdz(i, k, j) * dz_dy
-          end do
-        end do
-      end do
-
-        ! (partial u / partial y)|z = msf_ty_uy * (partial u_muy_at_full / partial y)|sigma - du_dz_dz_dy)
-      do j = j_start, j_end
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-            du_dy(i, k, j) = msf_ty_uy(i, j) * ((u_muy_at_full(i, k, j + 1) - u_muy_at_full(i, k, j)) * rdy -  &
-                du_dz_dz_dy(i, k, j))
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end
-        do i = i_start, i_end
-            ! Surface
-          du_dy(i, kts, j) = 0.0
-            ! Top face
-          du_dy(i, kte, j) = 0.0
-        end do
-      end do
-
-    end subroutine Calc_du_dy
-
-
-    subroutine Calc_dv_dy (v, zy, rdz, dn, dnw, fnm, fnp, msfty, msfvy, rdy, cf1, cf2, cf3, ide, jds,     &
-              jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, config_flags, dv_dy   )
-
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !                                                      !
-      ! Purpose: Calculate dv/dy                             !
-      !                                                      !
-      ! Authors: Pedro A. Jimenez & Timothy W. Juliano       !
-      !                                                      !
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: v, zy, rdz
-      real, dimension (kms:kme),                   intent (in)  :: dn, dnw, fnm, fnp
-      real, dimension (ims:ime, jms:jme),          intent (in)  :: msfty, msfvy
-      real,                                        intent (in)  :: rdy, cf1, cf2, cf3
-      integer,                                     intent (in)  :: ide, jds, jde, kde,            &
-                                                                   ims, ime, jms, jme, kms, kme,  &
-                                                                   its, ite, jts, jte, kts, kte
-      type (grid_config_rec_type),                 intent (in)  :: config_flags
-
-      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dv_dy
-
-        ! Local vars
-      integer :: i, j, k
-      real    :: dz_dy, cft1, cft2
-      real, dimension (its:ite, jts:jte) :: msf_ty_vy
-      real, dimension (its - 1:ite + 1, kts:kte, jts - 1:jte + 1) :: dv_dz_dz_dy, v_mvy, v_mvy_at_full
-      integer :: ktf, ktes1, ktes2, i_start, i_end, j_start, j_end
-
-        ! Define some indexes
-      ktes1 = kte - 1
-      ktes2 = kte - 2
-      cft2 = - 0.5 * dnw(ktes1) / dn(ktes1)
-      cft1 = 1.0 - cft2
-
-      i_start = its
-      i_end = Min (ite, ide - 1)
-      j_start = jts
-      j_end = Min (jte, jde - 1)
-      ktf = Min (kte, kde - 1)
-
-        ! Map factor at mass points multiplied by map factor at v points
-      do j = j_start, j_end
-        do i = i_start, i_end
-          msf_ty_vy(i, j) = msfty(i, j) * msfvy(i, j)
-        end do
-      end do
-
-        ! Scale v component of vector to account for map projection
-      do j = j_start, j_end + 1
-        do k = kts, ktf
-          do i = i_start, i_end
-              ! Because msfvy at the poles will be undefined (1./0.),
-              ! we will have trouble. But we are OK since v at the
-              ! poles is 0., and that takes precedence in this case
-            if ((config_flags%polar) .and. ((j == jds) .or. (j == jde))) then
-              v_mvy(i, k, j) = 0.0
-            else
-              v_mvy(i, k, j) = v(i, k, j) / msfvy(i, j)
-            end if
-          end do
-        end do
-      end do
-
-        ! Interpolate v_mvy from half levels to full levels (v points at faces)
-      do j = j_start, j_end + 1
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-            v_mvy_at_full(i, k, j) = fnm(k) * v_mvy(i, k, j) + fnp(k) * v_mvy(i, k - 1, j)
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end + 1
-        do i = i_start, i_end
-            ! Surface
-          v_mvy_at_full(i, 1, j) =  cf1 * v_mvy(i, 1, j) + cf2 * v_mvy(i, 2, j) + cf3 * v_mvy(i, 3, j)
-            ! Top face
-          v_mvy_at_full(i, kte, j) = cft1 * v_mvy(i, ktes1, j) + cft2 * v_mvy(i, ktes2, j)
-        end do
-      end do
-
-        ! Calculate component associated with slope in sigma surfaces (dv_dz_dz_dy)
-      do j = j_start, j_end
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-              ! dz_dy = (partial z / partial y)|sigma at center of faces
-            dz_dy = 0.5 * (zy(i, k, j) + zy(i, k, j + 1))
-              ! dv_dz_dz_dy = (partial v_mvy / partial z)|sigma (dv_dz) *
-              ! (partial z / partial y)|sigma (dz_dy)
-            dv_dz_dz_dy(i, k, j) = (0.5 * (v_mvy(i, k, j) + v_mvy(i, k, j + 1)) - &
-                0.5 * (v_mvy(i, k - 1, j) + v_mvy(i, k - 1, j + 1))) * rdz(i, k, j) * dz_dy
-          end do
-        end do
-      end do
-
-        ! (partial v / partial y)|z = msf_ty_vy * (partial v_mvy_at_full / partial y)|sigma - dv_dz_dz_dy)
-      do j = j_start, j_end
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-            dv_dy(i, k, j) = msf_ty_vy(i, j) * ((v_mvy_at_full(i, k, j + 1) - v_mvy_at_full(i, k, j)) * rdy -  &
-                dv_dz_dz_dy(i, k, j))
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end
-        do i = i_start, i_end
-            ! Surface
-          dv_dy(i, 1, j) = 0.0
-            ! Top face
-          dv_dy(i, kte, j) = 0.0
-        end do
-      end do
-
-    end subroutine Calc_dv_dy
-
-
-    subroutine Calc_dw_dy (w, zy, rdz, msfty, rdy, ims, ime, jms, jme, kms, kme,  &
-              ide, jde, kde, its, ite, jts, jte, kts, kte, dw_dy                  )
-
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !                                                      !
-      ! Purpose: Calculate dw/dy                             !
-      !                                                      !
-      ! Authors: Pedro A. Jimenez & Timothy W. Juliano       !
-      !                                                      !
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: w, zy, rdz
+      logical,                                     intent (in)  :: at_faces
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: w, zy, rdz_out
       real, dimension (ims:ime, jms:jme),          intent (in)  :: msfty
       real,                                        intent (in)  :: rdy
       integer,                                     intent (in)  :: ide, jde, kde,                 &
@@ -1593,7 +1396,7 @@
       i_end = Min (ite, ide - 1)
       j_start = jts
       j_end = Min (jte, jde - 1)
-      ktf = Min (kte, kde - 1) 
+      ktf = Min (kte, kde - 1)
 
         ! Map factor at mass points squared
       do j = jts, jte
@@ -1602,12 +1405,8 @@
         end do
       end do
 
-        ! Scale w component of vector to account for map projection
-      if (USE_HIGH_ORDER) then
-        j_offset = 2
-      else 
-        j_offset = 1
-      end if
+        ! Scale w component of vector to account for map projection (two extra points for the fourth-order y difference)
+      j_offset = 2
       do j = j_start - j_offset, j_end + j_offset
         do k = kts, kte
           do i = i_start, i_end
@@ -1617,46 +1416,74 @@
       end do
 
         ! Average w_mty to the mass points (half levels)
-      do j = j_start - 1, j_end + 1
+      do j = j_start - j_offset, j_end + j_offset
         do k = kts, ktf
           do i = i_start, i_end
-            w_mty_at_half(i,k,j) = 0.5 * (w_mty(i, k, j) + w_mty(i, k + 1, j))
+            w_mty_at_half(i, k, j) = 0.5 * (w_mty(i, k, j) + w_mty(i, k + 1, j))
           end do
         end do
       end do
 
-        ! Calculate component associated with slope in sigma surfaces (dw_dz_dz_dy)
-      do j = j_start, j_end 
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-              ! dz_dy = (partial z / partial y)|sigma at center of faces
-            dz_dy = 0.5 * (zy(i, k, j) + zy(i, k, j + 1))
-              ! dw_dz_dz_dy = (partial w_mty / partial z)|sigma (dw_dz) *
-              ! (partial z / partial y)|sigma (dz_dy)
-            dw_dz_dz_dy(i, k, j) = (w_mty_at_half(i, k, j) - w_mty_at_half(i, k - 1, j)) * rdz(i, k, j) * dz_dy
+      if (at_faces) then
+
+          ! Component associated with slope in sigma surfaces (dw_dz_dz_dy) at the center of the
+          ! faces: z difference of the half-level values
+        do j = j_start, j_end
+          do k = kts + 1, ktf
+            do i = i_start, i_end
+                ! dz_dy = (partial z / partial y)|sigma at center of faces
+              dz_dy = 0.5 * (zy(i, k, j) + zy(i, k, j + 1))
+              dw_dz_dz_dy(i, k, j) = (w_mty_at_half(i, k, j) - w_mty_at_half(i, k - 1, j)) * rdz_out(i, k, j) * dz_dy
+            end do
           end do
         end do
-      end do
 
-        ! (partial w / partial y)|z = msf_ty_ty * (partial w_mty / partial y)|sigma - dw_dz_dz_dy)
-      do j = j_start, j_end
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-            if (USE_HIGH_ORDER) then
+          ! (partial w / partial y)|z = msf_ty_ty * (partial w_mty / partial y)|sigma - dw_dz_dz_dy), full levels
+        do j = j_start, j_end
+          do k = kts + 1, ktf
+            do i = i_start, i_end
               dw_dy(i, k, j) = msf_ty_ty(i, j) * (rdy * (8.0 * (w_mty(i, k, j + 1) - w_mty(i, k, j - 1)) - (w_mty(i, k, j + 2) - w_mty(i, k, j - 2)) ) / 12.0 - dw_dz_dz_dy(i, k, j))
-            else
-              dw_dy(i, k, j) = msf_ty_ty(i, j) * (rdy * 0.5 * (w_mty(i, k, j + 1) - w_mty(i, k, j - 1)) - dw_dz_dz_dy(i, k, j))
-            end if
+            end do
           end do
         end do
-      end do
 
-      do j = j_start, j_end
-        do i = i_start, i_end
-          dw_dy(i, kts, j) = 0.0
-          dw_dy(i, kte, j) = 0.0
+        do j = j_start, j_end
+          do i = i_start, i_end
+            dw_dy(i, kts, j) = 0.0
+            dw_dy(i, kte, j) = 0.0
+          end do
         end do
-      end do
+
+      else
+
+          ! Component associated with slope in sigma surfaces (dw_dz_dz_dy) at mass points:
+          ! z difference of the full-level values
+        do j = j_start, j_end
+          do k = kts, ktf
+            do i = i_start, i_end
+                ! dz_dy = (partial z / partial y)|sigma at mass points
+              dz_dy = 0.25 * (zy(i, k, j) + zy(i, k, j + 1) + zy(i, k + 1, j) + zy(i, k + 1, j + 1))
+              dw_dz_dz_dy(i, k, j) = (w_mty(i, k + 1, j) - w_mty(i, k, j)) * rdz_out(i, k, j) * dz_dy
+            end do
+          end do
+        end do
+
+          ! (partial w / partial y)|z = msf_ty_ty * (partial w_mty / partial y)|sigma - dw_dz_dz_dy), half levels
+        do j = j_start, j_end
+          do k = kts, ktf
+            do i = i_start, i_end
+              dw_dy(i, k, j) = msf_ty_ty(i, j) * (rdy * (8.0 * (w_mty_at_half(i, k, j + 1) - w_mty_at_half(i, k, j - 1)) - (w_mty_at_half(i, k, j + 2) - w_mty_at_half(i, k, j - 2)) ) / 12.0 - dw_dz_dz_dy(i, k, j))
+            end do
+          end do
+        end do
+
+        do j = j_start, j_end
+          do i = i_start, i_end
+            dw_dy(i, kte, j) = 0.0
+          end do
+        end do
+
+      end if
 
     end subroutine Calc_dw_dy
 
@@ -1738,8 +1565,6 @@
       real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dthetav_dx, dthetav_dy, dthetav_dz, &
                                                                    dqv_dx,     dqv_dy,     dqv_dz
 
-      logical, parameter :: DEBUG = .false.
-
         ! Calculate thetav derivatives
       call Calc_dmassvar_dx (thetav, zx, rdz, msftx, fnm, fnp, dn, dnw, rdx, cf1, cf2, cf3,  &
           ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dthetav_dx)
@@ -1757,8 +1582,6 @@
           ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqv_dy)
 
       call Calc_dmassvar_dz (qv, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqv_dz)
-
-      if (DEBUG) print *, 'Done Calc_mass_var_derivatives...'
 
     end subroutine Calc_mass_var_derivatives
 
@@ -1793,159 +1616,43 @@
          dqnc_dx, dqnc_dy, dqnc_dz, dqnr_dx, dqnr_dy, dqnr_dz, dqni_dx, dqni_dy, dqni_dz, &
          dqnwfa_dx, dqnwfa_dy, dqnwfa_dz, dqnifa_dx, dqnifa_dy, dqnifa_dz
 
-      logical, parameter :: DEBUG = .false.
+      call Derivatives_of (p_qc, qc, dqc_dx, dqc_dy, dqc_dz)                  ! Cloud mass
+      call Derivatives_of (p_qr, qr, dqr_dx, dqr_dy, dqr_dz)                  ! Rain mass
+      call Derivatives_of (p_qi, qi, dqi_dx, dqi_dy, dqi_dz)                  ! Ice mass
+      call Derivatives_of (p_qs, qs, dqs_dx, dqs_dy, dqs_dz)                  ! Snow mass
+      call Derivatives_of (p_qg, qg, dqg_dx, dqg_dy, dqg_dz)                  ! Graupel mass
+      call Derivatives_of (p_qnc, qnc, dqnc_dx, dqnc_dy, dqnc_dz)             ! Cloud number
+      call Derivatives_of (p_qnr, qnr, dqnr_dx, dqnr_dy, dqnr_dz)             ! Rain number
+      call Derivatives_of (p_qni, qni, dqni_dx, dqni_dy, dqni_dz)             ! Ice number
+      call Derivatives_of (p_qnwfa, qnwfa, dqnwfa_dx, dqnwfa_dy, dqnwfa_dz)   ! Water friendly aerosol number
+      call Derivatives_of (p_qnifa, qnifa, dqnifa_dx, dqnifa_dy, dqnifa_dz)   ! Ice friendly aerosol number
 
-        ! Calculate cloud mass derivatives
-      if ( p_qc .ge. param_first_scalar ) then
-        call Calc_dmassvar_dx (qc, zx, rdz, msftx, fnm, fnp, dn, dnw, rdx, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqc_dx)
+    contains
 
-        call Calc_dmassvar_dy (qc, zy, rdz, msfty, fnm, fnp, dn, dnw, rdy, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqc_dy)
+      subroutine Derivatives_of (p_q, q, dq_dx, dq_dy, dq_dz)
 
-        call Calc_dmassvar_dz (qc, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqc_dz)
-      else
-        dqc_dx(its:ite, kts:kte, jts:jte) = 0.0
-        dqc_dy(its:ite, kts:kte, jts:jte) = 0.0
-        dqc_dz(its:ite, kts:kte, jts:jte) = 0.0
-      end if
+          ! The three derivatives of one hydrometeor mass or number (index p_q in moist or scalar;
+          ! zero when the microphysics does not carry it)
 
-        ! Calculate rain mass derivatives
-      if ( p_qr .ge. param_first_scalar ) then
-        call Calc_dmassvar_dx (qr, zx, rdz, msftx, fnm, fnp, dn, dnw, rdx, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqr_dx)
+        integer,                                     intent (in)  :: p_q
+        real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: q
+        real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dq_dx, dq_dy, dq_dz
 
-        call Calc_dmassvar_dy (qr, zy, rdz, msfty, fnm, fnp, dn, dnw, rdy, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqr_dy)
+        if ( p_q .ge. param_first_scalar ) then
+          call Calc_dmassvar_dx (q, zx, rdz, msftx, fnm, fnp, dn, dnw, rdx, cf1, cf2, cf3,  &
+              ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dq_dx)
 
-        call Calc_dmassvar_dz (qr, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqr_dz)
-      else
-        dqr_dx(its:ite, kts:kte, jts:jte) = 0.0
-        dqr_dy(its:ite, kts:kte, jts:jte) = 0.0
-        dqr_dz(its:ite, kts:kte, jts:jte) = 0.0
-      end if
+          call Calc_dmassvar_dy (q, zy, rdz, msfty, fnm, fnp, dn, dnw, rdy, cf1, cf2, cf3,  &
+              ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dq_dy)
 
-        ! Calculate ice mass derivatives
-      if ( p_qi .ge. param_first_scalar ) then
-        call Calc_dmassvar_dx (qi, zx, rdz, msftx, fnm, fnp, dn, dnw, rdx, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqi_dx)
+          call Calc_dmassvar_dz (q, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dq_dz)
+        else
+          dq_dx(its:ite, kts:kte, jts:jte) = 0.0
+          dq_dy(its:ite, kts:kte, jts:jte) = 0.0
+          dq_dz(its:ite, kts:kte, jts:jte) = 0.0
+        end if
 
-        call Calc_dmassvar_dy (qi, zy, rdz, msfty, fnm, fnp, dn, dnw, rdy, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqi_dy)
-
-        call Calc_dmassvar_dz (qi, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqi_dz)
-      else
-        dqi_dx(its:ite, kts:kte, jts:jte) = 0.0
-        dqi_dy(its:ite, kts:kte, jts:jte) = 0.0
-        dqi_dz(its:ite, kts:kte, jts:jte) = 0.0
-      end if
-
-        ! Calculate snow mass derivatives
-      if ( p_qs .ge. param_first_scalar ) then
-        call Calc_dmassvar_dx (qs, zx, rdz, msftx, fnm, fnp, dn, dnw, rdx, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqs_dx)
-
-        call Calc_dmassvar_dy (qs, zy, rdz, msfty, fnm, fnp, dn, dnw, rdy, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqs_dy)
-
-        call Calc_dmassvar_dz (qs, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqs_dz)
-      else
-        dqs_dx(its:ite, kts:kte, jts:jte) = 0.0
-        dqs_dy(its:ite, kts:kte, jts:jte) = 0.0
-        dqs_dz(its:ite, kts:kte, jts:jte) = 0.0
-      end if
-
-        ! Calculate graupel mass derivatives
-      if ( p_qg .ge. param_first_scalar ) then
-        call Calc_dmassvar_dx (qg, zx, rdz, msftx, fnm, fnp, dn, dnw, rdx, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqg_dx)
-
-        call Calc_dmassvar_dy (qg, zy, rdz, msfty, fnm, fnp, dn, dnw, rdy, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqg_dy)
-
-        call Calc_dmassvar_dz (qg, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqg_dz)
-      else
-        dqg_dx(its:ite, kts:kte, jts:jte) = 0.0
-        dqg_dy(its:ite, kts:kte, jts:jte) = 0.0
-        dqg_dz(its:ite, kts:kte, jts:jte) = 0.0
-      end if
-
-        ! Calculate cloud number derivatives
-      if ( p_qnc .ge. param_first_scalar ) then
-        call Calc_dmassvar_dx (qnc, zx, rdz, msftx, fnm, fnp, dn, dnw, rdx, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqnc_dx)
-
-        call Calc_dmassvar_dy (qnc, zy, rdz, msfty, fnm, fnp, dn, dnw, rdy, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqnc_dy)
-
-        call Calc_dmassvar_dz (qnc, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqnc_dz)
-      else
-        dqnc_dx(its:ite, kts:kte, jts:jte) = 0.0
-        dqnc_dy(its:ite, kts:kte, jts:jte) = 0.0
-        dqnc_dz(its:ite, kts:kte, jts:jte) = 0.0
-      end if
-
-        ! Calculate rain number derivatives
-      if ( p_qnr .ge. param_first_scalar ) then
-        call Calc_dmassvar_dx (qnr, zx, rdz, msftx, fnm, fnp, dn, dnw, rdx, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqnr_dx)
-
-        call Calc_dmassvar_dy (qnr, zy, rdz, msfty, fnm, fnp, dn, dnw, rdy, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqnr_dy)
-
-        call Calc_dmassvar_dz (qnr, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqnr_dz)
-      else
-        dqnr_dx(its:ite, kts:kte, jts:jte) = 0.0
-        dqnr_dy(its:ite, kts:kte, jts:jte) = 0.0
-        dqnr_dz(its:ite, kts:kte, jts:jte) = 0.0
-      end if
-
-        ! Calculate ice number derivatives
-      if ( p_qni .ge. param_first_scalar ) then
-        call Calc_dmassvar_dx (qni, zx, rdz, msftx, fnm, fnp, dn, dnw, rdx, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqni_dx)
-
-        call Calc_dmassvar_dy (qni, zy, rdz, msfty, fnm, fnp, dn, dnw, rdy, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqni_dy)
-
-        call Calc_dmassvar_dz (qni, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqni_dz)
-      else
-        dqni_dx(its:ite, kts:kte, jts:jte) = 0.0
-        dqni_dy(its:ite, kts:kte, jts:jte) = 0.0
-        dqni_dz(its:ite, kts:kte, jts:jte) = 0.0
-      end if
-
-        ! Calculate water friendly aerosol number derivatives
-      if ( p_qnwfa .ge. param_first_scalar ) then
-        call Calc_dmassvar_dx (qnwfa, zx, rdz, msftx, fnm, fnp, dn, dnw, rdx, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqnwfa_dx)
-
-        call Calc_dmassvar_dy (qnwfa, zy, rdz, msfty, fnm, fnp, dn, dnw, rdy, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqnwfa_dy)
-
-        call Calc_dmassvar_dz (qnwfa, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqnwfa_dz)
-      else
-        dqnwfa_dx(its:ite, kts:kte, jts:jte) = 0.0
-        dqnwfa_dy(its:ite, kts:kte, jts:jte) = 0.0
-        dqnwfa_dz(its:ite, kts:kte, jts:jte) = 0.0
-      end if
-
-        ! Calculate ice friendly aerosol number derivatives
-      if ( p_qnifa .ge. param_first_scalar ) then
-        call Calc_dmassvar_dx (qnifa, zx, rdz, msftx, fnm, fnp, dn, dnw, rdx, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqnifa_dx)
-
-        call Calc_dmassvar_dy (qnifa, zy, rdz, msfty, fnm, fnp, dn, dnw, rdy, cf1, cf2, cf3,  &
-            ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqnifa_dy)
-
-        call Calc_dmassvar_dz (qnifa, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqnifa_dz)
-      else
-        dqnifa_dx(its:ite, kts:kte, jts:jte) = 0.0
-        dqnifa_dy(its:ite, kts:kte, jts:jte) = 0.0
-        dqnifa_dz(its:ite, kts:kte, jts:jte) = 0.0
-      end if
-
-      if (DEBUG) print *, 'Done Calc_scalar_var_derivatives...'
+      end subroutine Derivatives_of
 
     end subroutine Calc_scalar_var_derivatives
 
@@ -2316,38 +2023,29 @@
       
         ! Local vars
       integer :: im
-      logical, parameter :: ADD_TEND_WIND=.true., ADD_TEND_T=.true., &
-          ADD_TEND_Q=.true.
       REAL, DIMENSION (its:ite, kts:kte, jts:jte) :: hydromet_tend
       
-      if (ADD_TEND_WIND) then
-        call Vertical_mixing_u (du, config_flags, turb_flux_uw, &
-            dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms,   &
-            jme, kms, kme, its, ite, jts, jte, kts, kte)
+      call Vertical_mixing_u (du, config_flags, turb_flux_uw, &
+          dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms,   &
+          jme, kms, kme, its, ite, jts, jte, kts, kte)
 
-        call Vertical_mixing_v (dv, config_flags, turb_flux_vw, &
-            dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms,   &
-            jme, kms, kme, its, ite, jts, jte, kts, kte)
+      call Vertical_mixing_v (dv, config_flags, turb_flux_vw, &
+          dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms,   &
+          jme, kms, kme, its, ite, jts, jte, kts, kte)
 
-        if (pbl3d_opt > 0) then
-          call Vertical_mixing_w (dw, config_flags, turb_flux_w2,   &
-              dn, rho, ids, ide, jds, jde, kds, kde, ims, ime, jms, &
-              jme, kms, kme, its, ite, jts, jte, kts, kte)
-        end if
-
-      end if
-
-      if (ADD_TEND_T) then
-        call Vertical_mixing_s_with_flux (dth, config_flags, turb_flux_wtheta, &
-            dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms,   &
+      if (pbl3d_opt > 0) then
+        call Vertical_mixing_w (dw, config_flags, turb_flux_w2,   &
+            dn, rho, ids, ide, jds, jde, kds, kde, ims, ime, jms, &
             jme, kms, kme, its, ite, jts, jte, kts, kte)
       end if
 
-      if (ADD_TEND_Q) then
-        call Vertical_mixing_s_with_flux (dqv, config_flags, turb_flux_wqv,  &
-            dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms, &
-            jme, kms, kme, its, ite, jts, jte, kts, kte)
-      end if
+      call Vertical_mixing_s_with_flux (dth, config_flags, turb_flux_wtheta, &
+          dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms,   &
+          jme, kms, kme, its, ite, jts, jte, kts, kte)
+
+      call Vertical_mixing_s_with_flux (dqv, config_flags, turb_flux_wqv,  &
+          dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms, &
+          jme, kms, kme, its, ite, jts, jte, kts, kte)
 
         ! pbl3d_scalar_implicit = 1 (OPEN_ISSUES A31): the explicit theta and qv tendencies above are
         ! turned into backward-Euler ones. The explicit step of the closure's vertical scalar flux goes
@@ -2360,105 +2058,25 @@
           call wrf_error_fatal ('PBL3D: pbl3d_scalar_implicit = 1 needs th_in, qv_in, mut_in, c1h_in, c2h_in, dt_in')
         if (config_flags%pbl3d_nsteps /= 1) &
           call wrf_error_fatal ('PBL3D: pbl3d_scalar_implicit = 1 requires pbl3d_nsteps = 1')
-        if (ADD_TEND_T) call Vertical_mixing_s_implicit (dth, config_flags, turb_flux_wtheta, th_in, rdz, &
+        call Vertical_mixing_s_implicit (dth, config_flags, turb_flux_wtheta, th_in, rdz, &
             dnw, rho, fnm, fnp, mut_in, c1h_in, c2h_in, dt_in, ids, ide, jds, jde, kds, kde, &
             ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-        if (ADD_TEND_Q) call Vertical_mixing_s_implicit (dqv, config_flags, turb_flux_wqv, qv_in, rdz, &
+        call Vertical_mixing_s_implicit (dqv, config_flags, turb_flux_wqv, qv_in, rdz, &
             dnw, rho, fnm, fnp, mut_in, c1h_in, c2h_in, dt_in, ids, ide, jds, jde, kds, kde, &
             ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
       end if
 
       if ( config_flags%pbl3d_scalar_mix .eq. 1 .and. ss .eq. config_flags%pbl3d_nsteps ) then
-          ! Cloud mass
-        if ( p_qc .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          call Vertical_mixing_s_with_flux (hydromet_tend, config_flags, turb_flux_wqc,  &
-              dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms, &
-              jme, kms, kme, its, ite, jts, jte, kts, kte)
-          dqc(its:ite, kts:kte, jts:jte) = dqc(its:ite, kts:kte, jts:jte) + &
-                                           hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-          ! Rain mass
-        if ( p_qr .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          call Vertical_mixing_s_with_flux (hydromet_tend, config_flags, turb_flux_wqr,  &
-              dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms, &
-              jme, kms, kme, its, ite, jts, jte, kts, kte)
-          dqr(its:ite, kts:kte, jts:jte) = dqr(its:ite, kts:kte, jts:jte) + &
-                                           hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-          ! Ice mass
-        if ( p_qi .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          call Vertical_mixing_s_with_flux (hydromet_tend, config_flags, turb_flux_wqi,  &
-              dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms, &
-              jme, kms, kme, its, ite, jts, jte, kts, kte)
-          dqi(its:ite, kts:kte, jts:jte) = dqi(its:ite, kts:kte, jts:jte) + &
-                                           hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-          ! Snow mass
-        if ( p_qs .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          call Vertical_mixing_s_with_flux (hydromet_tend, config_flags, turb_flux_wqs,  &
-              dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms, &
-              jme, kms, kme, its, ite, jts, jte, kts, kte)
-          dqs(its:ite, kts:kte, jts:jte) = dqs(its:ite, kts:kte, jts:jte) + &
-                                           hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-           ! Graupel mass
-        if ( p_qg .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          call Vertical_mixing_s_with_flux (hydromet_tend, config_flags, turb_flux_wqg,  &
-              dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms, &
-              jme, kms, kme, its, ite, jts, jte, kts, kte)
-          dqg(its:ite, kts:kte, jts:jte) = dqg(its:ite, kts:kte, jts:jte) + &
-                                           hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-          ! Cloud number
-        if ( p_qnc .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          call Vertical_mixing_s_with_flux (hydromet_tend, config_flags, turb_flux_wqnc,  &
-              dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms, &
-              jme, kms, kme, its, ite, jts, jte, kts, kte)
-          dqnc(its:ite, kts:kte, jts:jte) = dqnc(its:ite, kts:kte, jts:jte) + &
-                                            hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-          ! Rain number
-        if ( p_qnr .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          call Vertical_mixing_s_with_flux (hydromet_tend, config_flags, turb_flux_wqnr,  &
-              dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms, &
-              jme, kms, kme, its, ite, jts, jte, kts, kte)
-          dqnr(its:ite, kts:kte, jts:jte) = dqnr(its:ite, kts:kte, jts:jte) + &
-                                            hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-          ! Ice number
-        if ( p_qni .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          call Vertical_mixing_s_with_flux (hydromet_tend, config_flags, turb_flux_wqni,  &
-              dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms, &
-              jme, kms, kme, its, ite, jts, jte, kts, kte)
-          dqni(its:ite, kts:kte, jts:jte) = dqni(its:ite, kts:kte, jts:jte) + &
-                                            hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-          ! Water friendly aerosol number
-        if ( p_qnwfa .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          call Vertical_mixing_s_with_flux (hydromet_tend, config_flags, turb_flux_wqnwfa,  &
-              dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms, &
-              jme, kms, kme, its, ite, jts, jte, kts, kte)
-          dqnwfa(its:ite, kts:kte, jts:jte) = dqnwfa(its:ite, kts:kte, jts:jte) + &
-                                              hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-          ! Ice friendly aerosol number
-        if ( p_qnifa .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          call Vertical_mixing_s_with_flux (hydromet_tend, config_flags, turb_flux_wqnifa,  &
-              dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms, &
-              jme, kms, kme, its, ite, jts, jte, kts, kte)
-          dqnifa(its:ite, kts:kte, jts:jte) = dqnifa(its:ite, kts:kte, jts:jte) + &
-                                              hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
+        call Mix_hydrometeor (p_qc, turb_flux_wqc, dqc)            ! Cloud mass
+        call Mix_hydrometeor (p_qr, turb_flux_wqr, dqr)            ! Rain mass
+        call Mix_hydrometeor (p_qi, turb_flux_wqi, dqi)            ! Ice mass
+        call Mix_hydrometeor (p_qs, turb_flux_wqs, dqs)            ! Snow mass
+        call Mix_hydrometeor (p_qg, turb_flux_wqg, dqg)            ! Graupel mass
+        call Mix_hydrometeor (p_qnc, turb_flux_wqnc, dqnc)         ! Cloud number
+        call Mix_hydrometeor (p_qnr, turb_flux_wqnr, dqnr)         ! Rain number
+        call Mix_hydrometeor (p_qni, turb_flux_wqni, dqni)         ! Ice number
+        call Mix_hydrometeor (p_qnwfa, turb_flux_wqnwfa, dqnwfa)   ! Water friendly aerosol number
+        call Mix_hydrometeor (p_qnifa, turb_flux_wqnifa, dqnifa)   ! Ice friendly aerosol number
       end if
 
       if (ss .eq. config_flags%pbl3d_nsteps .and. n_tracer .ge. param_first_scalar) then
@@ -2467,6 +2085,28 @@
               khz, dnw, rdz, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
         end do
       end if
+
+    contains
+
+      subroutine Mix_hydrometeor (p_q, turb_flux_wq, dq)
+
+          ! Adds the vertical turbulent mixing of one hydrometeor mass or number (index p_q in moist
+          ! or scalar; nothing when the microphysics does not carry it) to its tendency dq
+
+        integer,                                     intent (in)    :: p_q
+        real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: turb_flux_wq
+        real, dimension (ims:ime, kms:kme, jms:jme), intent (inout) :: dq
+
+        if ( p_q .ge. param_first_scalar ) then
+          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
+          call Vertical_mixing_s_with_flux (hydromet_tend, config_flags, turb_flux_wq,  &
+              dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms, &
+              jme, kms, kme, its, ite, jts, jte, kts, kte)
+          dq(its:ite, kts:kte, jts:jte) = dq(its:ite, kts:kte, jts:jte) + &
+                                          hydromet_tend(its:ite, kts:kte, jts:jte)
+        end if
+
+      end subroutine Mix_hydrometeor
 
     end subroutine Vertical_turb_mix
 
@@ -3138,96 +2778,16 @@
           ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
       if ( config_flags%pbl3d_scalar_mix .eq. 1 .and. ss .eq. config_flags%pbl3d_nsteps ) then
-          ! Cloud mass
-        if ( p_qc .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          hydromet_tend(its:ite, kts:kte, jts:jte) = qc_tendf(its:ite, kts:kte, jts:jte)
-          call Horizontal_mixing_s_with_flux (hydromet_tend, config_flags, msftx, msfty, rdx, rdy, &
-              fnm, fnp, zx, zy, rdz, rdzw, dnw, rho, sf_alpha, turb_flux_uqc, turb_flux_vqc, &
-              ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-          qc_tendf(its:ite, kts:kte, jts:jte) = hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-          ! Rain mass
-        if ( p_qr .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          hydromet_tend(its:ite, kts:kte, jts:jte) = qr_tendf(its:ite, kts:kte, jts:jte)
-          call Horizontal_mixing_s_with_flux (hydromet_tend, config_flags, msftx, msfty, rdx, rdy, &
-              fnm, fnp, zx, zy, rdz, rdzw, dnw, rho, sf_alpha, turb_flux_uqr, turb_flux_vqr, &
-              ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-          qr_tendf(its:ite, kts:kte, jts:jte) = hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-          ! Ice mass
-        if ( p_qi .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          hydromet_tend(its:ite, kts:kte, jts:jte) = qi_tendf(its:ite, kts:kte, jts:jte)
-          call Horizontal_mixing_s_with_flux (hydromet_tend, config_flags, msftx, msfty, rdx, rdy, &
-              fnm, fnp, zx, zy, rdz, rdzw, dnw, rho, sf_alpha, turb_flux_uqi, turb_flux_vqi, &
-              ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-          qi_tendf(its:ite, kts:kte, jts:jte) = hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-          ! Snow mass
-        if ( p_qs .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          hydromet_tend(its:ite, kts:kte, jts:jte) = qs_tendf(its:ite, kts:kte, jts:jte)
-          call Horizontal_mixing_s_with_flux (hydromet_tend, config_flags, msftx, msfty, rdx, rdy, &
-              fnm, fnp, zx, zy, rdz, rdzw, dnw, rho, sf_alpha, turb_flux_uqs, turb_flux_vqs, &
-              ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-          qs_tendf(its:ite, kts:kte, jts:jte) = hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-          ! Graupel mass
-        if ( p_qg .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          hydromet_tend(its:ite, kts:kte, jts:jte) = qg_tendf(its:ite, kts:kte, jts:jte)
-          call Horizontal_mixing_s_with_flux (hydromet_tend, config_flags, msftx, msfty, rdx, rdy, &
-              fnm, fnp, zx, zy, rdz, rdzw, dnw, rho, sf_alpha, turb_flux_uqg, turb_flux_vqg, &
-              ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-          qg_tendf(its:ite, kts:kte, jts:jte) = hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-          ! Cloud number
-        if ( p_qnc .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          hydromet_tend(its:ite, kts:kte, jts:jte) = qnc_tendf(its:ite, kts:kte, jts:jte)
-          call Horizontal_mixing_s_with_flux (hydromet_tend, config_flags, msftx, msfty, rdx, rdy, &
-              fnm, fnp, zx, zy, rdz, rdzw, dnw, rho, sf_alpha, turb_flux_uqnc, turb_flux_vqnc, &
-              ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-          qnc_tendf(its:ite, kts:kte, jts:jte) = hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-           ! Rain number
-        if ( p_qnr .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          hydromet_tend(its:ite, kts:kte, jts:jte) = qnr_tendf(its:ite, kts:kte, jts:jte)
-          call Horizontal_mixing_s_with_flux (hydromet_tend, config_flags, msftx, msfty, rdx, rdy, &
-              fnm, fnp, zx, zy, rdz, rdzw, dnw, rho, sf_alpha, turb_flux_uqnr, turb_flux_vqnr, &
-              ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-          qnr_tendf(its:ite, kts:kte, jts:jte) = hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-          ! Ice number
-        if ( p_qni .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          hydromet_tend(its:ite, kts:kte, jts:jte) = qni_tendf(its:ite, kts:kte, jts:jte)
-          call Horizontal_mixing_s_with_flux (hydromet_tend, config_flags, msftx, msfty, rdx, rdy, &
-              fnm, fnp, zx, zy, rdz, rdzw, dnw, rho, sf_alpha, turb_flux_uqni, turb_flux_vqni, &
-              ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-          qni_tendf(its:ite, kts:kte, jts:jte) = hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-          ! Water friendly aerosol number
-        if ( p_qnwfa .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          hydromet_tend(its:ite, kts:kte, jts:jte) = qnwfa_tendf(its:ite, kts:kte, jts:jte)
-          call Horizontal_mixing_s_with_flux (hydromet_tend, config_flags, msftx, msfty, rdx, rdy, &
-              fnm, fnp, zx, zy, rdz, rdzw, dnw, rho, sf_alpha, turb_flux_uqnwfa, turb_flux_vqnwfa, &
-              ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-          qnwfa_tendf(its:ite, kts:kte, jts:jte) = hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
-          ! Ice friendly aerosol number
-        if ( p_qnifa .ge. param_first_scalar ) then
-          hydromet_tend(its:ite, kts:kte, jts:jte) = 0.0
-          hydromet_tend(its:ite, kts:kte, jts:jte) = qnifa_tendf(its:ite, kts:kte, jts:jte)
-          call Horizontal_mixing_s_with_flux (hydromet_tend, config_flags, msftx, msfty, rdx, rdy, &
-              fnm, fnp, zx, zy, rdz, rdzw, dnw, rho, sf_alpha, turb_flux_uqnifa, turb_flux_vqnifa, &
-              ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-          qnifa_tendf(its:ite, kts:kte, jts:jte) = hydromet_tend(its:ite, kts:kte, jts:jte)
-        end if
+        call Mix_hydrometeor (p_qc, turb_flux_uqc, turb_flux_vqc, qc_tendf)               ! Cloud mass
+        call Mix_hydrometeor (p_qr, turb_flux_uqr, turb_flux_vqr, qr_tendf)               ! Rain mass
+        call Mix_hydrometeor (p_qi, turb_flux_uqi, turb_flux_vqi, qi_tendf)               ! Ice mass
+        call Mix_hydrometeor (p_qs, turb_flux_uqs, turb_flux_vqs, qs_tendf)               ! Snow mass
+        call Mix_hydrometeor (p_qg, turb_flux_uqg, turb_flux_vqg, qg_tendf)               ! Graupel mass
+        call Mix_hydrometeor (p_qnc, turb_flux_uqnc, turb_flux_vqnc, qnc_tendf)           ! Cloud number
+        call Mix_hydrometeor (p_qnr, turb_flux_uqnr, turb_flux_vqnr, qnr_tendf)           ! Rain number
+        call Mix_hydrometeor (p_qni, turb_flux_uqni, turb_flux_vqni, qni_tendf)           ! Ice number
+        call Mix_hydrometeor (p_qnwfa, turb_flux_uqnwfa, turb_flux_vqnwfa, qnwfa_tendf)   ! Water friendly aerosol number
+        call Mix_hydrometeor (p_qnifa, turb_flux_uqnifa, turb_flux_vqnifa, qnifa_tendf)   ! Ice friendly aerosol number
       end if
 
       if (ss .eq. config_flags%pbl3d_nsteps .and. n_tracer .ge. param_first_scalar) then
@@ -3237,6 +2797,27 @@
               ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
         end do
       end if
+
+    contains
+
+      subroutine Mix_hydrometeor (p_q, turb_flux_uq, turb_flux_vq, q_tendf)
+
+          ! Adds the horizontal turbulent mixing of one hydrometeor mass or number (index p_q in moist
+          ! or scalar; nothing when the microphysics does not carry it) to its tendency q_tendf
+
+        integer,                                     intent (in)    :: p_q
+        real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: turb_flux_uq, turb_flux_vq
+        real, dimension (ims:ime, kms:kme, jms:jme), intent (inout) :: q_tendf
+
+        if ( p_q .ge. param_first_scalar ) then
+          hydromet_tend(its:ite, kts:kte, jts:jte) = q_tendf(its:ite, kts:kte, jts:jte)
+          call Horizontal_mixing_s_with_flux (hydromet_tend, config_flags, msftx, msfty, rdx, rdy, &
+              fnm, fnp, zx, zy, rdz, rdzw, dnw, rho, sf_alpha, turb_flux_uq, turb_flux_vq, &
+              ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+          q_tendf(its:ite, kts:kte, jts:jte) = hydromet_tend(its:ite, kts:kte, jts:jte)
+        end if
+
+      end subroutine Mix_hydrometeor
 
     end subroutine Horizontal_turb_mix
 
@@ -3270,7 +2851,6 @@
         ! Local
       INTEGER :: i, j, k, i_start, i_end, j_start, j_end, ktf
       REAL    :: dxm, dym, tmpzx, tmpzy
-      logical, parameter :: SLOPE_FACTOR = .true.
 
         ! Define dimensions
       i_start = its - 1
@@ -3279,7 +2859,7 @@
       j_end = jte
       ktf = Min (kte, kde - 1)
 
-      if (SLOPE_FACTOR .and. config_flags%pbl3d_opt > 0) then
+      if (config_flags%pbl3d_opt > 0) then
         do j = j_start, j_end
           do k = kts, ktf
             do i = i_start, i_end
@@ -3339,7 +2919,7 @@
       real, dimension (its-1:ite, kts:kte, jts-1:jte), intent(in) :: sf_alpha
 
         ! Local data
-      integer :: i, j, k, ktf
+      integer :: ktf
       integer :: i_start, i_end, j_start, j_end
       integer :: ie_ext, je_ext
 
@@ -3413,7 +2993,7 @@
       real, dimension (its-1:ite, kts:kte, jts-1:jte), intent(in) :: sf_alpha
 
         ! Local vars
-      integer :: i, j, k, ktf
+      integer :: ktf
       integer :: i_start, i_end, j_start, j_end
       integer :: ie_ext, je_ext
 
@@ -3510,29 +3090,19 @@
       if (config_flags%open_ye .or. config_flags%specified .or. &
           config_flags%nested) j_end = Min (jde - 2,jte)
 
-      if (.not. USE_HIGH_ORDER) then
-          ! tf_uw_at_full = rho * turb_flux_uw (move flux from center of faces to u points in faces)
-        call Prep_turb_flux_uw (config_flags, tf_uw_at_full, turb_flux_uw, fnm, fnp, rho, &
-            ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-
-          ! tf_vw_at_full = rho * turb_flux_vw (move flux from center of faces to v points in faces)
-        call Prep_turb_flux_vw (config_flags, tf_vw_at_full, turb_flux_vw, fnm, fnp, rho, &
-            ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-      else
-        n_offset = 2
-        do j = j_start - n_offset, j_end + n_offset
-          do k = kts + 1, ktf
-            do i = i_start - n_offset, i_end + n_offset
-                ! tf_uw_at_full = rho * turb_flux_uw at the center of the faces
-              tf_uw_at_full(i, k, j) = turb_flux_uw(i, k, j) * (fnm(k) * rho(i, k, j) + &
-                  fnp(k) * rho(i, k - 1, j))
-                ! tf_vw_at_full = rho * turb_flux_vw at the center of the faces
-              tf_vw_at_full(i, k, j) = turb_flux_vw(i, k, j) * (fnm(k) * rho(i, k, j) + &
-                  fnp(k) * rho(i, k - 1, j))
-            end do
+      n_offset = 2
+      do j = j_start - n_offset, j_end + n_offset
+        do k = kts + 1, ktf
+          do i = i_start - n_offset, i_end + n_offset
+              ! tf_uw_at_full = rho * turb_flux_uw at the center of the faces
+            tf_uw_at_full(i, k, j) = turb_flux_uw(i, k, j) * (fnm(k) * rho(i, k, j) + &
+                fnp(k) * rho(i, k - 1, j))
+              ! tf_vw_at_full = rho * turb_flux_vw at the center of the faces
+            tf_vw_at_full(i, k, j) = turb_flux_vw(i, k, j) * (fnm(k) * rho(i, k, j) + &
+                fnp(k) * rho(i, k - 1, j))
           end do
         end do
-      end if
+      end do
 
         ! Calculate the w tendency due to horizontal turbulent mixing
       call Calc_htend_dw (config_flags, tendency, turb_flux_uw, turb_flux_vw, tf_uw_at_full, tf_vw_at_full, &
@@ -3940,146 +3510,6 @@
     end subroutine Prep_turb_flux_uv
 
 
-    subroutine Prep_turb_flux_uw (config_flags, tf_at_full, turb_flux_uw,  &
-        fnm, fnp, rho, ids, ide, jds, jde, kds, kde, ims, ime, jms,   &
-        jme, kms, kme, its, ite, jts, jte, kts, kte)
-
-      implicit none
-
-      type (grid_config_rec_type), intent (in) :: config_flags
-
-      integer, intent (in) :: ids, ide, jds, jde, kds, kde, ims, ime, &
-          jms, jme, kms, kme, its, ite, jts, jte, kts, kte
-
-      real, dimension (kms:kme), intent (in) :: fnm, fnp
-      real, dimension (its - 2:ite + 2, kts:kte, jts - 2:jte + 2), & 
-          intent (inout) :: tf_at_full
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in):: rho, &
-          turb_flux_uw
-
-        ! Local vars
-      integer  :: i, j, k, ktf, i_start, i_end, j_start, j_end
-      real :: turb_flux_avg
-
-        ! Define indexes
-      i_start = its
-      i_end = ite
-      j_start = jts
-      j_end = Min (jte, jde - 1 )
-      ktf = Min (kte, kde - 1)
-
-      if (config_flags%open_xs .OR. config_flags%specified .OR. &
-         config_flags%nested) i_start = Max (ids + 1, its)
-      if (config_flags%open_xe .OR. config_flags%specified .OR. &
-         config_flags%nested) i_end = Min (ide - 2, ite)
-      if (config_flags%open_ys .OR. config_flags%specified .OR. &
-         config_flags%nested) j_start = Max (jds + 1, jts)
-      if (config_flags%open_ye .OR. config_flags%specified .OR. &
-         config_flags%nested) j_end = Min (jde - 2, jte)
-
-      i_end = i_end + 1
-
-       ! Bottom face
-      do j = j_start, j_end
-        do i = i_start, i_end
-          turb_flux_avg = 0.5 * (turb_flux_uw(i, kts, j) +  &
-              turb_flux_uw(i - 1, kts, j))
-          tf_at_full(i, kts, j) = turb_flux_avg * 0.5 * &
-              (rho(i - 1, kts, j) + rho(i, kts, j))
-        end do
-      end do
-
-      do j = j_start, j_end
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-            turb_flux_avg = 0.5 * (turb_flux_uw(i, k, j) +  &
-                turb_flux_uw(i - 1, k, j)) 
-            tf_at_full(i, k, j) = turb_flux_avg * 0.5 * (fnm(k) *  &
-                (rho(i - 1, k, j) + rho(i, k, j) ) + fnp(k) * &
-                (rho(i - 1, k - 1, j) + rho(i, k - 1, j)))
-          end do
-        end do
-      end do
-
-       ! Top face
-      do j = j_start, j_end
-        do i = i_start, i_end
-          tf_at_full(i, ktf + 1, j) = 0.0
-        end do
-      end do
-
-    end subroutine Prep_turb_flux_uw
-
-
-    subroutine Prep_turb_flux_vw (config_flags, tf_at_full, turb_flux_vw, &
-        fnm, fnp, rho, ids, ide, jds, jde, kds, kde, ims, ime, jms,  &
-        jme, kms, kme, its, ite, jts, jte, kts, kte)
-
-      implicit none
-
-      type (grid_config_rec_type), intent(in)  :: config_flags
-
-      integer, intent(in) :: ids, ide, jds, jde, kds, kde, ims, ime, &
-         jms, jme, kms, kme, its, ite, jts, jte, kts, kte
-
-      real, dimension (kms:kme), intent(in) :: fnm, fnp
-      real, dimension (its - 2:ite + 2, kts:kte, jts - 2:jte + 2), &
-          intent (inout) :: tf_at_full
-      real, dimension (ims:ime, kms:kme, jms:jme), intent(in) :: rho, &
-          turb_flux_vw
-
-        ! Local vars
-      integer :: i, j, k, ktf, i_start, i_end, j_start, j_end
-      real :: turb_flux_avg
-
-        ! Define indexes
-      i_start = its
-      i_end = Min (ite, ide - 1)
-      j_start = jts
-      j_end = jte
-      ktf = Min (kte, kde - 1)
-
-      IF (config_flags%open_xs .OR. config_flags%specified .OR. &
-         config_flags%nested) i_start = Max (ids + 1, its)
-      IF (config_flags%open_xe .OR. config_flags%specified .OR. &
-         config_flags%nested) i_end = Min (ide - 2, ite)
-      IF (config_flags%open_ys .OR. config_flags%specified .OR. &
-         config_flags%nested) j_start = Max (jds + 1, jts)
-      IF (config_flags%open_ye .OR. config_flags%specified .OR. &
-         config_flags%nested) j_end = Min (jde - 2, jte)
-
-      j_end = j_end + 1
-
-       ! Bottom face
-      do j = j_start, j_end
-        do i = i_start, i_end
-          turb_flux_avg = 0.5 * (turb_flux_vw(i, kts, j) +  &
-              turb_flux_vw(i, kts, j - 1))
-          tf_at_full(i, kts, j) = turb_flux_avg * 0.5 * &
-              (rho(i, kts, j) + rho(i, kts, j - 1))
-        end do
-      end do
-
-      do j = j_start, j_end
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-            turb_flux_avg = 0.5 * (turb_flux_vw(i, k, j) + turb_flux_vw(i, k, j - 1)) 
-            tf_at_full(i, k, j) = turb_flux_avg * 0.5 * (fnm(k) * (rho(i, k, j) + &
-                rho(i, k, j - 1)) + fnp(k) * (rho(i, k - 1, j) + rho(i, k - 1, j - 1)))
-          end do
-        end do
-      end do
-
-        ! Top face
-      do j = j_start, j_end
-        do i = i_start, i_end
-          tf_at_full(i, ktf + 1, j) = 0.0
-        end do
-      end do
-
-    end subroutine Prep_turb_flux_vw
-
-
     subroutine Prep_turb_flux_sx (turb_flux_x, tf_x_at_u, rho, ims, ime, jms, jme, kms, kme, &
               its, ite, jts, jte, kts, kte, i_start, i_end, j_start, j_end, ktf)
 
@@ -4407,21 +3837,13 @@
             mrdx = msftx(i, j) * rdx
             mrdy = msfty(i, j) * rdy
             tmpalpha = 0.5 * (sf_alpha(i, k - 1, j) + sf_alpha(i, k, j))
-            if (USE_HIGH_ORDER) then
-              tendency(i, k, j) = tendency(i, k, j) + ( G / (dn(k) * rdz(i, k, j)) * (   &
-                  mrdx * ((8.0 * (tf_uw_at_full(i + 1, k, j) - tf_uw_at_full(i - 1, k, j))) -  &
-                  (tf_uw_at_full(i + 2, k, j) - tf_uw_at_full(i - 2, k, j))) / 12.0 +          &
-                  mrdy * (8.0 * (tf_vw_at_full(i, k, j + 1) - tf_vw_at_full(i, k, j - 1)) -    &
-                  (tf_vw_at_full(i, k, j + 2) - tf_vw_at_full(i, k, j - 2))) / 12.0 -          &
-                  rdz(i, k, j) * (msftx(i, j) * zx_at_w(i, k, j) * (tf_uw_at_mass(i, k, j) - tf_uw_at_mass(i, k - 1, j)) +  &
-                                  msfty(i, j) * zy_at_w(i, k, j) * (tf_vw_at_mass(i, k, j) - tf_vw_at_mass(i, k - 1, j))) ) ) / (N_PBL3D * tmpalpha)
-            else
-              tendency(i, k, j) = tendency(i, k, j) + ( G / (dn(k) * rdz(i, k, j)) * (   &
-                  mrdx * (tf_uw_at_full(i + 1, k, j) - tf_uw_at_full(i, k, j)) +       &
-                  mrdy * (tf_vw_at_full(i, k, j + 1) - tf_vw_at_full(i, k, j)) -       &
-                  rdz(i, k, j) * (msftx(i, j) * zx_at_w(i, k, j) * (tf_uw_at_mass(i, k, j) - tf_uw_at_mass(i, k - 1, j)) +  &
-                                  msfty(i, j) * zy_at_w(i, k, j) * (tf_vw_at_mass(i, k, j) - tf_vw_at_mass(i, k - 1, j))) ) ) / (N_PBL3D * tmpalpha)
-            end if
+            tendency(i, k, j) = tendency(i, k, j) + ( G / (dn(k) * rdz(i, k, j)) * (   &
+                mrdx * ((8.0 * (tf_uw_at_full(i + 1, k, j) - tf_uw_at_full(i - 1, k, j))) -  &
+                (tf_uw_at_full(i + 2, k, j) - tf_uw_at_full(i - 2, k, j))) / 12.0 +          &
+                mrdy * (8.0 * (tf_vw_at_full(i, k, j + 1) - tf_vw_at_full(i, k, j - 1)) -    &
+                (tf_vw_at_full(i, k, j + 2) - tf_vw_at_full(i, k, j - 2))) / 12.0 -          &
+                rdz(i, k, j) * (msftx(i, j) * zx_at_w(i, k, j) * (tf_uw_at_mass(i, k, j) - tf_uw_at_mass(i, k - 1, j)) +  &
+                                msfty(i, j) * zy_at_w(i, k, j) * (tf_vw_at_mass(i, k, j) - tf_vw_at_mass(i, k - 1, j))) ) ) / (N_PBL3D * tmpalpha)
           end do
         end do
       end do
@@ -4574,16 +3996,9 @@
                               its, ite, jts, jte, kts, kte
 
         ! Local vars
-      integer :: i, j, k, i_start, i_end, j_start, j_end, ktf
       real, dimension (its:ite, kts:kte, jts:jte) :: du_dz_mass, dv_dz_mass, dw_dz_mass, du_dx_mass, dv_dx_mass, dw_dx_mass, &
            du_dy_mass, dv_dy_mass, dw_dy_mass, dthetav_dz_mass, dqv_dz_mass
       real, dimension (its:ite, jts:jte)          :: thetav_sk
-
-      ktf     = MIN( kte, kde-1 )
-      i_start = its
-      i_end   = MIN(ite,ide-1)
-      j_start = jts
-      j_end   = MIN(jte,jde-1)
 
       call Calc_wind_derivatives_at_mass (config_flags, u, v, w, zx, zy, du_dz_mass, dv_dz_mass, dw_dz_mass, &
           du_dx_mass, dv_dx_mass, dw_dx_mass, du_dy_mass, dv_dy_mass, dw_dy_mass, rdzw, dn, dnw, fnm, fnp, msftx, msfty, &
@@ -4594,10 +4009,6 @@
 
       call Calc_mass_var_derivatives_at_mass (thetav, thetav_sk, q2, qv, dthetav_dz_mass, dqv_dz_mass, rdzw, dn, dnw, fnm, fnp, cf1, cf2, cf3, &
           ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-
-!      call Fill_derivatives_mass_with_derivatives_face (du_dx_faces, du_dy_faces, du_dz_faces, dv_dx_faces, dv_dy_faces, dv_dz_faces, &
-!          dw_dx_faces, dw_dy_faces, dw_dz_faces, dthetav_dz_faces, du_dx_mass, du_dy_mass, du_dz_mass, dv_dx_mass, dv_dy_mass, dv_dz_mass, &
-!          dw_dx_mass, dw_dy_mass, dw_dz_mass, dthetav_dz_mass, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
       call Fill_fluxes_mass_with_fluxes_face (turb_flux_u2_face, turb_flux_v2_face, turb_flux_w2_face, turb_flux_uv_face, turb_flux_uw_face, &
           turb_flux_vw_face, turb_flux_wtheta_v_face, turb_flux_u2, turb_flux_v2, turb_flux_w2, turb_flux_uv, turb_flux_uw, turb_flux_vw, &
@@ -4645,64 +4056,70 @@
                                                                    du_dy, dv_dy, dw_dy
       real,                                        intent (in)  :: rdx, rdy, cf1, cf2, cf3
 
-      logical, parameter :: DEBUG = .false.
+        ! Local vars: u and v divided by their map factors, at u points (x derivatives) and at v points (y derivatives)
+      real, dimension (its - 1:ite + 1, kts:kte, jts - 1:jte + 1) :: u_mux, v_mvx, u_muy, v_mvy
 
-      call Calc_du_dz_at_mass (u, rdzw, dn, dnw, fnm, fnp, cf1, cf2, cf3, &
+      call Calc_duv_dz_at_mass (u, 1, 0, rdzw, dn, dnw, fnm, fnp, cf1, cf2, cf3, &
           ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dz)
 
-      call Calc_dv_dz_at_mass (v, rdzw, dn, dnw, fnm, fnp, cf1, cf2, cf3, &
+      call Calc_duv_dz_at_mass (v, 0, 1, rdzw, dn, dnw, fnm, fnp, cf1, cf2, cf3, &
           ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dv_dz)
 
-      call Calc_dw_dz_at_mass (w, rdzw, dn, dnw, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dw_dz)
+      call Calc_dw_dz_at_mass (w, rdzw, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dw_dz)
 
-      call Calc_du_dx_at_mass (u, zx, rdzw, dn, dnw, fnm, fnp, msftx, msfux, rdx, cf1, cf2, cf3, &
+      call Scale_uv_by_map_factors (config_flags, u, v, msfux, msfuy, msfvx, msfvy, u_mux, v_mvx, u_muy, v_mvy, &
+          ide, jds, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+
+      call Calc_duv_dx (.false., u_mux, msfux, zx, rdzw, dn, dnw, fnm, fnp, msftx, rdx, cf1, cf2, cf3, &
           ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dx)
 
-      call Calc_dv_dx_at_mass (v, zx, rdzw, dn, dnw, fnm, fnp, msftx, msfvx, rdx, cf1, cf2, cf3, &
+      call Calc_duv_dx (.false., v_mvx, msfvx, zx, rdzw, dn, dnw, fnm, fnp, msftx, rdx, cf1, cf2, cf3, &
           ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dv_dx)
 
-      call Calc_dw_dx_at_mass (w, zx, rdzw, msftx, rdx, ims, ime, jms, jme, kms, kme,  &
-          ide, jde, kde, its, ite, jts, jte, kts, kte, dw_dx)
+      call Calc_dw_dx (.false., w, zx, rdzw, msftx, rdx, ide, jde, kde, ims, ime, jms, jme, kms, kme, &
+          its, ite, jts, jte, kts, kte, dw_dx)
 
-      call Calc_du_dy_at_mass (u, zy, rdzw, dn, dnw, fnm, fnp, msfty, msfuy, rdy, cf1, cf2, cf3, &
-              ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dy)
+      call Calc_duv_dy (.false., u_muy, msfuy, zy, rdzw, dn, dnw, fnm, fnp, msfty, rdy, cf1, cf2, cf3, &
+          ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dy)
 
-      call Calc_dv_dy_at_mass (v, zy, rdzw, dn, dnw, fnm, fnp, msfty, msfvy, rdy, cf1, cf2, cf3, ide, jds, &
-              jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, config_flags, dv_dy)
+      call Calc_duv_dy (.false., v_mvy, msfvy, zy, rdzw, dn, dnw, fnm, fnp, msfty, rdy, cf1, cf2, cf3, &
+          ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dv_dy)
 
-      call Calc_dw_dy_at_mass (w, zy, rdzw, msfty, rdy, ims, ime, jms, jme, kms, kme, &
-              ide, jde, kde, its, ite, jts, jte, kts, kte, dw_dy)
-
-      if (DEBUG) print *, 'Done Calc_wind_derivatives_at_mass...'
+      call Calc_dw_dy (.false., w, zy, rdzw, msfty, rdy, ide, jde, kde, ims, ime, jms, jme, kms, kme, &
+          its, ite, jts, jte, kts, kte, dw_dy)
 
     end subroutine Calc_wind_derivatives_at_mass
 
 
-    subroutine Calc_du_dz_at_mass (u, rdzw, dn, dnw, fnm, fnp, cf1, cf2, cf3, &
-              ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dz)
+    subroutine Calc_duv_dz_at_mass (vel, di, dj, rdzw, dn, dnw, fnm, fnp, cf1, cf2, cf3, &
+              ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dvel_dz)
 
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !                                                      !
-      ! Purpose: Calculate du/dz                             !
-      !                                                      !
-      ! Authors: Timothy W. Juliano & Pedro A. Jimenez       !
-      !                                                      !
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !                                                                                       !
+      ! Purpose: Calculate du/dz or dv/dz at the mass points: the component is interpolated   !
+      !          to full levels at its own points, then averaged to the center of the faces   !
+      !          from its two horizontal neighbours (i, j) and (i + di, j + dj): (di, dj) =    !
+      !          (1, 0) for u, (0, 1) for v.                                                  !
+      !                                                                                       !
+      ! Authors: Timothy W. Juliano & Pedro A. Jimenez                                        !
+      !                                                                                       !
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: u, rdzw
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: vel, rdzw
+      integer,                                     intent (in)  :: di, dj
       real, dimension (kms:kme), intent (in)                    :: dn, dnw, fnm, fnp
       integer,                                     intent (in)  :: ide, jde, kde,                 &
                                                                    ims, ime, jms, jme, kms, kme,  &
                                                                    its, ite, jts, jte, kts, kte
 
-      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: du_dz
+      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dvel_dz
       real,                                        intent (in)  :: cf1, cf2, cf3
 
         ! Local vars
       integer :: i, j, k
       real    :: cft1, cft2
-      real, dimension (its-1:ite+1, kts:kte, jts-1:jte+1) :: u_at_full
-      real, dimension (its:ite, kts:kte, jts:jte)   :: u_at_face
+      real, dimension (its-1:ite+1, kts:kte, jts-1:jte+1) :: vel_at_full
+      real, dimension (its:ite, kts:kte, jts:jte)   :: vel_at_face
       integer :: ktf, ktes1, ktes2, i_start, i_end, j_start, j_end
 
         ! Define some indexes
@@ -4718,28 +4135,28 @@
       ktf = Min (kte, kde - 1)
 
         ! Interpolate from half levels to full levels
-      do j = j_start, j_end
+      do j = j_start, j_end + dj
         do k = kts + 1, ktf
-          do i = i_start, i_end + 1
-            u_at_full(i, k, j) = fnm(k) * u(i, k, j) + fnp(k) * u(i, k - 1, j)
+          do i = i_start, i_end + di
+            vel_at_full(i, k, j) = fnm(k) * vel(i, k, j) + fnp(k) * vel(i, k - 1, j)
           end do
         end do
       end do
 
-      do j = j_start, j_end
-        do i = i_start, i_end + 1
+      do j = j_start, j_end + dj
+        do i = i_start, i_end + di
             ! Surface
-          u_at_full(i, 1, j) =  cf1 * u(i, 1, j) + cf2 * u(i, 2, j) + cf3 * u(i, 3, j)
+          vel_at_full(i, 1, j) =  cf1 * vel(i, 1, j) + cf2 * vel(i, 2, j) + cf3 * vel(i, 3, j)
             ! Top face
-          u_at_full(i, kte, j) =  cft1 * u(i, ktes1, j) + cft2 * u(i, ktes2, j)
+          vel_at_full(i, kte, j) =  cft1 * vel(i, ktes1, j) + cft2 * vel(i, ktes2, j)
         end do
       end do
 
-        ! Calculate u at the center of the faces
+        ! Calculate the component at the center of the faces
       do j = j_start, j_end
         do k = kts, kte
           do i = i_start, i_end
-            u_at_face(i, k, j) = 0.5 * (u_at_full(i, k, j) + u_at_full(i + 1, k, j))
+            vel_at_face(i, k, j) = 0.5 * (vel_at_full(i, k, j) + vel_at_full(i + di, k, j + dj))
           end do
         end do
       end do
@@ -4748,111 +4165,22 @@
       do j = j_start, j_end
         do k = kts, ktf
           do i = i_start, i_end
-            du_dz(i, k, j) = (u_at_face(i, k + 1, j) - u_at_face(i, k, j)) * rdzw(i, k, j)
+            dvel_dz(i, k, j) = (vel_at_face(i, k + 1, j) - vel_at_face(i, k, j)) * rdzw(i, k, j)
           end do
         end do
       end do
 
       do j = j_start, j_end
         do i = i_start, i_end
-!            ! Surface
-!          du_dz(i, kts, j) = 0.0
             ! Top
-          du_dz(i, kte, j) = 0.0
+          dvel_dz(i, kte, j) = 0.0
         end do
       end do
 
-    end subroutine Calc_du_dz_at_mass
+    end subroutine Calc_duv_dz_at_mass
 
 
-    subroutine Calc_dv_dz_at_mass (v, rdzw, dn, dnw, fnm, fnp, cf1, cf2, cf3, &
-              ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dv_dz)
-
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !                                                      !
-      ! Purpose: Calculate dv/dz                             !
-      !                                                      !
-      ! Authors: Timothy W. Juliano & Pedro A. Jimenez       !
-      !                                                      !
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: v, rdzw
-      real, dimension (kms:kme), intent (in)                    :: dn, dnw, fnm, fnp
-      integer,                                     intent (in)  :: ide, jde, kde,                 &
-                                                                   ims, ime, jms, jme, kms, kme,  &
-                                                                   its, ite, jts, jte, kts, kte
-
-      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dv_dz
-      real,                                        intent (in)  :: cf1, cf2, cf3
-
-        ! Local vars
-      integer :: i, j, k
-      real    :: cft1, cft2
-      real, dimension (its-1:ite+1, kts:kte, jts-1:jte+1) :: v_at_full
-      real, dimension (its:ite, kts:kte, jts:jte)   :: v_at_face
-      integer :: ktf, ktes1, ktes2, i_start, i_end, j_start, j_end
-
-        ! Define some indexes
-      ktes1 = kte - 1
-      ktes2 = kte - 2
-      cft2 = - 0.5 * dnw(ktes1) / dn(ktes1)
-      cft1 = 1.0 - cft2
-
-      i_start = its
-      i_end = Min (ite, ide - 1)
-      j_start = jts
-      j_end = Min (jte, jde - 1)
-      ktf = Min (kte, kde - 1)
-
-        ! Interpolate from half levels to full levels
-      do j = j_start, j_end + 1
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-            v_at_full(i, k, j) = fnm(k) * v(i, k, j) + fnp(k) * v(i, k - 1, j)
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end + 1
-        do i = i_start, i_end
-            ! Surface
-          v_at_full(i, 1, j) =  cf1 * v(i, 1, j) + cf2 * v(i, 2, j) + cf3 * v(i, 3, j)
-            ! Top face
-          v_at_full(i, kte, j) =  cft1 * v(i, ktes1, j) + cft2 * v(i, ktes2, j)
-        end do
-      end do
-
-        ! Calculate v at the center of the faces
-      do j = j_start, j_end
-        do k = kts, kte
-          do i = i_start, i_end
-            v_at_face(i, k, j) = 0.5 * (v_at_full(i, k, j) + v_at_full(i, k, j + 1))
-          end do
-        end do
-      end do
-
-        ! Calculate derivative at the mass points
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end
-            dv_dz(i, k, j) = (v_at_face(i, k + 1, j) - v_at_face(i, k, j)) * rdzw(i, k, j)
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end
-        do i = i_start, i_end
-!            ! Surface
-!          dv_dz(i, kts, j) = 0.0
-            ! Top
-          dv_dz(i, kte, j) = 0.0
-        end do
-      end do
-
-    end subroutine Calc_dv_dz_at_mass
-
-
-    subroutine Calc_dw_dz_at_mass (w, rdzw, dn, dnw, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dw_dz)
+    subroutine Calc_dw_dz_at_mass (w, rdzw, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dw_dz)
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !                                                      !
@@ -4863,7 +4191,6 @@
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: w, rdzw
-      real, dimension (kms:kme), intent (in)                    :: dn, dnw
       integer,                                     intent (in)  :: ide, jde, kde,                 &
                                                                    ims, ime, jms, jme, kms, kme,  &
                                                                    its, ite, jts, jte, kts, kte
@@ -4872,15 +4199,9 @@
 
         ! Local vars
       integer :: i, j, k
-      real    :: cft1, cft2
-      integer :: ktf, ktes1, ktes2, i_start, i_end, j_start, j_end
+      integer :: ktf, i_start, i_end, j_start, j_end
 
         ! Define some indexes
-      ktes1 = kte - 1
-      ktes2 = kte - 2
-      cft2 = - 0.5 * dnw(ktes1) / dn(ktes1)
-      cft1 = 1.0 - cft2
-
       i_start = its
       i_end = Min (ite, ide - 1)
       j_start = jts
@@ -4898,727 +4219,12 @@
 
       do j = j_start, j_end
         do i = i_start, i_end
-!            ! Surface
-!          dw_dz(i, kts, j) = 0.0
             ! Top
           dw_dz(i, kte, j) = 0.0
         end do
       end do
 
     end subroutine Calc_dw_dz_at_mass
-
-
-    subroutine Calc_du_dx_at_mass (u, zx, rdzw, dn, dnw, fnm, fnp, msftx, msfux, rdx, cf1, cf2, cf3, &
-              ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dx)
-
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !                                                      !
-      ! Purpose: Calculate du/dx                             !
-      !                                                      !
-      ! Authors: Timothy W. Juliano & Pedro A. Jimenez       !
-      !                                                      !
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: u, zx, rdzw
-      real, dimension (kms:kme), intent (in)                    :: dn, dnw, fnm, fnp
-      real, dimension (ims:ime, jms:jme),          intent (in)  :: msftx, msfux
-      real,                                        intent (in)  :: rdx, cf1, cf2, cf3
-      integer,                                     intent (in)  :: ide, jde, kde,                 &
-                                                                   ims, ime, jms, jme, kms, kme,  &
-                                                                   its, ite, jts, jte, kts, kte
-
-      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: du_dx
-
-        ! Local vars
-      integer :: i, j, k
-      real    :: cft1, cft2, dz_dx
-      real, dimension (its:ite, jts:jte) :: msf_tx_ux
-      real, dimension (its-1:ite+1, kts:kte, jts-1:jte+1) :: du_dz_dz_dx, u_mux, u_mux_at_full
-      integer :: ktf, ktes1, ktes2, i_start, i_end, j_start, j_end
-
-      logical, parameter :: DEBUG = .false.
-
-        ! Define some indexes
-      ktes1 = kte - 1
-      ktes2 = kte - 2
-      cft2 = - 0.5 * dnw(ktes1) / dn(ktes1)
-      cft1 = 1.0 - cft2
-
-      i_start = its
-      i_end = Min (ite, ide - 1)
-      j_start = jts
-      j_end = Min (jte, jde - 1)
-      ktf = Min (kte, kde - 1)
-
-        ! Map factor at mass points multiplied by map factor at u points
-      do j = j_start, j_end
-        do i = i_start, i_end
-          msf_tx_ux(i, j) = msftx(i, j) * msfux(i, j)
-        end do
-      end do
-
-        ! Scale u component of vector to account for map projection
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end + 1
-            u_mux(i, k, j) = u(i, k, j) / msfux(i, j)
-          end do
-        end do
-      end do
-
-        ! Interpolate u_mux from half levels to full levels (u points at faces)
-      do j = j_start, j_end
-        do k = kts + 1, ktf
-          do i = i_start, i_end + 1
-            u_mux_at_full(i, k, j) = fnm(k) * u_mux(i, k, j) + fnp(k) * u_mux(i, k - 1, j)
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end
-        do i = i_start, i_end + 1
-            ! Surface
-          u_mux_at_full(i, 1, j) =  cf1 * u_mux(i, 1, j) + cf2 * u_mux(i, 2, j) + cf3 * u_mux(i, 3, j)
-            ! Top face
-          u_mux_at_full(i, kte, j) =  cft1 *  u_mux(i, ktes1, j) +  cft2 * u_mux(i, ktes2, j)
-        end do
-      end do
-
-        ! Calculate component associated with slope in sigma surfaces (du_dz_dz_dx)
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end
-              ! dz_dx = (partial z / partial x)|sigma at mass points
-            dz_dx = 0.25 * (zx(i, k, j) + zx(i + 1, k, j) + zx(i, k + 1, j) + zx(i + 1, k + 1, j))
-              ! du_dz_dz_dx = (partial u_mux / partial z)|sigma (du_dz) *
-              ! (partial z / partial x)|sigma (dz_dx)
-            du_dz_dz_dx(i, k, j) = (0.5 * (u_mux_at_full(i, k + 1, j) + u_mux_at_full(i + 1, k + 1, j)) - &
-                0.5 * (u_mux_at_full(i, k, j) + u_mux_at_full(i + 1, k, j))) * rdzw(i, k, j) * dz_dx
-
-            if (DEBUG) then
-              if ((i == 49 .or. i == 50 .or. i == 51) .and. (k == 3 .or. k == 4) .and. j == 54) then
-                print *, '-----------------------------'
-                print *, 'i = ', i, 'j = ', j, 'k = ', k
-                print *, 'dz_dx: '
-                print *, dz_dx
-                print *, 'du_dz_dz_dx: '
-                print *, du_dz_dz_dx(i, k, j)
-              end if
-            end if
-          end do
-        end do
-      end do
-
-        ! (partial u / partial x)|z = msf_tx_ux * (partial u_mux_at_full / partial x)|sigma - du_dz_dz_dx)
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end
-            du_dx(i, k, j) = msf_tx_ux(i, j) * ((u_mux(i + 1, k, j) - u_mux(i, k, j)) * rdx - du_dz_dz_dx(i, k, j))
-
-            if (DEBUG) then
-              if ((i == 49 .or. i == 50 .or. i == 51) .and. (k == 3 .or. k == 4) .and. j == 54) then
-                print *, '-----------------------------'
-                print *, 'i = ', i, 'j = ', j, 'k = ', k
-                print *, 'u_mux_at_full: '
-                print *, u_mux_at_full(i + 1, k, j), u_mux_at_full(i, k, j)
-                print *, 'rdx: '
-                print *, rdx
-                print *, 'du_dx: '
-                print *, du_dx(i, k, j)
-              end if
-            end if
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end
-        do i = i_start, i_end
-!            ! Surface
-!          du_dx(i, kts, j) = 0.0
-            ! Top
-          du_dx(i, kte, j) = 0.0
-        end do
-      end do
-
-    end subroutine Calc_du_dx_at_mass
-
-
-    subroutine Calc_dv_dx_at_mass (v, zx, rdzw, dn, dnw, fnm, fnp, msftx, msfvx, rdx, cf1, cf2, cf3, &
-              ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dv_dx)
-
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !                                                      !
-      ! Purpose: Calculate dv/dx                             !
-      !                                                      !
-      ! Authors: Timothy W. Juliano & Pedro A. Jimenez       !
-      !                                                      !
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: v, zx, rdzw
-      real, dimension (kms:kme),                   intent (in)  :: dn, dnw, fnm, fnp
-      real, dimension (ims:ime, jms:jme),          intent (in)  :: msftx, msfvx
-      real,                                        intent (in)  :: rdx, cf1, cf2, cf3
-      integer,                                     intent (in)  :: ide, jde, kde,                 &
-                                                                   ims, ime, jms, jme, kms, kme,  &
-                                                                   its, ite, jts, jte, kts, kte
-
-      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dv_dx
-
-        ! Local vars
-      integer :: i, j, k
-      real    :: dz_dx, cft1, cft2
-      real, dimension (its:ite, jts:jte) :: msf_tx_vx
-      real, dimension (its - 1:ite + 1, kts:kte, jts - 1:jte + 1) :: dv_dz_dz_dx, v_mvx, v_mvx_at_full
-      integer :: ktf, ktes1, ktes2, i_start, i_end, j_start, j_end
-
-        ! Define some indexes
-      ktes1 = kte - 1
-      ktes2 = kte - 2
-      cft2 = - 0.5 * dnw(ktes1) / dn(ktes1)
-      cft1 = 1.0 - cft2
-
-      i_start = its
-      i_end = Min (ite, ide - 1)
-      j_start = jts
-      j_end = Min (jte, jde - 1)
-      ktf = Min (kte, kde - 1)
-
-        ! Map factor at mass points multiplied by map factor at v points
-      do j = j_start, j_end
-        do i = i_start, i_end
-          msf_tx_vx(i, j) = msftx(i, j) * msfvx(i, j)
-        end do
-      end do
-
-        ! Scale v component of vector to account for map projection (at u points)
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end + 1
-            v_mvx(i, k, j) = 0.25 * (v(i, k, j) + v(i, k, j + 1) + v(i - 1, k, j) + v(i - 1, k, j + 1)) / msfvx(i, j)
-          end do
-        end do
-      end do
-
-        ! Interpolate v_mvx from half levels to full levels (u points at faces)
-      do j = j_start, j_end
-        do k = kts + 1, ktf
-          do i = i_start, i_end + 1
-            v_mvx_at_full(i, k, j) = fnm(k) * v_mvx(i, k, j) + fnp(k) * v_mvx(i, k - 1, j)
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end
-        do i = i_start, i_end + 1
-            ! Surface
-          v_mvx_at_full(i, 1, j) = cf1 * v_mvx(i, 1, j) + cf2 * v_mvx(i, 2, j) + cf3 * v_mvx(i, 3, j)
-            ! Top face
-          v_mvx_at_full(i, kte, j) = cft1 * v_mvx(i, ktes1, j) + cft2 * v_mvx(i, ktes2, j)
-        end do
-      end do
-
-        ! Calculate component associated with slope in sigma surfaces (dv_dz_dz_dx)
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end
-              ! dz_dx = (partial z / partial x)|sigma at mass points
-            dz_dx = 0.25 * (zx(i, k, j) + zx(i + 1, k, j) + zx(i, k + 1, j) + zx(i + 1, k + 1, j))
-              ! dv_dz_dz_dx = (partial v_mvx / partial z)|sigma (dv_dz) *
-              ! (partial z / partial x)|sigma (dz_dx)
-            dv_dz_dz_dx(i, k, j) = (0.5 * (v_mvx_at_full(i, k + 1, j) + v_mvx_at_full(i + 1, k + 1, j)) - &
-                0.5 * (v_mvx_at_full(i, k, j) + v_mvx_at_full(i + 1, k, j))) * rdzw(i, k, j) * dz_dx
-          end do
-        end do
-      end do
-
-        ! (partial v / partial x)|z = msf_tx_vx * (partial v_mvx_at_full / partial x)|sigma - dv_dz_dz_dx)
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end
-            dv_dx(i, k, j) = msf_tx_vx(i, j) * ((v_mvx(i + 1, k, j) - v_mvx(i, k, j)) * rdx - dv_dz_dz_dx(i, k, j))
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end
-        do i = i_start, i_end
-!          dv_dx(i, 1, j) =  0.0
-          dv_dx(i, kte, j) =  0.0
-        end do
-      end do
-
-    end subroutine Calc_dv_dx_at_mass
-
-
-    subroutine Calc_dw_dx_at_mass (w, zx, rdzw, msftx, rdx, ims, ime, jms, jme, kms, kme,  &
-              ide, jde, kde, its, ite, jts, jte, kts, kte, dw_dx)
-
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !                                                      !
-      ! Purpose: Calculate dw/dx                             !
-      !                                                      !
-      ! Authors: Timothy W. Juliano & Pedro A. Jimenez       !
-      !                                                      !
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: w, zx, rdzw
-      real, dimension (ims:ime, jms:jme),          intent (in)  :: msftx
-      real,                                        intent (in)  :: rdx
-      integer,                                     intent (in)  :: ide, jde, kde,                 &
-                                                                   ims, ime, jms, jme, kms, kme,  &
-                                                                   its, ite, jts, jte, kts, kte
-
-      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dw_dx
-
-        ! Local vars
-      integer :: i, j, k, i_offset
-      real    :: dz_dx
-      real, dimension (its:ite, jts:jte) :: msf_tx_tx
-      real, dimension (its - 2:ite + 2, kts:kte, jts - 2:jte + 2) :: dw_dz_dz_dx, w_mtx, w_mtx_at_half
-      integer :: ktf, i_start, i_end, j_start, j_end
-
-      logical, parameter :: DEBUG = .false.
-
-        ! Define some indexes
-      i_start = its
-      i_end = Min (ite, ide - 1)
-      j_start = jts
-      j_end = Min (jte, jde - 1)
-      ktf = Min (kte, kde - 1)
-
-        ! Map factor at mass points squared
-      do j = jts, jte
-        do i = its, ite
-          msf_tx_tx(i, j) = msftx(i, j) * msftx(i, j)
-        end do
-      end do
-
-        ! Scale w component of vector to account for map projection
-      if (USE_HIGH_ORDER) then
-        i_offset = 2
-      else
-        i_offset = 1
-      end if
-      do j = j_start, j_end
-        do k = kts, kte
-          do i = i_start - i_offset, i_end + i_offset
-            w_mtx(i, k, j) = w(i, k, j) / msftx(i, j)
-          end do
-        end do
-      end do
-
-        ! Average w_mtx to the mass points (half levels)
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start - i_offset, i_end + i_offset
-            w_mtx_at_half(i, k, j) = 0.5 * (w_mtx(i, k, j) + w_mtx(i, k + 1, j))
-          end do
-        end do
-      end do
-
-        ! Calculate component associated with slope in sigma surfaces (dw_dz_dz_dx)
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end
-              ! dz_dx = (partial z / partial x)|sigma at mass points
-            dz_dx = 0.25 * (zx(i, k, j) + zx(i + 1, k, j) + zx(i, k + 1, j) + zx(i + 1, k + 1, j))
-              ! dw_dz_dz_dx = (partial w_mtx / partial z)|sigma (dw_dz) *
-              ! (partial z / partial x)|sigma (dz_dx)
-            dw_dz_dz_dx(i, k, j) = (w_mtx(i, k + 1, j) - w_mtx(i, k, j)) * rdzw(i, k, j) * dz_dx
-          end do
-        end do
-      end do
-
-        ! (partial w / partial x)|z = msf_tx_tx * (partial w_mtx / partial x)|sigma - dw_dz_dz_dx)
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end
-
-            if (DEBUG) then
-              if (i == 3 .and. k == 2 .and. j == 3) then
-                print *, '-----------------------------'
-                print *, 'ims = ', ims, 'ime = ', ime
-                print *, 'i_start = ', i_start, 'i_end = ', i_end
-                print *, 'jms = ', jms, 'jme = ', jme
-                print *, 'j_start = ', j_start, 'j_end = ', j_end
-                print *, 'Row: '
-                print *, w(:, k, j)
-                print *, 'Column: '
-                print *, w(i, k, :)
-              end if
-            end if
-
-            if (USE_HIGH_ORDER) then
-              dw_dx(i, k, j) = msf_tx_tx(i, j) * (rdx * (8.0 * (w_mtx_at_half(i + 1, k, j) - w_mtx_at_half(i - 1, k, j)) - (w_mtx_at_half(i + 2, k, j) - w_mtx_at_half(i - 2, k, j)) ) / 12.0 - dw_dz_dz_dx(i, k, j))
-            else
-              dw_dx(i, k, j) = msf_tx_tx(i, j) * (rdx * 0.5 * (w_mtx_at_half(i + 1, k, j) - w_mtx_at_half(i - 1, k, j)) - dw_dz_dz_dx(i, k, j))
-            end if
-
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end
-        do i = i_start, i_end
-!          dw_dx(i, 1, j) = 0.0
-          dw_dx(i, kte, j) = 0.0
-        end do
-      end do
-
-    end subroutine Calc_dw_dx_at_mass
-
-
-    subroutine Calc_du_dy_at_mass (u, zy, rdzw, dn, dnw, fnm, fnp, msfty, msfuy, rdy, cf1, cf2, cf3, &
-              ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dy)
-
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !                                                      !
-      ! Purpose: Calculate du/dy                             !
-      !                                                      !
-      ! Authors: Timothy W. Juliano & Pedro A. Jimenez       !
-      !                                                      !
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: u, zy, rdzw
-      real, dimension (kms:kme),                   intent (in)  :: dn, dnw, fnm, fnp
-      real, dimension (ims:ime, jms:jme),          intent (in)  :: msfty, msfuy
-      real,                                        intent (in)  :: rdy, cf1, cf2, cf3
-      integer,                                     intent (in)  :: ide, jde, kde,                 &
-                                                                   ims, ime, jms, jme, kms, kme,  &
-                                                                   its, ite, jts, jte, kts, kte
-
-      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: du_dy
-
-        ! Local vars
-      integer :: i, j, k
-      real    :: dz_dy, cft1, cft2
-      real, dimension (its:ite, jts:jte) :: msf_ty_uy
-      real, dimension (its - 1:ite + 1, kts:kte, jts - 1:jte + 1) :: du_dz_dz_dy, u_muy, u_muy_at_full
-      integer :: ktf, ktes1, ktes2, i_start, i_end, j_start, j_end
-
-      logical, parameter :: DEBUG = .false.
-
-        ! Define some indexes
-      ktes1 = kte - 1
-      ktes2 = kte - 2
-      cft2 = - 0.5 * dnw(ktes1) / dn(ktes1)
-      cft1 = 1.0 - cft2
-
-      i_start = its
-      i_end = Min (ite, ide - 1)
-      j_start = jts
-      j_end = Min (jte, jde - 1)
-      ktf = Min (kte, kde - 1)
-
-        ! Map factor at mass points multiplied by map factor at v points
-      do j = j_start, j_end
-        do i = i_start, i_end
-          msf_ty_uy(i, j) = msfty(i, j) * msfuy(i, j)
-        end do
-      end do
-
-        ! Scale u component of vector to account for map projection (at v points)
-      do j = j_start, j_end + 1
-        do k = kts, ktf
-          do i = i_start, i_end
-            u_muy(i, k, j) = 0.25 * (u(i, k, j) + u(i + 1, k, j) + u(i, k, j - 1) + u(i + 1, k, j - 1)) / msfuy(i, j)
-          end do
-        end do
-      end do
-
-        ! Interpolate u_muy from half levels to full levels (v points at faces)
-      do j = j_start, j_end + 1
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-            u_muy_at_full(i, k, j) = fnm(k) * u_muy(i, k, j) + fnp(k) * u_muy(i, k - 1, j)
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end + 1
-        do i = i_start, i_end
-            ! Surface
-          u_muy_at_full(i, 1, j) =  cf1 * u_muy(i, 1, j) + cf2 * u_muy(i, 2, j) + cf3 * u_muy(i, 3, j)
-            ! Top face
-          u_muy_at_full(i, kte, j) = cft1 * u_muy(i, ktes1, j) +  cft2 * u_muy(i, ktes2, j)
-        end do
-      end do
-
-        ! Calculate component associated with slope in sigma surfaces (du_dz_dz_dy)
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end
-              ! dz_dy = (partial z / partial y)|sigma at mass points
-            dz_dy = 0.25 * (zy(i, k, j) + zy(i, k, j + 1) + zy(i, k + 1, j) + zy(i, k + 1, j + 1))
-              ! du_dz_dz_dy = (partial u_muy / partial z)|sigma (du_dz) *
-              ! (partial z / partial y)|sigma (dz_dy)
-            du_dz_dz_dy(i, k, j) = (0.5 * (u_muy_at_full(i, k + 1, j) + u_muy_at_full(i, k + 1, j + 1)) - &
-                0.5 * (u_muy_at_full(i, k, j) + u_muy_at_full(i, k, j + 1))) * rdzw(i, k, j) * dz_dy
-
-            if (DEBUG) then
-              if (i == 54 .and. (k == 3 .or. k == 4) .and. (j == 59 .or. j == 60 .or. j == 61 .or. j == 62)) then
-                print *, '-----------------------------'
-                print *, 'i = ', i, 'j = ', j, 'k = ', k
-                print *, 'dz_dy: '
-                print *, dz_dy
-                print *, 'du_dz_dz_dy: '
-                print *, du_dz_dz_dy(i, k, j)
-              end if
-            end if
-
-          end do
-        end do
-      end do
-
-        ! (partial u / partial y)|z = msf_ty_uy * (partial u_muy_at_full / partial y)|sigma - du_dz_dz_dy)
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end
-            du_dy(i, k, j) = msf_ty_uy(i, j) * ((u_muy(i, k, j + 1) - u_muy(i, k, j)) * rdy - du_dz_dz_dy(i, k, j))
-
-            if (DEBUG) then
-              if (i == 54 .and. (k == 3 .or. k == 4) .and. (j == 59 .or. j == 60 .or. j == 61 .or. j == 62)) then
-                print *, '-----------------------------'
-                print *, 'i = ', i, 'j = ', j, 'k = ', k
-                print *, 'u_muy_at_full: '
-                print *, u_muy_at_full(i, k, j + 1), u_muy_at_full(i, k, j)
-                print *, 'rdy: '
-                print *, rdy
-                print *, 'du_dy: '
-                print *, du_dy(i, k, j)
-              end if
-            end if
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end
-        do i = i_start, i_end
-            ! Surface
-!          du_dy(i, kts, j) = 0.0
-            ! Top face
-          du_dy(i, kte, j) = 0.0
-        end do
-      end do
-
-    end subroutine Calc_du_dy_at_mass
-
-
-    subroutine Calc_dv_dy_at_mass (v, zy, rdzw, dn, dnw, fnm, fnp, msfty, msfvy, rdy, cf1, cf2, cf3, ide, jds, &
-              jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, config_flags, dv_dy)
-
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !                                                      !
-      ! Purpose: Calculate dv/dy                             !
-      !                                                      !
-      ! Authors: Timothy W. Juliano & Pedro A. Jimenez       !
-      !                                                      !
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: v, zy, rdzw
-      real, dimension (kms:kme),                   intent (in)  :: dn, dnw, fnm, fnp
-      real, dimension (ims:ime, jms:jme),          intent (in)  :: msfty, msfvy
-      real,                                        intent (in)  :: rdy, cf1, cf2, cf3
-      integer,                                     intent (in)  :: ide, jds, jde, kde,            &
-                                                                   ims, ime, jms, jme, kms, kme,  &
-                                                                   its, ite, jts, jte, kts, kte
-      type (grid_config_rec_type),                 intent (in)  :: config_flags
-
-      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dv_dy
-
-        ! Local vars
-      integer :: i, j, k
-      real    :: dz_dy, cft1, cft2
-      real, dimension (its:ite, jts:jte) :: msf_ty_vy
-      real, dimension (its - 1:ite + 1, kts:kte, jts - 1:jte + 1) :: dv_dz_dz_dy, v_mvy, v_mvy_at_full
-      integer :: ktf, ktes1, ktes2, i_start, i_end, j_start, j_end
-
-        ! Define some indexes
-      ktes1 = kte - 1
-      ktes2 = kte - 2
-      cft2 = - 0.5 * dnw(ktes1) / dn(ktes1)
-      cft1 = 1.0 - cft2
-
-      i_start = its
-      i_end = Min (ite, ide - 1)
-      j_start = jts
-      j_end = Min (jte, jde - 1)
-      ktf = Min (kte, kde - 1)
-
-        ! Map factor at mass points multiplied by map factor at v points
-      do j = j_start, j_end
-        do i = i_start, i_end
-          msf_ty_vy(i, j) = msfty(i, j) * msfvy(i, j)
-        end do
-      end do
-
-        ! Scale v component of vector to account for map projection
-      do j = j_start, j_end + 1
-        do k = kts, ktf
-          do i = i_start, i_end
-              ! Because msfvy at the poles will be undefined (1./0.),
-              ! we will have trouble. But we are OK since v at the
-              ! poles is 0., and that takes precedence in this case
-            if ((config_flags%polar) .and. ((j == jds) .or. (j == jde))) then
-              v_mvy(i, k, j) = 0.0
-            else
-              v_mvy(i, k, j) = v(i, k, j) / msfvy(i, j)
-            end if
-          end do
-        end do
-      end do
-
-        ! Interpolate v_mvy from half levels to full levels (v points at faces)
-      do j = j_start, j_end + 1
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-            v_mvy_at_full(i, k, j) = fnm(k) * v_mvy(i, k, j) + fnp(k) * v_mvy(i, k - 1, j)
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end + 1
-        do i = i_start, i_end
-            ! Surface
-          v_mvy_at_full(i, 1, j) =  cf1 * v_mvy(i, 1, j) + cf2 * v_mvy(i, 2, j) + cf3 * v_mvy(i, 3, j)
-            ! Top face
-          v_mvy_at_full(i, kte, j) = cft1 * v_mvy(i, ktes1, j) + cft2 * v_mvy(i, ktes2, j)
-        end do
-      end do
-
-        ! Calculate component associated with slope in sigma surfaces (dv_dz_dz_dy)
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end
-              ! dz_dy = (partial z / partial y)|sigma at mass points
-            dz_dy = 0.25 * (zy(i, k, j) + zy(i, k, j + 1) + zy(i, k + 1, j) + zy(i, k + 1, j + 1))
-              ! dv_dz_dz_dy = (partial v_mvy / partial z)|sigma (dv_dz) *
-              ! (partial z / partial y)|sigma (dz_dy)
-            dv_dz_dz_dy(i, k, j) = (0.5 * (v_mvy_at_full(i, k + 1, j) + v_mvy_at_full(i, k + 1, j + 1)) - &
-                0.5 * (v_mvy_at_full(i, k, j) + v_mvy_at_full(i, k, j + 1))) * rdzw(i, k, j) * dz_dy
-          end do
-        end do
-      end do
-
-        ! (partial v / partial y)|z = msf_ty_vy * (partial v_mvy_at_full / partial y)|sigma - dv_dz_dz_dy)
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end
-            dv_dy(i, k, j) = msf_ty_vy(i, j) * ((v_mvy(i, k, j + 1) - v_mvy(i, k, j)) * rdy - dv_dz_dz_dy(i, k, j))
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end
-        do i = i_start, i_end
-            ! Surface
-!          dv_dy(i, 1, j) = 0.0
-            ! Top face
-          dv_dy(i, kte, j) = 0.0
-        end do
-      end do
-
-    end subroutine Calc_dv_dy_at_mass
-
-
-    subroutine Calc_dw_dy_at_mass (w, zy, rdzw, msfty, rdy, ims, ime, jms, jme, kms, kme, &
-              ide, jde, kde, its, ite, jts, jte, kts, kte, dw_dy)
-
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !                                                      !
-      ! Purpose: Calculate dw/dy                             !
-      !                                                      !
-      ! Authors: Timothy W. Juliano & Pedro A. Jimenez       !
-      !                                                      !
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: w, zy, rdzw
-      real, dimension (ims:ime, jms:jme),          intent (in)  :: msfty
-      real,                                        intent (in)  :: rdy
-      integer,                                     intent (in)  :: ide, jde, kde,                 &
-                                                                   ims, ime, jms, jme, kms, kme,  &
-                                                                   its, ite, jts, jte, kts, kte
-
-      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dw_dy
-
-        ! Local vars
-      integer :: i, j, k, j_offset
-      real    :: dz_dy
-      real, dimension (its:ite, jts:jte) :: msf_ty_ty
-      real, dimension (its - 2:ite + 2, kts:kte, jts - 2:jte + 2) :: dw_dz_dz_dy, w_mty, w_mty_at_half
-      integer :: ktf, i_start, i_end, j_start, j_end
-
-        ! Define some indexes
-      i_start = its
-      i_end = Min (ite, ide - 1)
-      j_start = jts
-      j_end = Min (jte, jde - 1)
-      ktf = Min (kte, kde - 1)
-
-        ! Map factor at mass points squared
-      do j = jts, jte
-        do i = its, ite
-          msf_ty_ty(i, j) = msfty(i, j) * msfty(i, j)
-        end do
-      end do
-
-        ! Scale w component of vector to account for map projection
-      if (USE_HIGH_ORDER) then
-        j_offset = 2
-      else
-        j_offset = 1
-      end if
-      do j = j_start - j_offset, j_end + j_offset
-        do k = kts, kte
-          do i = i_start, i_end
-            w_mty(i, k, j) = w(i, k, j) / msfty(i, j)
-          end do
-        end do
-      end do
-
-        ! Average w_mty to the mass points (half levels)
-      do j = j_start - j_offset, j_end + j_offset
-        do k = kts, ktf
-          do i = i_start, i_end
-            w_mty_at_half(i,k,j) = 0.5 * (w_mty(i, k, j) + w_mty(i, k + 1, j))
-          end do
-        end do
-      end do
-
-        ! Calculate component associated with slope in sigma surfaces (dw_dz_dz_dy)
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end
-              ! dz_dy = (partial z / partial y)|sigma at mass points
-            dz_dy = 0.25 * (zy(i, k, j) + zy(i, k, j + 1) + zy(i, k + 1, j) + zy(i, k + 1, j + 1))
-              ! dw_dz_dz_dy = (partial w_mty / partial z)|sigma (dw_dz) *
-              ! (partial z / partial y)|sigma (dz_dy)
-            dw_dz_dz_dy(i, k, j) = (w_mty(i, k + 1, j) - w_mty(i, k, j)) * rdzw(i, k, j) * dz_dy
-          end do
-        end do
-      end do
-
-        ! (partial w / partial y)|z = msf_ty_ty * (partial w_mty / partial y)|sigma - dw_dz_dz_dy)
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end
-            if (USE_HIGH_ORDER) then
-              dw_dy(i, k, j) = msf_ty_ty(i, j) * (rdy * (8.0 * (w_mty_at_half(i, k, j + 1) - w_mty_at_half(i, k, j - 1)) - (w_mty_at_half(i, k, j + 2) - w_mty_at_half(i, k, j - 2)) ) / 12.0 - dw_dz_dz_dy(i, k, j))
-            else
-              dw_dy(i, k, j) = msf_ty_ty(i, j) * (rdy * 0.5 * (w_mty_at_half(i, k, j + 1) - w_mty_at_half(i, k, j - 1)) - dw_dz_dz_dy(i, k, j))
-            end if
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end
-        do i = i_start, i_end
-!          dw_dy(i, kts, j) = 0.0
-          dw_dy(i, kte, j) = 0.0
-        end do
-      end do
-
-    end subroutine Calc_dw_dy_at_mass
 
 
     subroutine Calc_surface_thetav (tsk, t2, q2, psfc, thetav_sk, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
@@ -5675,8 +4281,6 @@
       real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dthetav_dz, dqv_dz
       real,                                        intent (in)  :: cf1, cf2, cf3
 
-      logical, parameter :: DEBUG = .false.
-
         ! Calculate thetav derivatives
       call Calc_dmassvar_dz_at_mass (var=thetav, thetav_sk=thetav_sk, rdzw=rdzw, dn=dn, dnw=dnw, fnm=fnm, fnp=fnp, &
           cf1=cf1, cf2=cf2, cf3=cf3, ide=ide, jde=jde, kde=kde, ims=ims, ime=ime, jms=jms, jme=jme, kms=kms, kme=kme, &
@@ -5686,8 +4290,6 @@
       call Calc_dmassvar_dz_at_mass (var=qv, q2=q2, rdzw=rdzw, dn=dn, dnw=dnw, fnm=fnm, fnp=fnp, &
           cf1=cf1, cf2=cf2, cf3=cf3, ide=ide, jde=jde, kde=kde, ims=ims, ime=ime, jms=jms, jme=jme, kms=kms, kme=kme, &
           its=its, ite=ite, jts=jts, jte=jte, kts=kts, kte=kte, dvar_dz=dqv_dz)
-
-      if (DEBUG) print *, 'Done Calc_mass_var_derivatives_at_mass...'
 
     end subroutine Calc_mass_var_derivatives_at_mass
 
@@ -5768,79 +4370,12 @@
 
       do j = j_start, j_end
         do i = i_start, i_end
-!            ! Surface
-!          dvar_dz(i, kts, j) = 0.0
             ! Top
           dvar_dz(i, kte, j) = 0.0
         end do
       end do
 
     end subroutine Calc_dmassvar_dz_at_mass
-
-
-    subroutine Fill_derivatives_mass_with_derivatives_face (du_dx_faces, du_dy_faces, du_dz_faces, dv_dx_faces, dv_dy_faces, dv_dz_faces, &
-              dw_dx_faces, dw_dy_faces, dw_dz_faces, dthetav_dz_faces, du_dx_mass, du_dy_mass, du_dz_mass, dv_dx_mass, dv_dy_mass, dv_dz_mass, &
-              dw_dx_mass, dw_dy_mass, dw_dz_mass, dthetav_dz_mass, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-
-      implicit none
-
-      real, dimension (its:ite, kts:kte, jts:jte), intent (in)   :: du_dx_faces, du_dy_faces, du_dz_faces, &
-                                                                    dv_dx_faces, dv_dy_faces, dv_dz_faces, &
-                                                                    dw_dx_faces, dw_dy_faces, dw_dz_faces, &
-                                                                    dthetav_dz_faces
-      real, dimension (its:ite, kts:kte, jts:jte), intent (out)  :: du_dx_mass, du_dy_mass, du_dz_mass, &
-                                                                    dv_dx_mass, dv_dy_mass, dv_dz_mass, &
-                                                                    dw_dx_mass, dw_dy_mass, dw_dz_mass, &
-                                                                    dthetav_dz_mass
-      integer,                                     intent (in)   :: ide, jde, kde,                  &
-                                                                    ims, ime, jms, jme, kms, kme,   &
-                                                                    its, ite, jts, jte, kts, kte
-
-        ! Local vars
-      integer :: i, j, k
-      integer :: ktf, i_start, i_end, j_start, j_end
-
-        ! Define some indexes
-      i_start = its
-      i_end = Min (ite, ide - 1)
-      j_start = jts
-      j_end = Min (jte, jde - 1)
-      ktf = Min (kte, kde - 1)
-
-!      k = kts
-!      do j = j_start, j_end
-!          do i = i_start, i_end
-!            du_dx_mass(i, k, j) = du_dx_faces(i, k + 1, j)
-!            du_dy_mass(i, k, j) = du_dy_faces(i, k + 1, j)
-!            du_dz_mass(i, k, j) = du_dz_faces(i, k + 1, j)
-!            dv_dx_mass(i, k, j) = dv_dx_faces(i, k + 1, j)
-!            dv_dy_mass(i, k, j) = dv_dy_faces(i, k + 1, j)
-!            dv_dz_mass(i, k, j) = dv_dz_faces(i, k + 1, j)
-!            dw_dx_mass(i, k, j) = dw_dx_faces(i, k + 1, j)
-!            dw_dy_mass(i, k, j) = dw_dy_faces(i, k + 1, j)
-!            dw_dz_mass(i, k, j) = dw_dz_faces(i, k + 1, j)
-!            dthetav_dz_mass(i, k, j) = dthetav_dz_faces(i, k + 1, j)
-!          end do
-!      end do
-
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end
-            du_dx_mass(i, k, j) = 0.5 * ( du_dx_faces(i, k + 1, j) + du_dx_faces(i, k, j) )
-            du_dy_mass(i, k, j) = 0.5 * ( du_dy_faces(i, k + 1, j) + du_dy_faces(i, k, j) )
-            du_dz_mass(i, k, j) = 0.5 * ( du_dz_faces(i, k + 1, j) + du_dz_faces(i, k, j) )
-            dv_dx_mass(i, k, j) = 0.5 * ( dv_dx_faces(i, k + 1, j) + dv_dx_faces(i, k, j) )
-            dv_dy_mass(i, k, j) = 0.5 * ( dv_dy_faces(i, k + 1, j) + dv_dy_faces(i, k, j) )
-            dv_dz_mass(i, k, j) = 0.5 * ( dv_dz_faces(i, k + 1, j) + dv_dz_faces(i, k, j) )
-            dw_dx_mass(i, k, j) = 0.5 * ( dw_dx_faces(i, k + 1, j) + dw_dx_faces(i, k, j) )
-            dw_dy_mass(i, k, j) = 0.5 * ( dw_dy_faces(i, k + 1, j) + dw_dy_faces(i, k, j) )
-            dw_dz_mass(i, k, j) = 0.5 * ( dw_dz_faces(i, k + 1, j) + dw_dz_faces(i, k, j) )
-            dthetav_dz_mass(i, k, j) = 0.5 * ( dthetav_dz_faces(i, k + 1, j) + dthetav_dz_faces(i, k, j) )
-          end do
-        end do
-      end do
-
-    end subroutine Fill_derivatives_mass_with_derivatives_face
 
 
     subroutine Fill_fluxes_mass_with_fluxes_face (tff_u2, tff_v2, tff_w2, tff_uv, tff_uw, tff_vw, tff_wthv, &
@@ -5951,12 +4486,8 @@
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: q_sq_prog
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: l_boulac
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: l_master_at_mass
-        ! intent(in), not intent(out): Calc_q_sq_rhs only reads these, passing them to
-        ! Calc_q_sq_shear* and Calc_q_sq_buoyancy where they are intent(in). Declaring them
-        ! intent(out) leaves the dummies undefined on entry per the standard; it happens to
-        ! work today only because the actual arguments are contiguous full arrays, so gfortran
-        ! passes by reference and skips the copy-in. One non-contiguous actual argument at any
-        ! call site would silently turn these into garbage.
+        ! intent(in), not intent(out): only read here (by Calc_q_sq_shear* and Calc_q_sq_buoyancy);
+        ! intent(out) would leave them undefined on entry, garbage for a non-contiguous actual.
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: turb_flux_u2, turb_flux_v2, turb_flux_w2, &
                                                                      turb_flux_uv, turb_flux_uw, turb_flux_vw, &
                                                                      turb_flux_wtheta_v
@@ -5976,7 +4507,6 @@
       real, dimension (its:ite, kts:kte, jts:jte) :: l_dissip
         ! slope factor for the production pairing (pbl3d_sf_pair), see Calc_q_sq_shear
       real, dimension (its-1:ite, kts:kte, jts-1:jte) :: sf_alpha_pair
-      logical, parameter :: DEBUG = .false.
       real (kind = kind(q_sq_tend)) :: N_PBL3D
       real :: q_sq_sfc, q_sq_sfc_fac
       logical :: approx_pair
@@ -6051,20 +4581,15 @@
           ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, i_start, i_end, j_start, j_end, ktf)
 
         ! Surface q^2 condition (pbl3d_sfc_qsq_bc >= 1; SFC_QSQ_BC in module_pbl3d_my). The
-        ! closure has no lower boundary condition on q^2: the ground flux in
-        ! Calc_q_sq_vertical_diffusion is zero and Fill_q_sq_with_q_sq_prog only floors the
-        ! ground face at Q_SQ_MIN, so q^2 next to the wall is whatever local production
-        ! leaves there (measured 2026-08-27: 0.17 of the surface-layer value by day,
-        ! DECISIONS 14:30). The MYNN family holds its lowest level at the neutral
-        ! surface-layer equilibrium q^2 = B1^(2/3) u*^2 (MY82 Eq. 47b; 6.5 u*^2 for the
-        ! MY82 constant set, B1 = 16.6; MYNN's B1 = 24 gives 8.3 u*^2). Here that value is
-        ! a floor on the lowest prognostic level, delivered as
-        ! a source that closes the gap within one model step: q_sq_prog is the temporary
-        ! copy q_sq_tmp, so only the tendency reaches the dynamics. Not divided by
+        ! closure has no lower boundary condition on q^2 (zero ground flux in
+        ! Calc_q_sq_vertical_diffusion, Q_SQ_MIN floor in Fill_q_sq_with_q_sq_prog). As in the
+        ! MYNN family, the lowest prognostic level is held at or above the neutral surface-layer
+        ! equilibrium q^2 = B1^(2/3) u*^2 (MY82 Eq. 47b; 6.5 u*^2 for the MY82 set, B1 = 16.6),
+        ! delivered as a source that closes the gap within one model step: q_sq_prog is the
+        ! temporary copy q_sq_tmp, so only the tendency reaches the dynamics. Not divided by
         ! N_PBL3D on purpose: the first sub-step closes the gap, later sub-steps see none.
-        ! Never reduces q^2. The energy it adds is not paid by the resolved flow (it is
-        ! the surface-layer source MYNN has as well) and shows in the energy-closure
-        ! residual diagnostic.
+        ! Never reduces q^2. The energy it adds is not paid by the resolved flow and shows in
+        ! the energy-closure residual diagnostic.
       if (SFC_QSQ_BC >= 1) then
         q_sq_sfc_fac = b_1 ** (2.0 / 3.0)
         do j = j_start, j_end
@@ -6083,22 +4608,9 @@
         do k = kts, ktf
           do i = i_start, i_end
             q_sq_tend(i, k, j) = max ( q_sq_tend(i, k, j), -(c1(k) * mut(i,j) + c2(k)) * max ( 0.0 , N_PBL3D * q_sq_prog(i, k, j) ) / dt )
-
-            if (DEBUG) call Debug_q_sq_tend
           end do
         end do
       end do
-
-      contains
-
-      subroutine Debug_q_sq_tend
-
-        if (i == I_TO_TEST .and. j == J_TO_TEST ) then
-          print *, '------------------------------------------'
-          print *, '  q_sq_tend final = ', q_sq_tend(i, k, j)
-        end if
-
-      end subroutine Debug_q_sq_tend
 
     end subroutine Calc_q_sq_rhs
 
@@ -6137,7 +4649,6 @@
       real, dimension (its:ite, kts:kte, jts:jte) :: q_sq_vdiff_hold
       real, dimension (kms:kme) :: kq, alo, aup, bb, rr, cp, dp, qs   ! implicit branch, one column
       real :: den
-      logical, parameter :: DEBUG = .false.
 
         ! S_q = 0.2 (MY82) unless pbl3d_sq says otherwise; see SQ_DIFF in module_pbl3d_my.
       Sq = SQ_DIFF
@@ -6192,15 +4703,6 @@
           do i = i_start, i_end
             q_sq_vdiff_hold(i, k, j) = - ( Sq * l_master(i, k, j) * Sqrt(q_sq_face(i, k, j)) * &
                                          ( q_sq_mass(i, k, j) - q_sq_mass(i, k - 1, j) ) * rdz(i, k, j) )
-
-            if ( DEBUG .and. i == I_TO_TEST .and. j == J_TO_TEST ) then
-              print *, '------------------------------------------'
-              print *, '  i =', i, 'j = ', j, 'k = ', k
-              print *, '  l_master = ', l_master(i, k, j)
-              print *, '  q_sq_face = ', q_sq_face(i, k, j)
-              print *, '  q_sq_mass = ', q_sq_mass(i, k, j), q_sq_mass(i, k - 1, j)
-              print *, '  q_sq_vdiff_hold = ', q_sq_vdiff_hold(i, k, j)
-            end if
           end do
         end do
       end do
@@ -6219,11 +4721,6 @@
             q_sq_vdiff_tend_tmp = ( G / dnw(k) ) *  &
                                   ( q_sq_vdiff_hold(i, k + 1, j) - q_sq_vdiff_hold(i, k, j) )
             q_sq_tend(i, k, j) = q_sq_tend(i, k, j) + ( q_sq_vdiff_tend_tmp / N_PBL3D )
-
-            if ( DEBUG .and. i == I_TO_TEST .and. j == J_TO_TEST ) then
-              print *, '  q_sq_vdiff_tend = ', q_sq_vdiff_tend(i, k, j)
-              print *, '  q_sq_tend = ', q_sq_tend(i, k, j)
-            end if 
           end do
         end do
       end do
@@ -6285,19 +4782,16 @@
 
         ! Local vars
       integer :: i, j, k, ktes1, ktes2
-      real :: cft1, cft2, tmpzx, rdzu, rdzv, dz_dx, dz_dy, &
+      real :: rdzu, rdzv, dz_dx, dz_dy, &
               dq_sq_dz_dz_dx, dq_sq_dz_dz_dy, mrdx, mrdy
       real :: q_sq_hdiff_tend_tmp
       real, parameter :: Sq = 0.20
-      real, dimension (its:ite, kts:kte, jts:jte) :: q_sq_hdiff_hold
       real, dimension (its-1:ite+1, kts:kte, jts-1:jte+1) :: xkxavg, q_sq_at_full_u, q_sq_at_full_v, &
            dq_sq_dx_at_u, dq_sq_dy_at_v, dq_sq_dx_at_w, dq_sq_dy_at_w, zx_at_mass, zy_at_mass
 
         ! Define some indexes
       ktes1 = kte - 1
       ktes2 = kte - 2
-      cft2 = - 0.5 * dnw(ktes1) / dn(ktes1)
-      cft1 = 1.0 - cft2
 
         !!! Do dq_sq/dx first !!!
 
@@ -6494,7 +4988,6 @@
 
         ! Local vars
       integer :: i, j, k
-      logical, parameter :: DEBUG = .false.
 
       do j = j_start, j_end
         do k = kts, ktf
@@ -6502,13 +4995,6 @@
             q_sq_shear_tend(i, k, j) = -2. * ( turb_flux_uw(i, k, j) * du_dz(i, k, j) +  &
                                                turb_flux_vw(i, k, j) * dv_dz(i, k, j) )
             q_sq_tend(i, k, j) = q_sq_tend(i, k, j) + ( (c1(k) * mut(i, j) + c2(k)) * q_sq_shear_tend(i, k, j) / N_PBL3D )
-
-            if ( DEBUG .and. i == I_TO_TEST .and. j == J_TO_TEST ) then
-              print *, '------------------------------------------'
-              print *, '  i =', i, 'j = ', j, 'k = ', k
-              print *, '  q_sq_shear_tend = ', q_sq_shear_tend(i, k, j)
-              print *, '  q_sq_tend = ', q_sq_tend(i, k, j)
-            end if
           end do
         end do
       end do
@@ -6530,9 +5016,7 @@
         ! sf_alpha (Calc_htend_du/dv/dw), so the kinetic energy the resolved flow actually
         ! loses to the horizontal stresses is the untapered production divided by the same
         ! factor. pair = 1 credits the q^2 budget with that amount; pair = 0 keeps the
-        ! untapered production (pre-2026-08-21 behaviour). Measured 2026-08-21 (jobs
-        ! 8477283-8477286): with pair = 0 about 90 % of the horizontal-pairing production,
-        ! a third of the total, is never paid by the resolved flow (OPEN_ISSUES A10).
+        ! untapered production, most of which the resolved flow never pays (OPEN_ISSUES A10).
       real, dimension (its-1:ite, kts:kte, jts-1:jte), intent (in) :: sf_alpha
       integer,                                         intent (in) :: pair
         ! The six of the nine production terms that pair with the HORIZONTAL turbulent
@@ -6558,7 +5042,6 @@
 
         ! Local vars
       integer :: i, j, k
-      logical, parameter :: DEBUG = .false.
 
       do j = j_start, j_end
         do k = kts, ktf
@@ -6598,13 +5081,6 @@
                                                turb_flux_vw(i, k, j) * dw_dy(i, k, j) )
             end if
             q_sq_tend(i, k, j) = q_sq_tend(i, k, j) + ( (c1(k) * mut(i, j) + c2(k)) * q_sq_shear_tend(i, k, j) / N_PBL3D )
-
-            if ( DEBUG .and. i == I_TO_TEST .and. j == J_TO_TEST ) then
-              print *, '------------------------------------------'
-              print *, '  i =', i, 'j = ', j, 'k = ', k
-              print *, '  q_sq_shear_tend = ', q_sq_shear_tend(i, k, j)
-              print *, '  q_sq_tend = ', q_sq_tend(i, k, j)
-            end if
           end do
         end do
       end do
@@ -6631,20 +5107,12 @@
 
         ! Local vars
       integer :: i, j, k
-      logical, parameter :: DEBUG = .false.
 
       do j = j_start, j_end
         do k = kts, ktf
           do i = i_start, i_end
             q_sq_buoyancy_tend(i, k, j) = 2. * G_OVER_TREF * turb_flux_wtheta_v(i, k, j)
             q_sq_tend(i, k, j) = q_sq_tend(i, k, j) + ( (c1(k) * mut(i, j) + c2(k)) * q_sq_buoyancy_tend(i, k, j) / N_PBL3D )
-
-            if ( DEBUG .and. i == I_TO_TEST .and. j == J_TO_TEST ) then
-              print *, '------------------------------------------'
-              print *, '  i =', i, 'j = ', j, 'k = ', k
-              print *, '  q_sq_buoyancy_tend = ', q_sq_buoyancy_tend(i, k, j)
-              print *, '  q_sq_tend = ', q_sq_tend(i, k, j)
-            end if
           end do
         end do
       end do
@@ -6667,8 +5135,6 @@
 
         ! Local vars
       integer :: i, j, k
-      real :: l
-      logical, parameter :: DEBUG = .false.
 
       do j = j_start, j_end
         do k = kts, ktf
@@ -6706,28 +5172,13 @@
 
         ! Local vars
       integer :: i, j, k
-      logical, parameter :: DEBUG = .false.
 
       do j = j_start, j_end
         do k = kts, ktf
           do i = i_start, i_end
-            if ( DEBUG ) then
-              print *, '------------------------------------------'
-              print *, '  i =', i, 'j = ', j, 'k = ', k
-              print *, '  q_sq = ', q_sq(i, k, j)
-              print *, '  l_master = ', l_master(i, k, j)
-              print *, '  b1 = ', b_1
-            end if
             q_sq_dissip_tend(i, k, j) = 2. * ( q_sq(i, k, j) ** 1.5 ) /  &
                                              ( b_1 * l_dissip(i, k, j) )
             q_sq_tend(i, k, j) = q_sq_tend(i, k, j) - ( (c1(k) * mut(i, j) + c2(k)) * q_sq_dissip_tend(i, k, j) / N_PBL3D )
-
-            if ( DEBUG ) then
-              print *, '------------------------------------------'
-              print *, '  i =', i, 'j = ', j, 'k = ', k
-              print *, '  q_sq_dissip_tend = ', q_sq_dissip_tend(i, k, j)
-              print *, '  q_sq_tend = ', q_sq_tend(i, k, j)
-            end if
           end do
         end do
       end do
@@ -6905,8 +5356,6 @@
 
       implicit none
 
-      logical, parameter :: DEBUG = .false.
-
       logical, intent(in) :: restart
       integer, intent(in) :: pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt, pbl3d_nsteps
       integer, intent(in) :: pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt
@@ -6915,7 +5364,7 @@
       integer, intent(in) :: pbl3d_sfc_qsq_bc, pbl3d_sq_implicit, pbl3d_t2_scalar
       real, dimension(ims:ime, jms:jme),          intent(inout) :: l0_asym
       character (len = *), intent(in) :: pbl3d_constants
-      integer :: i, j, k, itf, jtf, ktf
+      integer :: itf, jtf, ktf
       integer, intent(in) :: ids, ide, jds, jde, kds, kde, &
                              ims, ime, jms, jme, kms, kme, &
                              its, ite, jts, jte, kts, kte
@@ -6935,20 +5384,16 @@
           turb_flux_uqv, turb_flux_vqv, turb_flux_wqv
 
         ! Local vars
-      real, dimension (kts:kte) :: sqv
       real, dimension (ims:ime, kms:kme, jms:jme) :: rdz, rdzw, z_at_mass, z_at_w, dz
-      real, dimension (its:ite, kts:kte, jts:jte) :: sm, sh, rif
       real, dimension (its:ite, kts:kte, jts:jte) :: du_dz, dv_dz, &
                                                      dthetav_dz, dqv_dz
       real, dimension (ims:ime, kms:kme, jms:jme) :: rho
-      integer :: i_start, i_end, j_start, j_end, init_iter
+      integer :: i_start, i_end, j_start, j_end
 
         ! Defines mass point at faces indexes
       jtf = Min (jte, jde - 1)
       itf = Min (ite, ide - 1)
       ktf = Min (kte, kde - 1)
-
-      if (DEBUG) write (OUTPUT_UNIT, *) "ktf = ", ktf, "itf = ", itf, "jtf = ", jtf , "kte = ", kte, "kde = ", kde, "kme = ", kme
 
       i_start = its
       i_end = Min (ite, ide - 1)
@@ -6964,9 +5409,9 @@
       end if
 
         ! Calc vertical derivatives
-      call Calc_du_dz (u, rdz, dnw, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dz)
+      call Calc_dvel_dz (u, 1, 0, 0, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dz)
 
-      call Calc_dv_dz (v, rdz, dnw, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dv_dz)
+      call Calc_dvel_dz (v, 0, 0, 1, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dv_dz)
 
       call Calc_dmassvar_dz (thetav, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dthetav_dz)
 
@@ -6981,8 +5426,6 @@
           q_sq, q_sq_prog, q_sq_vdiff, q_sq_hdiff, q_sq_shear, q_sq_buoyancy, q_sq_dissip, l_master, l_master_at_mass, l0_asym, turb_flux_u2, turb_flux_v2, &
           turb_flux_w2, turb_flux_uv, turb_flux_uw, turb_flux_vw, turb_flux_utheta_v, turb_flux_vtheta_v, turb_flux_wtheta_v, turb_flux_theta2_v, &
           turb_flux_utheta, turb_flux_vtheta, turb_flux_wtheta, turb_flux_uqv, turb_flux_vqv, turb_flux_wqv)
-
-      if (DEBUG) print *, 'Done Set_init_turb_state_driver...'
 
     end subroutine Set_init_turb_state_driver
 
