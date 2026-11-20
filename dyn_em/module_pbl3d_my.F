@@ -131,16 +131,16 @@
       ! DT_DN is the model time step, set by the driver each call.
     real,    public    :: DN_MAX = 0.0
     real,    save      :: DT_DN  = 0.0
-      ! Acceptance threshold on the raw condition number of the moist 4x4 flux system
-      ! (pbl3d_moist_cond_max; 0 disables = previous behaviour bit for bit). Why it is
-      ! needed: the moist system has a determinant pole on the unstable side (N tau ~ 0.27
-      ! at the 2026-08-23 blow-up cell); dgesvx equilibrates (FACT = 'E'), so its rcond
-      ! describes the equilibrated matrix and stays moderate across the pole, and the
-      ! Cauchy-Schwarz bounds below diagnose <qv'^2> from the same solution, so both
-      ! existing gates pass while the accepted fluxes reach 10^3-10^4 x physical
-      ! (OPEN_ISSUES A14). Rejecting on the raw condition number feeds the existing
-      ! length-scale escalation: shorter l lowers gh, which moves the system back inside
-      ! its validity range -- the same argument Tier 1 and the heat-side back-off rest on.
+      ! Acceptance threshold on the condition number of the equilibrated moist 4x4 flux
+      ! system (the 1/rcond of dgesvx with FACT = 'E'; the internal solver computes the
+      ! same quantity exactly), pbl3d_moist_cond_max; 0 disables = previous behaviour bit
+      ! for bit. Why it is needed: the moist system has a determinant pole on the unstable
+      ! side (N tau ~ 0.27 at the 2026-08-23 blow-up cell). There the condition number
+      ! rises but stays below the general bound COND_MAX = 1e8, and the Cauchy-Schwarz
+      ! bounds below diagnose <qv'^2> from the same solution, so both existing gates pass
+      ! while the accepted fluxes reach 10^3-10^4 x physical (OPEN_ISSUES A14). Rejecting
+      ! above a much lower threshold feeds the existing length-scale escalation: shorter l
+      ! lowers gh, which moves the system back inside its validity range (as in Tier 1).
       ! Measured distribution (345.7M solves): 97.9 %% below 1e2; every flux >= 500 x
       ! physical sat above 8e4. Recommended value when enabled: 1e4.
     real,    public    :: MOIST_COND_MAX
@@ -2105,8 +2105,8 @@
             tf_uqv, tf_vqv, tf_wqv, tf_qvtv, mat_cond_moist, solve_ok)
 
         if (solve_ok) then
-            ! dgesvx's rcond refers to the equilibrated matrix and stays moderate at the
-            ! moist system's determinant pole; the raw condition number does not (A14).
+            ! mat_cond_moist is the condition number of the equilibrated matrix; at the moist
+            ! system's determinant pole it stays below COND_MAX but exceeds this gate (A14).
             ! Reject a near-singular solve and let the escalation shorten l.
             ! MOIST_COND_MAX = 0 restores the previous acceptance exactly.
           if (MOIST_COND_MAX <= 0.0 .or. mat_cond_moist < MOIST_COND_MAX) exit attempts_moist
