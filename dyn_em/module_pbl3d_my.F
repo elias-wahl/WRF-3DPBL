@@ -192,7 +192,7 @@
     integer, parameter :: SP = REAL32
     integer, parameter :: DP = REAL64
     integer, parameter :: SOLVER_PREC = DP
-    integer, parameter :: WORKING_PREC = SP
+    integer, parameter :: WORKING_PREC = Kind (1.0)   ! the model's REAL: REAL32, or REAL64 in -r8 builds
 
       ! Model constants
     real         :: a_1, b_2, c_1, c_2, c_3, alpha, lambda
