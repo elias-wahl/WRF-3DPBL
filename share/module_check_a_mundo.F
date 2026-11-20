@@ -447,6 +447,22 @@
          count_fatal_error = count_fatal_error + 1
       END IF
 
+      IF ( model_config_rec % pbl3d_approx_limits .LT. 0 .OR. &
+           model_config_rec % pbl3d_approx_limits .GT. 1 ) THEN
+         wrf_err_message = '--- ERROR: pbl3d_approx_limits must be 0 (previous behaviour) or 1 ' // &
+                           '(the full form''s strain limit on l for the approximate form, pbl3d_opt = 1)'
+         CALL wrf_debug ( 0, TRIM( wrf_err_message ) )
+         count_fatal_error = count_fatal_error + 1
+      END IF
+      DO i = 1, model_config_rec % max_dom
+         IF ( model_config_rec % pbl3d_approx_limits .EQ. 1 .AND. &
+              model_config_rec % pbl3d_opt(i)        .NE. 1 ) THEN
+            wrf_err_message = '--- WARNING: pbl3d_approx_limits = 1 acts only with pbl3d_opt = 1; ' // &
+                              'it does nothing on a domain with another pbl3d_opt'
+            CALL wrf_message ( TRIM( wrf_err_message ) )
+         END IF
+      ENDDO
+
       IF ( model_config_rec % pbl3d_l0_min .LT. 0.0 ) THEN
          wrf_err_message = '--- ERROR: pbl3d_l0_min must be >= 0 (m; 0 disables the floor on l0)'
          CALL wrf_debug ( 0, TRIM( wrf_err_message ) )

@@ -1696,7 +1696,8 @@ The following are for observation nudging:
                                                 ! (Durbin 1996 realizability time scale limit). Only used by
                                                 ! pbl3d_opt = 2, where it caps the length scale at
                                                 ! l <= (2*pbl3d_sk_eps_max/b_1) * q/|S| before the 10x10 system is
-                                                ! assembled. Homogeneous-shear equilibrium is about 3.3, so the
+                                                ! assembled, and by pbl3d_opt = 1 with pbl3d_approx_limits = 1.
+                                                ! Homogeneous-shear equilibrium is about 3.3, so the
                                                 ! default of 6.0 is deliberately about twice as permissive.
                                                 ! Lower it to tighten the weak-equilibrium assumption; it is the
                                                 ! binding control on l in the nocturnal boundary layer, in slope
@@ -1713,6 +1714,13 @@ The following are for observation nudging:
                                                 ! validity range. Inactive in level-2 equilibrium, where it would
                                                 ! only bind above Ri ~ 1. Set a very large value to disable.
                                                 ! Must be > 0.
+ pbl3d_approx_limits                 = 0,       ! 3D PBL approximate form (pbl3d_opt = 1) only; ignored otherwise
+                                                  0 = previous behaviour (default): no strain limit on l
+                                                  1 = the strain limit of the full form, l <= (2*pbl3d_sk_eps_max/b_1)
+                                                      * q/|S| with |S| from all nine resolved velocity gradients and
+                                                      pbl3d_limiter_opt as for pbl3d_opt = 2, at every face that carries
+                                                      turbulence; l_master and l_boulac are scaled together and the
+                                                      ratio is written to PBL3D_T1_RATIO
  pbl3d_qsq_opt(max_dom)              = 1,       ! 3D PBL level 2 q^2 closure. Only read when pbl3d_opt = 2;
                                                 ! the approximate closure (pbl3d_opt = 1) always uses its own 1D form.
                                                   1 = Self-consistent full 3D production (default). q^2 is closed on

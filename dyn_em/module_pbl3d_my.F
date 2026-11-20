@@ -310,7 +310,8 @@
             turb_flux_uqg, turb_flux_vqg, turb_flux_wqg, turb_flux_uqnc, turb_flux_vqnc, turb_flux_wqnc, &
             turb_flux_uqnr, turb_flux_vqnr, turb_flux_wqnr, turb_flux_uqni, turb_flux_vqni, turb_flux_wqni, &
             turb_flux_uqnwfa, turb_flux_vqnwfa, turb_flux_wqnwfa, turb_flux_uqnifa, turb_flux_vqnifa, turb_flux_wqnifa, &
-            u, v, w, thetav, rho, ust, hfx, qfx, rmol)
+            u, v, w, thetav, rho, ust, hfx, qfx, rmol, &
+            du_dx, du_dy, dv_dx, dv_dy, dw_dx, dw_dy, dw_dz, pbl3d_t1_ratio)
 
           ! Diagnose_fluxes definitions at the faces that carry turbulence: |S| from the nine
           ! resolved velocity gradients (computed for both forms), S k / eps = |S| b_1 l / (2 q)
@@ -739,6 +740,65 @@
     end subroutine Cap_l_diffusion_number
 
 
+    subroutine Cap_l_strain_pbl_approx (q_sq, l_master, l_boulac, du_dx, du_dy, du_dz, dv_dx, dv_dy, dv_dz, &
+              dw_dx, dw_dy, dw_dz, dthetav_dz, t1_ratio, &
+              ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+
+        ! Strain limit of the full form (Tier 1 in Diagnose_fluxes) for the approximate form,
+        ! pbl3d_approx_limits = 1: l <= (2 SK_EPS_MAX / b_1) q / |S|, i.e. S k / eps <= SK_EPS_MAX
+        ! with k = q^2 / 2 and eps = q^3 / (b_1 l), scaled by Sqrt (Sm_neutral / Sm_l2 (Ri)) for
+        ! LIMITER_OPT = 2 as there. Same faces as the full form (kts+1..ktf where q^2 is above its
+        ! floor), the same |S| from all nine face velocity gradients, and q = Sqrt (q_sq), the
+        ! velocity scale the approximate fluxes use. One master length scale, as in Calc_fluxes:
+        ! l_master and l_boulac are scaled by the same ratio, which is stored in PBL3D_T1_RATIO,
+        ! and the top face is recopied from ktf afterwards.
+
+      implicit none
+
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: q_sq
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (inout) :: l_master, l_boulac, t1_ratio
+      real, dimension (its:ite, kts:kte, jts:jte), intent (in)    :: du_dx, du_dy, du_dz, dv_dx, dv_dy, dv_dz, &
+                                                                     dw_dx, dw_dy, dw_dz, dthetav_dz
+      integer,                                     intent (in)    :: ids, ide, jds, jde, kds, kde, &
+                                                                     ims, ime, jms, jme, kms, kme, &
+                                                                     its, ite, jts, jte, kts, kte
+      integer :: i, j, k, ktf
+      real    :: strain_mag, cap_eff, l_use, ratio
+
+      ktf = Min (kte, kde - 1)
+
+      do j = jts, Min (jte, jde - 1)
+        do k = kts + 1, ktf
+          do i = its, Min (ite, ide - 1)
+            if (q_sq(i, k, j) > Q_SQ_MIN) then
+              strain_mag = Sqrt ( 2.0 * (du_dx(i, k, j) ** 2 + dv_dy(i, k, j) ** 2 + dw_dz(i, k, j) ** 2)      &
+                                + (du_dy(i, k, j) + dv_dx(i, k, j)) ** 2 + (du_dz(i, k, j) + dw_dx(i, k, j)) ** 2 &
+                                + (dv_dz(i, k, j) + dw_dy(i, k, j)) ** 2 )
+              cap_eff = SK_EPS_MAX
+              if (LIMITER_OPT == 2) cap_eff = SK_EPS_MAX * Sqrt (sm_neutral_l2                                 &
+                  / Max (Sm_level2_local (du_dz(i, k, j), dv_dz(i, k, j), dthetav_dz(i, k, j)), 0.02))
+              l_use = Min (l_master(i, k, j), 2.0 * cap_eff / b_1 * Sqrt (q_sq(i, k, j)) / Max (strain_mag, STRAIN_MIN))
+              ratio = l_use / Max (l_master(i, k, j), Tiny (l_use))
+              t1_ratio(i, k, j) = ratio
+              l_master(i, k, j) = l_master(i, k, j) * ratio
+              l_boulac(i, k, j) = l_boulac(i, k, j) * ratio
+            end if
+          end do
+        end do
+      end do
+
+        ! Calc_l_*_master_algebra copied ktf up to kte before the limit; Fill_l_mass_with_l_face
+        ! reads kte (as after Tier 1 in Calc_fluxes)
+      do j = jts, Min (jte, jde - 1)
+        do i = its, Min (ite, ide - 1)
+          l_master(i, kte, j) = l_master(i, ktf, j)
+          l_boulac(i, kte, j) = l_boulac(i, ktf, j)
+        end do
+      end do
+
+    end subroutine Cap_l_strain_pbl_approx
+
+
     subroutine Calc_l_messinger_master_algebra (pbl3d_l0_opt, q_sq, dz, rdzw, rmol, wthv, dthetav_dz, l_master, &
               l_boulac, l0_asym, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
@@ -987,7 +1047,8 @@
               turb_flux_uqg, turb_flux_vqg, turb_flux_wqg, turb_flux_uqnc, turb_flux_vqnc, turb_flux_wqnc, &
               turb_flux_uqnr, turb_flux_vqnr, turb_flux_wqnr, turb_flux_uqni, turb_flux_vqni, turb_flux_wqni, &
               turb_flux_uqnwfa, turb_flux_vqnwfa, turb_flux_wqnwfa, turb_flux_uqnifa, turb_flux_vqnifa, turb_flux_wqnifa, &
-              u, v, w, thetav, rho, ust, hfx, qfx, rmol)
+              u, v, w, thetav, rho, ust, hfx, qfx, rmol, &
+              du_dx, du_dy, dv_dx, dv_dy, dw_dx, dw_dy, dw_dz, pbl3d_t1_ratio)
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !                                                                   !
@@ -1012,9 +1073,12 @@
       real,                                        intent (in)    :: cf1, cf2, cf3, dt, dx, dy
       real, dimension (its:ite, kts:kte, jts:jte), intent (in)    :: du_dz, dv_dz, dthetav_dz, dqv_dz, &
           dqc_dz, dqr_dz, dqi_dz, dqs_dz, dqg_dz, dqnc_dz, dqnr_dz, dqni_dz, dqnwfa_dz, dqnifa_dz
+        ! The remaining face velocity gradients, for |S| in the strain limit (pbl3d_approx_limits)
+      real, dimension (its:ite, kts:kte, jts:jte), intent (in)    :: du_dx, du_dy, dv_dx, dv_dy, dw_dx, dw_dy, dw_dz
       real, dimension (ims:ime, kms:kme, jms:jme), intent (inout) :: q_sq
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: q_sq_prog
       real, dimension (ims:ime, kms:kme, jms:jme), intent (inout) :: l_master, l_boulac
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (inout) :: pbl3d_t1_ratio
       real, dimension (ims:ime, jms:jme),          intent (inout) :: l0_asym
       real, dimension (ims:ime, kms:kme, jms:jme), intent (out)   :: turb_flux_u2, &
           turb_flux_v2, turb_flux_w2, turb_flux_uv, turb_flux_uw, turb_flux_vw,        &
@@ -1075,6 +1139,12 @@
 
         ! Apply scale-aware tapering
       call Make_scale_aware (Psig_bl, l_master, l_boulac, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+
+        ! Strain limit of the full form on l (pbl3d_approx_limits = 1, pbl3d_opt = 1 only)
+      if (config_flags%pbl3d_approx_limits == 1 .and. config_flags%pbl3d_opt == 1) &
+        call Cap_l_strain_pbl_approx (q_sq, l_master, l_boulac, du_dx, du_dy, du_dz, dv_dx, dv_dy, dv_dz, &
+            dw_dx, dw_dy, dw_dz, dthetav_dz, pbl3d_t1_ratio, &
+            ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
         ! Diagnose momentum, heat, moisture fluxes for pbl approx
       if ( config_flags%pbl3d_prog .eq. 0 ) then  ! For level 2 model, no need for realizability
