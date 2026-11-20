@@ -4536,8 +4536,6 @@
 
       do j = j_start, j_end
         do i = i_start, i_end
-!            ! Surface
-!          du_dz(i, kts, j) = 0.0
             ! Top
           du_dz(i, kte, j) = 0.0
         end do
@@ -4623,8 +4621,6 @@
 
       do j = j_start, j_end
         do i = i_start, i_end
-!            ! Surface
-!          dv_dz(i, kts, j) = 0.0
             ! Top
           dv_dz(i, kte, j) = 0.0
         end do
@@ -4679,8 +4675,6 @@
 
       do j = j_start, j_end
         do i = i_start, i_end
-!            ! Surface
-!          dw_dz(i, kts, j) = 0.0
             ! Top
           dw_dz(i, kte, j) = 0.0
         end do
@@ -4788,8 +4782,6 @@
 
       do j = j_start, j_end
         do i = i_start, i_end
-!            ! Surface
-!          du_dx(i, kts, j) = 0.0
             ! Top
           du_dx(i, kte, j) = 0.0
         end do
@@ -4897,7 +4889,6 @@
 
       do j = j_start, j_end
         do i = i_start, i_end
-!          dv_dx(i, 1, j) =  0.0
           dv_dx(i, kte, j) =  0.0
         end do
       end do
@@ -4989,7 +4980,6 @@
 
       do j = j_start, j_end
         do i = i_start, i_end
-!          dw_dx(i, 1, j) = 0.0
           dw_dx(i, kte, j) = 0.0
         end do
       end do
@@ -5097,7 +5087,6 @@
       do j = j_start, j_end
         do i = i_start, i_end
             ! Surface
-!          du_dy(i, kts, j) = 0.0
             ! Top face
           du_dy(i, kte, j) = 0.0
         end do
@@ -5214,7 +5203,6 @@
       do j = j_start, j_end
         do i = i_start, i_end
             ! Surface
-!          dv_dy(i, 1, j) = 0.0
             ! Top face
           dv_dy(i, kte, j) = 0.0
         end do
@@ -5307,7 +5295,6 @@
 
       do j = j_start, j_end
         do i = i_start, i_end
-!          dw_dy(i, kts, j) = 0.0
           dw_dy(i, kte, j) = 0.0
         end do
       end do
@@ -5458,8 +5445,6 @@
 
       do j = j_start, j_end
         do i = i_start, i_end
-!            ! Surface
-!          dvar_dz(i, kts, j) = 0.0
             ! Top
           dvar_dz(i, kte, j) = 0.0
         end do

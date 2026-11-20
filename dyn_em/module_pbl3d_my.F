@@ -474,23 +474,8 @@
       real, dimension (kts:kte) :: z_at_walls_1d
       integer :: i, j, k, i_start, i_end, j_start, j_end, ktf
       real, parameter :: SMALL_VAL = 0.00001
-!      real, parameter :: alpha_1 = 0.23
-        ! Original MYNN vals
-!      real, parameter :: alpha_2 = 1.0
-!      real, parameter :: alpha_3 = 5.0
-!      real, parameter :: alpha_4 = 100.0
-!      real, parameter :: cns = 2.7
-        ! Operational MYNN vals
-!      real, parameter :: alpha_2 = 0.65
-!      real, parameter :: alpha_3 = 3.0
-!      real, parameter :: alpha_4 = 20.0
-!      real, parameter :: cns = 2.3
-        ! Experimental MYNN vals
-!      real, parameter :: alpha_2 = 0.3
-!      real, parameter :: alpha_3 = 2.0
-!      real, parameter :: alpha_4 = 10.0
-!      real, parameter :: cns = 3.5
-        ! 3DTKE MYNN vals
+        ! 3DTKE MYNN vals. Sets listed in earlier versions (alpha_2, alpha_3, alpha_4, cns; alpha_1 = 0.23):
+        ! original MYNN 1.0, 5.0, 100.0, 2.7; operational 0.65, 3.0, 20.0, 2.3; experimental 0.3, 2.0, 10.0, 3.5
       real, parameter :: alpha_1 = 0.8
       real, parameter :: alpha_2 = 1.0
       real, parameter :: alpha_3 = 1.0
@@ -3897,22 +3882,6 @@
                 pmz2 = 1.0 / (1.0 - cphm_unst * zet) ** 0.25
                 phz = prt / sqrt(1.0 - cphh_unst * zet) ! cphh_unst does not match businger
               end if
-
-!              pmz1 = psim(i, j) - zet ! This will always appear in the denomenator
-!              pmz2 = psim(i, j)
-!              phz = psih(i, j)
-
-!              if (pmz1 .le. 0.0) then
-!                write(90, *) '-----------------------------'
-!                write(90, *) 'i =', i, 'j = ', j, 'k = ', k
-!                write(90, *) 'kz = ', kz
-!                write(90, *) 'zet = ', zet
-!                write(90, *) 'elv = ', elv
-!                write(90, *) 'pmz1 = ', pmz1
-!                write(90, *) 'pmz1 - zet = ', pmz1 - zet
-!                write(90, *) 'pmz2 = ', pmz2
-!                write(90, *) 'phz = ', phz
-!              end if
 
             end if
 
