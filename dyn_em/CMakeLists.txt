@@ -28,6 +28,8 @@ target_sources(
                   module_force_scm.F
                   module_first_rk_step_part1.F
                   module_first_rk_step_part2.F
+                  module_pbl3d.F
+                  module_pbl3d_my.F
                   module_avgflx_em.F
                   module_sfs_nba.F
                   module_convtrans_prep.F
