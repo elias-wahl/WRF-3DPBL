@@ -778,54 +778,66 @@
       real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: du_dx, dv_dy, dw_dz, du_dy, dv_dx, &
                                                                    dw_dx, du_dz, dw_dy, dv_dz
 
-      call Calc_du_dz (u, rdz, dnw, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dz)
+        ! Local vars: u and v divided by their map factors, at u points (x derivatives) and at v points (y derivatives)
+      real, dimension (its - 1:ite + 1, kts:kte, jts - 1:jte + 1) :: u_mux, v_mvx, u_muy, v_mvy
 
-      call Calc_dv_dz (v, rdz, dnw, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dv_dz)
+      call Calc_dvel_dz (u, 1, 0, 0, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dz)
 
-      call Calc_dw_dz (w, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dw_dz)
+      call Calc_dvel_dz (v, 0, 0, 1, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dv_dz)
 
-      call Calc_du_dx (u, zx, rdz, dn, dnw, fnm, fnp, msftx, msfux, rdx, cf1, cf2, cf3,     &
-          ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dx  )
+      call Calc_dvel_dz (w, 0, 1, 0, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dw_dz)
 
-      call Calc_dv_dx (v, zx, rdz, dn, dnw, fnm, fnp, msftx, msfvx, rdx, cf1, cf2, cf3, ide, jde,  &
-          kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, config_flags, dv_dx     )
+      call Scale_uv_by_map_factors (config_flags, u, v, msfux, msfuy, msfvx, msfvy, u_mux, v_mvx, u_muy, v_mvy, &
+          ide, jds, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
-      call Calc_dw_dx (w, zx, rdz, msftx, rdx, ims, ime, jms, jme, kms, kme,  &
-          ide, jde, kde, its, ite, jts, jte, kts, kte, config_flags, dw_dx    )
+      call Calc_duv_dx (.true., u_mux, msfux, zx, rdz, dn, dnw, fnm, fnp, msftx, rdx, cf1, cf2, cf3, &
+          ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dx)
 
-      call Calc_du_dy (u, zy, rdz, dn, dnw, fnm, fnp, msfty, msfuy, rdy, cf1, cf2, cf3,     &
-          ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dy  )
+      call Calc_duv_dx (.true., v_mvx, msfvx, zx, rdz, dn, dnw, fnm, fnp, msftx, rdx, cf1, cf2, cf3, &
+          ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dv_dx)
 
-      call Calc_dv_dy (v, zy, rdz, dn, dnw, fnm, fnp, msfty, msfvy, rdy, cf1, cf2, cf3, ide, jds,    &
-          jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, config_flags, dv_dy  )
+      call Calc_dw_dx (.true., w, zx, rdz, msftx, rdx, ide, jde, kde, ims, ime, jms, jme, kms, kme, &
+          its, ite, jts, jte, kts, kte, dw_dx)
 
-      call Calc_dw_dy (w, zy, rdz, msfty, rdy, ims, ime, jms, jme, kms, kme,  &
-          ide, jde, kde, its, ite, jts, jte, kts, kte, dw_dy                  )
+      call Calc_duv_dy (.true., u_muy, msfuy, zy, rdz, dn, dnw, fnm, fnp, msfty, rdy, cf1, cf2, cf3, &
+          ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dy)
+
+      call Calc_duv_dy (.true., v_mvy, msfvy, zy, rdz, dn, dnw, fnm, fnp, msfty, rdy, cf1, cf2, cf3, &
+          ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dv_dy)
+
+      call Calc_dw_dy (.true., w, zy, rdz, msfty, rdy, ide, jde, kde, ims, ime, jms, jme, kms, kme, &
+          its, ite, jts, jte, kts, kte, dw_dy)
 
     end subroutine Calc_wind_derivatives
 
 
-    subroutine Calc_du_dz (u, rdz, dnw, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dz)
+    subroutine Calc_dvel_dz (vel, di, dk, dj, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, &
+              dvel_dz)
 
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !                                                      !
-      ! Purpose: Calculate du/dz                             !
-      !                                                      !
-      ! Authors: Pedro A. Jimenez & Timothy W. Juliano       !
-      !                                                      !
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !                                                                                        !
+      ! Purpose: Calculate du/dz, dv/dz or dw/dz at the center of the faces. The component is  !
+      !          first averaged to the mass points from its two staggered neighbours (i, k, j) !
+      !          and (i + di, k + dk, j + dj): (di, dk, dj) = (1, 0, 0) for u, (0, 0, 1) for v, !
+      !          (0, 1, 0) for w.                                                              !
+      !                                                                                        !
+      ! Authors: Pedro A. Jimenez & Timothy W. Juliano                                         !
+      !                                                                                        !
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: u, rdz
-      real, dimension (kms:kme),                   intent (in)  :: dnw
+      implicit none
+
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: vel, rdz
+      integer,                                     intent (in)  :: di, dk, dj
       integer,                                     intent (in)  :: ide, jde, kde,                 &
                                                                    ims, ime, jms, jme, kms, kme,  &
                                                                    its, ite, jts, jte, kts, kte
 
-      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: du_dz
+      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dvel_dz
 
         ! Local vars
       integer :: i, j, k
-      real, dimension (its:ite, kts:kte, jts:jte) :: u_at_mass
+      real, dimension (its:ite, kts:kte, jts:jte) :: vel_at_mass
       integer :: ktf, i_start, i_end, j_start, j_end
 
         ! Define some indexes
@@ -835,11 +847,11 @@
       j_end = Min (jte, jde - 1)
       ktf = Min (kte, kde - 1)
 
-        ! Unstagger U
+        ! Velocity component at mass points
       do j = j_start, j_end
         do k = kts, ktf
           do i = i_start, i_end
-            u_at_mass(i, k, j) = 0.5 * (u(i, k, j) + u(i + 1, k, j)) 
+            vel_at_mass(i, k, j) = 0.5 * (vel(i, k, j) + vel(i + di, k + dk, j + dj))
           end do
         end do
       end do
@@ -848,7 +860,7 @@
       do j = j_start, j_end
         do k = kts + 1, ktf
           do i = i_start, i_end
-            du_dz(i, k, j) = (u_at_mass(i, k, j) - u_at_mass(i, k - 1, j)) * rdz(i, k, j) 
+            dvel_dz(i, k, j) = (vel_at_mass(i, k, j) - vel_at_mass(i, k - 1, j)) * rdz(i, k, j)
           end do
         end do
       end do
@@ -856,36 +868,41 @@
       do j = j_start, j_end
         do i = i_start, i_end
             ! Surface
-          du_dz(i, kts, j) = 0.0
-            ! Top
-          du_dz(i, kte, j) = 0.0
+          dvel_dz(i, kts, j) = 0.0
+            ! Top face
+          dvel_dz(i, kte, j) = 0.0
         end do
       end do
 
-    end subroutine Calc_du_dz
+    end subroutine Calc_dvel_dz
 
 
-    subroutine Calc_dv_dz (v, rdz, dnw, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dv_dz)
+    subroutine Scale_uv_by_map_factors (config_flags, u, v, msfux, msfuy, msfvx, msfvy, u_mux, v_mvx, u_muy, v_mvy, &
+              ide, jds, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !                                                      !
-      ! Purpose: Calculate dv/dz                             !
-      !                                                      !
-      ! Authors: Pedro A. Jimenez & Timothy W. Juliano       !
-      !                                                      !
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !                                                                                      !
+      ! Purpose: Scale the horizontal wind components to account for the map projection, at  !
+      !          the points where Calc_duv_dx (u points) and Calc_duv_dy (v points) need them: !
+      !          u / msfux and v / msfvx at u points, u / msfuy and v / msfvy at v points      !
+      !                                                                                      !
+      ! Authors: Pedro A. Jimenez & Timothy W. Juliano                                       !
+      !                                                                                      !
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: v, rdz
-      real, dimension (kms:kme),                   intent (in)  :: dnw
-      integer,                                     intent (in)  :: ide, jde, kde,                 &
+      implicit none
+
+      type (grid_config_rec_type),                 intent (in)  :: config_flags
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: u, v
+      real, dimension (ims:ime, jms:jme),          intent (in)  :: msfux, msfuy, msfvx, msfvy
+      integer,                                     intent (in)  :: ide, jds, jde, kde,            &
                                                                    ims, ime, jms, jme, kms, kme,  &
                                                                    its, ite, jts, jte, kts, kte
 
-      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dv_dz
+      real, dimension (its - 1:ite + 1, kts:kte, jts - 1:jte + 1), intent (out) :: u_mux, v_mvx, u_muy, v_mvy
 
         ! Local vars
       integer :: i, j, k
-      real, dimension (its:ite, kts:kte, jts:jte) :: v_at_mass
       integer :: ktf, i_start, i_end, j_start, j_end
 
         ! Define some indexes
@@ -895,267 +912,97 @@
       j_end = Min (jte, jde - 1)
       ktf = Min (kte, kde - 1)
 
-        ! Unstagger V
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end
-            v_at_mass(i, k, j) = 0.5 * (v(i, k, j) + v(i, k, j + 1))
-          end do
-        end do
-      end do
-
-        ! Calculate derivative at the center of the faces
-      do j = j_start, j_end
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-            dv_dz(i, k, j) = (v_at_mass(i, k, j) - v_at_mass(i, k - 1, j)) * rdz(i, k, j)
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end
-        do i = i_start, i_end
-            ! Surface
-          dv_dz(i, kts, j) = 0.0
-            ! Top face
-          dv_dz(i, kte, j) = 0.0
-        end do
-      end do
-
-    end subroutine Calc_dv_dz
-
-
-    subroutine Calc_dw_dz (w, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dw_dz)
-
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !                                                      !
-      ! Purpose: Calculate dw/dz                             !
-      !                                                      !
-      ! Authors: Pedro A. Jimenez & Timothy W. Juliano       !
-      !                                                      !
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: w, rdz
-      integer,                                     intent (in)  :: ide, jde, kde,                 &
-                                                                   ims, ime, jms, jme, kms, kme,  &
-                                                                   its, ite, jts, jte, kts, kte
-
-      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dw_dz
-
-        ! Local vars
-      integer :: i, j, k
-      real, dimension (its:ite, kts:kte, jts:jte) :: w_at_mass
-      integer :: ktf, i_start, i_end, j_start, j_end
-
-        ! Define some indexes
-      i_start = its
-      i_end = Min (ite, ide - 1)
-      j_start = jts
-      j_end = Min (jte, jde - 1)
-      ktf = Min (kte, kde - 1)
-
-        ! Calculate w at mass points
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end
-            w_at_mass(i, k, j) = 0.5 * (w(i, k, j) + w(i, k + 1, j))
-          end do
-        end do
-      end do
-
-        ! Calculate partial w / partial z
-      do j = j_start, j_end
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-            dw_dz(i, k, j) = (w_at_mass(i, k, j) - w_at_mass(i, k - 1, j)) * rdz(i, k, j)
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end
-        do i = i_start, i_end
-            ! Surface
-          dw_dz(i, kts, j) =  0.0
-            ! Top face
-          dw_dz(i, kte, j) =  0.0
-        end do
-      end do
-
-    end subroutine Calc_dw_dz
-
-
-    subroutine Calc_du_dx (u, zx, rdz, dn, dnw, fnm, fnp, msftx, msfux, rdx, cf1, cf2, cf3,         &
-              ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dx      )
-
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !                                                      !
-      ! Purpose: Calculate du/dx                             !
-      !                                                      !
-      ! Authors: Pedro A. Jimenez & Timothy W. Juliano       !
-      !                                                      !
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: u, zx, rdz
-      real, dimension (kms:kme),                   intent (in)  :: dn, dnw, fnm, fnp
-      real, dimension (ims:ime, jms:jme),          intent (in)  :: msftx, msfux
-      real,                                        intent (in)  :: rdx, cf1, cf2, cf3
-      integer,                                     intent (in)  :: ide, jde, kde,                 &
-                                                                   ims, ime, jms, jme, kms, kme,  &
-                                                                   its, ite, jts, jte, kts, kte
-
-      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: du_dx
-
-        ! Local vars
-      integer :: i, j, k
-      real    :: dz_dx, cft1, cft2
-      real, dimension (its:ite, jts:jte) :: msf_tx_ux
-      real, dimension (its - 1:ite + 1, kts:kte, jts - 1:jte + 1) :: du_dz_dz_dx, u_mux, u_mux_at_full
-      integer :: ktf, ktes1, ktes2, i_start, i_end, j_start, j_end
-
-        ! Define some indexes
-      ktes1 = kte - 1
-      ktes2 = kte - 2
-      cft2 = - 0.5 * dnw(ktes1) / dn(ktes1)
-      cft1 = 1.0 - cft2
-
-      i_start = its
-      i_end = Min (ite, ide - 1)
-      j_start = jts
-      j_end = Min (jte, jde - 1)
-      ktf = Min (kte, kde - 1)
-
-        ! Map factor at mass points multiplied by map factor at u points
-      do j = j_start, j_end
-        do i = i_start, i_end
-          msf_tx_ux(i, j) = msftx(i, j) * msfux(i, j)
-        end do
-      end do
-
-        ! Scale u component of vector to account for map projection
+        ! At u points
       do j = j_start, j_end
         do k = kts, ktf
           do i = i_start, i_end + 1
             u_mux(i, k, j) = u(i, k, j) / msfux(i, j)
-          end do
-        end do
-      end do
-
-        ! Interpolate u_mux from half levels to full levels (u points at faces)
-      do j = j_start, j_end
-        do k = kts + 1, ktf
-          do i = i_start, i_end + 1
-            u_mux_at_full(i, k, j) = fnm(k) * u_mux(i, k, j) + fnp(k) * u_mux(i, k - 1, j)
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end
-        do i = i_start, i_end + 1
-            ! Surface
-          u_mux_at_full(i, 1, j) =  cf1 * u_mux(i, 1, j) + cf2 * u_mux(i, 2, j) + cf3 * u_mux(i, 3, j) 
-            ! Top face
-          u_mux_at_full(i, kte, j) =  cft1 *  u_mux(i, ktes1, j) +  cft2 * u_mux(i, ktes2, j)
-        end do
-      end do
-
-        ! Calculate component associated with slope in sigma surfaces (du_dz_dz_dx)
-      do j = j_start, j_end
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-              ! dz_dx = (partial z / partial x)|sigma at center of faces
-            dz_dx = 0.5 * (zx(i, k, j) + zx(i + 1, k, j))
-              ! du_dz_dz_dx = (partial u_mux / partial z)|sigma (du_dz) * 
-              ! (partial z / partial x)|sigma (dz_dx)
-            du_dz_dz_dx(i, k, j) = (0.5 * (u_mux(i, k, j) + u_mux(i + 1, k, j)) - &
-                0.5 * (u_mux(i, k - 1, j) + u_mux(i + 1, k - 1, j))) * rdz(i, k, j) * dz_dx
-          end do
-        end do
-      end do
-
-        ! (partial u / partial x)|z = msf_tx_ux * (partial u_mux_at_full / partial x)|sigma - du_dz_dz_dx)
-      do j = j_start, j_end
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-            du_dx(i, k, j) = msf_tx_ux(i, j) * ((u_mux_at_full(i + 1, k, j) - u_mux_at_full(i, k, j)) * rdx -  &
-                du_dz_dz_dx(i, k, j))
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end
-        do i = i_start, i_end
-            ! Surface
-          du_dx(i, kts, j) = 0.0
-            ! Top face
-          du_dx(i, kte, j) = 0.0
-        end do
-      end do
-
-    end subroutine Calc_du_dx
-
-
-    subroutine Calc_dv_dx (v, zx, rdz, dn, dnw, fnm, fnp, msftx, msfvx, rdx, cf1, cf2, cf3, ide, jde,         &
-              kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, config_flags, dv_dx            )
-
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !                                                      !
-      ! Purpose: Calculate dv/dx                             !
-      !                                                      !
-      ! Authors: Pedro A. Jimenez & Timothy W. Juliano       !
-      !                                                      !
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: v, zx, rdz
-      real, dimension (kms:kme),                   intent (in)  :: dn, dnw, fnm, fnp
-      real, dimension (ims:ime, jms:jme),          intent (in)  :: msftx, msfvx
-      real,                                        intent (in)  :: rdx, cf1, cf2, cf3
-      integer,                                     intent (in)  :: ide, jde, kde,                 &
-                                                                   ims, ime, jms, jme, kms, kme,  &
-                                                                   its, ite, jts, jte, kts, kte
-      type (grid_config_rec_type),                 intent (in)  :: config_flags
-
-      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dv_dx
-
-        ! Local vars
-      integer :: i, j, k
-      real    :: dz_dx, cft1, cft2
-      real, dimension (its:ite, jts:jte) :: msf_tx_vx
-      real, dimension (its - 1:ite + 1, kts:kte, jts - 1:jte + 1) :: dv_dz_dz_dx, v_mvx, v_mvx_at_full
-      integer :: ktf, ktes1, ktes2, i_start, i_end, j_start, j_end
-
-        ! Define some indexes
-      ktes1 = kte - 1
-      ktes2 = kte - 2
-      cft2 = - 0.5 * dnw(ktes1) / dn(ktes1)
-      cft1 = 1.0 - cft2
-
-      i_start = its
-      i_end = Min (ite, ide - 1)
-      j_start = jts
-      j_end = Min (jte, jde - 1)
-      ktf = Min (kte, kde - 1)
-
-        ! Map factor at mass points multiplied by map factor at v points
-      do j = j_start, j_end
-        do i = i_start, i_end
-          msf_tx_vx(i, j) = msftx(i, j) * msfvx(i, j)
-        end do
-      end do
-
-        ! Scale v component of vector to account for map projection (at u points)
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end + 1
             v_mvx(i, k, j) = 0.25 * (v(i, k, j) + v(i, k, j + 1) + v(i - 1, k, j) + v(i - 1, k, j + 1)) / msfvx(i, j)
           end do
         end do
       end do
 
-        ! Interpolate v_mvx from half levels to full levels (u points at faces)
+        ! At v points
+      do j = j_start, j_end + 1
+        do k = kts, ktf
+          do i = i_start, i_end
+            u_muy(i, k, j) = 0.25 * (u(i, k, j) + u(i + 1, k, j) + u(i, k, j - 1) + u(i + 1, k, j - 1)) / msfuy(i, j)
+              ! Because msfvy at the poles will be undefined (1./0.),
+              ! we will have trouble. But we are OK since v at the
+              ! poles is 0., and that takes precedence in this case
+            if ((config_flags%polar) .and. ((j == jds) .or. (j == jde))) then
+              v_mvy(i, k, j) = 0.0
+            else
+              v_mvy(i, k, j) = v(i, k, j) / msfvy(i, j)
+            end if
+          end do
+        end do
+      end do
+
+    end subroutine Scale_uv_by_map_factors
+
+
+    subroutine Calc_duv_dx (at_faces, phi_m, msf_phi, zx, rdz_out, dn, dnw, fnm, fnp, msftx, rdx, cf1, cf2, cf3, &
+              ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dphi_dx)
+
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !                                                                                           !
+      ! Purpose: Calculate du/dx or dv/dx at constant height, at the center of the faces          !
+      !          (at_faces) or at mass points, from the component divided by its map factor at u  !
+      !          points (phi_m, Scale_uv_by_map_factors); rdz_out is the inverse layer depth at   !
+      !          the output points (rdz at the faces, rdzw at mass points):                       !
+      !            (partial phi / partial x)|z = msftx msf_phi ( (partial phi_m / partial x)|sigma !
+      !               - (partial phi_m / partial z)|sigma (partial z / partial x)|sigma )         !
+      !                                                                                           !
+      ! Authors: Pedro A. Jimenez & Timothy W. Juliano                                            !
+      !                                                                                           !
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+      implicit none
+
+      logical,                                     intent (in)  :: at_faces
+      real, dimension (its - 1:ite + 1, kts:kte, jts - 1:jte + 1), intent (in) :: phi_m
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: zx, rdz_out
+      real, dimension (kms:kme),                   intent (in)  :: dn, dnw, fnm, fnp
+      real, dimension (ims:ime, jms:jme),          intent (in)  :: msftx, msf_phi
+      real,                                        intent (in)  :: rdx, cf1, cf2, cf3
+      integer,                                     intent (in)  :: ide, jde, kde,                 &
+                                                                   ims, ime, jms, jme, kms, kme,  &
+                                                                   its, ite, jts, jte, kts, kte
+
+      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dphi_dx
+
+        ! Local vars
+      integer :: i, j, k
+      real    :: dz_dx, cft1, cft2
+      real, dimension (its:ite, jts:jte) :: msf_tx_phi
+      real, dimension (its - 1:ite + 1, kts:kte, jts - 1:jte + 1) :: dphi_dz_dz_dx, phi_m_at_full
+      integer :: ktf, ktes1, ktes2, i_start, i_end, j_start, j_end
+
+        ! Define some indexes
+      ktes1 = kte - 1
+      ktes2 = kte - 2
+      cft2 = - 0.5 * dnw(ktes1) / dn(ktes1)
+      cft1 = 1.0 - cft2
+
+      i_start = its
+      i_end = Min (ite, ide - 1)
+      j_start = jts
+      j_end = Min (jte, jde - 1)
+      ktf = Min (kte, kde - 1)
+
+        ! Map factor at mass points multiplied by map factor at the points of the component
+      do j = j_start, j_end
+        do i = i_start, i_end
+          msf_tx_phi(i, j) = msftx(i, j) * msf_phi(i, j)
+        end do
+      end do
+
+        ! Interpolate phi_m from half levels to full levels (u points at faces)
       do j = j_start, j_end
         do k = kts + 1, ktf
           do i = i_start, i_end + 1
-            v_mvx_at_full(i, k, j) = fnm(k) * v_mvx(i, k, j) + fnp(k) * v_mvx(i, k - 1, j)
+            phi_m_at_full(i, k, j) = fnm(k) * phi_m(i, k, j) + fnp(k) * phi_m(i, k - 1, j)
           end do
         end do
       end do
@@ -1163,64 +1010,246 @@
       do j = j_start, j_end
         do i = i_start, i_end + 1
             ! Surface
-          v_mvx_at_full(i, 1, j) = cf1 * v_mvx(i, 1, j) + cf2 * v_mvx(i, 2, j) + cf3 * v_mvx(i, 3, j)
+          phi_m_at_full(i, 1, j) =  cf1 * phi_m(i, 1, j) + cf2 * phi_m(i, 2, j) + cf3 * phi_m(i, 3, j)
             ! Top face
-          v_mvx_at_full(i, kte, j) = cft1 * v_mvx(i, ktes1, j) + cft2 * v_mvx(i, ktes2, j)
+          phi_m_at_full(i, kte, j) =  cft1 *  phi_m(i, ktes1, j) +  cft2 * phi_m(i, ktes2, j)
         end do
       end do
 
-        ! Calculate component associated with slope in sigma surfaces (dv_dz_dz_dx)
-      do j = j_start, j_end
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-              ! dz_dx = (partial z / partial x)|sigma at center of faces
-            dz_dx = 0.5 * (zx(i, k, j) + zx(i + 1, k, j))
-              ! dv_dz_dz_dx = (partial v_mvx / partial z)|sigma (dv_dz) *
-              ! (partial z / partial x)|sigma (dz_dx)
-            dv_dz_dz_dx(i, k, j) = (0.5 * (v_mvx(i, k, j) + v_mvx(i + 1, k, j)) - &
-                0.5 * (v_mvx(i, k - 1, j) + v_mvx(i + 1, k - 1, j))) * rdz(i, k, j) * dz_dx
+      if (at_faces) then
+
+          ! Component associated with slope in sigma surfaces (dphi_dz_dz_dx) at the center of the
+          ! faces: z difference of the half-level values averaged to the face
+        do j = j_start, j_end
+          do k = kts + 1, ktf
+            do i = i_start, i_end
+                ! dz_dx = (partial z / partial x)|sigma at center of faces
+              dz_dx = 0.5 * (zx(i, k, j) + zx(i + 1, k, j))
+              dphi_dz_dz_dx(i, k, j) = (0.5 * (phi_m(i, k, j) + phi_m(i + 1, k, j)) - &
+                  0.5 * (phi_m(i, k - 1, j) + phi_m(i + 1, k - 1, j))) * rdz_out(i, k, j) * dz_dx
+            end do
           end do
         end do
-      end do
 
-        ! (partial v / partial x)|z = msf_tx_vx * (partial v_mvx_at_full / partial x)|sigma - dv_dz_dz_dx)
-      do j = j_start, j_end
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-            dv_dx(i, k, j) = msf_tx_vx(i, j) * ((v_mvx_at_full(i + 1, k, j) - v_mvx_at_full(i, k, j)) * rdx -  &
-                dv_dz_dz_dx(i, k, j))
+          ! x difference of the full-level values
+        do j = j_start, j_end
+          do k = kts + 1, ktf
+            do i = i_start, i_end
+              dphi_dx(i, k, j) = msf_tx_phi(i, j) * ((phi_m_at_full(i + 1, k, j) - phi_m_at_full(i, k, j)) * rdx -  &
+                  dphi_dz_dz_dx(i, k, j))
+            end do
           end do
         end do
-      end do
 
+        do j = j_start, j_end
+          do i = i_start, i_end
+              ! Surface
+            dphi_dx(i, kts, j) = 0.0
+              ! Top face
+            dphi_dx(i, kte, j) = 0.0
+          end do
+        end do
+
+      else
+
+          ! Component associated with slope in sigma surfaces (dphi_dz_dz_dx) at mass points:
+          ! z difference of the full-level values averaged to the mass point
+        do j = j_start, j_end
+          do k = kts, ktf
+            do i = i_start, i_end
+                ! dz_dx = (partial z / partial x)|sigma at mass points
+              dz_dx = 0.25 * (zx(i, k, j) + zx(i + 1, k, j) + zx(i, k + 1, j) + zx(i + 1, k + 1, j))
+              dphi_dz_dz_dx(i, k, j) = (0.5 * (phi_m_at_full(i, k + 1, j) + phi_m_at_full(i + 1, k + 1, j)) - &
+                  0.5 * (phi_m_at_full(i, k, j) + phi_m_at_full(i + 1, k, j))) * rdz_out(i, k, j) * dz_dx
+            end do
+          end do
+        end do
+
+          ! x difference of the half-level values
+        do j = j_start, j_end
+          do k = kts, ktf
+            do i = i_start, i_end
+              dphi_dx(i, k, j) = msf_tx_phi(i, j) * ((phi_m(i + 1, k, j) - phi_m(i, k, j)) * rdx - dphi_dz_dz_dx(i, k, j))
+            end do
+          end do
+        end do
+
+        do j = j_start, j_end
+          do i = i_start, i_end
+              ! Top
+            dphi_dx(i, kte, j) = 0.0
+          end do
+        end do
+
+      end if
+
+    end subroutine Calc_duv_dx
+
+
+    subroutine Calc_duv_dy (at_faces, phi_m, msf_phi, zy, rdz_out, dn, dnw, fnm, fnp, msfty, rdy, cf1, cf2, cf3, &
+              ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dphi_dy)
+
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !                                                                                           !
+      ! Purpose: Calculate du/dy or dv/dy at constant height, at the center of the faces          !
+      !          (at_faces) or at mass points, from the component divided by its map factor at v  !
+      !          points (phi_m, Scale_uv_by_map_factors); the y counterpart of Calc_duv_dx;       !
+      !          rdz_out as there                                                                 !
+      !                                                                                           !
+      ! Authors: Pedro A. Jimenez & Timothy W. Juliano                                            !
+      !                                                                                           !
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+      implicit none
+
+      logical,                                     intent (in)  :: at_faces
+      real, dimension (its - 1:ite + 1, kts:kte, jts - 1:jte + 1), intent (in) :: phi_m
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: zy, rdz_out
+      real, dimension (kms:kme),                   intent (in)  :: dn, dnw, fnm, fnp
+      real, dimension (ims:ime, jms:jme),          intent (in)  :: msfty, msf_phi
+      real,                                        intent (in)  :: rdy, cf1, cf2, cf3
+      integer,                                     intent (in)  :: ide, jde, kde,                 &
+                                                                   ims, ime, jms, jme, kms, kme,  &
+                                                                   its, ite, jts, jte, kts, kte
+
+      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dphi_dy
+
+        ! Local vars
+      integer :: i, j, k
+      real    :: dz_dy, cft1, cft2
+      real, dimension (its:ite, jts:jte) :: msf_ty_phi
+      real, dimension (its - 1:ite + 1, kts:kte, jts - 1:jte + 1) :: dphi_dz_dz_dy, phi_m_at_full
+      integer :: ktf, ktes1, ktes2, i_start, i_end, j_start, j_end
+
+        ! Define some indexes
+      ktes1 = kte - 1
+      ktes2 = kte - 2
+      cft2 = - 0.5 * dnw(ktes1) / dn(ktes1)
+      cft1 = 1.0 - cft2
+
+      i_start = its
+      i_end = Min (ite, ide - 1)
+      j_start = jts
+      j_end = Min (jte, jde - 1)
+      ktf = Min (kte, kde - 1)
+
+        ! Map factor at mass points multiplied by map factor at the points of the component
       do j = j_start, j_end
         do i = i_start, i_end
-          dv_dx(i, 1, j) =  0.0
-          dv_dx(i, kte, j) =  0.0
+          msf_ty_phi(i, j) = msfty(i, j) * msf_phi(i, j)
         end do
       end do
 
-    end subroutine Calc_dv_dx
+        ! Interpolate phi_m from half levels to full levels (v points at faces)
+      do j = j_start, j_end + 1
+        do k = kts + 1, ktf
+          do i = i_start, i_end
+            phi_m_at_full(i, k, j) = fnm(k) * phi_m(i, k, j) + fnp(k) * phi_m(i, k - 1, j)
+          end do
+        end do
+      end do
+
+      do j = j_start, j_end + 1
+        do i = i_start, i_end
+            ! Surface
+          phi_m_at_full(i, 1, j) =  cf1 * phi_m(i, 1, j) + cf2 * phi_m(i, 2, j) + cf3 * phi_m(i, 3, j)
+            ! Top face
+          phi_m_at_full(i, kte, j) = cft1 * phi_m(i, ktes1, j) +  cft2 * phi_m(i, ktes2, j)
+        end do
+      end do
+
+      if (at_faces) then
+
+          ! Component associated with slope in sigma surfaces (dphi_dz_dz_dy) at the center of the
+          ! faces: z difference of the half-level values averaged to the face
+        do j = j_start, j_end
+          do k = kts + 1, ktf
+            do i = i_start, i_end
+                ! dz_dy = (partial z / partial y)|sigma at center of faces
+              dz_dy = 0.5 * (zy(i, k, j) + zy(i, k, j + 1))
+              dphi_dz_dz_dy(i, k, j) = (0.5 * (phi_m(i, k, j) + phi_m(i, k, j + 1)) - &
+                  0.5 * (phi_m(i, k - 1, j) + phi_m(i, k - 1, j + 1))) * rdz_out(i, k, j) * dz_dy
+            end do
+          end do
+        end do
+
+          ! y difference of the full-level values
+        do j = j_start, j_end
+          do k = kts + 1, ktf
+            do i = i_start, i_end
+              dphi_dy(i, k, j) = msf_ty_phi(i, j) * ((phi_m_at_full(i, k, j + 1) - phi_m_at_full(i, k, j)) * rdy -  &
+                  dphi_dz_dz_dy(i, k, j))
+            end do
+          end do
+        end do
+
+        do j = j_start, j_end
+          do i = i_start, i_end
+              ! Surface
+            dphi_dy(i, kts, j) = 0.0
+              ! Top face
+            dphi_dy(i, kte, j) = 0.0
+          end do
+        end do
+
+      else
+
+          ! Component associated with slope in sigma surfaces (dphi_dz_dz_dy) at mass points:
+          ! z difference of the full-level values averaged to the mass point
+        do j = j_start, j_end
+          do k = kts, ktf
+            do i = i_start, i_end
+                ! dz_dy = (partial z / partial y)|sigma at mass points
+              dz_dy = 0.25 * (zy(i, k, j) + zy(i, k, j + 1) + zy(i, k + 1, j) + zy(i, k + 1, j + 1))
+              dphi_dz_dz_dy(i, k, j) = (0.5 * (phi_m_at_full(i, k + 1, j) + phi_m_at_full(i, k + 1, j + 1)) - &
+                  0.5 * (phi_m_at_full(i, k, j) + phi_m_at_full(i, k, j + 1))) * rdz_out(i, k, j) * dz_dy
+            end do
+          end do
+        end do
+
+          ! y difference of the half-level values
+        do j = j_start, j_end
+          do k = kts, ktf
+            do i = i_start, i_end
+              dphi_dy(i, k, j) = msf_ty_phi(i, j) * ((phi_m(i, k, j + 1) - phi_m(i, k, j)) * rdy - dphi_dz_dz_dy(i, k, j))
+            end do
+          end do
+        end do
+
+        do j = j_start, j_end
+          do i = i_start, i_end
+              ! Top
+            dphi_dy(i, kte, j) = 0.0
+          end do
+        end do
+
+      end if
+
+    end subroutine Calc_duv_dy
 
 
-    subroutine Calc_dw_dx (w, zx, rdz, msftx, rdx, ims, ime, jms, jme, kms, kme,  &
-              ide, jde, kde, its, ite, jts, jte, kts, kte, config_flags, dw_dx           )
+    subroutine Calc_dw_dx (at_faces, w, zx, rdz_out, msftx, rdx, ide, jde, kde, ims, ime, jms, jme, kms, kme, &
+              its, ite, jts, jte, kts, kte, dw_dx)
 
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !                                                      !
-      ! Purpose: Calculate dw/dx                             !
-      !                                                      !
-      ! Authors: Pedro A. Jimenez & Timothy W. Juliano       !
-      !                                                      !
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !                                                                                     !
+      ! Purpose: Calculate dw/dx at constant height, at the center of the faces (at_faces)  !
+      !          or at mass points; fourth-order centred x difference. rdz_out is the       !
+      !          inverse layer depth at the output points (rdz at the faces, rdzw at mass points) !
+      !                                                                                     !
+      ! Authors: Pedro A. Jimenez & Timothy W. Juliano                                      !
+      !                                                                                     !
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: w, zx, rdz
+      implicit none
+
+      logical,                                     intent (in)  :: at_faces
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: w, zx, rdz_out
       real, dimension (ims:ime, jms:jme),          intent (in)  :: msftx
       real,                                        intent (in)  :: rdx
       integer,                                     intent (in)  :: ide, jde, kde,                 &
                                                                    ims, ime, jms, jme, kms, kme,  &
                                                                    its, ite, jts, jte, kts, kte
-      type (grid_config_rec_type),                 intent (in)  :: config_flags
 
       real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dw_dx
 
@@ -1258,284 +1287,93 @@
         ! Average w_mtx to the mass points (half levels)
       do j = j_start, j_end
         do k = kts, ktf
-          do i = i_start - 1, i_end + 1
+          do i = i_start - i_offset, i_end + i_offset
             w_mtx_at_half(i, k, j) = 0.5 * (w_mtx(i, k, j) + w_mtx(i, k + 1, j))
           end do
         end do
       end do
 
-        ! Calculate component associated with slope in sigma surfaces (dw_dz_dz_dx)
-      do j = j_start, j_end
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-              ! dz_dx = (partial z / partial x)|sigma at center of faces
-            dz_dx = 0.5 * (zx(i, k, j) + zx(i + 1, k, j))
-              ! dw_dz_dz_dx = (partial w_mtx / partial z)|sigma (dw_dz) *
-              ! (partial z / partial x)|sigma (dz_dx)
-            dw_dz_dz_dx(i, k, j) = (w_mtx_at_half(i, k, j) - w_mtx_at_half(i, k - 1, j)) * rdz(i, k, j) * dz_dx
+      if (at_faces) then
+
+          ! Component associated with slope in sigma surfaces (dw_dz_dz_dx) at the center of the
+          ! faces: z difference of the half-level values
+        do j = j_start, j_end
+          do k = kts + 1, ktf
+            do i = i_start, i_end
+                ! dz_dx = (partial z / partial x)|sigma at center of faces
+              dz_dx = 0.5 * (zx(i, k, j) + zx(i + 1, k, j))
+              dw_dz_dz_dx(i, k, j) = (w_mtx_at_half(i, k, j) - w_mtx_at_half(i, k - 1, j)) * rdz_out(i, k, j) * dz_dx
+            end do
           end do
         end do
-      end do
 
-        ! (partial w / partial x)|z = msf_tx_tx * (partial w_mtx / partial x)|sigma - dw_dz_dz_dx)
-      do j = j_start, j_end
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-            dw_dx(i, k, j) = msf_tx_tx(i, j) * (rdx * (8.0 * (w_mtx(i + 1, k, j) - w_mtx(i - 1, k, j)) - (w_mtx(i + 2, k, j) - w_mtx(i - 2, k, j)) ) / 12.0 - dw_dz_dz_dx(i, k, j))
+          ! (partial w / partial x)|z = msf_tx_tx * (partial w_mtx / partial x)|sigma - dw_dz_dz_dx), full levels
+        do j = j_start, j_end
+          do k = kts + 1, ktf
+            do i = i_start, i_end
+              dw_dx(i, k, j) = msf_tx_tx(i, j) * (rdx * (8.0 * (w_mtx(i + 1, k, j) - w_mtx(i - 1, k, j)) - (w_mtx(i + 2, k, j) - w_mtx(i - 2, k, j)) ) / 12.0 - dw_dz_dz_dx(i, k, j))
+            end do
           end do
         end do
-      end do
 
-      do j = j_start, j_end
-        do i = i_start, i_end
-          dw_dx(i, 1, j) = 0.0
-          dw_dx(i, kte, j) = 0.0
+        do j = j_start, j_end
+          do i = i_start, i_end
+            dw_dx(i, 1, j) = 0.0
+            dw_dx(i, kte, j) = 0.0
+          end do
         end do
-      end do
+
+      else
+
+          ! Component associated with slope in sigma surfaces (dw_dz_dz_dx) at mass points:
+          ! z difference of the full-level values
+        do j = j_start, j_end
+          do k = kts, ktf
+            do i = i_start, i_end
+                ! dz_dx = (partial z / partial x)|sigma at mass points
+              dz_dx = 0.25 * (zx(i, k, j) + zx(i + 1, k, j) + zx(i, k + 1, j) + zx(i + 1, k + 1, j))
+              dw_dz_dz_dx(i, k, j) = (w_mtx(i, k + 1, j) - w_mtx(i, k, j)) * rdz_out(i, k, j) * dz_dx
+            end do
+          end do
+        end do
+
+          ! (partial w / partial x)|z = msf_tx_tx * (partial w_mtx / partial x)|sigma - dw_dz_dz_dx), half levels
+        do j = j_start, j_end
+          do k = kts, ktf
+            do i = i_start, i_end
+              dw_dx(i, k, j) = msf_tx_tx(i, j) * (rdx * (8.0 * (w_mtx_at_half(i + 1, k, j) - w_mtx_at_half(i - 1, k, j)) - (w_mtx_at_half(i + 2, k, j) - w_mtx_at_half(i - 2, k, j)) ) / 12.0 - dw_dz_dz_dx(i, k, j))
+            end do
+          end do
+        end do
+
+        do j = j_start, j_end
+          do i = i_start, i_end
+            dw_dx(i, kte, j) = 0.0
+          end do
+        end do
+
+      end if
 
     end subroutine Calc_dw_dx
 
 
-    subroutine Calc_du_dy (u, zy, rdz, dn, dnw, fnm, fnp, msfty, msfuy, rdy, cf1, cf2, cf3,       &
-              ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dy    )
+    subroutine Calc_dw_dy (at_faces, w, zy, rdz_out, msfty, rdy, ide, jde, kde, ims, ime, jms, jme, kms, kme, &
+              its, ite, jts, jte, kts, kte, dw_dy)
 
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !                                                      !
-      ! Purpose: Calculate du/dy                             !
-      !                                                      !
-      ! Authors: Pedro A. Jimenez & Timothy W. Juliano       !
-      !                                                      !
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !                                                                                     !
+      ! Purpose: Calculate dw/dy at constant height, at the center of the faces (at_faces)  !
+      !          or at mass points; fourth-order centred y difference. rdz_out is the       !
+      !          inverse layer depth at the output points (rdz at the faces, rdzw at mass points) !
+      !                                                                                     !
+      ! Authors: Pedro A. Jimenez & Timothy W. Juliano                                      !
+      !                                                                                     !
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: u, zy, rdz
-      real, dimension (kms:kme),                   intent (in)  :: dn, dnw, fnm, fnp
-      real, dimension (ims:ime, jms:jme),          intent (in)  :: msfty, msfuy
-      real,                                        intent (in)  :: rdy, cf1, cf2, cf3
-      integer,                                     intent (in)  :: ide, jde, kde,                 &
-                                                                   ims, ime, jms, jme, kms, kme,  &
-                                                                   its, ite, jts, jte, kts, kte
+      implicit none
 
-      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: du_dy
-
-        ! Local vars
-      integer :: i, j, k
-      real    :: dz_dy, cft1, cft2
-      real, dimension (its:ite, jts:jte) :: msf_ty_uy
-      real, dimension (its - 1:ite + 1, kts:kte, jts - 1:jte + 1) :: du_dz_dz_dy, u_muy, u_muy_at_full
-      integer :: ktf, ktes1, ktes2, i_start, i_end, j_start, j_end
-
-        ! Define some indexes
-      ktes1 = kte - 1
-      ktes2 = kte - 2
-      cft2 = - 0.5 * dnw(ktes1) / dn(ktes1)
-      cft1 = 1.0 - cft2
-
-      i_start = its
-      i_end = Min (ite, ide - 1)
-      j_start = jts
-      j_end = Min (jte, jde - 1)
-      ktf = Min (kte, kde - 1)
-
-        ! Map factor at mass points multiplied by map factor at v points
-      do j = j_start, j_end
-        do i = i_start, i_end
-          msf_ty_uy(i, j) = msfty(i, j) * msfuy(i, j)
-        end do
-      end do
-
-        ! Scale u component of vector to account for map projection (at v points)
-      do j = j_start, j_end + 1
-        do k = kts, ktf
-          do i = i_start, i_end
-            u_muy(i, k, j) = 0.25 * (u(i, k, j) + u(i + 1, k, j) + u(i, k, j - 1) + u(i + 1, k, j - 1)) / msfuy(i, j) 
-          end do
-        end do
-      end do
-
-        ! Interpolate u_muy from half levels to full levels (v points at faces)
-      do j = j_start, j_end + 1
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-            u_muy_at_full(i, k, j) = fnm(k) * u_muy(i, k, j) + fnp(k) * u_muy(i, k - 1, j)
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end + 1
-        do i = i_start, i_end
-            ! Surface
-          u_muy_at_full(i, 1, j) =  cf1 * u_muy(i, 1, j) + cf2 * u_muy(i, 2, j) + cf3 * u_muy(i, 3, j)
-            ! Top face
-          u_muy_at_full(i, kte, j) = cft1 * u_muy(i, ktes1, j) +  cft2 * u_muy(i, ktes2, j)
-        end do
-      end do
-
-        ! Calculate component associated with slope in sigma surfaces (du_dz_dz_dy)
-      do j = j_start, j_end 
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-              ! dz_dy = (partial z / partial y)|sigma at center of faces 
-            dz_dy = 0.5 * (zy(i, k, j) + zy(i, k, j + 1))
-              ! du_dz_dz_dy = (partial u_muy / partial z)|sigma (du_dz) *
-              ! (partial z / partial y)|sigma (dz_dy)
-            du_dz_dz_dy(i, k, j) = (0.5 * (u_muy(i, k, j) + u_muy(i, k, j + 1)) - &
-                0.5 * (u_muy(i, k - 1, j) + u_muy(i, k - 1, j + 1))) * rdz(i, k, j) * dz_dy
-          end do
-        end do
-      end do
-
-        ! (partial u / partial y)|z = msf_ty_uy * (partial u_muy_at_full / partial y)|sigma - du_dz_dz_dy)
-      do j = j_start, j_end
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-            du_dy(i, k, j) = msf_ty_uy(i, j) * ((u_muy_at_full(i, k, j + 1) - u_muy_at_full(i, k, j)) * rdy -  &
-                du_dz_dz_dy(i, k, j))
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end
-        do i = i_start, i_end
-            ! Surface
-          du_dy(i, kts, j) = 0.0
-            ! Top face
-          du_dy(i, kte, j) = 0.0
-        end do
-      end do
-
-    end subroutine Calc_du_dy
-
-
-    subroutine Calc_dv_dy (v, zy, rdz, dn, dnw, fnm, fnp, msfty, msfvy, rdy, cf1, cf2, cf3, ide, jds,     &
-              jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, config_flags, dv_dy   )
-
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !                                                      !
-      ! Purpose: Calculate dv/dy                             !
-      !                                                      !
-      ! Authors: Pedro A. Jimenez & Timothy W. Juliano       !
-      !                                                      !
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: v, zy, rdz
-      real, dimension (kms:kme),                   intent (in)  :: dn, dnw, fnm, fnp
-      real, dimension (ims:ime, jms:jme),          intent (in)  :: msfty, msfvy
-      real,                                        intent (in)  :: rdy, cf1, cf2, cf3
-      integer,                                     intent (in)  :: ide, jds, jde, kde,            &
-                                                                   ims, ime, jms, jme, kms, kme,  &
-                                                                   its, ite, jts, jte, kts, kte
-      type (grid_config_rec_type),                 intent (in)  :: config_flags
-
-      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dv_dy
-
-        ! Local vars
-      integer :: i, j, k
-      real    :: dz_dy, cft1, cft2
-      real, dimension (its:ite, jts:jte) :: msf_ty_vy
-      real, dimension (its - 1:ite + 1, kts:kte, jts - 1:jte + 1) :: dv_dz_dz_dy, v_mvy, v_mvy_at_full
-      integer :: ktf, ktes1, ktes2, i_start, i_end, j_start, j_end
-
-        ! Define some indexes
-      ktes1 = kte - 1
-      ktes2 = kte - 2
-      cft2 = - 0.5 * dnw(ktes1) / dn(ktes1)
-      cft1 = 1.0 - cft2
-
-      i_start = its
-      i_end = Min (ite, ide - 1)
-      j_start = jts
-      j_end = Min (jte, jde - 1)
-      ktf = Min (kte, kde - 1)
-
-        ! Map factor at mass points multiplied by map factor at v points
-      do j = j_start, j_end
-        do i = i_start, i_end
-          msf_ty_vy(i, j) = msfty(i, j) * msfvy(i, j)
-        end do
-      end do
-
-        ! Scale v component of vector to account for map projection
-      do j = j_start, j_end + 1
-        do k = kts, ktf
-          do i = i_start, i_end
-              ! Because msfvy at the poles will be undefined (1./0.),
-              ! we will have trouble. But we are OK since v at the
-              ! poles is 0., and that takes precedence in this case
-            if ((config_flags%polar) .and. ((j == jds) .or. (j == jde))) then
-              v_mvy(i, k, j) = 0.0
-            else
-              v_mvy(i, k, j) = v(i, k, j) / msfvy(i, j)
-            end if
-          end do
-        end do
-      end do
-
-        ! Interpolate v_mvy from half levels to full levels (v points at faces)
-      do j = j_start, j_end + 1
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-            v_mvy_at_full(i, k, j) = fnm(k) * v_mvy(i, k, j) + fnp(k) * v_mvy(i, k - 1, j)
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end + 1
-        do i = i_start, i_end
-            ! Surface
-          v_mvy_at_full(i, 1, j) =  cf1 * v_mvy(i, 1, j) + cf2 * v_mvy(i, 2, j) + cf3 * v_mvy(i, 3, j)
-            ! Top face
-          v_mvy_at_full(i, kte, j) = cft1 * v_mvy(i, ktes1, j) + cft2 * v_mvy(i, ktes2, j)
-        end do
-      end do
-
-        ! Calculate component associated with slope in sigma surfaces (dv_dz_dz_dy)
-      do j = j_start, j_end
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-              ! dz_dy = (partial z / partial y)|sigma at center of faces
-            dz_dy = 0.5 * (zy(i, k, j) + zy(i, k, j + 1))
-              ! dv_dz_dz_dy = (partial v_mvy / partial z)|sigma (dv_dz) *
-              ! (partial z / partial y)|sigma (dz_dy)
-            dv_dz_dz_dy(i, k, j) = (0.5 * (v_mvy(i, k, j) + v_mvy(i, k, j + 1)) - &
-                0.5 * (v_mvy(i, k - 1, j) + v_mvy(i, k - 1, j + 1))) * rdz(i, k, j) * dz_dy
-          end do
-        end do
-      end do
-
-        ! (partial v / partial y)|z = msf_ty_vy * (partial v_mvy_at_full / partial y)|sigma - dv_dz_dz_dy)
-      do j = j_start, j_end
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-            dv_dy(i, k, j) = msf_ty_vy(i, j) * ((v_mvy_at_full(i, k, j + 1) - v_mvy_at_full(i, k, j)) * rdy -  &
-                dv_dz_dz_dy(i, k, j))
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end
-        do i = i_start, i_end
-            ! Surface
-          dv_dy(i, 1, j) = 0.0
-            ! Top face
-          dv_dy(i, kte, j) = 0.0
-        end do
-      end do
-
-    end subroutine Calc_dv_dy
-
-
-    subroutine Calc_dw_dy (w, zy, rdz, msfty, rdy, ims, ime, jms, jme, kms, kme,  &
-              ide, jde, kde, its, ite, jts, jte, kts, kte, dw_dy                  )
-
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !                                                      !
-      ! Purpose: Calculate dw/dy                             !
-      !                                                      !
-      ! Authors: Pedro A. Jimenez & Timothy W. Juliano       !
-      !                                                      !
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: w, zy, rdz
+      logical,                                     intent (in)  :: at_faces
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: w, zy, rdz_out
       real, dimension (ims:ime, jms:jme),          intent (in)  :: msfty
       real,                                        intent (in)  :: rdy
       integer,                                     intent (in)  :: ide, jde, kde,                 &
@@ -1556,7 +1394,7 @@
       i_end = Min (ite, ide - 1)
       j_start = jts
       j_end = Min (jte, jde - 1)
-      ktf = Min (kte, kde - 1) 
+      ktf = Min (kte, kde - 1)
 
         ! Map factor at mass points squared
       do j = jts, jte
@@ -1576,42 +1414,74 @@
       end do
 
         ! Average w_mty to the mass points (half levels)
-      do j = j_start - 1, j_end + 1
+      do j = j_start - j_offset, j_end + j_offset
         do k = kts, ktf
           do i = i_start, i_end
-            w_mty_at_half(i,k,j) = 0.5 * (w_mty(i, k, j) + w_mty(i, k + 1, j))
+            w_mty_at_half(i, k, j) = 0.5 * (w_mty(i, k, j) + w_mty(i, k + 1, j))
           end do
         end do
       end do
 
-        ! Calculate component associated with slope in sigma surfaces (dw_dz_dz_dy)
-      do j = j_start, j_end 
-        do k = kts + 1, ktf
+      if (at_faces) then
+
+          ! Component associated with slope in sigma surfaces (dw_dz_dz_dy) at the center of the
+          ! faces: z difference of the half-level values
+        do j = j_start, j_end
+          do k = kts + 1, ktf
+            do i = i_start, i_end
+                ! dz_dy = (partial z / partial y)|sigma at center of faces
+              dz_dy = 0.5 * (zy(i, k, j) + zy(i, k, j + 1))
+              dw_dz_dz_dy(i, k, j) = (w_mty_at_half(i, k, j) - w_mty_at_half(i, k - 1, j)) * rdz_out(i, k, j) * dz_dy
+            end do
+          end do
+        end do
+
+          ! (partial w / partial y)|z = msf_ty_ty * (partial w_mty / partial y)|sigma - dw_dz_dz_dy), full levels
+        do j = j_start, j_end
+          do k = kts + 1, ktf
+            do i = i_start, i_end
+              dw_dy(i, k, j) = msf_ty_ty(i, j) * (rdy * (8.0 * (w_mty(i, k, j + 1) - w_mty(i, k, j - 1)) - (w_mty(i, k, j + 2) - w_mty(i, k, j - 2)) ) / 12.0 - dw_dz_dz_dy(i, k, j))
+            end do
+          end do
+        end do
+
+        do j = j_start, j_end
           do i = i_start, i_end
-              ! dz_dy = (partial z / partial y)|sigma at center of faces
-            dz_dy = 0.5 * (zy(i, k, j) + zy(i, k, j + 1))
-              ! dw_dz_dz_dy = (partial w_mty / partial z)|sigma (dw_dz) *
-              ! (partial z / partial y)|sigma (dz_dy)
-            dw_dz_dz_dy(i, k, j) = (w_mty_at_half(i, k, j) - w_mty_at_half(i, k - 1, j)) * rdz(i, k, j) * dz_dy
+            dw_dy(i, kts, j) = 0.0
+            dw_dy(i, kte, j) = 0.0
           end do
         end do
-      end do
 
-        ! (partial w / partial y)|z = msf_ty_ty * (partial w_mty / partial y)|sigma - dw_dz_dz_dy)
-      do j = j_start, j_end
-        do k = kts + 1, ktf
+      else
+
+          ! Component associated with slope in sigma surfaces (dw_dz_dz_dy) at mass points:
+          ! z difference of the full-level values
+        do j = j_start, j_end
+          do k = kts, ktf
+            do i = i_start, i_end
+                ! dz_dy = (partial z / partial y)|sigma at mass points
+              dz_dy = 0.25 * (zy(i, k, j) + zy(i, k, j + 1) + zy(i, k + 1, j) + zy(i, k + 1, j + 1))
+              dw_dz_dz_dy(i, k, j) = (w_mty(i, k + 1, j) - w_mty(i, k, j)) * rdz_out(i, k, j) * dz_dy
+            end do
+          end do
+        end do
+
+          ! (partial w / partial y)|z = msf_ty_ty * (partial w_mty / partial y)|sigma - dw_dz_dz_dy), half levels
+        do j = j_start, j_end
+          do k = kts, ktf
+            do i = i_start, i_end
+              dw_dy(i, k, j) = msf_ty_ty(i, j) * (rdy * (8.0 * (w_mty_at_half(i, k, j + 1) - w_mty_at_half(i, k, j - 1)) - (w_mty_at_half(i, k, j + 2) - w_mty_at_half(i, k, j - 2)) ) / 12.0 - dw_dz_dz_dy(i, k, j))
+            end do
+          end do
+        end do
+
+        do j = j_start, j_end
           do i = i_start, i_end
-            dw_dy(i, k, j) = msf_ty_ty(i, j) * (rdy * (8.0 * (w_mty(i, k, j + 1) - w_mty(i, k, j - 1)) - (w_mty(i, k, j + 2) - w_mty(i, k, j - 2)) ) / 12.0 - dw_dz_dz_dy(i, k, j))
+            dw_dy(i, kte, j) = 0.0
           end do
         end do
-      end do
 
-      do j = j_start, j_end
-        do i = i_start, i_end
-          dw_dy(i, kts, j) = 0.0
-          dw_dy(i, kte, j) = 0.0
-        end do
-      end do
+      end if
 
     end subroutine Calc_dw_dy
 
@@ -4413,60 +4283,70 @@
                                                                    du_dy, dv_dy, dw_dy
       real,                                        intent (in)  :: rdx, rdy, cf1, cf2, cf3
 
-      call Calc_du_dz_at_mass (u, rdzw, dn, dnw, fnm, fnp, cf1, cf2, cf3, &
+        ! Local vars: u and v divided by their map factors, at u points (x derivatives) and at v points (y derivatives)
+      real, dimension (its - 1:ite + 1, kts:kte, jts - 1:jte + 1) :: u_mux, v_mvx, u_muy, v_mvy
+
+      call Calc_duv_dz_at_mass (u, 1, 0, rdzw, dn, dnw, fnm, fnp, cf1, cf2, cf3, &
           ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dz)
 
-      call Calc_dv_dz_at_mass (v, rdzw, dn, dnw, fnm, fnp, cf1, cf2, cf3, &
+      call Calc_duv_dz_at_mass (v, 0, 1, rdzw, dn, dnw, fnm, fnp, cf1, cf2, cf3, &
           ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dv_dz)
 
-      call Calc_dw_dz_at_mass (w, rdzw, dn, dnw, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dw_dz)
+      call Calc_dw_dz_at_mass (w, rdzw, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dw_dz)
 
-      call Calc_du_dx_at_mass (u, zx, rdzw, dn, dnw, fnm, fnp, msftx, msfux, rdx, cf1, cf2, cf3, &
+      call Scale_uv_by_map_factors (config_flags, u, v, msfux, msfuy, msfvx, msfvy, u_mux, v_mvx, u_muy, v_mvy, &
+          ide, jds, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+
+      call Calc_duv_dx (.false., u_mux, msfux, zx, rdzw, dn, dnw, fnm, fnp, msftx, rdx, cf1, cf2, cf3, &
           ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dx)
 
-      call Calc_dv_dx_at_mass (v, zx, rdzw, dn, dnw, fnm, fnp, msftx, msfvx, rdx, cf1, cf2, cf3, &
+      call Calc_duv_dx (.false., v_mvx, msfvx, zx, rdzw, dn, dnw, fnm, fnp, msftx, rdx, cf1, cf2, cf3, &
           ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dv_dx)
 
-      call Calc_dw_dx_at_mass (w, zx, rdzw, msftx, rdx, ims, ime, jms, jme, kms, kme,  &
-          ide, jde, kde, its, ite, jts, jte, kts, kte, dw_dx)
+      call Calc_dw_dx (.false., w, zx, rdzw, msftx, rdx, ide, jde, kde, ims, ime, jms, jme, kms, kme, &
+          its, ite, jts, jte, kts, kte, dw_dx)
 
-      call Calc_du_dy_at_mass (u, zy, rdzw, dn, dnw, fnm, fnp, msfty, msfuy, rdy, cf1, cf2, cf3, &
-              ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dy)
+      call Calc_duv_dy (.false., u_muy, msfuy, zy, rdzw, dn, dnw, fnm, fnp, msfty, rdy, cf1, cf2, cf3, &
+          ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dy)
 
-      call Calc_dv_dy_at_mass (v, zy, rdzw, dn, dnw, fnm, fnp, msfty, msfvy, rdy, cf1, cf2, cf3, ide, jds, &
-              jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, config_flags, dv_dy)
+      call Calc_duv_dy (.false., v_mvy, msfvy, zy, rdzw, dn, dnw, fnm, fnp, msfty, rdy, cf1, cf2, cf3, &
+          ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dv_dy)
 
-      call Calc_dw_dy_at_mass (w, zy, rdzw, msfty, rdy, ims, ime, jms, jme, kms, kme, &
-              ide, jde, kde, its, ite, jts, jte, kts, kte, dw_dy)
+      call Calc_dw_dy (.false., w, zy, rdzw, msfty, rdy, ide, jde, kde, ims, ime, jms, jme, kms, kme, &
+          its, ite, jts, jte, kts, kte, dw_dy)
 
     end subroutine Calc_wind_derivatives_at_mass
 
 
-    subroutine Calc_du_dz_at_mass (u, rdzw, dn, dnw, fnm, fnp, cf1, cf2, cf3, &
-              ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dz)
+    subroutine Calc_duv_dz_at_mass (vel, di, dj, rdzw, dn, dnw, fnm, fnp, cf1, cf2, cf3, &
+              ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dvel_dz)
 
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !                                                      !
-      ! Purpose: Calculate du/dz                             !
-      !                                                      !
-      ! Authors: Timothy W. Juliano & Pedro A. Jimenez       !
-      !                                                      !
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !                                                                                       !
+      ! Purpose: Calculate du/dz or dv/dz at the mass points: the component is interpolated   !
+      !          to full levels at its own points, then averaged to the center of the faces   !
+      !          from its two horizontal neighbours (i, j) and (i + di, j + dj): (di, dj) =    !
+      !          (1, 0) for u, (0, 1) for v.                                                  !
+      !                                                                                       !
+      ! Authors: Timothy W. Juliano & Pedro A. Jimenez                                        !
+      !                                                                                       !
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: u, rdzw
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: vel, rdzw
+      integer,                                     intent (in)  :: di, dj
       real, dimension (kms:kme), intent (in)                    :: dn, dnw, fnm, fnp
       integer,                                     intent (in)  :: ide, jde, kde,                 &
                                                                    ims, ime, jms, jme, kms, kme,  &
                                                                    its, ite, jts, jte, kts, kte
 
-      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: du_dz
+      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dvel_dz
       real,                                        intent (in)  :: cf1, cf2, cf3
 
         ! Local vars
       integer :: i, j, k
       real    :: cft1, cft2
-      real, dimension (its-1:ite+1, kts:kte, jts-1:jte+1) :: u_at_full
-      real, dimension (its:ite, kts:kte, jts:jte)   :: u_at_face
+      real, dimension (its-1:ite+1, kts:kte, jts-1:jte+1) :: vel_at_full
+      real, dimension (its:ite, kts:kte, jts:jte)   :: vel_at_face
       integer :: ktf, ktes1, ktes2, i_start, i_end, j_start, j_end
 
         ! Define some indexes
@@ -4482,28 +4362,28 @@
       ktf = Min (kte, kde - 1)
 
         ! Interpolate from half levels to full levels
-      do j = j_start, j_end
+      do j = j_start, j_end + dj
         do k = kts + 1, ktf
-          do i = i_start, i_end + 1
-            u_at_full(i, k, j) = fnm(k) * u(i, k, j) + fnp(k) * u(i, k - 1, j)
+          do i = i_start, i_end + di
+            vel_at_full(i, k, j) = fnm(k) * vel(i, k, j) + fnp(k) * vel(i, k - 1, j)
           end do
         end do
       end do
 
-      do j = j_start, j_end
-        do i = i_start, i_end + 1
+      do j = j_start, j_end + dj
+        do i = i_start, i_end + di
             ! Surface
-          u_at_full(i, 1, j) =  cf1 * u(i, 1, j) + cf2 * u(i, 2, j) + cf3 * u(i, 3, j)
+          vel_at_full(i, 1, j) =  cf1 * vel(i, 1, j) + cf2 * vel(i, 2, j) + cf3 * vel(i, 3, j)
             ! Top face
-          u_at_full(i, kte, j) =  cft1 * u(i, ktes1, j) + cft2 * u(i, ktes2, j)
+          vel_at_full(i, kte, j) =  cft1 * vel(i, ktes1, j) + cft2 * vel(i, ktes2, j)
         end do
       end do
 
-        ! Calculate u at the center of the faces
+        ! Calculate the component at the center of the faces
       do j = j_start, j_end
         do k = kts, kte
           do i = i_start, i_end
-            u_at_face(i, k, j) = 0.5 * (u_at_full(i, k, j) + u_at_full(i + 1, k, j))
+            vel_at_face(i, k, j) = 0.5 * (vel_at_full(i, k, j) + vel_at_full(i + di, k, j + dj))
           end do
         end do
       end do
@@ -4512,7 +4392,7 @@
       do j = j_start, j_end
         do k = kts, ktf
           do i = i_start, i_end
-            du_dz(i, k, j) = (u_at_face(i, k + 1, j) - u_at_face(i, k, j)) * rdzw(i, k, j)
+            dvel_dz(i, k, j) = (vel_at_face(i, k + 1, j) - vel_at_face(i, k, j)) * rdzw(i, k, j)
           end do
         end do
       end do
@@ -4520,99 +4400,14 @@
       do j = j_start, j_end
         do i = i_start, i_end
             ! Top
-          du_dz(i, kte, j) = 0.0
+          dvel_dz(i, kte, j) = 0.0
         end do
       end do
 
-    end subroutine Calc_du_dz_at_mass
+    end subroutine Calc_duv_dz_at_mass
 
 
-    subroutine Calc_dv_dz_at_mass (v, rdzw, dn, dnw, fnm, fnp, cf1, cf2, cf3, &
-              ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dv_dz)
-
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !                                                      !
-      ! Purpose: Calculate dv/dz                             !
-      !                                                      !
-      ! Authors: Timothy W. Juliano & Pedro A. Jimenez       !
-      !                                                      !
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: v, rdzw
-      real, dimension (kms:kme), intent (in)                    :: dn, dnw, fnm, fnp
-      integer,                                     intent (in)  :: ide, jde, kde,                 &
-                                                                   ims, ime, jms, jme, kms, kme,  &
-                                                                   its, ite, jts, jte, kts, kte
-
-      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dv_dz
-      real,                                        intent (in)  :: cf1, cf2, cf3
-
-        ! Local vars
-      integer :: i, j, k
-      real    :: cft1, cft2
-      real, dimension (its-1:ite+1, kts:kte, jts-1:jte+1) :: v_at_full
-      real, dimension (its:ite, kts:kte, jts:jte)   :: v_at_face
-      integer :: ktf, ktes1, ktes2, i_start, i_end, j_start, j_end
-
-        ! Define some indexes
-      ktes1 = kte - 1
-      ktes2 = kte - 2
-      cft2 = - 0.5 * dnw(ktes1) / dn(ktes1)
-      cft1 = 1.0 - cft2
-
-      i_start = its
-      i_end = Min (ite, ide - 1)
-      j_start = jts
-      j_end = Min (jte, jde - 1)
-      ktf = Min (kte, kde - 1)
-
-        ! Interpolate from half levels to full levels
-      do j = j_start, j_end + 1
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-            v_at_full(i, k, j) = fnm(k) * v(i, k, j) + fnp(k) * v(i, k - 1, j)
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end + 1
-        do i = i_start, i_end
-            ! Surface
-          v_at_full(i, 1, j) =  cf1 * v(i, 1, j) + cf2 * v(i, 2, j) + cf3 * v(i, 3, j)
-            ! Top face
-          v_at_full(i, kte, j) =  cft1 * v(i, ktes1, j) + cft2 * v(i, ktes2, j)
-        end do
-      end do
-
-        ! Calculate v at the center of the faces
-      do j = j_start, j_end
-        do k = kts, kte
-          do i = i_start, i_end
-            v_at_face(i, k, j) = 0.5 * (v_at_full(i, k, j) + v_at_full(i, k, j + 1))
-          end do
-        end do
-      end do
-
-        ! Calculate derivative at the mass points
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end
-            dv_dz(i, k, j) = (v_at_face(i, k + 1, j) - v_at_face(i, k, j)) * rdzw(i, k, j)
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end
-        do i = i_start, i_end
-            ! Top
-          dv_dz(i, kte, j) = 0.0
-        end do
-      end do
-
-    end subroutine Calc_dv_dz_at_mass
-
-
-    subroutine Calc_dw_dz_at_mass (w, rdzw, dn, dnw, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dw_dz)
+    subroutine Calc_dw_dz_at_mass (w, rdzw, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dw_dz)
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !                                                      !
@@ -4623,7 +4418,6 @@
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: w, rdzw
-      real, dimension (kms:kme), intent (in)                    :: dn, dnw
       integer,                                     intent (in)  :: ide, jde, kde,                 &
                                                                    ims, ime, jms, jme, kms, kme,  &
                                                                    its, ite, jts, jte, kts, kte
@@ -4658,625 +4452,6 @@
       end do
 
     end subroutine Calc_dw_dz_at_mass
-
-
-    subroutine Calc_du_dx_at_mass (u, zx, rdzw, dn, dnw, fnm, fnp, msftx, msfux, rdx, cf1, cf2, cf3, &
-              ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dx)
-
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !                                                      !
-      ! Purpose: Calculate du/dx                             !
-      !                                                      !
-      ! Authors: Timothy W. Juliano & Pedro A. Jimenez       !
-      !                                                      !
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: u, zx, rdzw
-      real, dimension (kms:kme), intent (in)                    :: dn, dnw, fnm, fnp
-      real, dimension (ims:ime, jms:jme),          intent (in)  :: msftx, msfux
-      real,                                        intent (in)  :: rdx, cf1, cf2, cf3
-      integer,                                     intent (in)  :: ide, jde, kde,                 &
-                                                                   ims, ime, jms, jme, kms, kme,  &
-                                                                   its, ite, jts, jte, kts, kte
-
-      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: du_dx
-
-        ! Local vars
-      integer :: i, j, k
-      real    :: cft1, cft2, dz_dx
-      real, dimension (its:ite, jts:jte) :: msf_tx_ux
-      real, dimension (its-1:ite+1, kts:kte, jts-1:jte+1) :: du_dz_dz_dx, u_mux, u_mux_at_full
-      integer :: ktf, ktes1, ktes2, i_start, i_end, j_start, j_end
-
-        ! Define some indexes
-      ktes1 = kte - 1
-      ktes2 = kte - 2
-      cft2 = - 0.5 * dnw(ktes1) / dn(ktes1)
-      cft1 = 1.0 - cft2
-
-      i_start = its
-      i_end = Min (ite, ide - 1)
-      j_start = jts
-      j_end = Min (jte, jde - 1)
-      ktf = Min (kte, kde - 1)
-
-        ! Map factor at mass points multiplied by map factor at u points
-      do j = j_start, j_end
-        do i = i_start, i_end
-          msf_tx_ux(i, j) = msftx(i, j) * msfux(i, j)
-        end do
-      end do
-
-        ! Scale u component of vector to account for map projection
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end + 1
-            u_mux(i, k, j) = u(i, k, j) / msfux(i, j)
-          end do
-        end do
-      end do
-
-        ! Interpolate u_mux from half levels to full levels (u points at faces)
-      do j = j_start, j_end
-        do k = kts + 1, ktf
-          do i = i_start, i_end + 1
-            u_mux_at_full(i, k, j) = fnm(k) * u_mux(i, k, j) + fnp(k) * u_mux(i, k - 1, j)
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end
-        do i = i_start, i_end + 1
-            ! Surface
-          u_mux_at_full(i, 1, j) =  cf1 * u_mux(i, 1, j) + cf2 * u_mux(i, 2, j) + cf3 * u_mux(i, 3, j)
-            ! Top face
-          u_mux_at_full(i, kte, j) =  cft1 *  u_mux(i, ktes1, j) +  cft2 * u_mux(i, ktes2, j)
-        end do
-      end do
-
-        ! Calculate component associated with slope in sigma surfaces (du_dz_dz_dx)
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end
-              ! dz_dx = (partial z / partial x)|sigma at mass points
-            dz_dx = 0.25 * (zx(i, k, j) + zx(i + 1, k, j) + zx(i, k + 1, j) + zx(i + 1, k + 1, j))
-              ! du_dz_dz_dx = (partial u_mux / partial z)|sigma (du_dz) *
-              ! (partial z / partial x)|sigma (dz_dx)
-            du_dz_dz_dx(i, k, j) = (0.5 * (u_mux_at_full(i, k + 1, j) + u_mux_at_full(i + 1, k + 1, j)) - &
-                0.5 * (u_mux_at_full(i, k, j) + u_mux_at_full(i + 1, k, j))) * rdzw(i, k, j) * dz_dx
-          end do
-        end do
-      end do
-
-        ! (partial u / partial x)|z = msf_tx_ux * (partial u_mux_at_full / partial x)|sigma - du_dz_dz_dx)
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end
-            du_dx(i, k, j) = msf_tx_ux(i, j) * ((u_mux(i + 1, k, j) - u_mux(i, k, j)) * rdx - du_dz_dz_dx(i, k, j))
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end
-        do i = i_start, i_end
-            ! Top
-          du_dx(i, kte, j) = 0.0
-        end do
-      end do
-
-    end subroutine Calc_du_dx_at_mass
-
-
-    subroutine Calc_dv_dx_at_mass (v, zx, rdzw, dn, dnw, fnm, fnp, msftx, msfvx, rdx, cf1, cf2, cf3, &
-              ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dv_dx)
-
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !                                                      !
-      ! Purpose: Calculate dv/dx                             !
-      !                                                      !
-      ! Authors: Timothy W. Juliano & Pedro A. Jimenez       !
-      !                                                      !
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: v, zx, rdzw
-      real, dimension (kms:kme),                   intent (in)  :: dn, dnw, fnm, fnp
-      real, dimension (ims:ime, jms:jme),          intent (in)  :: msftx, msfvx
-      real,                                        intent (in)  :: rdx, cf1, cf2, cf3
-      integer,                                     intent (in)  :: ide, jde, kde,                 &
-                                                                   ims, ime, jms, jme, kms, kme,  &
-                                                                   its, ite, jts, jte, kts, kte
-
-      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dv_dx
-
-        ! Local vars
-      integer :: i, j, k
-      real    :: dz_dx, cft1, cft2
-      real, dimension (its:ite, jts:jte) :: msf_tx_vx
-      real, dimension (its - 1:ite + 1, kts:kte, jts - 1:jte + 1) :: dv_dz_dz_dx, v_mvx, v_mvx_at_full
-      integer :: ktf, ktes1, ktes2, i_start, i_end, j_start, j_end
-
-        ! Define some indexes
-      ktes1 = kte - 1
-      ktes2 = kte - 2
-      cft2 = - 0.5 * dnw(ktes1) / dn(ktes1)
-      cft1 = 1.0 - cft2
-
-      i_start = its
-      i_end = Min (ite, ide - 1)
-      j_start = jts
-      j_end = Min (jte, jde - 1)
-      ktf = Min (kte, kde - 1)
-
-        ! Map factor at mass points multiplied by map factor at v points
-      do j = j_start, j_end
-        do i = i_start, i_end
-          msf_tx_vx(i, j) = msftx(i, j) * msfvx(i, j)
-        end do
-      end do
-
-        ! Scale v component of vector to account for map projection (at u points)
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end + 1
-            v_mvx(i, k, j) = 0.25 * (v(i, k, j) + v(i, k, j + 1) + v(i - 1, k, j) + v(i - 1, k, j + 1)) / msfvx(i, j)
-          end do
-        end do
-      end do
-
-        ! Interpolate v_mvx from half levels to full levels (u points at faces)
-      do j = j_start, j_end
-        do k = kts + 1, ktf
-          do i = i_start, i_end + 1
-            v_mvx_at_full(i, k, j) = fnm(k) * v_mvx(i, k, j) + fnp(k) * v_mvx(i, k - 1, j)
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end
-        do i = i_start, i_end + 1
-            ! Surface
-          v_mvx_at_full(i, 1, j) = cf1 * v_mvx(i, 1, j) + cf2 * v_mvx(i, 2, j) + cf3 * v_mvx(i, 3, j)
-            ! Top face
-          v_mvx_at_full(i, kte, j) = cft1 * v_mvx(i, ktes1, j) + cft2 * v_mvx(i, ktes2, j)
-        end do
-      end do
-
-        ! Calculate component associated with slope in sigma surfaces (dv_dz_dz_dx)
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end
-              ! dz_dx = (partial z / partial x)|sigma at mass points
-            dz_dx = 0.25 * (zx(i, k, j) + zx(i + 1, k, j) + zx(i, k + 1, j) + zx(i + 1, k + 1, j))
-              ! dv_dz_dz_dx = (partial v_mvx / partial z)|sigma (dv_dz) *
-              ! (partial z / partial x)|sigma (dz_dx)
-            dv_dz_dz_dx(i, k, j) = (0.5 * (v_mvx_at_full(i, k + 1, j) + v_mvx_at_full(i + 1, k + 1, j)) - &
-                0.5 * (v_mvx_at_full(i, k, j) + v_mvx_at_full(i + 1, k, j))) * rdzw(i, k, j) * dz_dx
-          end do
-        end do
-      end do
-
-        ! (partial v / partial x)|z = msf_tx_vx * (partial v_mvx_at_full / partial x)|sigma - dv_dz_dz_dx)
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end
-            dv_dx(i, k, j) = msf_tx_vx(i, j) * ((v_mvx(i + 1, k, j) - v_mvx(i, k, j)) * rdx - dv_dz_dz_dx(i, k, j))
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end
-        do i = i_start, i_end
-          dv_dx(i, kte, j) =  0.0
-        end do
-      end do
-
-    end subroutine Calc_dv_dx_at_mass
-
-
-    subroutine Calc_dw_dx_at_mass (w, zx, rdzw, msftx, rdx, ims, ime, jms, jme, kms, kme,  &
-              ide, jde, kde, its, ite, jts, jte, kts, kte, dw_dx)
-
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !                                                      !
-      ! Purpose: Calculate dw/dx                             !
-      !                                                      !
-      ! Authors: Timothy W. Juliano & Pedro A. Jimenez       !
-      !                                                      !
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: w, zx, rdzw
-      real, dimension (ims:ime, jms:jme),          intent (in)  :: msftx
-      real,                                        intent (in)  :: rdx
-      integer,                                     intent (in)  :: ide, jde, kde,                 &
-                                                                   ims, ime, jms, jme, kms, kme,  &
-                                                                   its, ite, jts, jte, kts, kte
-
-      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dw_dx
-
-        ! Local vars
-      integer :: i, j, k, i_offset
-      real    :: dz_dx
-      real, dimension (its:ite, jts:jte) :: msf_tx_tx
-      real, dimension (its - 2:ite + 2, kts:kte, jts - 2:jte + 2) :: dw_dz_dz_dx, w_mtx, w_mtx_at_half
-      integer :: ktf, i_start, i_end, j_start, j_end
-
-        ! Define some indexes
-      i_start = its
-      i_end = Min (ite, ide - 1)
-      j_start = jts
-      j_end = Min (jte, jde - 1)
-      ktf = Min (kte, kde - 1)
-
-        ! Map factor at mass points squared
-      do j = jts, jte
-        do i = its, ite
-          msf_tx_tx(i, j) = msftx(i, j) * msftx(i, j)
-        end do
-      end do
-
-        ! Scale w component of vector to account for map projection (two extra points for the fourth-order x difference)
-      i_offset = 2
-      do j = j_start, j_end
-        do k = kts, kte
-          do i = i_start - i_offset, i_end + i_offset
-            w_mtx(i, k, j) = w(i, k, j) / msftx(i, j)
-          end do
-        end do
-      end do
-
-        ! Average w_mtx to the mass points (half levels)
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start - i_offset, i_end + i_offset
-            w_mtx_at_half(i, k, j) = 0.5 * (w_mtx(i, k, j) + w_mtx(i, k + 1, j))
-          end do
-        end do
-      end do
-
-        ! Calculate component associated with slope in sigma surfaces (dw_dz_dz_dx)
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end
-              ! dz_dx = (partial z / partial x)|sigma at mass points
-            dz_dx = 0.25 * (zx(i, k, j) + zx(i + 1, k, j) + zx(i, k + 1, j) + zx(i + 1, k + 1, j))
-              ! dw_dz_dz_dx = (partial w_mtx / partial z)|sigma (dw_dz) *
-              ! (partial z / partial x)|sigma (dz_dx)
-            dw_dz_dz_dx(i, k, j) = (w_mtx(i, k + 1, j) - w_mtx(i, k, j)) * rdzw(i, k, j) * dz_dx
-          end do
-        end do
-      end do
-
-        ! (partial w / partial x)|z = msf_tx_tx * (partial w_mtx / partial x)|sigma - dw_dz_dz_dx)
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end
-            dw_dx(i, k, j) = msf_tx_tx(i, j) * (rdx * (8.0 * (w_mtx_at_half(i + 1, k, j) - w_mtx_at_half(i - 1, k, j)) - (w_mtx_at_half(i + 2, k, j) - w_mtx_at_half(i - 2, k, j)) ) / 12.0 - dw_dz_dz_dx(i, k, j))
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end
-        do i = i_start, i_end
-          dw_dx(i, kte, j) = 0.0
-        end do
-      end do
-
-    end subroutine Calc_dw_dx_at_mass
-
-
-    subroutine Calc_du_dy_at_mass (u, zy, rdzw, dn, dnw, fnm, fnp, msfty, msfuy, rdy, cf1, cf2, cf3, &
-              ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dy)
-
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !                                                      !
-      ! Purpose: Calculate du/dy                             !
-      !                                                      !
-      ! Authors: Timothy W. Juliano & Pedro A. Jimenez       !
-      !                                                      !
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: u, zy, rdzw
-      real, dimension (kms:kme),                   intent (in)  :: dn, dnw, fnm, fnp
-      real, dimension (ims:ime, jms:jme),          intent (in)  :: msfty, msfuy
-      real,                                        intent (in)  :: rdy, cf1, cf2, cf3
-      integer,                                     intent (in)  :: ide, jde, kde,                 &
-                                                                   ims, ime, jms, jme, kms, kme,  &
-                                                                   its, ite, jts, jte, kts, kte
-
-      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: du_dy
-
-        ! Local vars
-      integer :: i, j, k
-      real    :: dz_dy, cft1, cft2
-      real, dimension (its:ite, jts:jte) :: msf_ty_uy
-      real, dimension (its - 1:ite + 1, kts:kte, jts - 1:jte + 1) :: du_dz_dz_dy, u_muy, u_muy_at_full
-      integer :: ktf, ktes1, ktes2, i_start, i_end, j_start, j_end
-
-        ! Define some indexes
-      ktes1 = kte - 1
-      ktes2 = kte - 2
-      cft2 = - 0.5 * dnw(ktes1) / dn(ktes1)
-      cft1 = 1.0 - cft2
-
-      i_start = its
-      i_end = Min (ite, ide - 1)
-      j_start = jts
-      j_end = Min (jte, jde - 1)
-      ktf = Min (kte, kde - 1)
-
-        ! Map factor at mass points multiplied by map factor at v points
-      do j = j_start, j_end
-        do i = i_start, i_end
-          msf_ty_uy(i, j) = msfty(i, j) * msfuy(i, j)
-        end do
-      end do
-
-        ! Scale u component of vector to account for map projection (at v points)
-      do j = j_start, j_end + 1
-        do k = kts, ktf
-          do i = i_start, i_end
-            u_muy(i, k, j) = 0.25 * (u(i, k, j) + u(i + 1, k, j) + u(i, k, j - 1) + u(i + 1, k, j - 1)) / msfuy(i, j)
-          end do
-        end do
-      end do
-
-        ! Interpolate u_muy from half levels to full levels (v points at faces)
-      do j = j_start, j_end + 1
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-            u_muy_at_full(i, k, j) = fnm(k) * u_muy(i, k, j) + fnp(k) * u_muy(i, k - 1, j)
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end + 1
-        do i = i_start, i_end
-            ! Surface
-          u_muy_at_full(i, 1, j) =  cf1 * u_muy(i, 1, j) + cf2 * u_muy(i, 2, j) + cf3 * u_muy(i, 3, j)
-            ! Top face
-          u_muy_at_full(i, kte, j) = cft1 * u_muy(i, ktes1, j) +  cft2 * u_muy(i, ktes2, j)
-        end do
-      end do
-
-        ! Calculate component associated with slope in sigma surfaces (du_dz_dz_dy)
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end
-              ! dz_dy = (partial z / partial y)|sigma at mass points
-            dz_dy = 0.25 * (zy(i, k, j) + zy(i, k, j + 1) + zy(i, k + 1, j) + zy(i, k + 1, j + 1))
-              ! du_dz_dz_dy = (partial u_muy / partial z)|sigma (du_dz) *
-              ! (partial z / partial y)|sigma (dz_dy)
-            du_dz_dz_dy(i, k, j) = (0.5 * (u_muy_at_full(i, k + 1, j) + u_muy_at_full(i, k + 1, j + 1)) - &
-                0.5 * (u_muy_at_full(i, k, j) + u_muy_at_full(i, k, j + 1))) * rdzw(i, k, j) * dz_dy
-          end do
-        end do
-      end do
-
-        ! (partial u / partial y)|z = msf_ty_uy * (partial u_muy_at_full / partial y)|sigma - du_dz_dz_dy)
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end
-            du_dy(i, k, j) = msf_ty_uy(i, j) * ((u_muy(i, k, j + 1) - u_muy(i, k, j)) * rdy - du_dz_dz_dy(i, k, j))
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end
-        do i = i_start, i_end
-            ! Surface
-            ! Top face
-          du_dy(i, kte, j) = 0.0
-        end do
-      end do
-
-    end subroutine Calc_du_dy_at_mass
-
-
-    subroutine Calc_dv_dy_at_mass (v, zy, rdzw, dn, dnw, fnm, fnp, msfty, msfvy, rdy, cf1, cf2, cf3, ide, jds, &
-              jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, config_flags, dv_dy)
-
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !                                                      !
-      ! Purpose: Calculate dv/dy                             !
-      !                                                      !
-      ! Authors: Timothy W. Juliano & Pedro A. Jimenez       !
-      !                                                      !
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: v, zy, rdzw
-      real, dimension (kms:kme),                   intent (in)  :: dn, dnw, fnm, fnp
-      real, dimension (ims:ime, jms:jme),          intent (in)  :: msfty, msfvy
-      real,                                        intent (in)  :: rdy, cf1, cf2, cf3
-      integer,                                     intent (in)  :: ide, jds, jde, kde,            &
-                                                                   ims, ime, jms, jme, kms, kme,  &
-                                                                   its, ite, jts, jte, kts, kte
-      type (grid_config_rec_type),                 intent (in)  :: config_flags
-
-      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dv_dy
-
-        ! Local vars
-      integer :: i, j, k
-      real    :: dz_dy, cft1, cft2
-      real, dimension (its:ite, jts:jte) :: msf_ty_vy
-      real, dimension (its - 1:ite + 1, kts:kte, jts - 1:jte + 1) :: dv_dz_dz_dy, v_mvy, v_mvy_at_full
-      integer :: ktf, ktes1, ktes2, i_start, i_end, j_start, j_end
-
-        ! Define some indexes
-      ktes1 = kte - 1
-      ktes2 = kte - 2
-      cft2 = - 0.5 * dnw(ktes1) / dn(ktes1)
-      cft1 = 1.0 - cft2
-
-      i_start = its
-      i_end = Min (ite, ide - 1)
-      j_start = jts
-      j_end = Min (jte, jde - 1)
-      ktf = Min (kte, kde - 1)
-
-        ! Map factor at mass points multiplied by map factor at v points
-      do j = j_start, j_end
-        do i = i_start, i_end
-          msf_ty_vy(i, j) = msfty(i, j) * msfvy(i, j)
-        end do
-      end do
-
-        ! Scale v component of vector to account for map projection
-      do j = j_start, j_end + 1
-        do k = kts, ktf
-          do i = i_start, i_end
-              ! Because msfvy at the poles will be undefined (1./0.),
-              ! we will have trouble. But we are OK since v at the
-              ! poles is 0., and that takes precedence in this case
-            if ((config_flags%polar) .and. ((j == jds) .or. (j == jde))) then
-              v_mvy(i, k, j) = 0.0
-            else
-              v_mvy(i, k, j) = v(i, k, j) / msfvy(i, j)
-            end if
-          end do
-        end do
-      end do
-
-        ! Interpolate v_mvy from half levels to full levels (v points at faces)
-      do j = j_start, j_end + 1
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-            v_mvy_at_full(i, k, j) = fnm(k) * v_mvy(i, k, j) + fnp(k) * v_mvy(i, k - 1, j)
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end + 1
-        do i = i_start, i_end
-            ! Surface
-          v_mvy_at_full(i, 1, j) =  cf1 * v_mvy(i, 1, j) + cf2 * v_mvy(i, 2, j) + cf3 * v_mvy(i, 3, j)
-            ! Top face
-          v_mvy_at_full(i, kte, j) = cft1 * v_mvy(i, ktes1, j) + cft2 * v_mvy(i, ktes2, j)
-        end do
-      end do
-
-        ! Calculate component associated with slope in sigma surfaces (dv_dz_dz_dy)
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end
-              ! dz_dy = (partial z / partial y)|sigma at mass points
-            dz_dy = 0.25 * (zy(i, k, j) + zy(i, k, j + 1) + zy(i, k + 1, j) + zy(i, k + 1, j + 1))
-              ! dv_dz_dz_dy = (partial v_mvy / partial z)|sigma (dv_dz) *
-              ! (partial z / partial y)|sigma (dz_dy)
-            dv_dz_dz_dy(i, k, j) = (0.5 * (v_mvy_at_full(i, k + 1, j) + v_mvy_at_full(i, k + 1, j + 1)) - &
-                0.5 * (v_mvy_at_full(i, k, j) + v_mvy_at_full(i, k, j + 1))) * rdzw(i, k, j) * dz_dy
-          end do
-        end do
-      end do
-
-        ! (partial v / partial y)|z = msf_ty_vy * (partial v_mvy_at_full / partial y)|sigma - dv_dz_dz_dy)
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end
-            dv_dy(i, k, j) = msf_ty_vy(i, j) * ((v_mvy(i, k, j + 1) - v_mvy(i, k, j)) * rdy - dv_dz_dz_dy(i, k, j))
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end
-        do i = i_start, i_end
-            ! Surface
-            ! Top face
-          dv_dy(i, kte, j) = 0.0
-        end do
-      end do
-
-    end subroutine Calc_dv_dy_at_mass
-
-
-    subroutine Calc_dw_dy_at_mass (w, zy, rdzw, msfty, rdy, ims, ime, jms, jme, kms, kme, &
-              ide, jde, kde, its, ite, jts, jte, kts, kte, dw_dy)
-
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !                                                      !
-      ! Purpose: Calculate dw/dy                             !
-      !                                                      !
-      ! Authors: Timothy W. Juliano & Pedro A. Jimenez       !
-      !                                                      !
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)  :: w, zy, rdzw
-      real, dimension (ims:ime, jms:jme),          intent (in)  :: msfty
-      real,                                        intent (in)  :: rdy
-      integer,                                     intent (in)  :: ide, jde, kde,                 &
-                                                                   ims, ime, jms, jme, kms, kme,  &
-                                                                   its, ite, jts, jte, kts, kte
-
-      real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dw_dy
-
-        ! Local vars
-      integer :: i, j, k, j_offset
-      real    :: dz_dy
-      real, dimension (its:ite, jts:jte) :: msf_ty_ty
-      real, dimension (its - 2:ite + 2, kts:kte, jts - 2:jte + 2) :: dw_dz_dz_dy, w_mty, w_mty_at_half
-      integer :: ktf, i_start, i_end, j_start, j_end
-
-        ! Define some indexes
-      i_start = its
-      i_end = Min (ite, ide - 1)
-      j_start = jts
-      j_end = Min (jte, jde - 1)
-      ktf = Min (kte, kde - 1)
-
-        ! Map factor at mass points squared
-      do j = jts, jte
-        do i = its, ite
-          msf_ty_ty(i, j) = msfty(i, j) * msfty(i, j)
-        end do
-      end do
-
-        ! Scale w component of vector to account for map projection (two extra points for the fourth-order y difference)
-      j_offset = 2
-      do j = j_start - j_offset, j_end + j_offset
-        do k = kts, kte
-          do i = i_start, i_end
-            w_mty(i, k, j) = w(i, k, j) / msfty(i, j)
-          end do
-        end do
-      end do
-
-        ! Average w_mty to the mass points (half levels)
-      do j = j_start - j_offset, j_end + j_offset
-        do k = kts, ktf
-          do i = i_start, i_end
-            w_mty_at_half(i,k,j) = 0.5 * (w_mty(i, k, j) + w_mty(i, k + 1, j))
-          end do
-        end do
-      end do
-
-        ! Calculate component associated with slope in sigma surfaces (dw_dz_dz_dy)
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end
-              ! dz_dy = (partial z / partial y)|sigma at mass points
-            dz_dy = 0.25 * (zy(i, k, j) + zy(i, k, j + 1) + zy(i, k + 1, j) + zy(i, k + 1, j + 1))
-              ! dw_dz_dz_dy = (partial w_mty / partial z)|sigma (dw_dz) *
-              ! (partial z / partial y)|sigma (dz_dy)
-            dw_dz_dz_dy(i, k, j) = (w_mty(i, k + 1, j) - w_mty(i, k, j)) * rdzw(i, k, j) * dz_dy
-          end do
-        end do
-      end do
-
-        ! (partial w / partial y)|z = msf_ty_ty * (partial w_mty / partial y)|sigma - dw_dz_dz_dy)
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end
-            dw_dy(i, k, j) = msf_ty_ty(i, j) * (rdy * (8.0 * (w_mty_at_half(i, k, j + 1) - w_mty_at_half(i, k, j - 1)) - (w_mty_at_half(i, k, j + 2) - w_mty_at_half(i, k, j - 2)) ) / 12.0 - dw_dz_dz_dy(i, k, j))
-          end do
-        end do
-      end do
-
-      do j = j_start, j_end
-        do i = i_start, i_end
-          dw_dy(i, kte, j) = 0.0
-        end do
-      end do
-
-    end subroutine Calc_dw_dy_at_mass
 
 
     subroutine Calc_surface_thetav (tsk, t2, q2, psfc, thetav_sk, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
@@ -6472,9 +5647,9 @@
       end if
 
         ! Calc vertical derivatives
-      call Calc_du_dz (u, rdz, dnw, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dz)
+      call Calc_dvel_dz (u, 1, 0, 0, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dz)
 
-      call Calc_dv_dz (v, rdz, dnw, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dv_dz)
+      call Calc_dvel_dz (v, 0, 0, 1, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dv_dz)
 
       call Calc_dmassvar_dz (thetav, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dthetav_dz)
 
