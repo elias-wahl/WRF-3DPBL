@@ -669,6 +669,7 @@ BENCH_START(surf_driver_tim)
      &        ,SSTSK=grid%sstsk        ,DTW=grid%dtw            ,SST_SKIN=grid%sst_skin  &
      &        ,SCM_FORCE_SKINTEMP=grid%scm_force_skintemp                                &
      &        ,SCM_FORCE_FLUX=grid%scm_force_flux                                        &
+     &        ,HFX_OPT=config_flags%hfx_opt  ,ZNT_OPT=config_flags%znt_opt                 &
      &        ,STEPBL=grid%stepbl      ,TH10=grid%th10          ,TH2=grid%th2            &
      &        ,THZ0=grid%thz0          ,TH_PHY=th_phy      ,TKE_PBL=grid%tke_pbl    &
      &        ,TMN=grid%tmn            ,TSHLTR=grid%tshltr      ,TSK=grid%tsk            &

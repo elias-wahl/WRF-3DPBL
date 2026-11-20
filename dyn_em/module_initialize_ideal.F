@@ -1423,7 +1423,7 @@ CONTAINS
         RAD=SQRT(xrad*xrad+yrad*yrad+zrad*zrad)
         IF(RAD <= 1.) THEN
 !          grid%t_1(i,k,j)=grid%t_1(i,k,j)+delt*COS(.5*PI*RAD)**2
-           grid%t_1(i,k,j)=grid%t_1(i,k,j)+ 0.1 *randx
+           grid%t_1(i,k,j)=grid%t_1(i,k,j)+ config_flags%les_pert_amp *randx
            grid%t_2(i,k,j)=grid%t_1(i,k,j)
            qvf = 1. + rvovrd*moist(i,k,j,P_QV)
            grid%alt(i,k,j) = (r_d/p1000mb)*(grid%t_1(i,k,j)+t0)*qvf* &

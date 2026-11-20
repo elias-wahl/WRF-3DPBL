@@ -1283,6 +1283,11 @@ rconfig  integer   pbl3d_t2_scalar      namelist,dynamics          1        0   
 rconfig  integer   pbl3d_sf_pair        namelist,dynamics    max_domains      0      -     "pbl3d_sf_pair"        "PBL3D: 1 = credit q^2 with the horizontal-pairing production divided by the slope factor the momentum tendency uses (energy-consistent); 0 = untapered; 2 = as 1, and for pbl3d_opt = 1 the nine-term production with that pairing instead of the vertical shear alone" ""
 rconfig  integer   pbl3d_scalar_mix     namelist,dynamics    max_domains      0      -     "pbl3d_scalar_mix"     "PBL3D scalar turbulent mixing" ""
 rconfig  integer   pbl3d_scale_aware    namelist,dynamics    max_domains      1      -     "pbl3d_scale_aware"    "PBL3D scale-aware tapering" ""
+# Idealised cases: prescribed surface heat flux and roughness in the revised MM5 surface layer
+# (port of NCAR's hfx_opt/znt_opt, commit 068615101, made default-off) and the em_les perturbation factor
+rconfig  real      hfx_opt              namelist,physics     max_domains   -9999.  -     "hfx_opt"       "prescribed sensible heat flux W m-2 in sfclayrev; < -9000 = off" "W m-2"
+rconfig  real      znt_opt              namelist,physics     max_domains     -1.   -     "znt_opt"       "prescribed roughness length m in sfclayrev; <= 0 = off" "m"
+rconfig  real      les_pert_amp         namelist,dynamics    1                0.1  -     "les_pert_amp"  "em_les initial theta perturbation: factor on (U[0,1]-0.5), K" "K"
 rconfig  integer   pbl3d_lh_opt         namelist,dynamics    max_domains      0      -     "pbl3d_lh_opt"         "PBL3D horizontal mixing: 0 = off (single tapered length, previous behaviour), 1 = restore in the horizontal only the length the grey-zone taper removed" ""
 rconfig  integer   flux_limiter_w       namelist,dynamics    max_domains      0      -     "flux_limiter_w"       "Flux limiter on vertical advection of w" ""
 

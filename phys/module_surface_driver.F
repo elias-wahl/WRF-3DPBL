@@ -35,6 +35,7 @@ CONTAINS
      &          ,albbck,embck,lh,sh2o,shdmax,shdmin,shdavg,z0         &
      &          ,flqc,flhc,psfc,sst,sst_input,sstsk,dtw,sst_update,sst_skin     &
      &          ,scm_force_skintemp,scm_force_flux,t2,emiss           &
+     &          ,hfx_opt,znt_opt                                      &
      &          ,sf_sfclay_physics,sf_surface_physics,ra_lw_physics   & 
      &          ,bl_pbl_physics                                       &
      &          ,sf_mynn_sfcflux_land,sf_mynn_sfcflux_water           &
@@ -654,6 +655,8 @@ CONTAINS
    INTEGER, INTENT(IN) :: sf_mynn_sfcflux_land,sf_mynn_sfcflux_water
    INTEGER, INTENT(IN),OPTIONAL :: sst_skin, tmn_update,              &
                                    scm_force_skintemp, scm_force_flux 
+   REAL, INTENT(IN), OPTIONAL :: hfx_opt, znt_opt   ! prescribed surface flux / roughness (sfclayrev), off by default
+   REAL :: th1_sf
 
    INTEGER, DIMENSION(num_tiles), INTENT(IN) ::                       &
      &           i_start,i_end,j_start,j_end
@@ -2176,6 +2179,31 @@ CONTAINS
                  shalwater_z0,water_depth,                           & 
                  scm_force_flux,sf_surface_physics,errmsg,errflg     )
          ELSE
+!  Prescribed roughness and surface heat flux for idealised cases (hfx_opt, znt_opt; off by default).
+!  The skin temperature is set from the previous call's exchange coefficient, theta_g = theta_1 + H/flhc,
+!  so that the surface-layer stability (ust, mol, rmol) follows the prescribed upward flux instead of
+!  turning stable once the air warms past a fixed skin temperature.
+         IF ( PRESENT(znt_opt) ) THEN
+           IF ( znt_opt > 0. ) THEN
+             DO j = j_start(ij),j_end(ij)
+             DO i = i_start(ij),i_end(ij)
+               znt(i,j) = znt_opt
+             END DO
+             END DO
+           ENDIF
+         ENDIF
+         IF ( PRESENT(hfx_opt) ) THEN
+           IF ( hfx_opt > -9000. ) THEN
+             DO j = j_start(ij),j_end(ij)
+             DO i = i_start(ij),i_end(ij)
+               IF ( flhc(i,j) > 1.e-3 ) THEN
+                 th1_sf   = t_phy(i,kts,j)*(p1000mb/p_phy(i,kts,j))**rcp
+                 tsk(i,j) = (th1_sf + hfx_opt/flhc(i,j))*(psfc(i,j)/p1000mb)**rcp
+               ENDIF
+             END DO
+             END DO
+           ENDIF
+         ENDIF
          CALL SFCLAYREV(u_phytmp,v_phytmp,t_phy,qv_curr,&
                p_phy,dz8w,cp,g,rcp,r_d,xlv,psfc,chs,chs2,cqs2,cpm, &
                znt,ust,pblh,mavail,zol,mol,regime,psim,psih,fm,fhh, &
@@ -2191,6 +2219,17 @@ CONTAINS
                ustm,ck,cka,cd,cda,isftcflx,iz0tlnd,                &
                shalwater_z0,water_depth,                           &
                scm_force_flux,errmsg,errflg                        )
+         IF ( PRESENT(hfx_opt) ) THEN
+           IF ( hfx_opt > -9000. ) THEN
+             DO j = j_start(ij),j_end(ij)
+             DO i = i_start(ij),i_end(ij)
+               hfx(i,j) = hfx_opt
+               qfx(i,j) = 0.
+               lh(i,j)  = 0.
+             END DO
+             END DO
+           ENDIF
+         ENDIF
 #if ( EM_CORE==1)
            DO j = j_start(ij),j_end(ij)
            DO i = i_start(ij),i_end(ij)
