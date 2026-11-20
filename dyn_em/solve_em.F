@@ -2319,6 +2319,16 @@ BENCH_END(small_step_finish_tim)
 #  include "HALO_EM_D.inc"
 ! WCS addition 11/19/08
 #  include "PERIOD_EM_DA.inc"
+!  diff_6th_slopeopt = 3/5: the scalar filter in rk_scalar_tend reads t_2 (static-stability
+!  gate) and ph_2 (level heights) at i-3..i+3, j-3..j+3. After the acoustic steps the halo of
+!  t_2 is not yet exchanged and that of ph_2 only one point wide (HALO_EM_C2), until
+!  HALO_EM_D2_5 at the end of the RK stage; the gate then mixes current patch values with
+!  stale halo values and depends on the decomposition. With diff_6th_hfx_halo = 1 the
+!  halos are refreshed here (3 points); 0 = previous behaviour, bit for bit.
+   IF ( ( config_flags%diff_6th_slopeopt .EQ. 3 .OR. config_flags%diff_6th_slopeopt .EQ. 5 ) &
+        .AND. config_flags%diff_6th_hfx_halo .EQ. 1 ) THEN
+#    include "HALO_EM_D2_5.inc"
+   ENDIF
 #endif
 
 !<DESCRIPTION>
