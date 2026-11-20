@@ -1108,27 +1108,12 @@
           sm_l2, sh_l2, sm, sh, q_ratio, q_sq_hl88, du_dz, dv_dz, dthetav_dz, id, dn, dnw, fnm, fnp, cf1, cf2, cf3, &
           ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
-        ! Diagnose momentum, heat, moisture fluxes for pbl approx
-      if ( config_flags%pbl3d_prog .eq. 0 ) then  ! For level 2 model, no need for realizability
+        ! Diagnose momentum, heat, moisture fluxes for pbl approx (at level 2.5, sm and sh already carry
+        ! the HL88 limit of Prep_for_fluxes_l2p5_pbl_approx)
+      if ( config_flags%pbl3d_prog .ge. 0 ) then
         call Diagnose_fluxes_pbl_approx (do_scalar_mix=config_flags%pbl3d_scalar_mix, ss=ss, nsteps=config_flags%pbl3d_nsteps, &
-            fnm=fnm, fnp=fnp, t=t, qv=qv, ust=ust, hfx=hfx, qfx=qfx, sm_tilde=sm, sh_tilde=sh, rif=rif, &
+            fnm=fnm, fnp=fnp, t=t, qv=qv, sm_tilde=sm, sh_tilde=sh, rif=rif, &
             q_sq=q_sq, l_master=l_master, du_dz=du_dz, dv_dz=dv_dz, dthetav_dz=dthetav_dz, dqv_dz=dqv_dz, &
-            dqc_dz=dqc_dz, dqr_dz=dqr_dz, dqi_dz=dqi_dz, dqs_dz=dqs_dz, dqg_dz=dqg_dz, dqnc_dz=dqnc_dz, &
-            dqnr_dz=dqnr_dz, dqni_dz=dqni_dz, dqnwfa_dz=dqnwfa_dz, dqnifa_dz=dqnifa_dz, u2=turb_flux_u2, &
-            v2=turb_flux_v2, w2=turb_flux_w2, uv=turb_flux_uv, uw=turb_flux_uw, vw=turb_flux_vw, uthv=turb_flux_utheta_v, vthv=turb_flux_vtheta_v, &
-            wthv=turb_flux_wtheta_v, th2v=turb_flux_theta2_v, uqv=turb_flux_uqv, vqv=turb_flux_vqv, wqv=turb_flux_wqv, &
-            uqc=turb_flux_uqc, vqc=turb_flux_vqc, wqc=turb_flux_wqc, uqr=turb_flux_uqr, vqr=turb_flux_vqr, wqr=turb_flux_wqr, &
-            uqi=turb_flux_uqi, vqi=turb_flux_vqi, wqi=turb_flux_wqi, uqs=turb_flux_uqs, vqs=turb_flux_vqs, wqs=turb_flux_wqs, &
-            uqg=turb_flux_uqg, vqg=turb_flux_vqg, wqg=turb_flux_wqg, uqnc=turb_flux_uqnc, vqnc=turb_flux_vqnc, &
-            wqnc=turb_flux_wqnc, uqnr=turb_flux_uqnr, vqnr=turb_flux_vqnr, wqnr=turb_flux_wqnr, uqni=turb_flux_uqni, &
-            vqni=turb_flux_vqni, wqni=turb_flux_wqni, uqnwfa=turb_flux_uqnwfa, vqnwfa=turb_flux_vqnwfa, wqnwfa=turb_flux_wqnwfa, &
-            uqnifa=turb_flux_uqnifa, vqnifa=turb_flux_vqnifa, wqnifa=turb_flux_wqnifa, uth=turb_flux_utheta, &
-            vth=turb_flux_vtheta, wth=turb_flux_wtheta, ids=ids, ide=ide, jds=jds, jde=jde, kds=kds, kde=kde, &
-            ims=ims, ime=ime, jms=jms, jme=jme, kms=kms, kme=kme, its=its, ite=ite, jts=jts, jte=jte, kts=kts, kte=kte)
-      else if ( config_flags%pbl3d_prog .gt. 0 ) then  ! For level 2.5 model, include information for HL88 mod
-        call Diagnose_fluxes_pbl_approx (do_scalar_mix=config_flags%pbl3d_scalar_mix, ss=ss, nsteps=config_flags%pbl3d_nsteps, &
-            fnm=fnm, fnp=fnp, t=t, qv=qv, ust=ust, hfx=hfx, qfx=qfx, sm_tilde=sm, sh_tilde=sh, sm_l2=sm_l2, sh_l2=sh_l2, rif=rif, &
-            q_sq=q_sq, q_sq_hl88=q_sq_hl88, q_ratio=q_ratio, l_master=l_master, du_dz=du_dz, dv_dz=dv_dz, dthetav_dz=dthetav_dz, dqv_dz=dqv_dz, &
             dqc_dz=dqc_dz, dqr_dz=dqr_dz, dqi_dz=dqi_dz, dqs_dz=dqs_dz, dqg_dz=dqg_dz, dqnc_dz=dqnc_dz, &
             dqnr_dz=dqnr_dz, dqni_dz=dqni_dz, dqnwfa_dz=dqnwfa_dz, dqnifa_dz=dqnifa_dz, u2=turb_flux_u2, &
             v2=turb_flux_v2, w2=turb_flux_w2, uv=turb_flux_uv, uw=turb_flux_uw, vw=turb_flux_vw, uthv=turb_flux_utheta_v, vthv=turb_flux_vtheta_v, &
@@ -3314,8 +3299,8 @@
     end subroutine Calc_heat_flux
 
 
-    subroutine Diagnose_fluxes_pbl_approx (do_scalar_mix, ss, nsteps, fnm, fnp, t, qv, ust, hfx, qfx, sm_tilde, sh_tilde, &
-              sm_l2, sh_l2, rif, q_sq, q_sq_hl88, q_ratio, l_master, du_dz, dv_dz, dthetav_dz, dqv_dz, dqc_dz, &
+    subroutine Diagnose_fluxes_pbl_approx (do_scalar_mix, ss, nsteps, fnm, fnp, t, qv, sm_tilde, sh_tilde, &
+              rif, q_sq, l_master, du_dz, dv_dz, dthetav_dz, dqv_dz, dqc_dz, &
               dqr_dz, dqi_dz, dqs_dz, dqg_dz, dqnc_dz, dqnr_dz, dqni_dz, dqnwfa_dz, dqnifa_dz, &
               u2, v2, w2, uv, uw, vw, uthv, vthv, wthv, th2v, uqv, vqv, wqv, uth, vth, wth, &
               uqc, vqc, wqc, uqr, vqr, wqr, uqi, vqi, wqi, uqs, vqs, wqs, uqg, vqg, wqg, uqnc, vqnc, wqnc, &
@@ -3336,16 +3321,14 @@
           uqc, vqc, wqc, uqr, vqr, wqr, uqi, vqi, wqi, uqs, vqs, wqs, uqg, vqg, wqg, &
           uqnc, vqnc, wqnc, uqnr, vqnr, wqnr, uqni, vqni, wqni, uqnwfa, vqnwfa, wqnwfa, uqnifa, vqnifa, wqnifa
       real, dimension (its:ite, kts:kte, jts:jte), intent (in)  :: sm_tilde, sh_tilde, rif
-      real, dimension (its:ite, kts:kte, jts:jte), optional, intent (in)  :: q_ratio, q_sq_hl88, sm_l2, sh_l2
-      real, dimension (ims:ime, jms:jme),          intent (in)  :: ust, hfx, qfx
       integer, intent (in)    :: ids, ide, jds, jde, kds, kde, &
                                  ims, ime, jms, jme, kms, kme, &
                                  its, ite, jts, jte, kts, kte
 
         ! local vars
       integer :: i, j, k, i_start, i_end, j_start, j_end, ktf
-      real :: qsq, l, sm, sh, ri, dudz, dvdz, dthvdz, dqvdz, dqcdz, dqrdz, dqidz, dqsdz, dqgdz, &
-              dqncdz, dqnrdz, dqnidz, dqnwfadz, dqnifadz
+      real :: qsq, l, sm, sh, ri, dudz, dvdz, dthvdz, dqvdz
+      logical :: mix_q
       real :: t_wall, qv_wall
       real :: th_pert, th_dry, qm
 
@@ -3424,163 +3407,32 @@
                     + RVOVRD * th_dry * wqv(i, k, j)
               end if
 
-              if ( do_scalar_mix .eq. 1 .and. ss .eq. nsteps) then
-                  ! Cloud mass
-                if ( p_qc .ge. param_first_scalar ) then
-                  dqcdz = dqc_dz(i, k, j)
-                  wqc(i, k, j) = Diag_wqv_pbl_approx (qsq, l, sh, dqcdz)
-                  uqc(i, k, j) = Diag_uqv_pbl_approx (qsq, l, dudz, dqcdz, uw(i, k, j), wqc(i, k, j))
-                  vqc(i, k, j) = Diag_vqv_pbl_approx (qsq, l, dvdz, dqcdz, vw(i, k, j), wqc(i, k, j))
-                else
-                  wqc(i, k, j) = TURB_FLUX_MIN
-                  uqc(i, k, j) = TURB_FLUX_MIN
-                  vqc(i, k, j) = TURB_FLUX_MIN
-                end if
-                  ! Rain mass
-                if ( p_qr .ge. param_first_scalar ) then
-                  dqrdz = dqr_dz(i, k, j)
-                  wqr(i, k, j) = Diag_wqv_pbl_approx (qsq, l, sh, dqrdz)
-                  uqr(i, k, j) = Diag_uqv_pbl_approx (qsq, l, dudz, dqrdz, uw(i, k, j), wqr(i, k, j))
-                  vqr(i, k, j) = Diag_vqv_pbl_approx (qsq, l, dvdz, dqrdz, vw(i, k, j), wqr(i, k, j))
-                else
-                  wqr(i, k, j) = TURB_FLUX_MIN
-                  uqr(i, k, j) = TURB_FLUX_MIN
-                  vqr(i, k, j) = TURB_FLUX_MIN
-                end if
-                  ! Ice mass
-                if ( p_qi .ge. param_first_scalar ) then
-                  dqidz = dqi_dz(i, k, j)
-                  wqi(i, k, j) = Diag_wqv_pbl_approx (qsq, l, sh, dqidz)
-                  uqi(i, k, j) = Diag_uqv_pbl_approx (qsq, l, dudz, dqidz, uw(i, k, j), wqi(i, k, j))
-                  vqi(i, k, j) = Diag_vqv_pbl_approx (qsq, l, dvdz, dqidz, vw(i, k, j), wqi(i, k, j))
-                else
-                  wqi(i, k, j) = TURB_FLUX_MIN
-                  uqi(i, k, j) = TURB_FLUX_MIN
-                  vqi(i, k, j) = TURB_FLUX_MIN
-                end if
-                  ! Snow mass
-                if ( p_qs .ge. param_first_scalar ) then
-                  dqsdz = dqs_dz(i, k, j)
-                  wqs(i, k, j) = Diag_wqv_pbl_approx (qsq, l, sh, dqsdz)
-                  uqs(i, k, j) = Diag_uqv_pbl_approx (qsq, l, dudz, dqsdz, uw(i, k, j), wqs(i, k, j))
-                  vqs(i, k, j) = Diag_vqv_pbl_approx (qsq, l, dvdz, dqsdz, vw(i, k, j), wqs(i, k, j))
-                else
-                  wqs(i, k, j) = TURB_FLUX_MIN
-                  uqs(i, k, j) = TURB_FLUX_MIN
-                  vqs(i, k, j) = TURB_FLUX_MIN
-                end if
-                  ! Graupel mass
-                if ( p_qg .ge. param_first_scalar ) then
-                  dqgdz = dqg_dz(i, k, j)
-                  wqg(i, k, j) = Diag_wqv_pbl_approx (qsq, l, sh, dqgdz)
-                  uqg(i, k, j) = Diag_uqv_pbl_approx (qsq, l, dudz, dqgdz, uw(i, k, j), wqg(i, k, j))
-                  vqg(i, k, j) = Diag_vqv_pbl_approx (qsq, l, dvdz, dqgdz, vw(i, k, j), wqg(i, k, j))
-                else
-                  wqg(i, k, j) = TURB_FLUX_MIN
-                  uqg(i, k, j) = TURB_FLUX_MIN
-                  vqg(i, k, j) = TURB_FLUX_MIN
-                end if
-                  ! Cloud number
-                if ( p_qnc .ge. param_first_scalar ) then
-                  dqncdz = dqnc_dz(i, k, j)
-                  wqnc(i, k, j) = Diag_wqv_pbl_approx (qsq, l, sh, dqncdz)
-                  uqnc(i, k, j) = Diag_uqv_pbl_approx (qsq, l, dudz, dqncdz, uw(i, k, j), wqnc(i, k, j))
-                  vqnc(i, k, j) = Diag_vqv_pbl_approx (qsq, l, dvdz, dqncdz, vw(i, k, j), wqnc(i, k, j))
-                else
-                  wqnc(i, k, j) = TURB_FLUX_MIN
-                  uqnc(i, k, j) = TURB_FLUX_MIN
-                  vqnc(i, k, j) = TURB_FLUX_MIN
-                end if
-                  ! Rain number
-                if ( p_qnr .ge. param_first_scalar ) then
-                  dqnrdz = dqnr_dz(i, k, j)
-                  wqnr(i, k, j) = Diag_wqv_pbl_approx (qsq, l, sh, dqnrdz)
-                  uqnr(i, k, j) = Diag_uqv_pbl_approx (qsq, l, dudz, dqnrdz, uw(i, k, j), wqnr(i, k, j))
-                  vqnr(i, k, j) = Diag_vqv_pbl_approx (qsq, l, dvdz, dqnrdz, vw(i, k, j), wqnr(i, k, j))
-                else
-                  wqnr(i, k, j) = TURB_FLUX_MIN
-                  uqnr(i, k, j) = TURB_FLUX_MIN
-                  vqnr(i, k, j) = TURB_FLUX_MIN
-                end if
-                  ! Ice number
-                if ( p_qni .ge. param_first_scalar ) then
-                  dqnidz = dqni_dz(i, k, j)
-                  wqni(i, k, j) = Diag_wqv_pbl_approx (qsq, l, sh, dqnidz)
-                  uqni(i, k, j) = Diag_uqv_pbl_approx (qsq, l, dudz, dqnidz, uw(i, k, j), wqni(i, k, j))
-                  vqni(i, k, j) = Diag_vqv_pbl_approx (qsq, l, dvdz, dqnidz, vw(i, k, j), wqni(i, k, j))
-                else
-                  wqni(i, k, j) = TURB_FLUX_MIN
-                  uqni(i, k, j) = TURB_FLUX_MIN
-                  vqni(i, k, j) = TURB_FLUX_MIN
-                end if
-                  ! Water friendly aerosol number
-                if ( p_qnwfa .ge. param_first_scalar ) then
-                  dqnwfadz = dqnwfa_dz(i, k, j)
-                  wqnwfa(i, k, j) = Diag_wqv_pbl_approx (qsq, l, sh, dqnwfadz)
-                  uqnwfa(i, k, j) = Diag_uqv_pbl_approx (qsq, l, dudz, dqnwfadz, uw(i, k, j), wqnwfa(i, k, j))
-                  vqnwfa(i, k, j) = Diag_vqv_pbl_approx (qsq, l, dvdz, dqnwfadz, vw(i, k, j), wqnwfa(i, k, j))
-                else
-                  wqnwfa(i, k, j) = TURB_FLUX_MIN
-                  uqnwfa(i, k, j) = TURB_FLUX_MIN
-                  vqnwfa(i, k, j) = TURB_FLUX_MIN
-                end if
-                  ! Ice friendly aerosol number
-                if ( p_qnifa .ge. param_first_scalar ) then
-                  dqnifadz = dqnifa_dz(i, k, j)
-                  wqnifa(i, k, j) = Diag_wqv_pbl_approx (qsq, l, sh, dqnifadz)
-                  uqnifa(i, k, j) = Diag_uqv_pbl_approx (qsq, l, dudz, dqnifadz, uw(i, k, j), wqnifa(i, k, j))
-                  vqnifa(i, k, j) = Diag_vqv_pbl_approx (qsq, l, dvdz, dqnifadz, vw(i, k, j), wqnifa(i, k, j))
-                else
-                  wqnifa(i, k, j) = TURB_FLUX_MIN
-                  uqnifa(i, k, j) = TURB_FLUX_MIN
-                  vqnifa(i, k, j) = TURB_FLUX_MIN
-                end if
-              else
-                  ! Cloud mas
-                wqc(i, k, j) = TURB_FLUX_MIN
-                uqc(i, k, j) = TURB_FLUX_MIN
-                vqc(i, k, j) = TURB_FLUX_MIN
-                  ! Rain mass
-                wqr(i, k, j) = TURB_FLUX_MIN
-                uqr(i, k, j) = TURB_FLUX_MIN
-                vqr(i, k, j) = TURB_FLUX_MIN
-                  ! Ice mass
-                wqi(i, k, j) = TURB_FLUX_MIN
-                uqi(i, k, j) = TURB_FLUX_MIN
-                vqi(i, k, j) = TURB_FLUX_MIN
-                  ! Snow mass
-                wqs(i, k, j) = TURB_FLUX_MIN
-                uqs(i, k, j) = TURB_FLUX_MIN
-                vqs(i, k, j) = TURB_FLUX_MIN
-                  ! Graupel mass
-                wqg(i, k, j) = TURB_FLUX_MIN
-                uqg(i, k, j) = TURB_FLUX_MIN
-                vqg(i, k, j) = TURB_FLUX_MIN
-                  ! Cloud number
-                wqnc(i, k, j) = TURB_FLUX_MIN
-                uqnc(i, k, j) = TURB_FLUX_MIN
-                vqnc(i, k, j) = TURB_FLUX_MIN
-                  ! Rain number
-                wqnr(i, k, j) = TURB_FLUX_MIN
-                uqnr(i, k, j) = TURB_FLUX_MIN
-                vqnr(i, k, j) = TURB_FLUX_MIN
-                  ! Ice number
-                wqni(i, k, j) = TURB_FLUX_MIN
-                uqni(i, k, j) = TURB_FLUX_MIN
-                vqni(i, k, j) = TURB_FLUX_MIN
-                  ! Water friendly aerosol number
-                wqnwfa(i, k, j) = TURB_FLUX_MIN
-                uqnwfa(i, k, j) = TURB_FLUX_MIN
-                vqnwfa(i, k, j) = TURB_FLUX_MIN
-                  ! Ice friendly aerosol number
-                wqnifa(i, k, j) = TURB_FLUX_MIN
-                uqnifa(i, k, j) = TURB_FLUX_MIN
-                vqnifa(i, k, j) = TURB_FLUX_MIN
-              end if
+                ! Fluxes of hydrometeor masses and numbers (TURB_FLUX_MIN where not mixed or not carried)
+              mix_q = do_scalar_mix .eq. 1 .and. ss .eq. nsteps
+              call Diag_hydrometeor_fluxes (mix_q .and. p_qc .ge. param_first_scalar, dqc_dz(i, k, j), &
+                  uqc(i, k, j), vqc(i, k, j), wqc(i, k, j))            ! Cloud mass
+              call Diag_hydrometeor_fluxes (mix_q .and. p_qr .ge. param_first_scalar, dqr_dz(i, k, j), &
+                  uqr(i, k, j), vqr(i, k, j), wqr(i, k, j))            ! Rain mass
+              call Diag_hydrometeor_fluxes (mix_q .and. p_qi .ge. param_first_scalar, dqi_dz(i, k, j), &
+                  uqi(i, k, j), vqi(i, k, j), wqi(i, k, j))            ! Ice mass
+              call Diag_hydrometeor_fluxes (mix_q .and. p_qs .ge. param_first_scalar, dqs_dz(i, k, j), &
+                  uqs(i, k, j), vqs(i, k, j), wqs(i, k, j))            ! Snow mass
+              call Diag_hydrometeor_fluxes (mix_q .and. p_qg .ge. param_first_scalar, dqg_dz(i, k, j), &
+                  uqg(i, k, j), vqg(i, k, j), wqg(i, k, j))            ! Graupel mass
+              call Diag_hydrometeor_fluxes (mix_q .and. p_qnc .ge. param_first_scalar, dqnc_dz(i, k, j), &
+                  uqnc(i, k, j), vqnc(i, k, j), wqnc(i, k, j))         ! Cloud number
+              call Diag_hydrometeor_fluxes (mix_q .and. p_qnr .ge. param_first_scalar, dqnr_dz(i, k, j), &
+                  uqnr(i, k, j), vqnr(i, k, j), wqnr(i, k, j))         ! Rain number
+              call Diag_hydrometeor_fluxes (mix_q .and. p_qni .ge. param_first_scalar, dqni_dz(i, k, j), &
+                  uqni(i, k, j), vqni(i, k, j), wqni(i, k, j))         ! Ice number
+              call Diag_hydrometeor_fluxes (mix_q .and. p_qnwfa .ge. param_first_scalar, dqnwfa_dz(i, k, j), &
+                  uqnwfa(i, k, j), vqnwfa(i, k, j), wqnwfa(i, k, j))   ! Water friendly aerosol number
+              call Diag_hydrometeor_fluxes (mix_q .and. p_qnifa .ge. param_first_scalar, dqnifa_dz(i, k, j), &
+                  uqnifa(i, k, j), vqnifa(i, k, j), wqnifa(i, k, j))   ! Ice friendly aerosol number
 
             else
 
-              call Set_turb_flux_min
+              call Set_turb_flux_min (i, k, j)
 
             end if if_low_q_sq
 
@@ -3588,15 +3440,47 @@
         end do k_loop
       end do j_loop
 
-        ! Zero fluxes at the suface
-      call Set_turb_flux_min_surface
-
-        ! Zero fluxes at the top
-      call Set_turb_flux_min_top
+        ! Zero fluxes at the surface and at the top
+      do j = j_start, j_end
+        do i = i_start, i_end
+          call Set_turb_flux_min (i, kts, j)
+        end do
+      end do
+      do j = j_start, j_end
+        do i = i_start, i_end
+          call Set_turb_flux_min (i, ktf + 1, j)
+        end do
+      end do
 
       contains
 
-        subroutine Set_turb_flux_min
+        subroutine Diag_hydrometeor_fluxes (mixed, dq_dz, uq, vq, wq)
+
+            ! Fluxes of one hydrometeor mass or number at face (i, k, j) in the form of the qv fluxes,
+            ! from its vertical gradient dq_dz; TURB_FLUX_MIN where it is not mixed (mixed = .false.)
+
+          logical, intent (in)  :: mixed
+          real,    intent (in)  :: dq_dz
+          real,    intent (out) :: uq, vq, wq
+
+          if (mixed) then
+            wq = Diag_wqv_pbl_approx (qsq, l, sh, dq_dz)
+            uq = Diag_uqv_pbl_approx (qsq, l, dudz, dq_dz, uw(i, k, j), wq)
+            vq = Diag_vqv_pbl_approx (qsq, l, dvdz, dq_dz, vw(i, k, j), wq)
+          else
+            wq = TURB_FLUX_MIN
+            uq = TURB_FLUX_MIN
+            vq = TURB_FLUX_MIN
+          end if
+
+        end subroutine Diag_hydrometeor_fluxes
+
+
+        subroutine Set_turb_flux_min (i, k, j)
+
+            ! All fluxes at face (i, k, j) to their floor
+
+          integer, intent (in) :: i, k, j
 
           u2(i, k, j) = TURB_FLUX_MIN
           v2(i, k, j) = TURB_FLUX_MIN
@@ -3647,116 +3531,6 @@
 
         end subroutine Set_turb_flux_min
 
-
-        subroutine Set_turb_flux_min_surface
-
-          do j = j_start, j_end
-            do i = i_start, i_end
-              u2(i, kts, j) = TURB_FLUX_MIN
-              v2(i, kts, j) = TURB_FLUX_MIN
-              w2(i, kts, j) = TURB_FLUX_MIN
-              uv(i, kts, j) = TURB_FLUX_MIN
-              uw(i, kts, j) = TURB_FLUX_MIN
-              vw(i, kts, j) = TURB_FLUX_MIN
-              uqv(i, kts, j) = TURB_FLUX_MIN
-              vqv(i, kts, j) = TURB_FLUX_MIN
-              wqv(i, kts, j) = TURB_FLUX_MIN
-              uqc(i, kts, j) = TURB_FLUX_MIN
-              vqc(i, kts, j) = TURB_FLUX_MIN
-              wqc(i, kts, j) = TURB_FLUX_MIN
-              uqr(i, kts, j) = TURB_FLUX_MIN
-              vqr(i, kts, j) = TURB_FLUX_MIN
-              wqr(i, kts, j) = TURB_FLUX_MIN
-              uqi(i, kts, j) = TURB_FLUX_MIN
-              vqi(i, kts, j) = TURB_FLUX_MIN
-              wqi(i, kts, j) = TURB_FLUX_MIN
-              uqs(i, kts, j) = TURB_FLUX_MIN
-              vqs(i, kts, j) = TURB_FLUX_MIN
-              wqs(i, kts, j) = TURB_FLUX_MIN
-              uqg(i, kts, j) = TURB_FLUX_MIN
-              vqg(i, kts, j) = TURB_FLUX_MIN
-              wqg(i, kts, j) = TURB_FLUX_MIN
-              uqnc(i, kts, j) = TURB_FLUX_MIN
-              vqnc(i, kts, j) = TURB_FLUX_MIN
-              wqnc(i, kts, j) = TURB_FLUX_MIN
-              uqnr(i, kts, j) = TURB_FLUX_MIN
-              vqnr(i, kts, j) = TURB_FLUX_MIN
-              wqnr(i, kts, j) = TURB_FLUX_MIN
-              uqni(i, kts, j) = TURB_FLUX_MIN
-              vqni(i, kts, j) = TURB_FLUX_MIN
-              wqni(i, kts, j) = TURB_FLUX_MIN
-              uqnwfa(i, kts, j) = TURB_FLUX_MIN
-              vqnwfa(i, kts, j) = TURB_FLUX_MIN
-              wqnwfa(i, kts, j) = TURB_FLUX_MIN
-              uqnifa(i, kts, j) = TURB_FLUX_MIN
-              vqnifa(i, kts, j) = TURB_FLUX_MIN
-              wqnifa(i, kts, j) = TURB_FLUX_MIN
-              uth(i, kts, j) = TURB_FLUX_MIN
-              uthv(i, kts, j) = TURB_FLUX_MIN
-              vth(i, kts, j) = TURB_FLUX_MIN
-              vthv(i, kts, j) = TURB_FLUX_MIN
-              wth(i, kts, j) = TURB_FLUX_MIN
-              wthv(i, kts, j) = TURB_FLUX_MIN
-              th2v(i, kts, j) = TURB_FLUX_MIN
-            end do
-          end do
-
-        end subroutine Set_turb_flux_min_surface
-
-        subroutine Set_turb_flux_min_top
-
-          do j = j_start, j_end
-            do i = i_start, i_end
-              u2(i, ktf + 1, j) = TURB_FLUX_MIN
-              v2(i, ktf + 1, j) = TURB_FLUX_MIN
-              w2(i, ktf + 1, j) = TURB_FLUX_MIN
-              uv(i, ktf + 1, j) = TURB_FLUX_MIN
-              uw(i, ktf + 1, j) = TURB_FLUX_MIN
-              vw(i, ktf + 1, j) = TURB_FLUX_MIN
-              uqv(i, ktf + 1, j) = TURB_FLUX_MIN
-              vqv(i, ktf + 1, j) = TURB_FLUX_MIN
-              wqv(i, ktf + 1, j) = TURB_FLUX_MIN
-              uqc(i, ktf + 1, j) = TURB_FLUX_MIN
-              vqc(i, ktf + 1, j) = TURB_FLUX_MIN
-              wqc(i, ktf + 1, j) = TURB_FLUX_MIN
-              uqr(i, ktf + 1, j) = TURB_FLUX_MIN
-              vqr(i, ktf + 1, j) = TURB_FLUX_MIN
-              wqr(i, ktf + 1, j) = TURB_FLUX_MIN
-              uqi(i, ktf + 1, j) = TURB_FLUX_MIN
-              vqi(i, ktf + 1, j) = TURB_FLUX_MIN
-              wqi(i, ktf + 1, j) = TURB_FLUX_MIN
-              uqs(i, ktf + 1, j) = TURB_FLUX_MIN
-              vqs(i, ktf + 1, j) = TURB_FLUX_MIN
-              wqs(i, ktf + 1, j) = TURB_FLUX_MIN
-              uqg(i, ktf + 1, j) = TURB_FLUX_MIN
-              vqg(i, ktf + 1, j) = TURB_FLUX_MIN
-              wqg(i, ktf + 1, j) = TURB_FLUX_MIN
-              uqnc(i, ktf + 1, j) = TURB_FLUX_MIN
-              vqnc(i, ktf + 1, j) = TURB_FLUX_MIN
-              wqnc(i, ktf + 1, j) = TURB_FLUX_MIN
-              uqnr(i, ktf + 1, j) = TURB_FLUX_MIN
-              vqnr(i, ktf + 1, j) = TURB_FLUX_MIN
-              wqnr(i, ktf + 1, j) = TURB_FLUX_MIN
-              uqni(i, ktf + 1, j) = TURB_FLUX_MIN
-              vqni(i, ktf + 1, j) = TURB_FLUX_MIN
-              wqni(i, ktf + 1, j) = TURB_FLUX_MIN
-              uqnwfa(i, ktf + 1, j) = TURB_FLUX_MIN
-              vqnwfa(i, ktf + 1, j) = TURB_FLUX_MIN
-              wqnwfa(i, ktf + 1, j) = TURB_FLUX_MIN
-              uqnifa(i, ktf + 1, j) = TURB_FLUX_MIN
-              vqnifa(i, ktf + 1, j) = TURB_FLUX_MIN
-              wqnifa(i, ktf + 1, j) = TURB_FLUX_MIN
-              uth(i, ktf + 1, j) = TURB_FLUX_MIN
-              uthv(i, ktf + 1, j) = TURB_FLUX_MIN
-              vth(i, ktf + 1, j) = TURB_FLUX_MIN
-              vthv(i, ktf + 1, j) = TURB_FLUX_MIN
-              wth(i, ktf + 1, j) = TURB_FLUX_MIN
-              wthv(i, ktf + 1, j) = TURB_FLUX_MIN
-              th2v(i, ktf + 1, j) = TURB_FLUX_MIN
-            end do
-          end do
-
-        end subroutine Set_turb_flux_min_top
 
     end subroutine Diagnose_fluxes_pbl_approx
 
