@@ -202,8 +202,6 @@
     real :: fac1, fac2, fac3, fac4
     real :: sm_neutral_l2   ! level-2 Sm at Rif = 0, used by LIMITER_OPT = 2
 
-    integer, parameter :: I_TO_TEST = 4, J_TO_TEST = 4, K_TO_TEST = 3
-
   contains
 
     subroutine Calc_turb_fluxes_my (config_flags, dz, z_at_mass, z_at_w, u, v, w, th, th2, qv, thetav, tsk, t2, q2, psfc, rho, ust, hfx, qfx, rmol, &
@@ -269,7 +267,6 @@
                                                                      its, ite, jts, jte, kts, kte
 
         ! Local vars
-      logical, parameter :: DEBUG = .false.
       integer :: i, j, k, i_start, i_end, j_start, j_end, ktf
       real    :: strain_mag, q, l_raw, p0, eps0
 
@@ -358,8 +355,6 @@
             dz, rdzw, z_at_w, fnm, fnp, cf1, cf2, cf3, dn, dnw, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme,  &
             its, ite, jts, jte, kts, kte)
       end if
-
-      if (DEBUG) print *, 'Done Calc_turb_fluxes_my...'
 
     end subroutine Calc_turb_fluxes_my
 
@@ -517,8 +512,6 @@
       real :: l_s, l_b, l_f, zet, kz, N, q_c
       real :: l_sm, z_m, q_b, stab_fn
 
-      logical, parameter :: DEBUG = .false.
-
         ! Define dimensions
       i_start = its
       i_end = Min (ite, ide - 1)
@@ -672,32 +665,8 @@
           l_master(i, kte, j) = l_master(i, ktf, j)
           l_boulac(i, kte, j) = l_boulac(i, ktf, j)
 
-          if (DEBUG) call Debug_l_master_algebra
-
         end do
       end do
-
-      contains
-
-        subroutine Debug_l_master_algebra
-
-          if (i == I_TO_TEST .and. j == J_TO_TEST) then
-              print *, 'l_master = '
-              print *, l_master(I_TO_TEST, :, J_TO_TEST)
-              print *, 'l0 =', l0
-              print *, 'l0_num =', l0_num
-              print *, 'l0_den =', l0_den
-              print *, 'z_at_walls = '
-              print *, z_at_walls_1d
-              print *, 'dz = '
-              print *, dz(i, :, j)
-              print *, 'rdzw = '
-              print *, rdzw(i, :, j)
-              print *, 'dzw = '
-              print *, 1.0 / rdzw(i, :, j)
-            end if
-
-        end subroutine Debug_l_master_algebra
 
     end subroutine Calc_l_master_algebra
 
@@ -837,8 +806,6 @@
       real, parameter :: c_r = 0.25
       real, parameter :: c_g = 10.
       real, parameter :: c_s = 0.23
-
-      logical, parameter :: DEBUG = .false.
 
         ! Define dimensions
       i_start = its
@@ -1842,7 +1809,6 @@
         ! Local vars
       integer :: i, j, k, i_start, i_end, j_start, j_end
       real :: l
-      logical, parameter :: DEBUG = .false.
 
         ! Define dimensions
       i_start = its
@@ -1952,8 +1918,6 @@
       real                      :: sm_loc
       integer :: n_try, n_t3_flags
       logical :: solve_ok
-
-      logical, parameter :: DEBUG = .false.
 
         ! Convert vars from single prec to double prec
       q_sq = Working_to_solver_prec(q_sq_at_walls_1dpbl)
@@ -3409,7 +3373,6 @@
       real :: th_pert, th_dry, qm
       real :: dxm, dym, tmpzx, tmpzy, sf_alpha
       real :: c_p, u1, v1, wind_speed, ust_sq
-      logical, parameter :: DEBUG = .false.
 
         ! Define dimensions
       i_start = its
@@ -3454,10 +3417,6 @@
               u2(i, k, j) = Diag_u2_pbl_approx (qsq, l, ri, dudz, dvdz, uw(i, k, j), vw(i, k, j), wthv(i, k, j))
               v2(i, k, j) = Diag_v2_pbl_approx (qsq, l, ri, dudz, dvdz, uw(i, k, j), vw(i, k, j), wthv(i, k, j))
               w2(i, k, j) = Diag_w2_pbl_approx (qsq, l, ri, dudz, dvdz, uw(i, k, j), vw(i, k, j), wthv(i, k, j))
-
-              if (DEBUG) call Debug_negative_flux
-
-              if (DEBUG) call Debug_big_qsq
 
                 ! Diagnose the rest of qv fluxes
               uqv(i, k, j) = Diag_uqv_pbl_approx (qsq, l, dudz, dqvdz, uw(i, k, j), wqv(i, k, j))
@@ -3661,40 +3620,6 @@
       call Set_turb_flux_min_top
 
       contains
-
-        subroutine Debug_negative_flux
-
-          if (u2(i, k, j) < 0 .or. v2(i, k, j) < 0 .or. w2(i, k, j) < 0) then
-            print *, '------------------------------------------------------'
-            print *, 'NEGATIVE FLUX'
-            print *, 'i, k, j = ', i, k, j
-            if (u2(i, k, j) < 0) then
-              print *, 'u2, qsq, u2/qsq = ', u2(i, k, j), qsq, ABS( u2(i, k, j) / qsq )
-            else if (v2(i, k, j) < 0) then
-              print *, 'v2, qsq, v2/qsq = ', v2(i, k, j), qsq, ABS( v2(i, k, j) / qsq )
-            else if (w2(i, k, j) < 0) then
-              print *, 'w2, qsq, w2/qsq = ', w2(i, k, j), qsq, ABS( w2(i, k, j) / qsq )
-            end if
-          end if
-
-        end subroutine Debug_negative_flux
-
-
-        subroutine Debug_big_qsq
-
-          if (u2(i, k, j) + v2(i, k, j) + w2(i, k, j) > (1.0 + epsilon(qsq)) * qsq) then
-            print *, '------------------------------------------------------'
-            print *, 'BIG QSQ'
-            print *, 'i, k, j = ', i, k, j
-            print *, 'u2, v2, w2, sum, = ', u2(i, k, j), v2(i, k, j), w2(i, k, j), (u2(i, k, j) + v2(i, k, j) + w2(i, k, j))
-            print *, 'qsq, sum/qsq = ', qsq, (u2(i, k, j) + v2(i, k, j) + w2(i, k, j)) / qsq
-            u2(i, k, j) = qsq / 3.0
-            v2(i, k, j) = qsq / 3.0
-            w2(i, k, j) = qsq / 3.0
-          end if
-
-        end subroutine Debug_big_qsq
-
 
         subroutine Set_turb_flux_min
 
@@ -4400,7 +4325,6 @@
       integer :: i, j, k, i_start, i_end, j_start, j_end, kts1, ktf
       real :: ri, turb_prtl_num
       real, dimension (its:ite, kts:kte, jts:jte) :: q_sq
-      logical, parameter :: DEBUG = .false.
 
         ! Define dimensions
       i_start = its
@@ -4429,8 +4353,6 @@
                   (1.0 - rif(i, k, j)) * sm(i, k, j)
 
               q_sq(i, k, j) = Max (q_sq(i, k, j), Q_SQ_MIN)
-
-              if (DEBUG) call Debug_big_qsq
 
             else
 
@@ -4473,25 +4395,6 @@
         end do
 
       end if
-
-      contains
-
-        subroutine Debug_big_qsq
-
-          if (q_sq(i, k, j) > 20.0) then
-            print *, '-----------------------------'
-            print *, 'i, k, j = ', i, k, j
-            print *, 'q_sq = ', q_sq(i, k, j)
-            print *, 'du_dz = ', du_dz(i, k, j)
-            print *, 'dv_dz = ', dv_dz(i, k, j)
-            print *, 'dthetav_dz = ', dthetav_dz(i, k, j)
-            print *, 'l dissip = ', l_dissip(i, k, j)
-            print *, 'Ri = ', ri
-            print *, 'Ri flux = ', rif(i, k, j)
-            print *, 'sm = ', sm(i, k, j)
-          end if
-
-        end subroutine Debug_big_qsq
 
     end subroutine Calc_q_sq_l2_pbl_approx
 
@@ -4537,7 +4440,6 @@
       integer :: i, j, k, i_start, i_end, j_start, j_end, kts1, ktf
       real :: q_cubed, q_sq_3d
       real, dimension (its:ite, kts:kte, jts:jte) :: q_sq
-      logical, parameter :: DEBUG = .false.
 
         ! Define dimensions
       i_start = its
@@ -4587,8 +4489,6 @@
 
               q_sq(i, k, j) = Max (q_sq(i, k, j), Q_SQ_MIN)
 
-              if (DEBUG) call Debug_big_qsq
-
             else
 
               q_sq(i, k, j) = Q_SQ_MIN
@@ -4630,25 +4530,6 @@
         end do
 
       end if
-
-      contains
-
-        subroutine Debug_big_qsq
-
-          if (q_sq(i, k, j) > 20.0) then
-            print *, '-----------------------------'
-            print *, 'i, k, j = ', i, k, j
-            print *, 'q_sq = ', q_sq(i, k, j)
-            print *, 'du_dz = ', du_dz(i, k, j)
-            print *, 'dv_dz = ', dv_dz(i, k, j)
-            print *, 'dthetav_dz = ', dthetav_dz(i, k, j)
-            print *, 'l dissip = ', l_dissip(i, k, j)
-            print *, 'q^3 (3D production x b_1 l) = ', q_cubed
-            print *, 'q_sq from 3D production = ', q_sq_3d
-            print *, 'Ri flux = ', rif(i, k, j)
-          end if
-
-        end subroutine Debug_big_qsq
 
     end subroutine Calc_q_sq_l2
 
@@ -4939,8 +4820,6 @@
 
       character (len = *), intent(in) :: pbl3d_constants
 
-      logical, parameter :: DEBUG = .false.
-
       real, parameter :: A1_M73 = 0.78, &
                          A2_M73 = 0.79, &
                          B1_M73 = 15.0, &
@@ -5062,22 +4941,6 @@
 
       end select
 
-      if (DEBUG) then
-        write (OUTPUT_UNIT, *) 'Inside subroutine Set_model_constants:'
-        write (OUTPUT_UNIT, *) 'Model constants:'
-        write (OUTPUT_UNIT, *) 'a1 = ', a_1
-        write (OUTPUT_UNIT, *) 'a2 = ', a_2
-        write (OUTPUT_UNIT, *) 'b1 = ', b_1
-        write (OUTPUT_UNIT, *) 'b2 = ', b_2
-        write (OUTPUT_UNIT, *) 'c1 = ', c_1
-        write (OUTPUT_UNIT, *) 'c2 = ', c_2
-        write (OUTPUT_UNIT, *) 'c3 = ', c_3
-        write (OUTPUT_UNIT, *) 'Alpha = ', alpha
-        write (OUTPUT_UNIT, *) 'Lambda = ', lambda
-      end if
-
-      if (DEBUG) print *, 'Done Set_model_constants...'
-
     end subroutine Set_model_constants
 
 
@@ -5094,8 +4957,6 @@
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
       implicit none
-
-      logical, parameter :: DEBUG = .false.
 
       real              :: e1, e2, e3, e4, e5
 
@@ -5119,8 +4980,6 @@
 
         ! Eq. 9a Y75 at Rif = 0 (neutral): the reference value for the Ri-aware strain cap.
       sm_neutral_l2 = cm * rif_c * rf1 / rf2
-
-      if (DEBUG) print *, 'Done Set_my_l2_global_vars...'
 
     end subroutine Set_my_l2_global_vars
 
@@ -5175,8 +5034,6 @@
 
       integer, intent(in) :: pbl3d_prog
 
-      logical, parameter :: DEBUG = .false.
-
       if (pbl3d_prog == 0) then
         Q_SQ_MIN = 1.0E-5
         TURB_FLUX_MIN = 1.0E-12
@@ -5184,8 +5041,6 @@
         Q_SQ_MIN = 1.0E-5
         TURB_FLUX_MIN = 0.0
       end if
-
-      if (DEBUG) print *, 'Done Set_my_qsq_min...'
 
     end subroutine Set_my_qsq_min
 

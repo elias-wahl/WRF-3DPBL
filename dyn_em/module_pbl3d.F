@@ -58,8 +58,6 @@
 
     real, parameter :: G_OVER_TREF = G / T0
 
-    integer, parameter :: I_TO_TEST = 4, J_TO_TEST = 4, K_TO_TEST = 3
-
   contains
 
     subroutine Init_temp_arrays_for_substep (u_2, v_2, w_2, t_2, moist, rho, q_sq_2, &
@@ -685,7 +683,6 @@
           dqc_dx, dqc_dy, dqc_dz, dqr_dx, dqr_dy, dqr_dz, dqi_dx, dqi_dy, dqi_dz, dqs_dx, dqs_dy, dqs_dz, &
           dqg_dx, dqg_dy, dqg_dz, dqnc_dx, dqnc_dy, dqnc_dz, dqnr_dx, dqnr_dy, dqnr_dz, &
           dqni_dx, dqni_dy, dqni_dz, dqnwfa_dx, dqnwfa_dy, dqnwfa_dz, dqnifa_dx, dqnifa_dy, dqnifa_dz
-      logical, parameter :: DEBUG = .false.
       integer :: i, j, k, i_start, i_end, j_start, j_end, ktf
 
         ! Opt-in corrections (OPEN_ISSUES A37, A38); 0 = previous behaviour, bit for bit
@@ -728,13 +725,6 @@
       j_end = Min (jte, jde - 1)
       ktf = Min (kte, kde - 1)
 
-      if (DEBUG .and. itimestep == 1) then
-        print *, 'its = ', its, 'ite = ', ite
-        print *, 'ims = ', ims, 'ime = ', ime
-        print *, 'jts = ', jts, 'jte = ', jte
-        print *, 'jms = ', jms, 'jme = ', jme
-      end if
-
       call Calc_turb_fluxes_my (config_flags, dz, z_at_mass, z_at_w, u, v, w, th, th2, qv, thetav, tsk, t2, q2, psfc, rho, ust, hfx, qfx, rmol, &
           du_dx, du_dy, du_dz, dv_dx, dv_dy, dv_dz, dw_dx, dw_dy, dw_dz, dqv_dx, dqv_dy, dqv_dz, dthetav_dx, dthetav_dy, dthetav_dz, &
           dqc_dz, dqr_dz, dqi_dz, dqs_dz, dqg_dz, dqnc_dz, dqnr_dz, dqni_dz, dqnwfa_dz, dqnifa_dz, itimestep, ss, n_tracer, q_sq, q_sq_prog, &
@@ -769,8 +759,6 @@
             ips, ipe, jps, jpe, kps, kpe, its, ite, jts, jte, kts, kte)
       end if
 
-      if (DEBUG) print *, 'Done Calc_turb_fluxes_driver...'
-
     end subroutine Calc_turb_fluxes_driver
 
 
@@ -800,8 +788,6 @@
       real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: du_dx, dv_dy, dw_dz, du_dy, dv_dx, &
                                                                    dw_dx, du_dz, dw_dy, dv_dz
 
-      logical, parameter :: DEBUG = .false.
-
       call Calc_du_dz (u, rdz, dnw, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dz)
 
       call Calc_dv_dz (v, rdz, dnw, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dv_dz)
@@ -825,8 +811,6 @@
 
       call Calc_dw_dy (w, zy, rdz, msfty, rdy, ims, ime, jms, jme, kms, kme,  &
           ide, jde, kde, its, ite, jts, jte, kts, kte, dw_dy                  )
-
-      if (DEBUG) print *, 'Done Calc_wind_derivatives...'
 
     end subroutine Calc_wind_derivatives
 
@@ -1719,8 +1703,6 @@
       real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dthetav_dx, dthetav_dy, dthetav_dz, &
                                                                    dqv_dx,     dqv_dy,     dqv_dz
 
-      logical, parameter :: DEBUG = .false.
-
         ! Calculate thetav derivatives
       call Calc_dmassvar_dx (thetav, zx, rdz, msftx, fnm, fnp, dn, dnw, rdx, cf1, cf2, cf3,  &
           ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dthetav_dx)
@@ -1738,8 +1720,6 @@
           ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqv_dy)
 
       call Calc_dmassvar_dz (qv, rdz, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, dqv_dz)
-
-      if (DEBUG) print *, 'Done Calc_mass_var_derivatives...'
 
     end subroutine Calc_mass_var_derivatives
 
@@ -1773,8 +1753,6 @@
          dqr_dx, dqr_dy, dqr_dz, dqi_dx, dqi_dy, dqi_dz, dqs_dx, dqs_dy, dqs_dz, dqg_dx, dqg_dy, dqg_dz, &
          dqnc_dx, dqnc_dy, dqnc_dz, dqnr_dx, dqnr_dy, dqnr_dz, dqni_dx, dqni_dy, dqni_dz, &
          dqnwfa_dx, dqnwfa_dy, dqnwfa_dz, dqnifa_dx, dqnifa_dy, dqnifa_dz
-
-      logical, parameter :: DEBUG = .false.
 
         ! Calculate cloud mass derivatives
       if ( p_qc .ge. param_first_scalar ) then
@@ -1925,8 +1903,6 @@
         dqnifa_dy(its:ite, kts:kte, jts:jte) = 0.0
         dqnifa_dz(its:ite, kts:kte, jts:jte) = 0.0
       end if
-
-      if (DEBUG) print *, 'Done Calc_scalar_var_derivatives...'
 
     end subroutine Calc_scalar_var_derivatives
 
@@ -4454,8 +4430,6 @@
                                                                    du_dy, dv_dy, dw_dy
       real,                                        intent (in)  :: rdx, rdy, cf1, cf2, cf3
 
-      logical, parameter :: DEBUG = .false.
-
       call Calc_du_dz_at_mass (u, rdzw, dn, dnw, fnm, fnp, cf1, cf2, cf3, &
           ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, du_dz)
 
@@ -4481,8 +4455,6 @@
 
       call Calc_dw_dy_at_mass (w, zy, rdzw, msfty, rdy, ims, ime, jms, jme, kms, kme, &
               ide, jde, kde, its, ite, jts, jte, kts, kte, dw_dy)
-
-      if (DEBUG) print *, 'Done Calc_wind_derivatives_at_mass...'
 
     end subroutine Calc_wind_derivatives_at_mass
 
@@ -4745,8 +4717,6 @@
       real, dimension (its-1:ite+1, kts:kte, jts-1:jte+1) :: du_dz_dz_dx, u_mux, u_mux_at_full
       integer :: ktf, ktes1, ktes2, i_start, i_end, j_start, j_end
 
-      logical, parameter :: DEBUG = .false.
-
         ! Define some indexes
       ktes1 = kte - 1
       ktes2 = kte - 2
@@ -4803,17 +4773,6 @@
               ! (partial z / partial x)|sigma (dz_dx)
             du_dz_dz_dx(i, k, j) = (0.5 * (u_mux_at_full(i, k + 1, j) + u_mux_at_full(i + 1, k + 1, j)) - &
                 0.5 * (u_mux_at_full(i, k, j) + u_mux_at_full(i + 1, k, j))) * rdzw(i, k, j) * dz_dx
-
-            if (DEBUG) then
-              if ((i == 49 .or. i == 50 .or. i == 51) .and. (k == 3 .or. k == 4) .and. j == 54) then
-                print *, '-----------------------------'
-                print *, 'i = ', i, 'j = ', j, 'k = ', k
-                print *, 'dz_dx: '
-                print *, dz_dx
-                print *, 'du_dz_dz_dx: '
-                print *, du_dz_dz_dx(i, k, j)
-              end if
-            end if
           end do
         end do
       end do
@@ -4823,19 +4782,6 @@
         do k = kts, ktf
           do i = i_start, i_end
             du_dx(i, k, j) = msf_tx_ux(i, j) * ((u_mux(i + 1, k, j) - u_mux(i, k, j)) * rdx - du_dz_dz_dx(i, k, j))
-
-            if (DEBUG) then
-              if ((i == 49 .or. i == 50 .or. i == 51) .and. (k == 3 .or. k == 4) .and. j == 54) then
-                print *, '-----------------------------'
-                print *, 'i = ', i, 'j = ', j, 'k = ', k
-                print *, 'u_mux_at_full: '
-                print *, u_mux_at_full(i + 1, k, j), u_mux_at_full(i, k, j)
-                print *, 'rdx: '
-                print *, rdx
-                print *, 'du_dx: '
-                print *, du_dx(i, k, j)
-              end if
-            end if
           end do
         end do
       end do
@@ -4986,8 +4932,6 @@
       real, dimension (its - 2:ite + 2, kts:kte, jts - 2:jte + 2) :: dw_dz_dz_dx, w_mtx, w_mtx_at_half
       integer :: ktf, i_start, i_end, j_start, j_end
 
-      logical, parameter :: DEBUG = .false.
-
         ! Define some indexes
       i_start = its
       i_end = Min (ite, ide - 1)
@@ -5038,23 +4982,7 @@
       do j = j_start, j_end
         do k = kts, ktf
           do i = i_start, i_end
-
-            if (DEBUG) then
-              if (i == 3 .and. k == 2 .and. j == 3) then
-                print *, '-----------------------------'
-                print *, 'ims = ', ims, 'ime = ', ime
-                print *, 'i_start = ', i_start, 'i_end = ', i_end
-                print *, 'jms = ', jms, 'jme = ', jme
-                print *, 'j_start = ', j_start, 'j_end = ', j_end
-                print *, 'Row: '
-                print *, w(:, k, j)
-                print *, 'Column: '
-                print *, w(i, k, :)
-              end if
-            end if
-
             dw_dx(i, k, j) = msf_tx_tx(i, j) * (rdx * (8.0 * (w_mtx_at_half(i + 1, k, j) - w_mtx_at_half(i - 1, k, j)) - (w_mtx_at_half(i + 2, k, j) - w_mtx_at_half(i - 2, k, j)) ) / 12.0 - dw_dz_dz_dx(i, k, j))
-
           end do
         end do
       end do
@@ -5096,8 +5024,6 @@
       real, dimension (its:ite, jts:jte) :: msf_ty_uy
       real, dimension (its - 1:ite + 1, kts:kte, jts - 1:jte + 1) :: du_dz_dz_dy, u_muy, u_muy_at_full
       integer :: ktf, ktes1, ktes2, i_start, i_end, j_start, j_end
-
-      logical, parameter :: DEBUG = .false.
 
         ! Define some indexes
       ktes1 = kte - 1
@@ -5155,18 +5081,6 @@
               ! (partial z / partial y)|sigma (dz_dy)
             du_dz_dz_dy(i, k, j) = (0.5 * (u_muy_at_full(i, k + 1, j) + u_muy_at_full(i, k + 1, j + 1)) - &
                 0.5 * (u_muy_at_full(i, k, j) + u_muy_at_full(i, k, j + 1))) * rdzw(i, k, j) * dz_dy
-
-            if (DEBUG) then
-              if (i == 54 .and. (k == 3 .or. k == 4) .and. (j == 59 .or. j == 60 .or. j == 61 .or. j == 62)) then
-                print *, '-----------------------------'
-                print *, 'i = ', i, 'j = ', j, 'k = ', k
-                print *, 'dz_dy: '
-                print *, dz_dy
-                print *, 'du_dz_dz_dy: '
-                print *, du_dz_dz_dy(i, k, j)
-              end if
-            end if
-
           end do
         end do
       end do
@@ -5176,19 +5090,6 @@
         do k = kts, ktf
           do i = i_start, i_end
             du_dy(i, k, j) = msf_ty_uy(i, j) * ((u_muy(i, k, j + 1) - u_muy(i, k, j)) * rdy - du_dz_dz_dy(i, k, j))
-
-            if (DEBUG) then
-              if (i == 54 .and. (k == 3 .or. k == 4) .and. (j == 59 .or. j == 60 .or. j == 61 .or. j == 62)) then
-                print *, '-----------------------------'
-                print *, 'i = ', i, 'j = ', j, 'k = ', k
-                print *, 'u_muy_at_full: '
-                print *, u_muy_at_full(i, k, j + 1), u_muy_at_full(i, k, j)
-                print *, 'rdy: '
-                print *, rdy
-                print *, 'du_dy: '
-                print *, du_dy(i, k, j)
-              end if
-            end if
           end do
         end do
       end do
@@ -5468,8 +5369,6 @@
       real, dimension (its:ite, kts:kte, jts:jte), intent (out) :: dthetav_dz, dqv_dz
       real,                                        intent (in)  :: cf1, cf2, cf3
 
-      logical, parameter :: DEBUG = .false.
-
         ! Calculate thetav derivatives
       call Calc_dmassvar_dz_at_mass (var=thetav, thetav_sk=thetav_sk, rdzw=rdzw, dn=dn, dnw=dnw, fnm=fnm, fnp=fnp, &
           cf1=cf1, cf2=cf2, cf3=cf3, ide=ide, jde=jde, kde=kde, ims=ims, ime=ime, jms=jms, jme=jme, kms=kms, kme=kme, &
@@ -5479,8 +5378,6 @@
       call Calc_dmassvar_dz_at_mass (var=qv, q2=q2, rdzw=rdzw, dn=dn, dnw=dnw, fnm=fnm, fnp=fnp, &
           cf1=cf1, cf2=cf2, cf3=cf3, ide=ide, jde=jde, kde=kde, ims=ims, ime=ime, jms=jms, jme=jme, kms=kms, kme=kme, &
           its=its, ite=ite, jts=jts, jte=jte, kts=kts, kte=kte, dvar_dz=dqv_dz)
-
-      if (DEBUG) print *, 'Done Calc_mass_var_derivatives_at_mass...'
 
     end subroutine Calc_mass_var_derivatives_at_mass
 
@@ -5704,7 +5601,6 @@
       real, dimension (its:ite, kts:kte, jts:jte) :: l_dissip
         ! slope factor for the production pairing (pbl3d_sf_pair), see Calc_q_sq_shear
       real, dimension (its-1:ite, kts:kte, jts-1:jte) :: sf_alpha_pair
-      logical, parameter :: DEBUG = .false.
       real (kind = kind(q_sq_tend)) :: N_PBL3D
       real :: q_sq_sfc, q_sq_sfc_fac
       logical :: approx_pair
@@ -5811,22 +5707,9 @@
         do k = kts, ktf
           do i = i_start, i_end
             q_sq_tend(i, k, j) = max ( q_sq_tend(i, k, j), -(c1(k) * mut(i,j) + c2(k)) * max ( 0.0 , N_PBL3D * q_sq_prog(i, k, j) ) / dt )
-
-            if (DEBUG) call Debug_q_sq_tend
           end do
         end do
       end do
-
-      contains
-
-      subroutine Debug_q_sq_tend
-
-        if (i == I_TO_TEST .and. j == J_TO_TEST ) then
-          print *, '------------------------------------------'
-          print *, '  q_sq_tend final = ', q_sq_tend(i, k, j)
-        end if
-
-      end subroutine Debug_q_sq_tend
 
     end subroutine Calc_q_sq_rhs
 
@@ -5865,7 +5748,6 @@
       real, dimension (its:ite, kts:kte, jts:jte) :: q_sq_vdiff_hold
       real, dimension (kms:kme) :: kq, alo, aup, bb, rr, cp, dp, qs   ! implicit branch, one column
       real :: den
-      logical, parameter :: DEBUG = .false.
 
         ! S_q = 0.2 (MY82) unless pbl3d_sq says otherwise; see SQ_DIFF in module_pbl3d_my.
       Sq = SQ_DIFF
@@ -5920,15 +5802,6 @@
           do i = i_start, i_end
             q_sq_vdiff_hold(i, k, j) = - ( Sq * l_master(i, k, j) * Sqrt(q_sq_face(i, k, j)) * &
                                          ( q_sq_mass(i, k, j) - q_sq_mass(i, k - 1, j) ) * rdz(i, k, j) )
-
-            if ( DEBUG .and. i == I_TO_TEST .and. j == J_TO_TEST ) then
-              print *, '------------------------------------------'
-              print *, '  i =', i, 'j = ', j, 'k = ', k
-              print *, '  l_master = ', l_master(i, k, j)
-              print *, '  q_sq_face = ', q_sq_face(i, k, j)
-              print *, '  q_sq_mass = ', q_sq_mass(i, k, j), q_sq_mass(i, k - 1, j)
-              print *, '  q_sq_vdiff_hold = ', q_sq_vdiff_hold(i, k, j)
-            end if
           end do
         end do
       end do
@@ -5947,11 +5820,6 @@
             q_sq_vdiff_tend_tmp = ( G / dnw(k) ) *  &
                                   ( q_sq_vdiff_hold(i, k + 1, j) - q_sq_vdiff_hold(i, k, j) )
             q_sq_tend(i, k, j) = q_sq_tend(i, k, j) + ( q_sq_vdiff_tend_tmp / N_PBL3D )
-
-            if ( DEBUG .and. i == I_TO_TEST .and. j == J_TO_TEST ) then
-              print *, '  q_sq_vdiff_tend = ', q_sq_vdiff_tend(i, k, j)
-              print *, '  q_sq_tend = ', q_sq_tend(i, k, j)
-            end if 
           end do
         end do
       end do
@@ -6222,7 +6090,6 @@
 
         ! Local vars
       integer :: i, j, k
-      logical, parameter :: DEBUG = .false.
 
       do j = j_start, j_end
         do k = kts, ktf
@@ -6230,13 +6097,6 @@
             q_sq_shear_tend(i, k, j) = -2. * ( turb_flux_uw(i, k, j) * du_dz(i, k, j) +  &
                                                turb_flux_vw(i, k, j) * dv_dz(i, k, j) )
             q_sq_tend(i, k, j) = q_sq_tend(i, k, j) + ( (c1(k) * mut(i, j) + c2(k)) * q_sq_shear_tend(i, k, j) / N_PBL3D )
-
-            if ( DEBUG .and. i == I_TO_TEST .and. j == J_TO_TEST ) then
-              print *, '------------------------------------------'
-              print *, '  i =', i, 'j = ', j, 'k = ', k
-              print *, '  q_sq_shear_tend = ', q_sq_shear_tend(i, k, j)
-              print *, '  q_sq_tend = ', q_sq_tend(i, k, j)
-            end if
           end do
         end do
       end do
@@ -6286,7 +6146,6 @@
 
         ! Local vars
       integer :: i, j, k
-      logical, parameter :: DEBUG = .false.
 
       do j = j_start, j_end
         do k = kts, ktf
@@ -6326,13 +6185,6 @@
                                                turb_flux_vw(i, k, j) * dw_dy(i, k, j) )
             end if
             q_sq_tend(i, k, j) = q_sq_tend(i, k, j) + ( (c1(k) * mut(i, j) + c2(k)) * q_sq_shear_tend(i, k, j) / N_PBL3D )
-
-            if ( DEBUG .and. i == I_TO_TEST .and. j == J_TO_TEST ) then
-              print *, '------------------------------------------'
-              print *, '  i =', i, 'j = ', j, 'k = ', k
-              print *, '  q_sq_shear_tend = ', q_sq_shear_tend(i, k, j)
-              print *, '  q_sq_tend = ', q_sq_tend(i, k, j)
-            end if
           end do
         end do
       end do
@@ -6359,20 +6211,12 @@
 
         ! Local vars
       integer :: i, j, k
-      logical, parameter :: DEBUG = .false.
 
       do j = j_start, j_end
         do k = kts, ktf
           do i = i_start, i_end
             q_sq_buoyancy_tend(i, k, j) = 2. * G_OVER_TREF * turb_flux_wtheta_v(i, k, j)
             q_sq_tend(i, k, j) = q_sq_tend(i, k, j) + ( (c1(k) * mut(i, j) + c2(k)) * q_sq_buoyancy_tend(i, k, j) / N_PBL3D )
-
-            if ( DEBUG .and. i == I_TO_TEST .and. j == J_TO_TEST ) then
-              print *, '------------------------------------------'
-              print *, '  i =', i, 'j = ', j, 'k = ', k
-              print *, '  q_sq_buoyancy_tend = ', q_sq_buoyancy_tend(i, k, j)
-              print *, '  q_sq_tend = ', q_sq_tend(i, k, j)
-            end if
           end do
         end do
       end do
@@ -6396,7 +6240,6 @@
         ! Local vars
       integer :: i, j, k
       real :: l
-      logical, parameter :: DEBUG = .false.
 
       do j = j_start, j_end
         do k = kts, ktf
@@ -6434,28 +6277,13 @@
 
         ! Local vars
       integer :: i, j, k
-      logical, parameter :: DEBUG = .false.
 
       do j = j_start, j_end
         do k = kts, ktf
           do i = i_start, i_end
-            if ( DEBUG ) then
-              print *, '------------------------------------------'
-              print *, '  i =', i, 'j = ', j, 'k = ', k
-              print *, '  q_sq = ', q_sq(i, k, j)
-              print *, '  l_master = ', l_master(i, k, j)
-              print *, '  b1 = ', b_1
-            end if
             q_sq_dissip_tend(i, k, j) = 2. * ( q_sq(i, k, j) ** 1.5 ) /  &
                                              ( b_1 * l_dissip(i, k, j) )
             q_sq_tend(i, k, j) = q_sq_tend(i, k, j) - ( (c1(k) * mut(i, j) + c2(k)) * q_sq_dissip_tend(i, k, j) / N_PBL3D )
-
-            if ( DEBUG ) then
-              print *, '------------------------------------------'
-              print *, '  i =', i, 'j = ', j, 'k = ', k
-              print *, '  q_sq_dissip_tend = ', q_sq_dissip_tend(i, k, j)
-              print *, '  q_sq_tend = ', q_sq_tend(i, k, j)
-            end if
           end do
         end do
       end do
