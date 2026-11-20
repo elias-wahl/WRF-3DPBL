@@ -383,6 +383,20 @@
       ENDDO
 
 !-----------------------------------------------------------------------
+! Check that pbl3d_opt has a defined value: the scheme runs for any
+! pbl3d_opt /= 0, but its arrays are allocated (pbl3d_used) only for -1, 1, 2
+!-----------------------------------------------------------------------
+
+      DO i = 1, model_config_rec % max_dom
+         IF ( model_config_rec % pbl3d_opt(i) .LT. -1 .OR. &
+              model_config_rec % pbl3d_opt(i) .GT.  2 ) THEN
+            wrf_err_message = '--- ERROR: pbl3d_opt must be 0 (off), -1, 1 or 2'
+            CALL wrf_debug ( 0, TRIM( wrf_err_message ) )
+            count_fatal_error = count_fatal_error + 1
+         END IF
+      ENDDO
+
+!-----------------------------------------------------------------------
 ! Check that original WRF coordinate system is selected if 3D PBL is active
 !-----------------------------------------------------------------------
 
