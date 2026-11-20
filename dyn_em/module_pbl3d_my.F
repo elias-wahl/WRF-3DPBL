@@ -2970,6 +2970,7 @@
       real :: qsq, l, sm, sh, ri, dudz, dvdz, dthvdz, dqvdz, dqcdz, dqrdz, dqidz, dqsdz, dqgdz, &
               dqncdz, dqnrdz, dqnidz, dqnwfadz, dqnifadz
       real :: t_wall, qv_wall
+      real :: th_pert, th_dry, qm
       real :: dxm, dym, tmpzx, tmpzy, sf_alpha
       real :: c_p, u1, v1, wind_speed, ust_sq
       logical, parameter :: DEBUG = .false.
@@ -3033,6 +3034,25 @@
               uth(i, k, j) = Diag_xth_pbl_approx (t_wall, qv_wall, uthv(i, k, j), uqv(i, k, j))
               vth(i, k, j) = Diag_xth_pbl_approx (t_wall, qv_wall, vthv(i, k, j), vqv(i, k, j))
               wth(i, k, j) = Diag_xth_pbl_approx (t_wall, qv_wall, wthv(i, k, j), wqv(i, k, j))
+
+                ! pbl3d_thm_flux >= 1: the same inversion as Calc_heat_flux for the full form, so that
+                ! the returned flux is the flux of theta_m (t = th2 = theta_m - T0 here). The lines
+                ! above stay the pbl3d_thm_flux = 0 path. OPEN_ISSUES A38, A23.2
+              if (THM_FLUX_OPT == 1) then
+                th_pert = fnm(k) * t(i, k, j) + fnp(k) * t(i, k - 1, j)
+                uth(i, k, j) = (uthv(i, k, j) - P608 * th_pert * uqv(i, k, j)) / (1.0 + P608 * qv_wall)
+                vth(i, k, j) = (vthv(i, k, j) - P608 * th_pert * vqv(i, k, j)) / (1.0 + P608 * qv_wall)
+                wth(i, k, j) = (wthv(i, k, j) - P608 * th_pert * wqv(i, k, j)) / (1.0 + P608 * qv_wall)
+              else if (THM_FLUX_OPT >= 2) then
+                qm = 1.0 + RVOVRD * qv_wall
+                th_dry = t_wall / qm
+                uth(i, k, j) = qm * (uthv(i, k, j) - P608 * th_dry * uqv(i, k, j)) / (1.0 + P608 * qv_wall) &
+                    + RVOVRD * th_dry * uqv(i, k, j)
+                vth(i, k, j) = qm * (vthv(i, k, j) - P608 * th_dry * vqv(i, k, j)) / (1.0 + P608 * qv_wall) &
+                    + RVOVRD * th_dry * vqv(i, k, j)
+                wth(i, k, j) = qm * (wthv(i, k, j) - P608 * th_dry * wqv(i, k, j)) / (1.0 + P608 * qv_wall) &
+                    + RVOVRD * th_dry * wqv(i, k, j)
+              end if
 
               if ( do_scalar_mix .eq. 1 .and. ss .eq. nsteps) then
                   ! Cloud mass
