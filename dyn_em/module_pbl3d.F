@@ -5977,6 +5977,7 @@
       logical, parameter :: DEBUG = .false.
       real (kind = kind(q_sq_tend)) :: N_PBL3D
       real :: q_sq_sfc, q_sq_sfc_fac
+      logical :: approx_pair
 
       N_PBL3D = config_flags%pbl3d_nsteps
 
@@ -6012,20 +6013,28 @@
       end if
 
         !!! Shear !!!
-      if ( config_flags%pbl3d_opt .lt. 2 ) then
+        ! pbl3d_sf_pair = 2 with the approximate form (pbl3d_opt = 1): the resolved flow loses kinetic
+        ! energy to all nine stress components there too (Horizontal_turb_mix for the six horizontal
+        ! pairings, d<w'2>/dz in Vertical_mixing_w), so q^2 is credited with the full production with
+        ! the pairing of pbl3d_sf_pair = 1 instead of the vertical-shear part alone. The face stresses
+        ! of Diagnose_fluxes_pbl_approx are averaged to mass points (Fill_fluxes_mass_with_fluxes_face)
+        ! and the mass-point gradients are computed (Calc_q_sq_l2p5) for both forms. For pbl3d_opt = 2,
+        ! 2 acts as 1.
+      approx_pair = config_flags%pbl3d_opt == 1 .and. config_flags%pbl3d_sf_pair == 2
+      if ( config_flags%pbl3d_opt .lt. 2 .and. .not. approx_pair ) then
         call Calc_q_sq_shear_pbl_approx (N_PBL3D, l_master_at_mass, q_sq_prog, q_sq_shear_tend, q_sq_tend, du_dz, dv_dz, turb_flux_uw, turb_flux_vw, &
             mut, c1, c2, fnm, fnp, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, i_start, i_end, j_start, j_end, ktf)
         grid%qsq_shear_h(its:ite, kts:kte, jts:jte) = 0.0   ! no horizontal production terms in the 1D approximation
       else
           ! The same slope factor Horizontal_turb_mix divides the horizontal momentum
           ! tendency by (recomputed here: it is a tile-local array there). Only read when
-          ! pbl3d_sf_pair = 1.
+          ! pbl3d_sf_pair >= 1.
         call Calc_slope_factor (config_flags, msftx, msfty, grid%dx, grid%dy, zx, zy, rdzw, sf_alpha_pair, &
             ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
         call Calc_q_sq_shear (N_PBL3D, q_sq_shear_tend, q_sq_tend, du_dx, du_dy, du_dz, dv_dx, dv_dy, dv_dz, dw_dx, dw_dy, dw_dz, &
             turb_flux_u2, turb_flux_uw, turb_flux_v2, turb_flux_vw, turb_flux_w2, turb_flux_uv, mut, c1, c2, fnm, fnp, &
             ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, i_start, i_end, j_start, j_end, ktf, grid%qsq_shear_h, &
-            sf_alpha_pair, config_flags%pbl3d_sf_pair)
+            sf_alpha_pair, Min (config_flags%pbl3d_sf_pair, 1))
       end if
 
         !!! Buoyancy !!!

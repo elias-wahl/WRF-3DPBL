@@ -1744,6 +1744,16 @@ The following are for observation nudging:
  pbl3d_scale_aware(max_dom)           = 1,      ! 3D PBL scale-aware tapering
                                                   0 = No scale-aware tapering
                                                   1 = Scale-aware tapering active following Honnert et al. 2011 (code adapted from MYNN)
+ pbl3d_sf_pair(max_dom)              = 0,       ! 3D PBL q^2 shear production paired with the momentum tendency
+                                                  0 = untapered production (default, previous behaviour)
+                                                  1 = pbl3d_opt = 2: the six horizontal-pairing production terms are
+                                                      divided by the slope factor the horizontal momentum tendency is
+                                                      divided by, so q^2 gains what the resolved flow loses
+                                                  2 = as 1 for pbl3d_opt = 2; for pbl3d_opt = 1 the q^2 budget is
+                                                      credited with the same nine-term production (vertical shear,
+                                                      w'2 dw/dz and the slope-divided horizontal pairings) instead of
+                                                      the vertical-shear part alone (0 and 1 leave pbl3d_opt = 1
+                                                      unchanged)
  damp_opt                            = 0,	! upper level damping flag 
                                                   0 = without damping
                                                   1 = with diffusive damping, maybe used for real-data cases 

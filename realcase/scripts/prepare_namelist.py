@@ -453,8 +453,10 @@ def check(nl):
         um = g("sfclay_ust_min", float, 0.001)
         if um < 0 or um > 0.5:
             note(FATAL, "sfclay_ust_min must be in [0, 0.5] m/s")
-        if g("pbl3d_sf_pair", int, 0) not in (0, 1):
-            note(FATAL, "pbl3d_sf_pair must be 0 or 1")
+        if g("pbl3d_sf_pair", int, 0) not in (0, 1, 2):
+            note(FATAL, "pbl3d_sf_pair must be 0, 1 or 2 (as 1, and for pbl3d_opt=1 the nine-term q^2 production)")
+        elif g("pbl3d_sf_pair", int, 0) == 2 and p3 != 1:
+            note(WARN, "pbl3d_sf_pair=2 differs from 1 only for pbl3d_opt=1; with pbl3d_opt=%d it acts as 1" % p3)
         elif g("pbl3d_sf_pair", int, 0) == 0 and p3 == 2:
             note(WARN, "pbl3d_sf_pair=0: the horizontal-pairing q^2 production is not tapered by the "
                        "slope factor the momentum tendency uses -- measured 2026-08-21 as ~33 % of "

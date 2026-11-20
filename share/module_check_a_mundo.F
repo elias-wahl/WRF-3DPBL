@@ -422,10 +422,17 @@
 
       DO i = 1, model_config_rec % max_dom
          IF ( model_config_rec % pbl3d_sf_pair(i) .LT. 0 .OR. &
-              model_config_rec % pbl3d_sf_pair(i) .GT. 1 ) THEN
-            wrf_err_message = '--- ERROR: pbl3d_sf_pair must be 0 (untapered production) or 1 (production paired with the slope-tapered tendency)'
+              model_config_rec % pbl3d_sf_pair(i) .GT. 2 ) THEN
+            wrf_err_message = '--- ERROR: pbl3d_sf_pair must be 0 (untapered production), 1 (production paired with ' // &
+                              'the slope-tapered tendency) or 2 (as 1, and for pbl3d_opt = 1 the nine-term production)'
             CALL wrf_debug ( 0, TRIM( wrf_err_message ) )
             count_fatal_error = count_fatal_error + 1
+         END IF
+         IF ( model_config_rec % pbl3d_sf_pair(i) .EQ. 2 .AND. &
+              model_config_rec % pbl3d_opt(i)     .NE. 1 ) THEN
+            wrf_err_message = '--- WARNING: pbl3d_sf_pair = 2 differs from 1 only for pbl3d_opt = 1; ' // &
+                              'with pbl3d_opt = 2 it acts as 1'
+            CALL wrf_message ( TRIM( wrf_err_message ) )
          END IF
       ENDDO
 
