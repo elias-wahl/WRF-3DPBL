@@ -89,9 +89,7 @@
       !   It is applied in Calc_l_master_algebra, i.e. to l_master itself, not as a local
       !   fix-up inside the solver, because it is part of how the length scale is defined:
       !   pbl3d_l_opt = 2 (MYNN, l_f = alpha_2 q / N) and pbl3d_l_opt = 3 (Messinger,
-      !   l_d = c_r q / N) already carry exactly this limit. pbl3d_l_opt = 1 (MY74) was the
-      !   only branch without one, even though the comments here and in Diagnose_fluxes have
-      !   always claimed otherwise.
+      !   l_d = c_r q / N) already carry exactly this limit.
       !   Why it is needed: q and l are computed by independent routes and nothing couples
       !   them. q_sq is a local production/dissipation balance and correctly collapses to
       !   Q_SQ_MIN in laminar air; l = l0 kappa z / (kappa z + l0) is geometric and asymptotes
@@ -110,9 +108,8 @@
       ! sit at their SMALL_VAL seeds, so l0 = alpha * SMALL_VAL / SMALL_VAL = alpha, i.e.
       ! 0.1 m. Every bound on l downstream (kappa z blend, buoyancy limit, strain limit)
       ! is then either at or below that, the stresses scale like l q, and a layer at the
-      ! floor cannot produce its way off it: a spurious laminar fixed point, measured in
-      ! job 8476273 as l = 0.09-0.10 m over 27-65 % of the lowest five levels in the first
-      ! hour. The floor removes that branch and nothing else: kappa z still binds near
+      ! floor cannot produce its way off it: a spurious laminar fixed point (DECISIONS
+      ! 2026-08-20). The floor removes that branch and nothing else: kappa z still binds near
       ! the wall, the buoyancy limit still binds in stable air, so stable free air stays
       ! laminar and neutral sheared layers can ignite, which is what the level-2 criterion
       ! says they should. MYNN bounds its equivalent to [8, 400] m. Default 0 keeps the
@@ -150,11 +147,9 @@
       ! equilibrium S k / eps rises as Sm falls. Default 1.
     integer, public    :: LIMITER_OPT
       ! Coefficient S_q of the q^2 vertical diffusivity K_q = S_q l q (MY82 Eq. 24;
-      ! pbl3d_sq, default 0.2 = MY82, previous behaviour bit for bit). Why it is a switch:
-      ! the morning transition is transport-limited (DECISIONS 2026-08-27 14:00: q^2
-      ! transport into the interface 50 x smaller than MYNN's, whose q^2 diffusivity is
-      ! 3 K_m, i.e. 1.5-7 x this one in a convective layer). Pure transport: it moves q^2,
-      ! it does not create it.
+      ! pbl3d_sq, default 0.2 = MY82, previous behaviour bit for bit). MYNN's q^2 diffusivity
+      ! is 3 K_m, 1.5-7 x this one in a convective layer (DECISIONS 2026-08-27). Pure
+      ! transport: it moves q^2, it does not create it.
     real,    public    :: SQ_DIFF
       ! Surface q^2 condition (pbl3d_sfc_qsq_bc): 0 = none (previous behaviour; the only
       ! lower condition is the Q_SQ_MIN floor on the ground face). 1 = the lowest
@@ -162,14 +157,13 @@
       ! q^2 = B1^(2/3) u*^2 (MY82 Eq. 47b; 6.5 u*^2 for the MY82 set, B1 = 16.6; 8.3 u*^2 for MYNN, B1 = 24), the condition the MYNN
       ! family imposes at its lowest level (applied in Calc_q_sq_rhs, module_pbl3d).
       ! 2 = as 1, plus l >= kappa z below SFC_QSQ_ZMAX in unstable air (Eq. 71 gives
-      ! l < kappa z whenever l0 is not >> kappa z; measured 2026-08-27: l = 0.6 kappa z in
-      ! the lowest levels by day, DECISIONS 14:30).
+      ! l < kappa z whenever l0 is not >> kappa z).
     integer, public    :: SFC_QSQ_BC
       ! Time integration of the vertical q^2 diffusion (pbl3d_sq_implicit): 0 = explicit
       ! forward step (previous behaviour; stable only while S_q l q dt/dz^2 < 1/2, which
       ! S_q = 1.0 violates in the convective morning -- KNOWN_ISSUES E28); 1 = backward-Euler
       ! tridiagonal solve with the same face diffusivity and boundary conditions, handed to
-      ! the dynamics as the tendency (q* - q^2)/dt, as MYNN does for QKE. 2026-08-29.
+      ! the dynamics as the tendency (q* - q^2)/dt, as MYNN does for QKE.
     integer, public    :: SQ_IMPLICIT
       ! Tier-2 acceptance (pbl3d_t2_scalar): 0 = a solve is accepted when the stress tensor is
       ! positive semi-definite (previous behaviour); 1 = the scalar block must be realizable
@@ -178,8 +172,7 @@
       ! flat terrain the solve at the first interior face returns theta_v'^2 <= 0 with a
       ! realizable stress tensor; Tier 3 then clips the variance to zero and the
       ! Cauchy-Schwarz bound zeroes the heat flux, so the surface heat stays in an 18-m skin
-      ! (OPEN_ISSUES A18, 2026-08-29: 83-90 % of heated Inn-valley columns). The heat-side
-      ! twin of A14 (the divergent direction lives in the unchecked scalar block).
+      ! (OPEN_ISSUES A18).
     integer, public    :: T2_SCALAR
     real,    public    :: SFC_QSQ_ZMAX
     real,    parameter :: STRAIN_MIN = 1.0E-10   ! avoids 0/0 in the strain limiter
@@ -1225,14 +1218,9 @@
       real, dimension (its:ite, kts:kte, jts:jte) :: l_dissip
       character (4) :: my_level
 
-        ! Calc sm and sh then q_sq for the level 2 model to prepare for the HL88 fix.
-        !
-        ! This used to sit inside "if (use_hl88)" with use_hl88 a local parameter fixed at
-        ! .true. and no else branch. Flipping it would have left rif, sm_l2, sh_l2 and
-        ! q_sq_hl88 undefined while still passing them to Calc_sm_sh_l2_or_l2p5 below, which
-        ! reads all four. There is no defined physics for "HL88 off" - the else branch of the
-        ! limiter is not the identity - so the flag is removed rather than given an invented
-        ! meaning. Disabling HL88 would need a namelist option and a stated definition.
+        ! Calc sm and sh then q_sq for the level 2 model to prepare for the HL88 fix. HL88 is
+        ! always applied: the limiter has no defined "off" state (its else branch is not the
+        ! identity); disabling it would need a namelist option and a stated definition.
       my_level = 'l2'
       call Calc_sm_sh_l2_or_l2p5 (my_level=my_level, du_dz=du_dz, dv_dz=dv_dz, dthetav_dz=dthetav_dz, &
           ids=ids, ide=ide, jds=jds, jde=jde, kds=kds, kde=kde, ims=ims, ime=ime, jms=jms, jme=jme, kms=kms, kme=kme, &
@@ -1585,8 +1573,6 @@
         end do
       end do
 
-        ! Report how often the algebraic system had to be pushed back inside its
-        ! validity range. A healthy run should show this rarely or never.
         ! How often each safeguard acted, and under which conditions. A healthy run shows
         ! Tier 1 doing most of the work, Tier 2 occasional, Tier 3 rare, and the isotropic
         ! fallback (TIER2 exhausted) never. Emitted at debug_level 100, per tile.
@@ -1730,9 +1716,8 @@
       real, dimension (its:ite, kts:kte, jts:jte) :: l_dissip
       character (4) :: my_level
 
-        ! Calc sm and sh then q_sq for the level 2 model to prepare for the HL88 fix.
-        ! See Prep_for_fluxes_l2p5_pbl_approx for why the use_hl88 parameter was removed
-        ! rather than given an else branch.
+        ! Calc sm and sh then q_sq for the level 2 model to prepare for the HL88 fix
+        ! (always applied; see Prep_for_fluxes_l2p5_pbl_approx).
       my_level = 'l2'
       call Calc_sm_sh_l2_or_l2p5 (my_level=my_level, du_dz=du_dz, dv_dz=dv_dz, dthetav_dz=dthetav_dz, &
           ids=ids, ide=ide, jds=jds, jde=jde, kds=kds, kde=kde, ims=ims, ime=ime, jms=jms, jme=jme, kms=kms, kme=kme, &
@@ -2058,8 +2043,7 @@
         ! ---------------------------------------------------------------------------
         ! Tier 3, moisture side. Diagnose <qv'^2> from the moisture fluxes on the length
         ! scale the moist solve actually accepted, then apply the same realizability
-        ! constraints the heat side already obeys. Until this existed the moisture fluxes
-        ! were the only moments in the scheme with no realizability constraint at all.
+        ! constraints the heat side already obeys.
         ! ---------------------------------------------------------------------------
       call Calc_qv_variance (q, l_use, dqv_dx_tmp, dqv_dy_tmp, dqv_dz_tmp, &
           tf_uqv, tf_vqv, tf_wqv, tf_qv2)
@@ -2216,9 +2200,8 @@
       real (kind = SOLVER_PREC) :: uv_in, uw_in, vw_in, t2v_in, utv_in, vtv_in, wtv_in
       integer :: n_bis
         ! Relative tolerance for calling the trace rescale a real correction rather than
-        ! round-off. 1e-10 was too tight: the trace identity is recovered from the solve
-        ! only to accumulated round-off, so it flagged essentially every point and told
-        ! us nothing. 1e-6 is still far below any physically meaningful rescaling.
+        ! round-off (the solve recovers the trace identity only to accumulated round-off);
+        ! far below any physically meaningful rescaling.
       real (kind = SOLVER_PREC), parameter :: TIER3_TOL = 1.0E-6_SOLVER_PREC
 
       t3_flags = 0
@@ -4075,8 +4058,7 @@
                 ! the mixing length (l_master), the l on the dissipation side is l_dissip,
                 ! which is what Fill_dissip_length_scale is called to supply. They coincide
                 ! for pbl3d_l_opt < 3 and differ for pbl3d_l_opt >= 3, where l_dissip is the
-                ! BouLac length. This previously used l_master for both, so l_dissip was
-                ! passed in and never used.
+                ! BouLac length.
               q_sq(i, k, j) =  b_1 * l_dissip(i, k, j) * l_master(i, k, j) *  &
                   (du_dz(i, k, j) ** 2.0 + dv_dz(i, k, j) ** 2.0) *           &
                   (1.0 - rif(i, k, j)) * sm(i, k, j)
@@ -4875,7 +4857,7 @@
       end if
 
         ! Floor on the asymptotic length scale (see L0_MIN at the top of the module).
-        ! Zero or negative disables it, which is the pre-2026-08-20 behaviour.
+        ! Zero or negative disables it.
       L0_MIN = Max (pbl3d_l0_min, 0.0)
 
         ! Diffusion-number cap on l (see DN_MAX at the top of the module); 0 disables it.
@@ -4980,11 +4962,9 @@
         ! ---------------------------------------------------------------------------
         ! Initial turbulence state (pbl3d_init_opt).
         !
-        ! 0: leave q^2 at its floor everywhere (the pre-2026-08-20 behaviour). In the
-        !    full-3D path every bound on l scales with q, so a column that starts at the
-        !    floor can only be lifted off it by the surface boundary condition diffusing
-        !    upward: job 8476273 took more than an hour and was still rising linearly
-        !    while the MYNN control, which starts at equilibrium, had settled by 01:30.
+        ! 0: leave q^2 at its floor everywhere. In the full-3D path every bound on l scales
+        !    with q, so a column that starts at the floor can only be lifted off it by the
+        !    surface boundary condition diffusing upward, which takes more than an hour.
         ! 1: level-2 equilibrium, the construction of MYNN's mym_initialize. Iterate
         !    { stability functions at the local Ri -> q^2 = b_1 l_dissip l_master S^2
         !    (1 - Rif) Sm, floored -> master length scale from that q^2 }. l_master is

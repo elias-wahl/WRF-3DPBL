@@ -4484,12 +4484,8 @@
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: q_sq_prog
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: l_boulac
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: l_master_at_mass
-        ! intent(in), not intent(out): Calc_q_sq_rhs only reads these, passing them to
-        ! Calc_q_sq_shear* and Calc_q_sq_buoyancy where they are intent(in). Declaring them
-        ! intent(out) leaves the dummies undefined on entry per the standard; it happens to
-        ! work today only because the actual arguments are contiguous full arrays, so gfortran
-        ! passes by reference and skips the copy-in. One non-contiguous actual argument at any
-        ! call site would silently turn these into garbage.
+        ! intent(in), not intent(out): only read here (by Calc_q_sq_shear* and Calc_q_sq_buoyancy);
+        ! intent(out) would leave them undefined on entry, garbage for a non-contiguous actual.
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: turb_flux_u2, turb_flux_v2, turb_flux_w2, &
                                                                      turb_flux_uv, turb_flux_uw, turb_flux_vw, &
                                                                      turb_flux_wtheta_v
@@ -4583,20 +4579,15 @@
           ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, i_start, i_end, j_start, j_end, ktf)
 
         ! Surface q^2 condition (pbl3d_sfc_qsq_bc >= 1; SFC_QSQ_BC in module_pbl3d_my). The
-        ! closure has no lower boundary condition on q^2: the ground flux in
-        ! Calc_q_sq_vertical_diffusion is zero and Fill_q_sq_with_q_sq_prog only floors the
-        ! ground face at Q_SQ_MIN, so q^2 next to the wall is whatever local production
-        ! leaves there (measured 2026-08-27: 0.17 of the surface-layer value by day,
-        ! DECISIONS 14:30). The MYNN family holds its lowest level at the neutral
-        ! surface-layer equilibrium q^2 = B1^(2/3) u*^2 (MY82 Eq. 47b; 6.5 u*^2 for the
-        ! MY82 constant set, B1 = 16.6; MYNN's B1 = 24 gives 8.3 u*^2). Here that value is
-        ! a floor on the lowest prognostic level, delivered as
-        ! a source that closes the gap within one model step: q_sq_prog is the temporary
-        ! copy q_sq_tmp, so only the tendency reaches the dynamics. Not divided by
+        ! closure has no lower boundary condition on q^2 (zero ground flux in
+        ! Calc_q_sq_vertical_diffusion, Q_SQ_MIN floor in Fill_q_sq_with_q_sq_prog). As in the
+        ! MYNN family, the lowest prognostic level is held at or above the neutral surface-layer
+        ! equilibrium q^2 = B1^(2/3) u*^2 (MY82 Eq. 47b; 6.5 u*^2 for the MY82 set, B1 = 16.6),
+        ! delivered as a source that closes the gap within one model step: q_sq_prog is the
+        ! temporary copy q_sq_tmp, so only the tendency reaches the dynamics. Not divided by
         ! N_PBL3D on purpose: the first sub-step closes the gap, later sub-steps see none.
-        ! Never reduces q^2. The energy it adds is not paid by the resolved flow (it is
-        ! the surface-layer source MYNN has as well) and shows in the energy-closure
-        ! residual diagnostic.
+        ! Never reduces q^2. The energy it adds is not paid by the resolved flow and shows in
+        ! the energy-closure residual diagnostic.
       if (SFC_QSQ_BC >= 1) then
         q_sq_sfc_fac = b_1 ** (2.0 / 3.0)
         do j = j_start, j_end
@@ -5023,9 +5014,7 @@
         ! sf_alpha (Calc_htend_du/dv/dw), so the kinetic energy the resolved flow actually
         ! loses to the horizontal stresses is the untapered production divided by the same
         ! factor. pair = 1 credits the q^2 budget with that amount; pair = 0 keeps the
-        ! untapered production (pre-2026-08-21 behaviour). Measured 2026-08-21 (jobs
-        ! 8477283-8477286): with pair = 0 about 90 % of the horizontal-pairing production,
-        ! a third of the total, is never paid by the resolved flow (OPEN_ISSUES A10).
+        ! untapered production, most of which the resolved flow never pays (OPEN_ISSUES A10).
       real, dimension (its-1:ite, kts:kte, jts-1:jte), intent (in) :: sf_alpha
       integer,                                         intent (in) :: pair
         ! The six of the nine production terms that pair with the HORIZONTAL turbulent
