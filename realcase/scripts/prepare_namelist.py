@@ -464,7 +464,7 @@ def check(nl):
         pal = g("pbl3d_approx_limits", int, 0)
         if pal not in (0, 1):
             note(FATAL, "pbl3d_approx_limits must be 0 (previous behaviour) or 1 (the full form's strain "
-                        "limit on l for the approximate form)")
+                        "limit on l for the approximate form; with pbl3d_prog>0 also l before Sm, Sh)")
         elif pal == 1 and p3 != 1:
             note(WARN, "pbl3d_approx_limits=1 acts only with pbl3d_opt=1; it does nothing with pbl3d_opt=%d" % p3)
         mcm = g("pbl3d_moist_cond_max", float, 0.0)

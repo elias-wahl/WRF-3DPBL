@@ -1109,12 +1109,22 @@
       real, dimension (its:ite, kts:kte, jts:jte) :: rif, sm_l2, sh_l2, sm, sh, q_ratio, q_sq_hl88
       real, dimension (its:ite, kts:kte, jts:jte) :: dlu, dld, dls, dlk
       integer :: i, j
+      logical :: lag_free
+
+        ! pbl3d_approx_limits = 1 with prognostic q^2 (pbl3d_opt = 1): Sm, Sh and the level-2 q^2 of
+        ! the HL88 limiter are otherwise formed with the previous call's l, and l is recomputed
+        ! after them. Here l is formed (and limited) first and the level 2.5 preparation follows the
+        ! length scale below. l needs only the face q^2 from the prognostic field, filled here.
+      lag_free = config_flags%pbl3d_approx_limits == 1 .and. config_flags%pbl3d_opt == 1 .and. &
+                 config_flags%pbl3d_prog > 0
+      if (lag_free) call Fill_q_sq_with_q_sq_prog (q_sq_prog, q_sq, dn, dnw, fnm, fnp, cf1, cf2, cf3, &
+          ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
         ! Calculate q_sq (level 2) or Fill q_sq with prognostic q_sq (level 2.5)
       if ( config_flags%pbl3d_prog .eq. 0 ) then   ! level 2 model
         call Prep_for_fluxes_l2_pbl_approx (config_flags, q_sq, l_master, l_boulac, rif, sm, sh, du_dz, dv_dz, &
             dthetav_dz, id, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-      else if ( config_flags%pbl3d_prog .gt. 0 ) then   ! level 2.5 model
+      else if ( config_flags%pbl3d_prog .gt. 0 .and. .not. lag_free ) then   ! level 2.5 model
         call Prep_for_fluxes_l2p5_pbl_approx (config_flags, q_sq, q_sq_prog, l_master, l_boulac, rif, sm_l2, sh_l2, sm, sh, &
             q_ratio, q_sq_hl88, du_dz, dv_dz, dthetav_dz, id, dn, dnw, fnm, fnp, cf1, cf2, cf3, &
             ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
@@ -1145,6 +1155,11 @@
         call Cap_l_strain_pbl_approx (q_sq, l_master, l_boulac, du_dx, du_dy, du_dz, dv_dx, dv_dy, dv_dz, &
             dw_dx, dw_dy, dw_dz, dthetav_dz, pbl3d_t1_ratio, &
             ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+
+        ! Level 2.5 preparation with this call's l (lag_free; see above)
+      if (lag_free) call Prep_for_fluxes_l2p5_pbl_approx (config_flags, q_sq, q_sq_prog, l_master, l_boulac, rif, &
+          sm_l2, sh_l2, sm, sh, q_ratio, q_sq_hl88, du_dz, dv_dz, dthetav_dz, id, dn, dnw, fnm, fnp, cf1, cf2, cf3, &
+          ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
         ! Diagnose momentum, heat, moisture fluxes for pbl approx
       if ( config_flags%pbl3d_prog .eq. 0 ) then  ! For level 2 model, no need for realizability
