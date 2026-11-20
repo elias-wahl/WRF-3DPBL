@@ -683,7 +683,6 @@
           dqc_dx, dqc_dy, dqc_dz, dqr_dx, dqr_dy, dqr_dz, dqi_dx, dqi_dy, dqi_dz, dqs_dx, dqs_dy, dqs_dz, &
           dqg_dx, dqg_dy, dqg_dz, dqnc_dx, dqnc_dy, dqnc_dz, dqnr_dx, dqnr_dy, dqnr_dz, &
           dqni_dx, dqni_dy, dqni_dz, dqnwfa_dx, dqnwfa_dy, dqnwfa_dz, dqnifa_dx, dqnifa_dy, dqnifa_dz
-      integer :: i, j, k, i_start, i_end, j_start, j_end, ktf
 
         ! Opt-in corrections (OPEN_ISSUES A37, A38); 0 = previous behaviour, bit for bit
       THM_FLUX_OPT = config_flags%pbl3d_thm_flux
@@ -717,13 +716,6 @@
             dqnr_dx, dqnr_dy, dqnr_dz, dqni_dx, dqni_dy, dqni_dz, dqnwfa_dx, dqnwfa_dy, dqnwfa_dz, dqnifa_dx, dqnifa_dy, dqnifa_dz, &
             ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
       end if
-
-        ! Calculate indexes
-      i_start = its
-      i_end = Min (ite, ide - 1)
-      j_start = jts
-      j_end = Min (jte, jde - 1)
-      ktf = Min (kte, kde - 1)
 
       call Calc_turb_fluxes_my (config_flags, dz, z_at_mass, z_at_w, u, v, w, th, th2, qv, thetav, tsk, t2, q2, psfc, rho, ust, hfx, qfx, rmol, &
           du_dx, du_dy, du_dz, dv_dx, dv_dy, dv_dz, dw_dx, dw_dy, dw_dz, dqv_dx, dqv_dy, dqv_dz, dthetav_dx, dthetav_dy, dthetav_dz, &
@@ -3286,7 +3278,7 @@
       real, dimension (its-1:ite, kts:kte, jts-1:jte), intent(in) :: sf_alpha
 
         ! Local data
-      integer :: i, j, k, ktf
+      integer :: ktf
       integer :: i_start, i_end, j_start, j_end
       integer :: ie_ext, je_ext
 
@@ -3360,7 +3352,7 @@
       real, dimension (its-1:ite, kts:kte, jts-1:jte), intent(in) :: sf_alpha
 
         ! Local vars
-      integer :: i, j, k, ktf
+      integer :: ktf
       integer :: i_start, i_end, j_start, j_end
       integer :: ie_ext, je_ext
 
@@ -4363,16 +4355,9 @@
                               its, ite, jts, jte, kts, kte
 
         ! Local vars
-      integer :: i, j, k, i_start, i_end, j_start, j_end, ktf
       real, dimension (its:ite, kts:kte, jts:jte) :: du_dz_mass, dv_dz_mass, dw_dz_mass, du_dx_mass, dv_dx_mass, dw_dx_mass, &
            du_dy_mass, dv_dy_mass, dw_dy_mass, dthetav_dz_mass, dqv_dz_mass
       real, dimension (its:ite, jts:jte)          :: thetav_sk
-
-      ktf     = MIN( kte, kde-1 )
-      i_start = its
-      i_end   = MIN(ite,ide-1)
-      j_start = jts
-      j_end   = MIN(jte,jde-1)
 
       call Calc_wind_derivatives_at_mass (config_flags, u, v, w, zx, zy, du_dz_mass, dv_dz_mass, dw_dz_mass, &
           du_dx_mass, dv_dx_mass, dw_dx_mass, du_dy_mass, dv_dy_mass, dw_dy_mass, rdzw, dn, dnw, fnm, fnp, msftx, msfty, &
@@ -4649,15 +4634,9 @@
 
         ! Local vars
       integer :: i, j, k
-      real    :: cft1, cft2
-      integer :: ktf, ktes1, ktes2, i_start, i_end, j_start, j_end
+      integer :: ktf, i_start, i_end, j_start, j_end
 
         ! Define some indexes
-      ktes1 = kte - 1
-      ktes2 = kte - 2
-      cft2 = - 0.5 * dnw(ktes1) / dn(ktes1)
-      cft1 = 1.0 - cft2
-
       i_start = its
       i_end = Min (ite, ide - 1)
       j_start = jts
@@ -5866,19 +5845,16 @@
 
         ! Local vars
       integer :: i, j, k, ktes1, ktes2
-      real :: cft1, cft2, tmpzx, rdzu, rdzv, dz_dx, dz_dy, &
+      real :: rdzu, rdzv, dz_dx, dz_dy, &
               dq_sq_dz_dz_dx, dq_sq_dz_dz_dy, mrdx, mrdy
       real :: q_sq_hdiff_tend_tmp
       real, parameter :: Sq = 0.20
-      real, dimension (its:ite, kts:kte, jts:jte) :: q_sq_hdiff_hold
       real, dimension (its-1:ite+1, kts:kte, jts-1:jte+1) :: xkxavg, q_sq_at_full_u, q_sq_at_full_v, &
            dq_sq_dx_at_u, dq_sq_dy_at_v, dq_sq_dx_at_w, dq_sq_dy_at_w, zx_at_mass, zy_at_mass
 
         ! Define some indexes
       ktes1 = kte - 1
       ktes2 = kte - 2
-      cft2 = - 0.5 * dnw(ktes1) / dn(ktes1)
-      cft1 = 1.0 - cft2
 
         !!! Do dq_sq/dx first !!!
 
@@ -6224,7 +6200,6 @@
 
         ! Local vars
       integer :: i, j, k
-      real :: l
 
       do j = j_start, j_end
         do k = kts, ktf
@@ -6456,7 +6431,7 @@
       integer, intent(in) :: pbl3d_sfc_qsq_bc, pbl3d_sq_implicit, pbl3d_t2_scalar
       real, dimension(ims:ime, jms:jme),          intent(inout) :: l0_asym
       character (len = *), intent(in) :: pbl3d_constants
-      integer :: i, j, k, itf, jtf, ktf
+      integer :: itf, jtf, ktf
       integer, intent(in) :: ids, ide, jds, jde, kds, kde, &
                              ims, ime, jms, jme, kms, kme, &
                              its, ite, jts, jte, kts, kte
@@ -6476,13 +6451,11 @@
           turb_flux_uqv, turb_flux_vqv, turb_flux_wqv
 
         ! Local vars
-      real, dimension (kts:kte) :: sqv
       real, dimension (ims:ime, kms:kme, jms:jme) :: rdz, rdzw, z_at_mass, z_at_w, dz
-      real, dimension (its:ite, kts:kte, jts:jte) :: sm, sh, rif
       real, dimension (its:ite, kts:kte, jts:jte) :: du_dz, dv_dz, &
                                                      dthetav_dz, dqv_dz
       real, dimension (ims:ime, kms:kme, jms:jme) :: rho
-      integer :: i_start, i_end, j_start, j_end, init_iter
+      integer :: i_start, i_end, j_start, j_end
 
         ! Defines mass point at faces indexes
       jtf = Min (jte, jde - 1)

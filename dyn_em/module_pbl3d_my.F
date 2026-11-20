@@ -375,8 +375,7 @@
 
         ! Local vars
       integer :: i, j, k
-      integer :: ktf, ktes1, ktes2, i_start, i_end, j_start, j_end
-      real    :: cft1, cft2
+      integer :: ktf, i_start, i_end, j_start, j_end
 
         ! Define some indexes
       i_start = its
@@ -419,8 +418,7 @@
 
         ! Local vars
       integer :: i, j, k
-      integer :: ktf, ktes1, ktes2, i_start, i_end, j_start, j_end
-      real    :: cft1, cft2
+      integer :: ktf, i_start, i_end, j_start, j_end
 
         ! Define some indexes
       i_start = its
@@ -492,7 +490,7 @@
         ! MYNN's diffusivity. Needs pbl3d_dn_max > 0 at heated crests (A25).
       real, parameter :: A1_OP = 0.23, A2_OP = 0.3, A3_OP = 5.0, A4_OP = 15.0, CNS_OP = 3.5
       real, parameter :: L0_OP_MIN = 8.0, L0_OP_MAX = 400.0, QKW_ELB_MIN = 0.05, BV_MIN = 0.001
-      real :: l0, l0_num, l0_den, qdz
+      real :: l0, l0_num, l0_den
       real :: q, q_dz, dz_wall, q_min
       real :: l_s, l_b, l_f, zet, kz, N, q_c
       real :: l_sm, z_m, q_b, stab_fn
@@ -784,8 +782,7 @@
       real, dimension (kts:kte) :: z_at_walls_1d
       integer :: i, j, k, i_start, i_end, j_start, j_end, ktf
       real, parameter :: SMALL_VAL = 0.00001
-      real, parameter :: alpha_1 = 0.23
-      real :: l0, l0_num, l0_den, qdz
+      real :: l0, l0_num, l0_den
       real :: q, q_dz, dz_wall, q_min
       real :: l_b, l_d, l_del, N, zi
       real, parameter :: c_r = 0.25
@@ -1059,7 +1056,6 @@
         ! local vars
       real, dimension (its:ite, kts:kte, jts:jte) :: rif, sm_l2, sh_l2, sm, sh, q_ratio, q_sq_hl88
       real, dimension (its:ite, kts:kte, jts:jte) :: dlu, dld, dls, dlk
-      integer :: i, j
       logical :: lag_free
 
         ! pbl3d_approx_limits = 1 with prognostic q^2 (pbl3d_opt = 1): Sm, Sh and the level-2 q^2 of
@@ -1336,7 +1332,7 @@
 
       real (kind = SOLVER_PREC) :: tf_utv, tf_vtv, tf_wtv, tf_uqv, tf_vqv, tf_wqv
 
-      integer :: n_backoff_pt, n_backoff_tot, n_pts_limited
+      integer :: n_backoff_pt, n_backoff_tot
       real    :: dg_t1_ratio, dg_t3_flags, dg_sk_eps, dg_n_tau, dg_qv2, dg_p_eps
         ! Summary counters, binned by stratification so the report says under WHICH
         ! conditions each tier fired, not only how often.
@@ -1353,7 +1349,6 @@
       real, parameter :: S_M_NEUTRAL_LH = 0.39, PR_INV_LH = 1.0
       real    :: lh_extra, kh_extra
 
-      character (4) :: my_level
       character (len = 256) :: wrf_err_message
 
         ! Define dimensions
@@ -1441,7 +1436,6 @@
 
       n_backoff_pt  = 0
       n_backoff_tot = 0
-      n_pts_limited = 0
 
       n_pts_tot = 0 ; n_t1 = 0 ; n_t2 = 0 ; n_t2_max = 0
       n_t3(:) = 0 ; n_bin(:) = 0 ; n_t2_bin(:) = 0 ; n_t3_bin(:) = 0
@@ -1488,7 +1482,6 @@
 
               if (n_backoff_pt > 0) then
                 n_backoff_tot = n_backoff_tot + n_backoff_pt
-                n_pts_limited = n_pts_limited + 1
               end if
 
                 ! Per-point diagnostic fields, written to history
@@ -1793,7 +1786,6 @@
 
         ! Local vars
       integer :: i, j, k, i_start, i_end, j_start, j_end
-      real :: l
 
         ! Define dimensions
       i_start = its
@@ -3356,8 +3348,6 @@
               dqncdz, dqnrdz, dqnidz, dqnwfadz, dqnifadz
       real :: t_wall, qv_wall
       real :: th_pert, th_dry, qm
-      real :: dxm, dym, tmpzx, tmpzy, sf_alpha
-      real :: c_p, u1, v1, wind_speed, ust_sq
 
         ! Define dimensions
       i_start = its
@@ -3800,7 +3790,7 @@
                                  its, ite, jts, jte, kts, kte
 
         ! local vars
-      integer :: i, j, k, i_start, i_end, j_start, j_end, ktf
+      integer :: i, j, i_start, i_end, j_start, j_end
       real :: zet, pmz1, pmz2, phz
       real :: qss, prt, gamma1, kz, elv
       real :: c_p, u1, v1, wind_speed, th_dry
@@ -3814,8 +3804,6 @@
       i_end = Min (ite, ide - 1)
       j_start = jts
       j_end = Min (jte, jde - 1)
-
-      ktf = Min (kte, kde - 1)
 
       do j = j_start, j_end
         do i = i_start, i_end
@@ -4118,8 +4106,8 @@
                                  its, ite, jts, jte, kts, kte
 
         ! local vars
-      integer :: i, j, k, i_start, i_end, j_start, j_end, ktf, k_start, n_iter_sor
-      real :: ri, turb_prtl_num, gm, gh, phi1, phi2, phi3, phi4, phi5, N, D
+      integer :: i, j, k, i_start, i_end, j_start, j_end, ktf, k_start
+      real :: ri, turb_prtl_num, gm, gh, phi1, phi2, phi3, phi4, N, D
       character (len = 256) :: wrf_err_message
       real, dimension (its:ite, kts:kte, jts:jte) :: l_master
 
@@ -4235,7 +4223,6 @@
                   phi2 = 1.0 - 9.0  * a_1 * a_2 * gh
                   phi3 = phi1 + 9.0 * a_2 * a_2 * gh
                   phi4 = phi1 - 12.0 * a_1 * a_2 * gh
-                  phi5 = phi1 - 18.0 * a_1 * a_2 * gh
                   N = phi2 + 18.0 * c_1 * a_1 * a_1 * gm
                   D = phi2 * phi4 + 6.0 * a_1 * a_1 * phi3 * gm
 
@@ -4292,7 +4279,6 @@
 
         ! local vars
       integer :: i, j, k, i_start, i_end, j_start, j_end, kts1, ktf
-      real :: ri, turb_prtl_num
       real, dimension (its:ite, kts:kte, jts:jte) :: q_sq
 
         ! Define dimensions
@@ -4703,7 +4689,7 @@
                                                                      its, ite, jts, jte, kts, kte
 
         ! local vars
-      integer :: i, j, k, i_start, i_end, j_start, j_end
+      integer :: i, j, i_start, i_end, j_start, j_end
       real :: dxdy, dxdh
 
         ! Define dimensions
