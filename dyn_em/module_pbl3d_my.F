@@ -4995,7 +4995,7 @@
         ! Set model contants
       select case (trim(pbl3d_constants))
 
-        case('M73')
+        case('M73', 'MY73')   ! README.namelist documents MY73
 
           a_1 = A1_M73
           a_2 = A2_M73
