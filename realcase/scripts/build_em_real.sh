@@ -151,6 +151,14 @@ if any('-DMTN' in l for l in lines):
 open(path, 'w').write('\n'.join(lines) + '\n')
 PYEOF
 grep -m1 '^LIB_LOCAL' configure.wrf
+# Optional extra optimisation flags (decomposition-reproducibility tests): e.g.
+# WRF_FCOPTIM_EXTRA=-nostdinc keeps gfortran from pre-including glibc's
+# math-vector-fortran.h, i.e. from calling libmvec SIMD exp/log/pow/sin/cos in
+# vectorised loops (scalar libm in the remainder iterations otherwise).
+if [ -n "${WRF_FCOPTIM_EXTRA:-}" ]; then
+  sed -i "s|^\(FCOPTIM[[:space:]]*=.*\)$|\1 ${WRF_FCOPTIM_EXTRA}|" configure.wrf
+  echo "    FCOPTIM += ${WRF_FCOPTIM_EXTRA}"; grep -m1 '^FCOPTIM' configure.wrf
+fi
 
 # --- 4. compile ------------------------------------------------------------
 LOG="$WRF/compile_em_real.log"

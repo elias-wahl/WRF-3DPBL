@@ -3044,6 +3044,7 @@ rconfig   integer diff_6th_slopeopt       namelist,dynamics     max_domains    0
 rconfig   real    diff_6th_thresh         namelist,dynamics     max_domains    0.10    ih    "diff_6th_thresh" "slope threshold (m/m) that turns off 6th order diff is steep terrain"
 rconfig   real    diff_6th_stabthresh     namelist,dynamics     max_domains    2.0     ih    "diff_6th_stabthresh" "diff_6th_slopeopt=3/5: stencil-max d(theta)/dz in K/km above which the slope taper applies in full (3: everywhere; 5: inside the convective regime; use ~10 with option 5)"
 rconfig   real    diff_6th_hfxthresh      namelist,dynamics     max_domains    20.0    ih    "diff_6th_hfxthresh" "diff_6th_slopeopt=5: surface sensible heat flux (W/m2) that all six stencil columns must exceed for the untapered, stratification-corrected along-eta filter; otherwise the production slope taper applies"
+rconfig   integer diff_6th_hfx_halo       namelist,dynamics     1              0       -     "diff_6th_hfx_halo" "diff_6th_slopeopt=5: 1 exchanges a 3-point halo of HFX before the regime gate reads it (decomposition-independent gate); 0 = previous behaviour (the gate reads a never-updated HFX halo within 3 points of every patch boundary)"
 rconfig   integer use_theta_m             namelist,dynamics	1              1       rh    "use_theta_m" "theta_m = theta (1 + 1.61 Qv); 0-no, 1=yes"     ""
 rconfig   integer use_q_diabatic          namelist,dynamics     1              0       rh    "use_q_diabatic" "account for q diabatic terms in advection "     ""
 rconfig   real    c_s                     namelist,dynamics     max_domains    0.25    h    "c_s"         "Smagorinsky coeff"      ""
@@ -3624,6 +3625,7 @@ halo      HALO_EM_VINTERP_UV_1 dyn_em 48:pd_gc,pb,pmaxw,ptrop,pmaxwnn,ptropnn
 halo      HALO_EM_A dyn_em  8:ru,rv,rw,ww,php,alt,al,p,muu,muv,mut,rho
 halo      HALO_EM_PHYS_A  dyn_em 4:u_2,v_2
 halo      HALO_EM_PHYS_PBL dyn_em        4:rublten,rvblten
+halo      HALO_EM_HFX_FILT dyn_em        48:hfx
 halo      HALO_EM_PHYS_CU dyn_em         4:rucuten,rvcuten
 halo      HALO_EM_PHYS_SHCU dyn_em       4:rushten,rvshten
 halo      HALO_EM_FDDA dyn_em            4:rundgdten,rvndgdten

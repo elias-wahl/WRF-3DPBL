@@ -50,7 +50,7 @@ CONTAINS
             ,halo_em_phys_state_pbl3d_sub,halo_em_phys_substep_pbl3d_sub,halo_em_phys_diffusion_pbl3d_sub &
             ,halo_em_scalar_diffusion_pbl3d_sub,halo_em_pbl3d_3_sub,halo_em_pbl3d_5_sub &
             ,period_bdy_em_state_pbl3d_sub,period_bdy_em_substep_pbl3d_sub,period_bdy_em_phy_bc_pbl3d_sub &
-            ,period_bdy_em_scalar_bc_pbl3d_sub
+            ,period_bdy_em_scalar_bc_pbl3d_sub,halo_em_hfx_filt_sub
 #endif
 
     USE module_driver_constants
@@ -780,6 +780,13 @@ ENDIF
        ENDIF
        IF ( config_flags%diff_opt .ge. 1 ) THEN
 #      include "HALO_EM_PHYS_DIFFUSION.inc"
+       ENDIF
+       ! diff_6th_slopeopt = 5 evaluates its convective-regime gate on HFX at i-3..i+3 and
+       ! j-3..j+3; HFX is set on the patch only by the surface driver, so its halo must be
+       ! exchanged here (after the surface driver, before the RK loop) for a gate that does not
+       ! depend on the decomposition. Off by default (bit for bit with the previous code).
+       IF ( config_flags%diff_6th_slopeopt .EQ. 5 .AND. config_flags%diff_6th_hfx_halo .EQ. 1 ) THEN
+#      include "HALO_EM_HFX_FILT.inc"
        ENDIF
 
        IF      ( config_flags%h_sca_adv_order <= 4 ) THEN
