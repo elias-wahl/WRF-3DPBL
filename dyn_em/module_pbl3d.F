@@ -4593,10 +4593,6 @@
       call Calc_mass_var_derivatives_at_mass (thetav, thetav_sk, q2, qv, dthetav_dz_mass, dqv_dz_mass, rdzw, dn, dnw, fnm, fnp, cf1, cf2, cf3, &
           ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
-!      call Fill_derivatives_mass_with_derivatives_face (du_dx_faces, du_dy_faces, du_dz_faces, dv_dx_faces, dv_dy_faces, dv_dz_faces, &
-!          dw_dx_faces, dw_dy_faces, dw_dz_faces, dthetav_dz_faces, du_dx_mass, du_dy_mass, du_dz_mass, dv_dx_mass, dv_dy_mass, dv_dz_mass, &
-!          dw_dx_mass, dw_dy_mass, dw_dz_mass, dthetav_dz_mass, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-
       call Fill_fluxes_mass_with_fluxes_face (turb_flux_u2_face, turb_flux_v2_face, turb_flux_w2_face, turb_flux_uv_face, turb_flux_uw_face, &
           turb_flux_vw_face, turb_flux_wtheta_v_face, turb_flux_u2, turb_flux_v2, turb_flux_w2, turb_flux_uv, turb_flux_uw, turb_flux_vw, &
           turb_flux_wtheta_v, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
@@ -5774,71 +5770,6 @@
       end do
 
     end subroutine Calc_dmassvar_dz_at_mass
-
-
-    subroutine Fill_derivatives_mass_with_derivatives_face (du_dx_faces, du_dy_faces, du_dz_faces, dv_dx_faces, dv_dy_faces, dv_dz_faces, &
-              dw_dx_faces, dw_dy_faces, dw_dz_faces, dthetav_dz_faces, du_dx_mass, du_dy_mass, du_dz_mass, dv_dx_mass, dv_dy_mass, dv_dz_mass, &
-              dw_dx_mass, dw_dy_mass, dw_dz_mass, dthetav_dz_mass, ide, jde, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-
-      implicit none
-
-      real, dimension (its:ite, kts:kte, jts:jte), intent (in)   :: du_dx_faces, du_dy_faces, du_dz_faces, &
-                                                                    dv_dx_faces, dv_dy_faces, dv_dz_faces, &
-                                                                    dw_dx_faces, dw_dy_faces, dw_dz_faces, &
-                                                                    dthetav_dz_faces
-      real, dimension (its:ite, kts:kte, jts:jte), intent (out)  :: du_dx_mass, du_dy_mass, du_dz_mass, &
-                                                                    dv_dx_mass, dv_dy_mass, dv_dz_mass, &
-                                                                    dw_dx_mass, dw_dy_mass, dw_dz_mass, &
-                                                                    dthetav_dz_mass
-      integer,                                     intent (in)   :: ide, jde, kde,                  &
-                                                                    ims, ime, jms, jme, kms, kme,   &
-                                                                    its, ite, jts, jte, kts, kte
-
-        ! Local vars
-      integer :: i, j, k
-      integer :: ktf, i_start, i_end, j_start, j_end
-
-        ! Define some indexes
-      i_start = its
-      i_end = Min (ite, ide - 1)
-      j_start = jts
-      j_end = Min (jte, jde - 1)
-      ktf = Min (kte, kde - 1)
-
-!      k = kts
-!      do j = j_start, j_end
-!          do i = i_start, i_end
-!            du_dx_mass(i, k, j) = du_dx_faces(i, k + 1, j)
-!            du_dy_mass(i, k, j) = du_dy_faces(i, k + 1, j)
-!            du_dz_mass(i, k, j) = du_dz_faces(i, k + 1, j)
-!            dv_dx_mass(i, k, j) = dv_dx_faces(i, k + 1, j)
-!            dv_dy_mass(i, k, j) = dv_dy_faces(i, k + 1, j)
-!            dv_dz_mass(i, k, j) = dv_dz_faces(i, k + 1, j)
-!            dw_dx_mass(i, k, j) = dw_dx_faces(i, k + 1, j)
-!            dw_dy_mass(i, k, j) = dw_dy_faces(i, k + 1, j)
-!            dw_dz_mass(i, k, j) = dw_dz_faces(i, k + 1, j)
-!            dthetav_dz_mass(i, k, j) = dthetav_dz_faces(i, k + 1, j)
-!          end do
-!      end do
-
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end
-            du_dx_mass(i, k, j) = 0.5 * ( du_dx_faces(i, k + 1, j) + du_dx_faces(i, k, j) )
-            du_dy_mass(i, k, j) = 0.5 * ( du_dy_faces(i, k + 1, j) + du_dy_faces(i, k, j) )
-            du_dz_mass(i, k, j) = 0.5 * ( du_dz_faces(i, k + 1, j) + du_dz_faces(i, k, j) )
-            dv_dx_mass(i, k, j) = 0.5 * ( dv_dx_faces(i, k + 1, j) + dv_dx_faces(i, k, j) )
-            dv_dy_mass(i, k, j) = 0.5 * ( dv_dy_faces(i, k + 1, j) + dv_dy_faces(i, k, j) )
-            dv_dz_mass(i, k, j) = 0.5 * ( dv_dz_faces(i, k + 1, j) + dv_dz_faces(i, k, j) )
-            dw_dx_mass(i, k, j) = 0.5 * ( dw_dx_faces(i, k + 1, j) + dw_dx_faces(i, k, j) )
-            dw_dy_mass(i, k, j) = 0.5 * ( dw_dy_faces(i, k + 1, j) + dw_dy_faces(i, k, j) )
-            dw_dz_mass(i, k, j) = 0.5 * ( dw_dz_faces(i, k + 1, j) + dw_dz_faces(i, k, j) )
-            dthetav_dz_mass(i, k, j) = 0.5 * ( dthetav_dz_faces(i, k + 1, j) + dthetav_dz_faces(i, k, j) )
-          end do
-        end do
-      end do
-
-    end subroutine Fill_derivatives_mass_with_derivatives_face
 
 
     subroutine Fill_fluxes_mass_with_fluxes_face (tff_u2, tff_v2, tff_w2, tff_uv, tff_uw, tff_vw, tff_wthv, &
