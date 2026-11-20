@@ -52,7 +52,6 @@
 #endif
    USE module_pbl3d, ONLY : Init_pbl3d
    USE sf_sfclayrev, ONLY : sf_sfclayrev_set_limits
-   USE module_wind_fitch, ONLY : init_module_wind_fitch
 
    USE NoahmpIOVarType, only : NoahmpIOdom
 !!debug
@@ -1336,11 +1335,6 @@ endif
        endif
 
     ENDIF   ! no phy_init for the backwards part of the DFI
-
-       ! Init wind farm parameterization for pbl3d
-   if ( config_flags%windfarm_opt .EQ. 1 .and. config_flags%pbl3d_opt .NE. 0 ) THEN
-        call init_module_wind_fitch(grid%id,config_flags,grid%xlong,grid%xlat,windfarm_initialized,ims,ime,jms,jme,its,ite,jts,jte,ids,ide,jds,jde)
-   endif
 
    CALL wrf_debug ( 100 , 'start_domain_em: After call to phy_init' )
 

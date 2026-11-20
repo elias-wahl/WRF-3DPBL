@@ -331,17 +331,7 @@ CONTAINS
               ec=power1/power2
               endif
 !
-              IF ( bl_pbl_physics .EQ. 5 .AND. pbl3d_opt .EQ. 0 ) THEN  ! MYNN
-                 ! output u tendency
-                 du(i,k,j) = du(i,k,j)-.5*u(i,k,j)*thrcof*speed*tarea/dz(i,k,j)*ec
-
-                 ! output v tendency
-                 dv(i,k,j) = dv(i,k,j)-.5*v(i,k,j)*thrcof*speed*tarea/dz(i,k,j)*ec
-
-                 ! output TKE
-                 qke(i,k,j) = qke(i,k,j)+speed**3.*tarea*tkecof*dt/dz(i,k,j)*ec
-
-              ELSE IF ( bl_pbl_physics .EQ. 0 .AND. pbl3d_opt .NE. 0 ) THEN  ! 3DPBL
+              IF ( bl_pbl_physics .EQ. 0 .AND. pbl3d_opt .NE. 0 ) THEN  ! 3DPBL
                  ! Output u tendency
                  du_temp = 0
                  du_temp(i,k,j) = -.5*u(i,k,j)*thrcof*speed*tarea/dz(i,k,j)*ec
