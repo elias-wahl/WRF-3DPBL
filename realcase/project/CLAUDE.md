@@ -218,16 +218,25 @@ cd /gpfs/data/fs72996/ewahl/branko
 realcase/scripts/build_em_real.sh realcase/env/vsc5.sh --reconfigure   # 30-40 min
 ```
 
-**Always build serially on the login node with `nohup … &` (Elias, 2026-08-27) — never submit
-`build_em_real.slurm`: the compute-node job waited 5+ h in the queue while the login node builds
+**One build at a time: build serially on the login node with `nohup … &` (Elias, 2026-08-27) — never
+submit `build_em_real.slurm`: the compute-node job waited 5+ h in the queue while the login node builds
 in 40–60 min.** Record the PID (`.build_login.pid`) and wait on it.
+**Two or more builds at once (several trees, several agents): run them in an interactive SLURM session
+(`salloc`, one node), not on the login node (Elias, 2026-11-20).** Each build stays serial there too
+(`WRF_BUILD_JOBS=1`, `./compile -j 1`); the node only lets several serial builds run side by side.
+Request the allocation early — it can take a day to start, and the devel QOS (10 min) is too short for a
+build — and put the rule into every agent brief that involves a build. A first build of a new worktree
+counts, and so does a source-only recompile beside a running build.
 Only `./clean -a` (which `--reconfigure` triggers) regenerates the Registry and
 `inc/*.inc`; a stale registry builds and runs with new fields **silently missing**.
 Keep `WRF_BUILD_JOBS=1` — `-j N` races (E12). Trust the script's verdict, then
 `ldd` with the env sourced, then the devel-QOS smoke. For a source-only change:
 `source realcase/env/vsc5.sh && ./compile -j 1 em_real` (~12 min; relinks).
-`tmux` is not available in this session type — use `nohup … &` and a monitor
-keyed on the script's PID (not on `pgrep -f "compile em_real"`, E2).
+Start builds detached (`setsid nohup … &`) so they survive the session, and use a monitor keyed on the
+build script's PID (not on `pgrep -f "compile em_real"`, E2; a loop that counts processes by name and
+working directory can match its own shell). Check "=== BUILD OK" in the log *and* that `main/wrf.exe`
+exists before submitting a run. `tmux` 2.7 is on the login nodes: `mcinit` starts Claude inside a tmux
+session that survives a lost connection, `cinit` starts it plainly (2026-11-20).
 - The assistant's auto-mode classifier blocks `scancel`/`scontrol update` in some
   forms; if it refuses, hand the exact command to Elias with the `!` prefix.
 
