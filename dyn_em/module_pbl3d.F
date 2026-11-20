@@ -4539,7 +4539,9 @@
         call Update_halo_for_hdiff (grid, config_flags, q_sq, l_master_at_face, ids, ide, jds, jde, kds, kde, &
             ims, ime, jms, jme, kms, kme, ips, ipe, jps, jpe, kps, kpe, its, ite, jts, jte, kts, kte)
 
-        call Calc_q_sq_horizontal_diffusion (N_PBL3D, q_sq_hdiff_tend, q_sq_tend, l_master_at_face, q_sq_prog, q_sq, &
+          ! A44: pbl3d_qsq_hdiff_opt = 0 keeps the flux as coded since the fork; 1 = WRF's horizontal_diffusion_s form
+        call Calc_q_sq_horizontal_diffusion (N_PBL3D, config_flags%pbl3d_qsq_hdiff_opt, &
+            q_sq_hdiff_tend, q_sq_tend, l_master_at_face, q_sq_prog, q_sq, &
             msftx, msfty, msfux, msfvy, fnm, fnp, dn, dnw, zx, zy, rdx, rdy, rdz, rdzw, cf1, cf2, cf3, &
             ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, i_start, i_end, j_start, j_end, ktf)
       end if
@@ -4761,7 +4763,7 @@
     end subroutine Update_halo_for_hdiff
 
 
-    subroutine Calc_q_sq_horizontal_diffusion (N_PBL3D, q_sq_hdiff_tend, q_sq_tend, l_master, q_sq_mass, q_sq_face, &
+    subroutine Calc_q_sq_horizontal_diffusion (N_PBL3D, hdiff_form, q_sq_hdiff_tend, q_sq_tend, l_master, q_sq_mass, q_sq_face, &
               msftx, msfty, msfux, msfvy, fnm, fnp, dn, dnw, zx, zy, rdx, rdy, rdz, rdzw, cf1, cf2, cf3, &
               ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte, i_start, i_end, j_start, j_end, ktf)
 
@@ -4785,6 +4787,8 @@
       real :: rdzu, rdzv, dz_dx, dz_dy, &
               dq_sq_dz_dz_dx, dq_sq_dz_dz_dy, mrdx, mrdy
       real :: q_sq_hdiff_tend_tmp
+      integer,                                     intent (in)  :: hdiff_form   ! 0: flux as coded since the fork (x q^2, slope term
+                                                                                 !    outside K); 1: WRF's horizontal_diffusion_s form (A44)
       real, parameter :: Sq = SQ_DIFF
       real, dimension (its-1:ite+1, kts:kte, jts-1:jte+1) :: xkxavg, q_sq_at_full_u, q_sq_at_full_v, &
            dq_sq_dx_at_u, dq_sq_dy_at_v, dq_sq_dx_at_w, dq_sq_dy_at_w, zx_at_mass, zy_at_mass
@@ -4847,9 +4851,15 @@
             dq_sq_dz_dz_dx = (q_sq_at_full_u(i, k + 1, j) - q_sq_at_full_u(i, k, j)) * rdzu * dz_dx
               ! (partial q_sq / partial x)|z = msfux * (partial q_sq_at_mass / partial x)|sigma - dq_sq_dz_dz_dx)
               ! at u points
+            if (hdiff_form == 1) then
+                ! A44: flux = -m K_h (dq2/dx|eta - z_x dq2/dz), as WRF's horizontal_diffusion_s
+              dq_sq_dx_at_u(i, k, j) = - msfux(i, j) * xkxavg(i, k, j) *  &
+                                         ( (q_sq_mass(i, k, j) - q_sq_mass(i - 1, k, j)) * rdx - dq_sq_dz_dz_dx )
+            else
             dq_sq_dx_at_u(i, k, j) = - msfux(i, j) * xkxavg(i, k, j) *  &
                                        0.5 * ( q_sq_at_full_u(i, k + 1, j) + q_sq_at_full_u(i, k, j) ) * &
                                        (q_sq_mass(i, k, j) - q_sq_mass(i - 1, k, j)) * rdx - dq_sq_dz_dz_dx
+            end if
           end do
         end do
       end do
@@ -4908,9 +4918,14 @@
             dq_sq_dz_dz_dy = (q_sq_at_full_v(i, k + 1, j) - q_sq_at_full_v(i, k, j)) * rdzv * dz_dy
               ! (partial q_sq / partial y)|z = msfvy * (partial q_sq_at_mass / partial y)|sigma - dq_sq_dz_dz_dy)
               ! at v points
+            if (hdiff_form == 1) then
+              dq_sq_dy_at_v(i, k, j) = - msfvy(i, j) * xkxavg(i, k, j) * &
+                                         ( (q_sq_mass(i, k, j) - q_sq_mass(i, k, j - 1)) * rdy - dq_sq_dz_dz_dy )
+            else
             dq_sq_dy_at_v(i, k, j) = - msfvy(i, j) * xkxavg(i, k, j) * &
                                        0.5 * ( q_sq_at_full_v(i, k + 1, j) + q_sq_at_full_v(i, k, j) ) * &
                                        (q_sq_mass(i, k, j) - q_sq_mass(i, k, j - 1)) * rdy - dq_sq_dz_dz_dy
+            end if
           end do
         end do
       end do
