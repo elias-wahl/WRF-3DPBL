@@ -757,6 +757,16 @@ This is a property of a branchy closure in a chaotic flow, not a bug.
   `L_MASTER`, `PBL3D_T1_RATIO`).
 - A devel-QOS smoke on 5 nodes is fine for "does it run", useless for "does it reproduce".
 
+**CORRECTION 2026-11-20 (DECISIONS same day; runs RP01–RP21):** the attribution above was an inference and is wrong. The decomposition
+dependence has three located causes, none of them the closure: (1) gfortran's vectorised math library (libmvec) gives the remainder columns
+of each patch different last bits than the vectorised ones — in every field, also with MYNN; (2) two halo defects in the fork's
+sixth-order filter option `diff_6th_slopeopt = 5` (HFX read in an un-exchanged halo by the regime gate; stale `t_2`/`ph_2` halos in the
+scalar filter); (3) the `KE_LOSS_H` diagnostic is one-sided at tile edges. Built without libmvec and with the halo fix
+(`diff_6th_hfx_halo = 1`, branch `3dpbl_mpi_repro`) the production configuration is bit-identical across layouts and rank counts
+(640 vs 512 ranks over 10 min) except `KE_LOSS_H`. The rule to compare statistically stays valid for every run made with the production
+binary. New trap: with `slopeopt = 5` the convective filter branch was off in bands along patch boundaries (44–47 % of convective
+columns on 640 ranks), so such runs depend on the layout physically, not only in the last bit.
+
 ---
 
 ## E15. `auxhist24_interval = 0` does not switch the WRFlux averaged stream off — it aborts the run at start
