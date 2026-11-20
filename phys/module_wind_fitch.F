@@ -128,8 +128,8 @@ CONTAINS
   ! END LICENSE
 
 ! 3DPBL integration
-  REAL, DIMENSION(ims:ime,kms:kme,jms:jme)  :: du_temp, dv_temp, dtke_temp1, dtke_temp2
-  REAL  speed_temp, z1_temp, z2_temp, tarea_temp1, tarea_temp2
+  REAL  du_temp, dv_temp, dtke_temp1
+  REAL  speed_temp, z1_temp, z2_temp, tarea_temp1
 
   itf=MIN0(ite,ide-1)
   jtf=MIN0(jte,jde-1)
@@ -333,24 +333,20 @@ CONTAINS
 !
               IF ( bl_pbl_physics .EQ. 0 .AND. pbl3d_opt .NE. 0 ) THEN  ! 3DPBL
                  ! Output u tendency
-                 du_temp = 0
-                 du_temp(i,k,j) = -.5*u(i,k,j)*thrcof*speed*tarea/dz(i,k,j)*ec
+                 du_temp = -.5*u(i,k,j)*thrcof*speed*tarea/dz(i,k,j)*ec
 
                  ! Scale for column mass, as per calculate_phy_tend
-                 du_temp(i,k,j) = (c1(k)*mut(i,j)+c2(k))*du_temp(i,k,j)
-                 du(i,k,j) = du(i,k,j) + du_temp(i,k,j)
+                 du_temp = (c1(k)*mut(i,j)+c2(k))*du_temp
+                 du(i,k,j) = du(i,k,j) + du_temp
 
                  ! Output v tendency
-                 dv_temp = 0
-                 dv_temp(i,k,j) = -.5*v(i,k,j)*thrcof*speed*tarea/dz(i,k,j)*ec
+                 dv_temp = -.5*v(i,k,j)*thrcof*speed*tarea/dz(i,k,j)*ec
 
                  ! Scale for column mass, as per calculate_phy_tend
-                 dv_temp(i,k,j) = (c1(k)*mut(i,j)+c2(k))*dv_temp(i,k,j)
-                 dv(i,k,j) = dv(i,k,j) + dv_temp(i,k,j)
+                 dv_temp = (c1(k)*mut(i,j)+c2(k))*dv_temp
+                 dv(i,k,j) = dv(i,k,j) + dv_temp
 
                  ! Output TKE
-                 dtke_temp1 = 0
-                 dtke_temp2 = 0
 
                  ! Calculate area between w-levels
                  z1_temp=0.5*(z_at_w(i,k-1,j)+z_at_w(i,k,j))-blade_l_point-z_at_w(i,1,j)  ! distance between k_w lev and lower blade tip
@@ -369,11 +365,11 @@ CONTAINS
                  speed_temp = 0.5*(speed + sqrt(u(i,k-1,j)**2.+v(i,k-1,j)**2.))
 
                  ! Calculate base TKE modification
-                 dtke_temp1(i,k,j) = speed_temp**3.*tarea_temp1*tkecof/dz(i,k,j)*ec
+                 dtke_temp1 = speed_temp**3.*tarea_temp1*tkecof/dz(i,k,j)*ec
 
                  ! Scale for column mass, as per calculate_phy_tend
-                 dtke_temp1(i,k,j) = (c1(k)*mut(i,j)+c2(k))*dtke_temp1(i,k,j)
-                 qke(i,k,j) = qke(i,k,j) + dtke_temp1(i,k,j)
+                 dtke_temp1 = (c1(k)*mut(i,j)+c2(k))*dtke_temp1
+                 qke(i,k,j) = qke(i,k,j) + dtke_temp1
               ELSE
                 ! output TKE
                 qke(i,k,j) = qke(i,k,j)+speed**3.*tarea*tkecof*dt/dz(i,k,j)*ec
