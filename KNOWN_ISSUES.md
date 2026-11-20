@@ -316,6 +316,19 @@ nocturnal results are untouched, since no short-wave is used at night.
 
 ---
 
+
+## U4. MYNN-EDMF driver (WRF 4.8 pin 8f8e8b5) reads an uninitialised snow profile when the microphysics carries no snow (2026-11-20)
+
+`mynnedmf_pre_run` (`phys/MYNN-EDMF/WRF/module_bl_mynnedmf_driver.F90`) sets `sqc` and `sqi` to zero but not `sqs`, and fills
+`sqs` only if `F_QS`. With `mp_physics` 0, 1 (Kessler) or 3 (WSM3) the snow profile `sqs1` is stack memory; it enters the total ice,
+the liquid-ice virtual potential temperature and, with `bl_mynn_ess = 1` (default), the static stability of `mym_level2`.
+**Symptom:** QKE at the clip of 150 m2 s-2 throughout stable, shear-free air within a minute; erratic NaN or crashes at step 1
+depending on rank count and options. **Trap:** it looks like a physics runaway and depends on unrelated options; runs with
+Thompson, WSM5 and any other snow-carrying scheme are clean, so real cases never show it. **Work-around:** a snow-carrying
+microphysics (`mp_physics = 4` is inert in dry air). **Fix:** `sqs(k) = zero` in the initialisation loop
+(`branko_mynndbg/mynn_sqs_init.patch`); present in NCAR/MYNN-EDMF `main` since 2026-09, not in the WRF pin. Found in the
+idealised flat cases (DECISIONS same date). To report upstream with U1-U3.
+
 ## E1. mambaforge shadows the spack netCDF and LAPACK at both link and run time
 
 **Severity:** high — silently produces a broken or wrongly-linked build
