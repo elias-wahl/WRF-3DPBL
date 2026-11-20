@@ -55,7 +55,6 @@
       ! 0 = previous behaviour, bit for bit. THM_FLUX_OPT = pbl3d_thm_flux (OPEN_ISSUES A38, A23.2),
       ! PBLH_AGL_OPT = pbl3d_pblh_agl (OPEN_ISSUES A37).
     integer, public :: THM_FLUX_OPT = 0, PBLH_AGL_OPT = 0
-    logical, parameter :: USE_HIGH_ORDER = .true.
 
       ! Safeguards for the full 3D closure (pbl3d_opt = 2) only. The A matrix of the
       ! algebraic second-moment system has the structure A = (1/tau) I + S, where

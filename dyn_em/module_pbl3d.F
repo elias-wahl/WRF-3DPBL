@@ -57,7 +57,6 @@
               Fill_l_mass_with_l_face, Calc_turb_fluxes_driver, Vertical_turb_mix, Horizontal_turb_mix, Populate_wrflux_sgs_from_pbl3d
 
     real, parameter :: G_OVER_TREF = G / T0
-    logical, parameter :: USE_HIGH_ORDER = .true.
 
     integer, parameter :: I_TO_TEST = 4, J_TO_TEST = 4, K_TO_TEST = 3
 
@@ -1272,12 +1271,8 @@
         end do
       end do
 
-        ! Scale w component of vector to account for map projection
-      if (USE_HIGH_ORDER) then
-        i_offset = 2
-      else
-        i_offset = 1
-      end if
+        ! Scale w component of vector to account for map projection (two extra points for the fourth-order x difference)
+      i_offset = 2
       do j = j_start, j_end
         do k = kts, kte
           do i = i_start - i_offset, i_end + i_offset
@@ -1312,11 +1307,7 @@
       do j = j_start, j_end
         do k = kts + 1, ktf
           do i = i_start, i_end
-            if (USE_HIGH_ORDER) then
-              dw_dx(i, k, j) = msf_tx_tx(i, j) * (rdx * (8.0 * (w_mtx(i + 1, k, j) - w_mtx(i - 1, k, j)) - (w_mtx(i + 2, k, j) - w_mtx(i - 2, k, j)) ) / 12.0 - dw_dz_dz_dx(i, k, j))
-            else
-              dw_dx(i, k, j) = msf_tx_tx(i, j) * (rdx * 0.5 * (w_mtx(i + 1, k, j) - w_mtx(i - 1, k, j)) - dw_dz_dz_dx(i, k, j))
-            end if
+            dw_dx(i, k, j) = msf_tx_tx(i, j) * (rdx * (8.0 * (w_mtx(i + 1, k, j) - w_mtx(i - 1, k, j)) - (w_mtx(i + 2, k, j) - w_mtx(i - 2, k, j)) ) / 12.0 - dw_dz_dz_dx(i, k, j))
           end do
         end do
       end do
@@ -1600,12 +1591,8 @@
         end do
       end do
 
-        ! Scale w component of vector to account for map projection
-      if (USE_HIGH_ORDER) then
-        j_offset = 2
-      else 
-        j_offset = 1
-      end if
+        ! Scale w component of vector to account for map projection (two extra points for the fourth-order y difference)
+      j_offset = 2
       do j = j_start - j_offset, j_end + j_offset
         do k = kts, kte
           do i = i_start, i_end
@@ -1640,11 +1627,7 @@
       do j = j_start, j_end
         do k = kts + 1, ktf
           do i = i_start, i_end
-            if (USE_HIGH_ORDER) then
-              dw_dy(i, k, j) = msf_ty_ty(i, j) * (rdy * (8.0 * (w_mty(i, k, j + 1) - w_mty(i, k, j - 1)) - (w_mty(i, k, j + 2) - w_mty(i, k, j - 2)) ) / 12.0 - dw_dz_dz_dy(i, k, j))
-            else
-              dw_dy(i, k, j) = msf_ty_ty(i, j) * (rdy * 0.5 * (w_mty(i, k, j + 1) - w_mty(i, k, j - 1)) - dw_dz_dz_dy(i, k, j))
-            end if
+            dw_dy(i, k, j) = msf_ty_ty(i, j) * (rdy * (8.0 * (w_mty(i, k, j + 1) - w_mty(i, k, j - 1)) - (w_mty(i, k, j + 2) - w_mty(i, k, j - 2)) ) / 12.0 - dw_dz_dz_dy(i, k, j))
           end do
         end do
       end do
@@ -2314,38 +2297,29 @@
       
         ! Local vars
       integer :: im
-      logical, parameter :: ADD_TEND_WIND=.true., ADD_TEND_T=.true., &
-          ADD_TEND_Q=.true.
       REAL, DIMENSION (its:ite, kts:kte, jts:jte) :: hydromet_tend
       
-      if (ADD_TEND_WIND) then
-        call Vertical_mixing_u (du, config_flags, turb_flux_uw, &
-            dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms,   &
-            jme, kms, kme, its, ite, jts, jte, kts, kte)
+      call Vertical_mixing_u (du, config_flags, turb_flux_uw, &
+          dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms,   &
+          jme, kms, kme, its, ite, jts, jte, kts, kte)
 
-        call Vertical_mixing_v (dv, config_flags, turb_flux_vw, &
-            dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms,   &
-            jme, kms, kme, its, ite, jts, jte, kts, kte)
+      call Vertical_mixing_v (dv, config_flags, turb_flux_vw, &
+          dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms,   &
+          jme, kms, kme, its, ite, jts, jte, kts, kte)
 
-        if (pbl3d_opt > 0) then
-          call Vertical_mixing_w (dw, config_flags, turb_flux_w2,   &
-              dn, rho, ids, ide, jds, jde, kds, kde, ims, ime, jms, &
-              jme, kms, kme, its, ite, jts, jte, kts, kte)
-        end if
-
-      end if
-
-      if (ADD_TEND_T) then
-        call Vertical_mixing_s_with_flux (dth, config_flags, turb_flux_wtheta, &
-            dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms,   &
+      if (pbl3d_opt > 0) then
+        call Vertical_mixing_w (dw, config_flags, turb_flux_w2,   &
+            dn, rho, ids, ide, jds, jde, kds, kde, ims, ime, jms, &
             jme, kms, kme, its, ite, jts, jte, kts, kte)
       end if
 
-      if (ADD_TEND_Q) then
-        call Vertical_mixing_s_with_flux (dqv, config_flags, turb_flux_wqv,  &
-            dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms, &
-            jme, kms, kme, its, ite, jts, jte, kts, kte)
-      end if
+      call Vertical_mixing_s_with_flux (dth, config_flags, turb_flux_wtheta, &
+          dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms,   &
+          jme, kms, kme, its, ite, jts, jte, kts, kte)
+
+      call Vertical_mixing_s_with_flux (dqv, config_flags, turb_flux_wqv,  &
+          dnw, rho, fnm, fnp, ids, ide, jds, jde, kds, kde, ims, ime, jms, &
+          jme, kms, kme, its, ite, jts, jte, kts, kte)
 
         ! pbl3d_scalar_implicit = 1 (OPEN_ISSUES A31): the explicit theta and qv tendencies above are
         ! turned into backward-Euler ones. The explicit step of the closure's vertical scalar flux goes
@@ -2358,10 +2332,10 @@
           call wrf_error_fatal ('PBL3D: pbl3d_scalar_implicit = 1 needs th_in, qv_in, mut_in, c1h_in, c2h_in, dt_in')
         if (config_flags%pbl3d_nsteps /= 1) &
           call wrf_error_fatal ('PBL3D: pbl3d_scalar_implicit = 1 requires pbl3d_nsteps = 1')
-        if (ADD_TEND_T) call Vertical_mixing_s_implicit (dth, config_flags, turb_flux_wtheta, th_in, rdz, &
+        call Vertical_mixing_s_implicit (dth, config_flags, turb_flux_wtheta, th_in, rdz, &
             dnw, rho, fnm, fnp, mut_in, c1h_in, c2h_in, dt_in, ids, ide, jds, jde, kds, kde, &
             ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-        if (ADD_TEND_Q) call Vertical_mixing_s_implicit (dqv, config_flags, turb_flux_wqv, qv_in, rdz, &
+        call Vertical_mixing_s_implicit (dqv, config_flags, turb_flux_wqv, qv_in, rdz, &
             dnw, rho, fnm, fnp, mut_in, c1h_in, c2h_in, dt_in, ids, ide, jds, jde, kds, kde, &
             ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
       end if
@@ -3268,7 +3242,6 @@
         ! Local
       INTEGER :: i, j, k, i_start, i_end, j_start, j_end, ktf
       REAL    :: dxm, dym, tmpzx, tmpzy
-      logical, parameter :: SLOPE_FACTOR = .true.
 
         ! Define dimensions
       i_start = its - 1
@@ -3277,7 +3250,7 @@
       j_end = jte
       ktf = Min (kte, kde - 1)
 
-      if (SLOPE_FACTOR .and. config_flags%pbl3d_opt > 0) then
+      if (config_flags%pbl3d_opt > 0) then
         do j = j_start, j_end
           do k = kts, ktf
             do i = i_start, i_end
@@ -3508,29 +3481,19 @@
       if (config_flags%open_ye .or. config_flags%specified .or. &
           config_flags%nested) j_end = Min (jde - 2,jte)
 
-      if (.not. USE_HIGH_ORDER) then
-          ! tf_uw_at_full = rho * turb_flux_uw (move flux from center of faces to u points in faces)
-        call Prep_turb_flux_uw (config_flags, tf_uw_at_full, turb_flux_uw, fnm, fnp, rho, &
-            ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-
-          ! tf_vw_at_full = rho * turb_flux_vw (move flux from center of faces to v points in faces)
-        call Prep_turb_flux_vw (config_flags, tf_vw_at_full, turb_flux_vw, fnm, fnp, rho, &
-            ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-      else
-        n_offset = 2
-        do j = j_start - n_offset, j_end + n_offset
-          do k = kts + 1, ktf
-            do i = i_start - n_offset, i_end + n_offset
-                ! tf_uw_at_full = rho * turb_flux_uw at the center of the faces
-              tf_uw_at_full(i, k, j) = turb_flux_uw(i, k, j) * (fnm(k) * rho(i, k, j) + &
-                  fnp(k) * rho(i, k - 1, j))
-                ! tf_vw_at_full = rho * turb_flux_vw at the center of the faces
-              tf_vw_at_full(i, k, j) = turb_flux_vw(i, k, j) * (fnm(k) * rho(i, k, j) + &
-                  fnp(k) * rho(i, k - 1, j))
-            end do
+      n_offset = 2
+      do j = j_start - n_offset, j_end + n_offset
+        do k = kts + 1, ktf
+          do i = i_start - n_offset, i_end + n_offset
+              ! tf_uw_at_full = rho * turb_flux_uw at the center of the faces
+            tf_uw_at_full(i, k, j) = turb_flux_uw(i, k, j) * (fnm(k) * rho(i, k, j) + &
+                fnp(k) * rho(i, k - 1, j))
+              ! tf_vw_at_full = rho * turb_flux_vw at the center of the faces
+            tf_vw_at_full(i, k, j) = turb_flux_vw(i, k, j) * (fnm(k) * rho(i, k, j) + &
+                fnp(k) * rho(i, k - 1, j))
           end do
         end do
-      end if
+      end do
 
         ! Calculate the w tendency due to horizontal turbulent mixing
       call Calc_htend_dw (config_flags, tendency, turb_flux_uw, turb_flux_vw, tf_uw_at_full, tf_vw_at_full, &
@@ -3938,146 +3901,6 @@
     end subroutine Prep_turb_flux_uv
 
 
-    subroutine Prep_turb_flux_uw (config_flags, tf_at_full, turb_flux_uw,  &
-        fnm, fnp, rho, ids, ide, jds, jde, kds, kde, ims, ime, jms,   &
-        jme, kms, kme, its, ite, jts, jte, kts, kte)
-
-      implicit none
-
-      type (grid_config_rec_type), intent (in) :: config_flags
-
-      integer, intent (in) :: ids, ide, jds, jde, kds, kde, ims, ime, &
-          jms, jme, kms, kme, its, ite, jts, jte, kts, kte
-
-      real, dimension (kms:kme), intent (in) :: fnm, fnp
-      real, dimension (its - 2:ite + 2, kts:kte, jts - 2:jte + 2), & 
-          intent (inout) :: tf_at_full
-      real, dimension (ims:ime, kms:kme, jms:jme), intent (in):: rho, &
-          turb_flux_uw
-
-        ! Local vars
-      integer  :: i, j, k, ktf, i_start, i_end, j_start, j_end
-      real :: turb_flux_avg
-
-        ! Define indexes
-      i_start = its
-      i_end = ite
-      j_start = jts
-      j_end = Min (jte, jde - 1 )
-      ktf = Min (kte, kde - 1)
-
-      if (config_flags%open_xs .OR. config_flags%specified .OR. &
-         config_flags%nested) i_start = Max (ids + 1, its)
-      if (config_flags%open_xe .OR. config_flags%specified .OR. &
-         config_flags%nested) i_end = Min (ide - 2, ite)
-      if (config_flags%open_ys .OR. config_flags%specified .OR. &
-         config_flags%nested) j_start = Max (jds + 1, jts)
-      if (config_flags%open_ye .OR. config_flags%specified .OR. &
-         config_flags%nested) j_end = Min (jde - 2, jte)
-
-      i_end = i_end + 1
-
-       ! Bottom face
-      do j = j_start, j_end
-        do i = i_start, i_end
-          turb_flux_avg = 0.5 * (turb_flux_uw(i, kts, j) +  &
-              turb_flux_uw(i - 1, kts, j))
-          tf_at_full(i, kts, j) = turb_flux_avg * 0.5 * &
-              (rho(i - 1, kts, j) + rho(i, kts, j))
-        end do
-      end do
-
-      do j = j_start, j_end
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-            turb_flux_avg = 0.5 * (turb_flux_uw(i, k, j) +  &
-                turb_flux_uw(i - 1, k, j)) 
-            tf_at_full(i, k, j) = turb_flux_avg * 0.5 * (fnm(k) *  &
-                (rho(i - 1, k, j) + rho(i, k, j) ) + fnp(k) * &
-                (rho(i - 1, k - 1, j) + rho(i, k - 1, j)))
-          end do
-        end do
-      end do
-
-       ! Top face
-      do j = j_start, j_end
-        do i = i_start, i_end
-          tf_at_full(i, ktf + 1, j) = 0.0
-        end do
-      end do
-
-    end subroutine Prep_turb_flux_uw
-
-
-    subroutine Prep_turb_flux_vw (config_flags, tf_at_full, turb_flux_vw, &
-        fnm, fnp, rho, ids, ide, jds, jde, kds, kde, ims, ime, jms,  &
-        jme, kms, kme, its, ite, jts, jte, kts, kte)
-
-      implicit none
-
-      type (grid_config_rec_type), intent(in)  :: config_flags
-
-      integer, intent(in) :: ids, ide, jds, jde, kds, kde, ims, ime, &
-         jms, jme, kms, kme, its, ite, jts, jte, kts, kte
-
-      real, dimension (kms:kme), intent(in) :: fnm, fnp
-      real, dimension (its - 2:ite + 2, kts:kte, jts - 2:jte + 2), &
-          intent (inout) :: tf_at_full
-      real, dimension (ims:ime, kms:kme, jms:jme), intent(in) :: rho, &
-          turb_flux_vw
-
-        ! Local vars
-      integer :: i, j, k, ktf, i_start, i_end, j_start, j_end
-      real :: turb_flux_avg
-
-        ! Define indexes
-      i_start = its
-      i_end = Min (ite, ide - 1)
-      j_start = jts
-      j_end = jte
-      ktf = Min (kte, kde - 1)
-
-      IF (config_flags%open_xs .OR. config_flags%specified .OR. &
-         config_flags%nested) i_start = Max (ids + 1, its)
-      IF (config_flags%open_xe .OR. config_flags%specified .OR. &
-         config_flags%nested) i_end = Min (ide - 2, ite)
-      IF (config_flags%open_ys .OR. config_flags%specified .OR. &
-         config_flags%nested) j_start = Max (jds + 1, jts)
-      IF (config_flags%open_ye .OR. config_flags%specified .OR. &
-         config_flags%nested) j_end = Min (jde - 2, jte)
-
-      j_end = j_end + 1
-
-       ! Bottom face
-      do j = j_start, j_end
-        do i = i_start, i_end
-          turb_flux_avg = 0.5 * (turb_flux_vw(i, kts, j) +  &
-              turb_flux_vw(i, kts, j - 1))
-          tf_at_full(i, kts, j) = turb_flux_avg * 0.5 * &
-              (rho(i, kts, j) + rho(i, kts, j - 1))
-        end do
-      end do
-
-      do j = j_start, j_end
-        do k = kts + 1, ktf
-          do i = i_start, i_end
-            turb_flux_avg = 0.5 * (turb_flux_vw(i, k, j) + turb_flux_vw(i, k, j - 1)) 
-            tf_at_full(i, k, j) = turb_flux_avg * 0.5 * (fnm(k) * (rho(i, k, j) + &
-                rho(i, k, j - 1)) + fnp(k) * (rho(i, k - 1, j) + rho(i, k - 1, j - 1)))
-          end do
-        end do
-      end do
-
-        ! Top face
-      do j = j_start, j_end
-        do i = i_start, i_end
-          tf_at_full(i, ktf + 1, j) = 0.0
-        end do
-      end do
-
-    end subroutine Prep_turb_flux_vw
-
-
     subroutine Prep_turb_flux_sx (turb_flux_x, tf_x_at_u, rho, ims, ime, jms, jme, kms, kme, &
               its, ite, jts, jte, kts, kte, i_start, i_end, j_start, j_end, ktf)
 
@@ -4405,21 +4228,13 @@
             mrdx = msftx(i, j) * rdx
             mrdy = msfty(i, j) * rdy
             tmpalpha = 0.5 * (sf_alpha(i, k - 1, j) + sf_alpha(i, k, j))
-            if (USE_HIGH_ORDER) then
-              tendency(i, k, j) = tendency(i, k, j) + ( G / (dn(k) * rdz(i, k, j)) * (   &
-                  mrdx * ((8.0 * (tf_uw_at_full(i + 1, k, j) - tf_uw_at_full(i - 1, k, j))) -  &
-                  (tf_uw_at_full(i + 2, k, j) - tf_uw_at_full(i - 2, k, j))) / 12.0 +          &
-                  mrdy * (8.0 * (tf_vw_at_full(i, k, j + 1) - tf_vw_at_full(i, k, j - 1)) -    &
-                  (tf_vw_at_full(i, k, j + 2) - tf_vw_at_full(i, k, j - 2))) / 12.0 -          &
-                  rdz(i, k, j) * (msftx(i, j) * zx_at_w(i, k, j) * (tf_uw_at_mass(i, k, j) - tf_uw_at_mass(i, k - 1, j)) +  &
-                                  msfty(i, j) * zy_at_w(i, k, j) * (tf_vw_at_mass(i, k, j) - tf_vw_at_mass(i, k - 1, j))) ) ) / (N_PBL3D * tmpalpha)
-            else
-              tendency(i, k, j) = tendency(i, k, j) + ( G / (dn(k) * rdz(i, k, j)) * (   &
-                  mrdx * (tf_uw_at_full(i + 1, k, j) - tf_uw_at_full(i, k, j)) +       &
-                  mrdy * (tf_vw_at_full(i, k, j + 1) - tf_vw_at_full(i, k, j)) -       &
-                  rdz(i, k, j) * (msftx(i, j) * zx_at_w(i, k, j) * (tf_uw_at_mass(i, k, j) - tf_uw_at_mass(i, k - 1, j)) +  &
-                                  msfty(i, j) * zy_at_w(i, k, j) * (tf_vw_at_mass(i, k, j) - tf_vw_at_mass(i, k - 1, j))) ) ) / (N_PBL3D * tmpalpha)
-            end if
+            tendency(i, k, j) = tendency(i, k, j) + ( G / (dn(k) * rdz(i, k, j)) * (   &
+                mrdx * ((8.0 * (tf_uw_at_full(i + 1, k, j) - tf_uw_at_full(i - 1, k, j))) -  &
+                (tf_uw_at_full(i + 2, k, j) - tf_uw_at_full(i - 2, k, j))) / 12.0 +          &
+                mrdy * (8.0 * (tf_vw_at_full(i, k, j + 1) - tf_vw_at_full(i, k, j - 1)) -    &
+                (tf_vw_at_full(i, k, j + 2) - tf_vw_at_full(i, k, j - 2))) / 12.0 -          &
+                rdz(i, k, j) * (msftx(i, j) * zx_at_w(i, k, j) * (tf_uw_at_mass(i, k, j) - tf_uw_at_mass(i, k - 1, j)) +  &
+                                msfty(i, j) * zy_at_w(i, k, j) * (tf_vw_at_mass(i, k, j) - tf_vw_at_mass(i, k - 1, j))) ) ) / (N_PBL3D * tmpalpha)
           end do
         end do
       end do
@@ -5187,12 +5002,8 @@
         end do
       end do
 
-        ! Scale w component of vector to account for map projection
-      if (USE_HIGH_ORDER) then
-        i_offset = 2
-      else
-        i_offset = 1
-      end if
+        ! Scale w component of vector to account for map projection (two extra points for the fourth-order x difference)
+      i_offset = 2
       do j = j_start, j_end
         do k = kts, kte
           do i = i_start - i_offset, i_end + i_offset
@@ -5242,11 +5053,7 @@
               end if
             end if
 
-            if (USE_HIGH_ORDER) then
-              dw_dx(i, k, j) = msf_tx_tx(i, j) * (rdx * (8.0 * (w_mtx_at_half(i + 1, k, j) - w_mtx_at_half(i - 1, k, j)) - (w_mtx_at_half(i + 2, k, j) - w_mtx_at_half(i - 2, k, j)) ) / 12.0 - dw_dz_dz_dx(i, k, j))
-            else
-              dw_dx(i, k, j) = msf_tx_tx(i, j) * (rdx * 0.5 * (w_mtx_at_half(i + 1, k, j) - w_mtx_at_half(i - 1, k, j)) - dw_dz_dz_dx(i, k, j))
-            end if
+            dw_dx(i, k, j) = msf_tx_tx(i, j) * (rdx * (8.0 * (w_mtx_at_half(i + 1, k, j) - w_mtx_at_half(i - 1, k, j)) - (w_mtx_at_half(i + 2, k, j) - w_mtx_at_half(i - 2, k, j)) ) / 12.0 - dw_dz_dz_dx(i, k, j))
 
           end do
         end do
@@ -5556,12 +5363,8 @@
         end do
       end do
 
-        ! Scale w component of vector to account for map projection
-      if (USE_HIGH_ORDER) then
-        j_offset = 2
-      else
-        j_offset = 1
-      end if
+        ! Scale w component of vector to account for map projection (two extra points for the fourth-order y difference)
+      j_offset = 2
       do j = j_start - j_offset, j_end + j_offset
         do k = kts, kte
           do i = i_start, i_end
@@ -5596,11 +5399,7 @@
       do j = j_start, j_end
         do k = kts, ktf
           do i = i_start, i_end
-            if (USE_HIGH_ORDER) then
-              dw_dy(i, k, j) = msf_ty_ty(i, j) * (rdy * (8.0 * (w_mty_at_half(i, k, j + 1) - w_mty_at_half(i, k, j - 1)) - (w_mty_at_half(i, k, j + 2) - w_mty_at_half(i, k, j - 2)) ) / 12.0 - dw_dz_dz_dy(i, k, j))
-            else
-              dw_dy(i, k, j) = msf_ty_ty(i, j) * (rdy * 0.5 * (w_mty_at_half(i, k, j + 1) - w_mty_at_half(i, k, j - 1)) - dw_dz_dz_dy(i, k, j))
-            end if
+            dw_dy(i, k, j) = msf_ty_ty(i, j) * (rdy * (8.0 * (w_mty_at_half(i, k, j + 1) - w_mty_at_half(i, k, j - 1)) - (w_mty_at_half(i, k, j + 2) - w_mty_at_half(i, k, j - 2)) ) / 12.0 - dw_dz_dz_dy(i, k, j))
           end do
         end do
       end do
