@@ -42,8 +42,10 @@
     use module_state_description, only: p_qc, p_qr, p_qi, p_qs, p_qg, p_qnc, p_qnr, p_qni, p_qnwfa, p_qnifa, param_first_scalar
     use module_domain, only: domain
     use module_big_step_utilities_em, only: grid_config_rec_type
+#ifdef DM_PARALLEL
     use module_dm, only: local_communicator, mytask, ntasks, ntasks_x, ntasks_y, local_communicator_periodic
     use module_comm_dm, only: halo_em_phys_hdiff_pbl3d_sub, period_bdy_em_hdiff_pbl3d_sub
+#endif
     use module_bc, only: set_physical_bc3d
     use module_pbl3d_my, only: Set_init_turb_state_my, Calc_turb_fluxes_my, THM_FLUX_OPT, PBLH_AGL_OPT
     use module_pbl3d_my, only: Q_SQ_MIN, TURB_FLUX_MIN, a_2, b_1, SQ_DIFF, SFC_QSQ_BC, SQ_IMPLICIT
