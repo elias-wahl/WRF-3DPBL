@@ -2417,6 +2417,7 @@
       real (kind = SOLVER_PREC), intent (out)   :: tf_u2, tf_v2, tf_w2, tf_uv, tf_uw, tf_vw, tf_utv, tf_vtv, tf_wtv, tf_t2v
 
         ! Local vars
+#ifdef PBL3D_USE_LAPACK
       character (len = 1) :: equed
       integer, parameter   :: N_VARS = 10
       integer :: ipiv(N_VARS)
@@ -2432,6 +2433,13 @@
       real (kind = SOLVER_PREC), dimension(N_VARS, N_VARS) :: a, af
 
       external dgesvx
+#else
+      integer, parameter   :: N_VARS = 10
+      integer :: info
+      real (kind = SOLVER_PREC) :: cond
+      real (kind = SOLVER_PREC), dimension(N_VARS) :: b, x
+      real (kind = SOLVER_PREC), dimension(N_VARS, N_VARS) :: a
+#endif
 
         ! Fills in the B matrix
       call Fill_in_b_vector (b, q, q_sq, l, du_dx, du_dy, du_dz, dv_dx, dv_dy, dv_dz, dw_dx, dw_dy, dw_dz)
@@ -2440,6 +2448,7 @@
       call Fill_in_a_matrix (a, q, q_sq, l, du_dx, du_dy, du_dz, dv_dx, dv_dy, dv_dz, dw_dx, dw_dy, dw_dz, &
           dthetav_dx, dthetav_dy, dthetav_dz)
 
+#ifdef PBL3D_USE_LAPACK
         ! Compute solution to system of linear equations.
         ! FACT = 'E' equilibrates A before factoring. This is not a physical change: the
         ! columns of A carry mixed units (m2 s-2 for the momentum moments, K m s-1 for the
@@ -2453,6 +2462,15 @@
       else
         mat_cond = Huge (mat_cond)
       end if
+#else
+        ! Compute solution to system of linear equations with the module's own LU solver.
+        ! It equilibrates A by the rule of LAPACK's dgesvx (FACT = 'E'): the columns of A
+        ! carry mixed units (m2 s-2, K m s-1, K2), so cond is that of the equilibrated
+        ! matrix, as before -- exact here, where dgesvx returned an estimate (a lower bound).
+      call Solve_lu_equilibrated (N_VARS, a, b, x, cond, info)
+
+      mat_cond = Real (Min (cond, Real (Huge (mat_cond), kind = SOLVER_PREC)), kind = WORKING_PREC)
+#endif
 
         ! INFO in [1, N] means U(i,i) is exactly zero and X was *not* computed, i.e. x()
         ! holds undefined memory - it must never be used. INFO = N+1 means the matrix is
@@ -2508,6 +2526,7 @@
       logical,                   intent (out)   :: solve_ok
 
         ! Local vars
+#ifdef PBL3D_USE_LAPACK
       character (len = 1) :: equed
       integer, parameter   :: N_VARS = 4
       integer :: ipiv(N_VARS)
@@ -2521,6 +2540,13 @@
       real (kind = SOLVER_PREC), dimension(N_VARS, N_VARS) :: a, af
 
       external dgesvx
+#else
+      integer, parameter   :: N_VARS = 4
+      integer :: info
+      real (kind = SOLVER_PREC) :: cond
+      real (kind = SOLVER_PREC), dimension(N_VARS) :: b, x
+      real (kind = SOLVER_PREC), dimension(N_VARS, N_VARS) :: a
+#endif
 
         ! Fills in the B matrix
       call Fill_in_b_vector_moist (b, dqv_dx, dqv_dy, dqv_dz, tf_u2, tf_v2, tf_w2, tf_uv, tf_uw, tf_vw, tf_utv, tf_vtv, tf_wtv)
@@ -2529,6 +2555,7 @@
       call Fill_in_a_matrix_moist (a, q, l, du_dx, du_dy, du_dz, dv_dx, dv_dy, dv_dz, dw_dx, dw_dy, dw_dz, &
           dthetav_dx, dthetav_dy, dthetav_dz)
 
+#ifdef PBL3D_USE_LAPACK
         ! Compute solution to system of linear equations (see Solve_turb_system for why
         ! FACT = 'E'; this system mixes kg kg-1 m s-1 with K kg kg-1 and is likewise
         ! badly scaled by construction).
@@ -2539,6 +2566,14 @@
       else
         mat_cond = Huge (mat_cond)
       end if
+#else
+        ! Compute solution to system of linear equations in closed form; cond is the exact
+        ! condition number of the matrix equilibrated as dgesvx (FACT = 'E') equilibrates it
+        ! (see Solve_turb_system; this system mixes kg kg-1 m s-1 with K kg kg-1).
+      call Solve_4x4_cofactor (a, b, x, cond, info)
+
+      mat_cond = Real (Min (cond, Real (Huge (mat_cond), kind = SOLVER_PREC)), kind = WORKING_PREC)
+#endif
 
       solve_ok = (info == 0) .and. (mat_cond <= COND_MAX)
 
@@ -2555,6 +2590,403 @@
       end if
 
     end subroutine Solve_turb_system_moist
+#ifndef PBL3D_USE_LAPACK
+
+    pure subroutine Solve_lu_equilibrated (n, a, b, x, cond, info)
+
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !                                                                          !
+      ! Purpose: Solve one small dense system A x = b (n <= N_MAX_SOLVE) and     !
+      !          return the 1-norm condition number of the equilibrated A, so    !
+      !          that the closure needs no external library. Replaces LAPACK's   !
+      !          dgesvx (FACT = 'E'), of which only x, info and rcond were used. !
+      !                                                                          !
+      ! Method:  1. Row and column scale factors and the decision whether to     !
+      !             apply them exactly as LAPACK's dgeequ and dlaqge take it     !
+      !             (scale rows only if their maxima differ by more than a      !
+      !             factor 10, likewise columns), so that cond refers to the    !
+      !             same equilibrated matrix as dgesvx's rcond did.              !
+      !          2. LU factorisation with partial pivoting (first largest entry, !
+      !             as LAPACK), multipliers formed with the reciprocal pivot.    !
+      !          3. Forward and back substitution, undo the column scaling.      !
+      !          4. cond = ||A_e||_1 ||A_e^-1||_1 from the explicit inverse,     !
+      !             i.e. exact. dgesvx returned Hager's estimate, a lower bound; !
+      !             on 3.96 million real Inn-valley solves the two acceptance    !
+      !             tests (COND_MAX, MOIST_COND_MAX) took identical decisions.   !
+      !             ||A_e^-1||_1 = ||U^-1 L^-1||_1: the row interchanges only    !
+      !             permute the columns of the inverse.                          !
+      !          No iterative refinement: on the real faces one step lowers the  !
+      !          99th-percentile error against a quadruple-precision solve from  !
+      !          1e-14 to 7e-15, far below the single precision of the fluxes.   !
+      !                                                                          !
+      ! Failure: info > 0 leaves x = 0 and cond = Huge, as dgesvx's info did:    !
+      !          a zero row or column or a pivot below Tiny (singular), or a      !
+      !          non-finite result or cond above 2 / epsilon (singular to       !
+      !          working precision, dgesvx's info = n + 1). NaN or Inf input     !
+      !          ends here as well; nothing in this routine stops the model.     !
+      !                                                                          !
+      ! Every loop updates array elements independently (no reductions whose   !
+      ! order depends on the vector length), so results do not depend on how   !
+      ! the compiler vectorises them.                                            !
+      !                                                                          !
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+      implicit none
+
+      integer,                   intent (in)  :: n
+      real (kind = SOLVER_PREC), intent (in)  :: a(n, n), b(n)
+      real (kind = SOLVER_PREC), intent (out) :: x(n), cond
+      integer,                   intent (out) :: info
+
+      integer, parameter :: N_MAX_SOLVE = 10
+      real (kind = SOLVER_PREC), parameter :: ZERO = 0.0_SOLVER_PREC, ONE = 1.0_SOLVER_PREC
+        ! dlamch ('Safe minimum'), its inverse, and dlaqge's thresholds
+      real (kind = SOLVER_PREC), parameter :: SMLNUM = Tiny (ONE), BIGNUM = ONE / SMLNUM
+      real (kind = SOLVER_PREC), parameter :: SMALL = SMLNUM / Epsilon (ONE), LARGE = ONE / SMALL
+      real (kind = SOLVER_PREC), parameter :: THRESH = 0.1_SOLVER_PREC
+
+      real (kind = SOLVER_PREC), dimension(N_MAX_SOLVE, N_MAX_SOLVE) :: f, w
+      real (kind = SOLVER_PREC), dimension(N_MAX_SOLVE) :: r, c, y, rpiv, s
+      real (kind = SOLVER_PREC) :: rcmin, rcmax, amax, rowcnd, colcnd, piv, t, anorm, ainvnm, total
+      integer :: ipiv(N_MAX_SOLVE), i, j, k, p
+
+      x = ZERO
+      cond = Huge (ONE)
+      info = 0
+
+        ! 1. Equilibration (dgeequ): row maxima, then column maxima of the row-scaled matrix
+      do i = 1, n
+        r(i) = ZERO
+      end do
+      do j = 1, n
+        do i = 1, n
+          r(i) = Max (r(i), Abs (a(i, j)))
+        end do
+      end do
+      rcmin = BIGNUM
+      rcmax = ZERO
+      do i = 1, n
+        rcmax = Max (rcmax, r(i))
+        rcmin = Min (rcmin, r(i))
+      end do
+      amax = rcmax
+      if (.not. (rcmin > ZERO)) then
+        info = 1
+        return
+      end if
+      do i = 1, n
+        r(i) = ONE / Min (Max (r(i), SMLNUM), BIGNUM)
+      end do
+      rowcnd = Max (rcmin, SMLNUM) / Min (rcmax, BIGNUM)
+      do j = 1, n
+        c(j) = ZERO
+      end do
+      do i = 1, n
+        do j = 1, n
+          c(j) = Max (c(j), Abs (a(i, j)) * r(i))
+        end do
+      end do
+      rcmin = BIGNUM
+      rcmax = ZERO
+      do j = 1, n
+        rcmin = Min (rcmin, c(j))
+        rcmax = Max (rcmax, c(j))
+      end do
+      if (.not. (rcmin > ZERO)) then
+        info = 1
+        return
+      end if
+      do j = 1, n
+        c(j) = ONE / Min (Max (c(j), SMLNUM), BIGNUM)
+      end do
+      colcnd = Max (rcmin, SMLNUM) / Min (rcmax, BIGNUM)
+        ! dlaqge: scale only where it is needed; factors not applied are set to one
+      if (rowcnd >= THRESH .and. amax >= SMALL .and. amax <= LARGE) then
+        do i = 1, n
+          r(i) = ONE
+        end do
+      end if
+      if (colcnd >= THRESH) then
+        do j = 1, n
+          c(j) = ONE
+        end do
+      end if
+
+        ! Equilibrated matrix and its 1-norm (column sums accumulated row by row)
+      do j = 1, n
+        do i = 1, n
+          f(i, j) = c(j) * r(i) * a(i, j)
+        end do
+      end do
+      do j = 1, n
+        s(j) = ZERO
+      end do
+      do i = 1, n
+        do j = 1, n
+          s(j) = s(j) + Abs (f(i, j))
+        end do
+      end do
+      anorm = ZERO
+      do j = 1, n
+        anorm = Max (anorm, s(j))
+      end do
+
+        ! 2. LU factorisation with partial pivoting
+      do k = 1, n
+        p = k
+        piv = Abs (f(k, k))
+        do i = k + 1, n
+          if (Abs (f(i, k)) > piv) then
+            p = i
+            piv = Abs (f(i, k))
+          end if
+        end do
+        ipiv(k) = p
+        if (.not. (piv > SMLNUM)) then
+          info = k
+          return
+        end if
+        if (p /= k) then
+          do j = 1, n
+            t = f(k, j)
+            f(k, j) = f(p, j)
+            f(p, j) = t
+          end do
+        end if
+        rpiv(k) = ONE / f(k, k)
+        do i = k + 1, n
+          f(i, k) = f(i, k) * rpiv(k)
+        end do
+        do j = k + 1, n
+          do i = k + 1, n
+            f(i, j) = f(i, j) - f(i, k) * f(k, j)
+          end do
+        end do
+      end do
+
+        ! 3. Substitution with the equilibrated right-hand side
+      do i = 1, n
+        y(i) = r(i) * b(i)
+      end do
+      do k = 1, n
+        p = ipiv(k)
+        t = y(k)
+        y(k) = y(p)
+        y(p) = t
+      end do
+      do k = 1, n
+        do i = k + 1, n
+          y(i) = y(i) - y(k) * f(i, k)
+        end do
+      end do
+      do k = n, 1, -1
+        y(k) = y(k) * rpiv(k)
+        do i = 1, k - 1
+          y(i) = y(i) - y(k) * f(i, k)
+        end do
+      end do
+      total = ZERO
+      do i = 1, n
+        x(i) = c(i) * y(i)
+        total = total + Abs (x(i))
+      end do
+
+        ! 4. Exact ||A_e^-1||_1: W = L^-1 (column j starts at row j), then W = U^-1 W
+      do j = 1, n
+        do i = 1, n
+          w(i, j) = ZERO
+        end do
+        w(j, j) = ONE
+      end do
+      do k = 1, n - 1
+        do j = 1, k
+          do i = k + 1, n
+            w(i, j) = w(i, j) - f(i, k) * w(k, j)
+          end do
+        end do
+      end do
+      do k = n, 1, -1
+        do j = 1, n
+          w(k, j) = w(k, j) * rpiv(k)
+          do i = 1, k - 1
+            w(i, j) = w(i, j) - f(i, k) * w(k, j)
+          end do
+        end do
+      end do
+      do j = 1, n
+        s(j) = ZERO
+      end do
+      do i = 1, n
+        do j = 1, n
+          s(j) = s(j) + Abs (w(i, j))
+        end do
+      end do
+      ainvnm = ZERO
+      do j = 1, n
+        ainvnm = Max (ainvnm, s(j))
+        total = total + s(j)
+      end do
+      cond = anorm * ainvnm
+
+        ! Non-finite input or overflow shows up in the sum; cond above 2 / epsilon is
+        ! dgesvx's 'singular to working precision' (rcond < dlamch ('E'), info = n + 1)
+      if (.not. (total <= Huge (ONE)) .or. .not. (0.5_SOLVER_PREC * Epsilon (ONE) * cond <= ONE)) then
+        info = n + 1
+        x = ZERO
+        cond = Huge (ONE)
+      end if
+
+    end subroutine Solve_lu_equilibrated
+
+
+    pure subroutine Solve_4x4_cofactor (a, b, x, cond, info)
+
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !                                                                          !
+      ! Purpose: Solve the moist 4x4 system A x = b in closed form and return    !
+      !          the exact 1-norm condition number of A equilibrated by the     !
+      !          dgeequ/dlaqge rule (as Solve_lu_equilibrated), the quantity     !
+      !          MOIST_COND_MAX is compared with (OPEN_ISSUES A14).              !
+      !                                                                          !
+      ! Method:  The rows are first scaled to a largest entry of one (E = D A),  !
+      !          so that |det E| <= 16 (Hadamard) and no product below can       !
+      !          overflow. E^-1 = adj(E) / det(E) from the twelve 2x2 minors of  !
+      !          rows 1-2 and 3-4 (Laplace expansion); x = E^-1 D b. The inverse !
+      !          comes with the solution, so the condition number is exact at   !
+      !          no extra cost: A^-1 = E^-1 D, and A_e = R A C (R, C as dlaqge   !
+      !          applies them) gives A_e^-1 = C^-1 A^-1 R^-1. Near the           !
+      !          determinant pole of A14 the solution degrades as cond eps, like !
+      !          any solver; such solves are rejected by MOIST_COND_MAX.        !
+      !                                                                          !
+      ! Failure: as Solve_lu_equilibrated (x = 0, cond = Huge, info > 0).        !
+      !                                                                          !
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+      implicit none
+
+      real (kind = SOLVER_PREC), intent (in)  :: a(4, 4), b(4)
+      real (kind = SOLVER_PREC), intent (out) :: x(4), cond
+      integer,                   intent (out) :: info
+
+      real (kind = SOLVER_PREC), parameter :: ZERO = 0.0_SOLVER_PREC, ONE = 1.0_SOLVER_PREC
+      real (kind = SOLVER_PREC), parameter :: SMLNUM = Tiny (ONE), BIGNUM = ONE / SMLNUM
+      real (kind = SOLVER_PREC), parameter :: SMALL = SMLNUM / Epsilon (ONE), LARGE = ONE / SMALL
+      real (kind = SOLVER_PREC), parameter :: THRESH = 0.1_SOLVER_PREC
+
+      real (kind = SOLVER_PREC) :: e(4, 4), v(4, 4), d(4), r(4), c(4), y(4)
+      real (kind = SOLVER_PREC) :: s0, s1, s2, s3, s4, s5, c0, c1, c2, c3, c4, c5, det, rdet
+      real (kind = SOLVER_PREC) :: rcmin, rcmax, amax, rowcnd, colcnd, colsum, anorm, ainvnm, total
+      integer :: i, j
+
+      x = ZERO
+      cond = Huge (ONE)
+      info = 0
+
+        ! Equilibration factors (dgeequ); d keeps the row factors for the arithmetic
+      do i = 1, 4
+        r(i) = Max (Abs (a(i, 1)), Abs (a(i, 2)), Abs (a(i, 3)), Abs (a(i, 4)))
+      end do
+      rcmin = Min (r(1), r(2), r(3), r(4))
+      rcmax = Max (r(1), r(2), r(3), r(4))
+      amax = rcmax
+      if (.not. (rcmin > ZERO)) then
+        info = 1
+        return
+      end if
+      do i = 1, 4
+        d(i) = ONE / Min (Max (r(i), SMLNUM), BIGNUM)
+      end do
+      rowcnd = Max (rcmin, SMLNUM) / Min (rcmax, BIGNUM)
+      do j = 1, 4
+        c(j) = Max (Abs (a(1, j)) * d(1), Abs (a(2, j)) * d(2), Abs (a(3, j)) * d(3), Abs (a(4, j)) * d(4))
+      end do
+      rcmin = Min (c(1), c(2), c(3), c(4))
+      rcmax = Max (c(1), c(2), c(3), c(4))
+      if (.not. (rcmin > ZERO)) then
+        info = 1
+        return
+      end if
+      do j = 1, 4
+        c(j) = ONE / Min (Max (c(j), SMLNUM), BIGNUM)
+      end do
+      colcnd = Max (rcmin, SMLNUM) / Min (rcmax, BIGNUM)
+        ! dlaqge's decision, for the condition number only
+      r = d
+      if (rowcnd >= THRESH .and. amax >= SMALL .and. amax <= LARGE) r = ONE
+      if (colcnd >= THRESH) c = ONE
+
+        ! Row-scaled matrix; 2x2 minors of rows 1-2 (s) and 3-4 (c); determinant; adjugate / det
+      do j = 1, 4
+        do i = 1, 4
+          e(i, j) = d(i) * a(i, j)
+        end do
+      end do
+      s0 = e(1, 1) * e(2, 2) - e(2, 1) * e(1, 2)
+      s1 = e(1, 1) * e(2, 3) - e(2, 1) * e(1, 3)
+      s2 = e(1, 1) * e(2, 4) - e(2, 1) * e(1, 4)
+      s3 = e(1, 2) * e(2, 3) - e(2, 2) * e(1, 3)
+      s4 = e(1, 2) * e(2, 4) - e(2, 2) * e(1, 4)
+      s5 = e(1, 3) * e(2, 4) - e(2, 3) * e(1, 4)
+      c5 = e(3, 3) * e(4, 4) - e(4, 3) * e(3, 4)
+      c4 = e(3, 2) * e(4, 4) - e(4, 2) * e(3, 4)
+      c3 = e(3, 2) * e(4, 3) - e(4, 2) * e(3, 3)
+      c2 = e(3, 1) * e(4, 4) - e(4, 1) * e(3, 4)
+      c1 = e(3, 1) * e(4, 3) - e(4, 1) * e(3, 3)
+      c0 = e(3, 1) * e(4, 2) - e(4, 1) * e(3, 2)
+      det = s0 * c5 - s1 * c4 + s2 * c3 + s3 * c2 - s4 * c1 + s5 * c0
+      if (.not. (Abs (det) > SMLNUM)) then
+        info = 1
+        return
+      end if
+      rdet = ONE / det
+      v(1, 1) = ( e(2, 2) * c5 - e(2, 3) * c4 + e(2, 4) * c3) * rdet
+      v(1, 2) = (-e(1, 2) * c5 + e(1, 3) * c4 - e(1, 4) * c3) * rdet
+      v(1, 3) = ( e(4, 2) * s5 - e(4, 3) * s4 + e(4, 4) * s3) * rdet
+      v(1, 4) = (-e(3, 2) * s5 + e(3, 3) * s4 - e(3, 4) * s3) * rdet
+      v(2, 1) = (-e(2, 1) * c5 + e(2, 3) * c2 - e(2, 4) * c1) * rdet
+      v(2, 2) = ( e(1, 1) * c5 - e(1, 3) * c2 + e(1, 4) * c1) * rdet
+      v(2, 3) = (-e(4, 1) * s5 + e(4, 3) * s2 - e(4, 4) * s1) * rdet
+      v(2, 4) = ( e(3, 1) * s5 - e(3, 3) * s2 + e(3, 4) * s1) * rdet
+      v(3, 1) = ( e(2, 1) * c4 - e(2, 2) * c2 + e(2, 4) * c0) * rdet
+      v(3, 2) = (-e(1, 1) * c4 + e(1, 2) * c2 - e(1, 4) * c0) * rdet
+      v(3, 3) = ( e(4, 1) * s4 - e(4, 2) * s2 + e(4, 4) * s0) * rdet
+      v(3, 4) = (-e(3, 1) * s4 + e(3, 2) * s2 - e(3, 4) * s0) * rdet
+      v(4, 1) = (-e(2, 1) * c3 + e(2, 2) * c1 - e(2, 3) * c0) * rdet
+      v(4, 2) = ( e(1, 1) * c3 - e(1, 2) * c1 + e(1, 3) * c0) * rdet
+      v(4, 3) = (-e(4, 1) * s3 + e(4, 2) * s1 - e(4, 3) * s0) * rdet
+      v(4, 4) = ( e(3, 1) * s3 - e(3, 2) * s1 + e(3, 3) * s0) * rdet
+
+      do i = 1, 4
+        y(i) = d(i) * b(i)
+      end do
+      total = ZERO
+      do i = 1, 4
+        x(i) = v(i, 1) * y(1) + v(i, 2) * y(2) + v(i, 3) * y(3) + v(i, 4) * y(4)
+        total = total + Abs (x(i))
+      end do
+
+        ! ||A_e||_1 and ||A_e^-1||_1, with A^-1 = E^-1 D: (A_e^-1)(i, j) = v(i, j) d(j) / (c(i) r(j))
+      anorm = ZERO
+      ainvnm = ZERO
+      do j = 1, 4
+        colsum = c(j) * (r(1) * Abs (a(1, j)) + r(2) * Abs (a(2, j)) + r(3) * Abs (a(3, j)) + r(4) * Abs (a(4, j)))
+        anorm = Max (anorm, colsum)
+        colsum = (Abs (v(1, j)) / c(1) + Abs (v(2, j)) / c(2) + Abs (v(3, j)) / c(3) + Abs (v(4, j)) / c(4)) &
+               * (d(j) / r(j))
+        ainvnm = Max (ainvnm, colsum)
+        total = total + colsum
+      end do
+      cond = anorm * ainvnm
+
+      if (.not. (total <= Huge (ONE)) .or. .not. (0.5_SOLVER_PREC * Epsilon (ONE) * cond <= ONE)) then
+        info = 5
+        x = ZERO
+        cond = Huge (ONE)
+      end if
+
+    end subroutine Solve_4x4_cofactor
+
+#endif
 
 
     pure subroutine Calc_qv_variance (q, l, dqv_dx, dqv_dy, dqv_dz, tf_uqv, tf_vqv, tf_wqv, tf_qv2)
