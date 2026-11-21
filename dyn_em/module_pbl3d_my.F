@@ -186,7 +186,7 @@
     integer, parameter :: WORKING_PREC = Kind (1.0)   ! the model's REAL: REAL32, or REAL64 in -r8 builds
 
       ! Model constants
-    real         :: a_1, b_2, c_1, c_2, c_3, alpha
+    real         :: a_1, b_2, c_1, c_2, c_3, c_5, alpha
     real, public :: a_2, b_1
 
       ! For the level 2 model
@@ -3110,7 +3110,7 @@
       a(1, 4) = Real (2.0 * u_y - v_x, kind = SOLVER_PREC)
       a(1, 5) = Real (2.0 * u_z - w_x, kind = SOLVER_PREC)
       a(1, 6) = Real (- v_z - w_y, kind = SOLVER_PREC)
-      a(1, 9) = Real (G_OVER_TREF, kind = SOLVER_PREC)
+      a(1, 9) = Real (G_OVER_TREF * (1.0 - c_2), kind = SOLVER_PREC)
 
          ! v2 equation
       a(2, 1) = Real (- u_x, kind = SOLVER_PREC)
@@ -3119,7 +3119,7 @@
       a(2, 4) = Real (2.0 * v_x - u_y, kind = SOLVER_PREC)
       a(2, 5) = Real (- u_z - w_x, kind = SOLVER_PREC)
       a(2, 6) = Real (2.0 * v_z - w_y, kind = SOLVER_PREC)
-      a(2, 9) = Real (G_OVER_TREF, kind = SOLVER_PREC)
+      a(2, 9) = Real (G_OVER_TREF * (1.0 - c_2), kind = SOLVER_PREC)
 
          ! w2 equation
       a(3, 1) = Real (- u_x, kind = SOLVER_PREC)
@@ -3128,7 +3128,7 @@
       a(3, 4) = Real (- u_y - v_x, kind = SOLVER_PREC)
       a(3, 5) = Real (2.0 * w_x - u_z, kind = SOLVER_PREC)
       a(3, 6) = Real (2.0 * w_y - v_z, kind = SOLVER_PREC)
-      a(3, 9) = Real (- 2.0 * G_OVER_TREF, kind = SOLVER_PREC)
+      a(3, 9) = Real (- 2.0 * G_OVER_TREF * (1.0 - c_2), kind = SOLVER_PREC)
 
          ! uv equation
       a(4, 1) = Real (v_x, kind = SOLVER_PREC)
@@ -3143,7 +3143,7 @@
       a(5, 4) = Real (w_y, kind = SOLVER_PREC)
       a(5, 5) = Real (q / (3.0 * a_1 * l) + w_z + u_x, kind = SOLVER_PREC)
       a(5, 6) = Real (u_y, kind = SOLVER_PREC)
-      a(5, 7) = Real (- G_OVER_TREF, kind = SOLVER_PREC)
+      a(5, 7) = Real (- G_OVER_TREF * (1.0 - c_2), kind = SOLVER_PREC)
 
          ! vw equation
       a(6, 2) = Real (w_y, kind = SOLVER_PREC)
@@ -3151,32 +3151,32 @@
       a(6, 4) = Real (w_x, kind = SOLVER_PREC)
       a(6, 5) = Real (v_x, kind = SOLVER_PREC)
       a(6, 6) = Real (q / (3.0 * a_1 * l) + w_z + v_y, kind = SOLVER_PREC)
-      a(6, 8) = Real (- G_OVER_TREF, kind = SOLVER_PREC)
+      a(6, 8) = Real (- G_OVER_TREF * (1.0 - c_2), kind = SOLVER_PREC)
 
          ! ut_v equation
       a(7, 1) = Real (tv_x, kind = SOLVER_PREC)
       a(7, 4) = Real (tv_y, kind = SOLVER_PREC)
       a(7, 5) = Real (tv_z, kind = SOLVER_PREC)
-      a(7, 7) = Real (q / (3.0 * a_2 * l) + u_x, kind = SOLVER_PREC)
-      a(7, 8) = Real (u_y, kind = SOLVER_PREC)
-      a(7, 9) = Real (u_z, kind = SOLVER_PREC)
+      a(7, 7) = Real (q / (3.0 * a_2 * l) + u_x * (1.0 - c_5), kind = SOLVER_PREC)
+      a(7, 8) = Real (u_y * (1.0 - c_5), kind = SOLVER_PREC)
+      a(7, 9) = Real (u_z * (1.0 - c_5), kind = SOLVER_PREC)
 
          ! vt_v equation
       a(8, 2) = Real (tv_y, kind = SOLVER_PREC)
       a(8, 4) = Real (tv_x, kind = SOLVER_PREC)
       a(8, 6) = Real (tv_z, kind = SOLVER_PREC)
-      a(8, 7) = Real (v_x, kind = SOLVER_PREC)
-      a(8, 8) = Real (q / (3.0 * a_2 * l) + v_y, kind = SOLVER_PREC)
-      a(8, 9) = Real (v_z, kind = SOLVER_PREC)
+      a(8, 7) = Real (v_x * (1.0 - c_5), kind = SOLVER_PREC)
+      a(8, 8) = Real (q / (3.0 * a_2 * l) + v_y * (1.0 - c_5), kind = SOLVER_PREC)
+      a(8, 9) = Real (v_z * (1.0 - c_5), kind = SOLVER_PREC)
 
          ! wt_v equation
       a(9, 3) = Real (tv_z, kind = SOLVER_PREC)
       a(9, 5) = Real (tv_x, kind = SOLVER_PREC)
       a(9, 6) = Real (tv_y, kind = SOLVER_PREC)
-      a(9, 7) = Real (w_x, kind = SOLVER_PREC)
-      a(9, 8) = Real (w_y, kind = SOLVER_PREC)
-      a(9, 9) = Real (q / (3.0 * a_2 * l) + w_z, kind = SOLVER_PREC)
-      a(9, 10) = Real (- G_OVER_TREF, kind = SOLVER_PREC)
+      a(9, 7) = Real (w_x * (1.0 - c_5), kind = SOLVER_PREC)
+      a(9, 8) = Real (w_y * (1.0 - c_5), kind = SOLVER_PREC)
+      a(9, 9) = Real (q / (3.0 * a_2 * l) + w_z * (1.0 - c_5), kind = SOLVER_PREC)
+      a(9, 10) = Real (- G_OVER_TREF * (1.0 - c_3), kind = SOLVER_PREC)
 
          ! tt_v equation
       a(10, 7) = Real (tv_x, kind = SOLVER_PREC)
@@ -3200,22 +3200,22 @@
       a = 0.0
 
         ! ur equation
-      a(1, 1) = Real (q / (3.0 * a_2 * l) + u_x, kind = SOLVER_PREC)
-      a(1, 2) = Real (u_y, kind = SOLVER_PREC)
-      a(1, 3) = Real (u_z, kind = SOLVER_PREC)
+      a(1, 1) = Real (q / (3.0 * a_2 * l) + u_x * (1.0 - c_5), kind = SOLVER_PREC)
+      a(1, 2) = Real (u_y * (1.0 - c_5), kind = SOLVER_PREC)
+      a(1, 3) = Real (u_z * (1.0 - c_5), kind = SOLVER_PREC)
       a(1, 4) = 0.0
 
         ! vr equation
-      a(2, 1) = Real (v_x, kind = SOLVER_PREC)
-      a(2, 2) = Real (q / (3.0 * a_2 * l) + v_y, kind = SOLVER_PREC)
-      a(2, 3) = Real (v_z, kind = SOLVER_PREC)
+      a(2, 1) = Real (v_x * (1.0 - c_5), kind = SOLVER_PREC)
+      a(2, 2) = Real (q / (3.0 * a_2 * l) + v_y * (1.0 - c_5), kind = SOLVER_PREC)
+      a(2, 3) = Real (v_z * (1.0 - c_5), kind = SOLVER_PREC)
       a(2, 4) = 0.0
 
         ! wr equation
-      a(3, 1) = Real (w_x, kind = SOLVER_PREC)
-      a(3, 2) = Real (w_y, kind = SOLVER_PREC)
-      a(3, 3) = Real (q / (3.0 * a_2 * l) + w_z, kind = SOLVER_PREC)
-      a(3, 4) = Real (-G_OVER_TREF, kind = SOLVER_PREC)
+      a(3, 1) = Real (w_x * (1.0 - c_5), kind = SOLVER_PREC)
+      a(3, 2) = Real (w_y * (1.0 - c_5), kind = SOLVER_PREC)
+      a(3, 3) = Real (q / (3.0 * a_2 * l) + w_z * (1.0 - c_5), kind = SOLVER_PREC)
+      a(3, 4) = Real (-G_OVER_TREF * (1.0 - c_3), kind = SOLVER_PREC)
 
         ! rthetav equation
       a(4, 1) = Real (tv_x, kind = SOLVER_PREC)
@@ -4618,6 +4618,23 @@
                          C3_Boulac = 0.0,     &
                          ALPHA_Boulac = 0.1
 
+        ! Nakanishi and Niino (2009, eqs. 62-66) with the values of WRF's MYNN (module_bl_mynnedmf_common):
+        ! g1, Pr, B1, B2, C2, C3, C5 given; A1, C1, A2 derived. C2, C3 = buoyancy parts of the pressure-strain and
+        ! pressure-temperature covariances, C5 = shear part of the latter (NN09 eqs. 16-17; C4 = 0). Full form only.
+      real, parameter :: G1_NN09 = 0.235, PR_NN09 = 0.74
+      real, parameter :: B1_NN09 = 24.0,                                                  &
+                         B2_NN09 = 15.0,                                                  &
+                         A1_NN09 = B1_NN09 * (1.0 - 3.0 * G1_NN09) / 6.0,                 &
+                         C1_NN09 = G1_NN09 - 1.0 / (3.0 * A1_NN09 * 2.88449914061481660), &
+                         A2_NN09 = A1_NN09 * (G1_NN09 - C1_NN09) / (G1_NN09 * PR_NN09),   &
+                         C2_NN09 = 0.729,                                                 &
+                         C3_NN09 = 0.340,                                                 &
+                         C5_NN09 = 0.2,                                                   &
+                         ALPHA_NN09 = 0.1
+
+        ! C5 is non-zero only in the NN09 set
+      c_5 = 0.0
+
         ! Set model contants
       select case (trim(pbl3d_constants))
 
@@ -4676,10 +4693,22 @@
           c_3 = C3_Boulac
           alpha = ALPHA_Boulac
 
+        case('NN09')
+
+          a_1 = A1_NN09
+          a_2 = A2_NN09
+          b_1 = B1_NN09
+          b_2 = B2_NN09
+          c_1 = C1_NN09
+          c_2 = C2_NN09
+          c_3 = C3_NN09
+          c_5 = C5_NN09
+          alpha = ALPHA_NN09
+
         case default
 
             ! a fatal error through WRF's handler (all MPI ranks stop), not a bare STOP
-          call wrf_error_fatal ('PBL3D: unknown pbl3d_constants; valid values are MY73 (or M73), MY74, ' // &
+          call wrf_error_fatal ('PBL3D: unknown pbl3d_constants; valid values are MY73 (or M73), MY74, NN09, ' // &
                                 'MY82, MYJ and Boulac')
 
       end select
@@ -4707,7 +4736,7 @@
       e1 = b_1 - 6.0 * a_1
       e2 = b_1 + 12.0 * a_1 * (1.0 - c_2) + 3.0 * b_2 * (1.0 - c_3)
       e3 = b_1 * (1.0 - 3.0 * c_1) - 6.0 * a_1
-      e4 = b_1 * (1.0 - 3.0 * c_1) + 12.0 * a_1 * (1.0 - c_2) + 9.0 * a_2 * (1.0 - c_2)
+      e4 = b_1 * (1.0 - 3.0 * c_1) + 12.0 * a_1 * (1.0 - c_2) + 9.0 * a_2 * (1.0 - c_2) * (1.0 - c_5)
       e5 = b_1 + 3.0 * a_1 * (1.0 - c_2) + 3.0 * b_2 * (1.0 - c_3)
 
       rif_c = e1 / e2
@@ -4861,6 +4890,12 @@
       real, dimension (:, :, :), allocatable      :: l_boulac_init
 
       call Set_model_constants (pbl3d_constants)
+
+        ! The C2, C3, C5 terms of NN09 exist only in the full-form solve; the approximate form's level-2.5 functions
+        ! are the MY82 forms without them (NN09 constants alone lower Ri_c from 0.195 to 0.084). Refused.
+      if (trim(pbl3d_constants) == 'NN09' .and. pbl3d_opt /= 2) then
+        call wrf_error_fatal ('PBL3D: pbl3d_constants = NN09 needs pbl3d_opt = 2 (the full form)')
+      end if
 
       call Set_my_l2_global_vars
 
