@@ -344,7 +344,8 @@
             turb_flux_theta2_v, turb_flux_utheta, turb_flux_vtheta, turb_flux_wtheta,        &
             turb_flux_uqv, turb_flux_vqv, turb_flux_wqv, th2, thetav, qv, rho, hfx, qfx, rmol, u, v, ust,  &
             pbl3d_t1_ratio, pbl3d_t2_steps, pbl3d_t3_flags, pbl3d_sk_eps, pbl3d_n_tau, pbl3d_cond_a, pbl3d_cond_m, pbl3d_qv2, pbl3d_p_eps, &
-            dz, rdzw, z_at_w, fnm, fnp, cf1, cf2, cf3, dn, dnw, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme,  &
+            dz, rdzw, z_at_w, fnm, fnp, cf1, cf2, cf3, dn, dnw, dx, dy, msftx, msfty, &
+            ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme,  &
             its, ite, jts, jte, kts, kte)
       end if
 
@@ -1091,7 +1092,8 @@
           ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
         ! Apply scale-aware tapering
-      call Make_scale_aware (Psig_bl, l_master, l_boulac, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+      call Make_scale_aware (config_flags%pbl3d_scale_aware, Psig_bl, dx, dy, msftx, msfty, dz, l_master, l_boulac, &
+          ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
         ! Strain limit of the full form on l (pbl3d_approx_limits = 1, pbl3d_opt = 1 only)
       if (config_flags%pbl3d_approx_limits == 1 .and. config_flags%pbl3d_opt == 1) &
@@ -1252,8 +1254,8 @@
         turb_flux_theta2_v, turb_flux_utheta, turb_flux_vtheta, turb_flux_wtheta,       &
         turb_flux_uqv, turb_flux_vqv, turb_flux_wqv, t, thetav, qv, rho, hfx, qfx, rmol, u, v, ust, &
         pbl3d_t1_ratio, pbl3d_t2_steps, pbl3d_t3_flags, pbl3d_sk_eps, pbl3d_n_tau, pbl3d_cond_a, pbl3d_cond_m, pbl3d_qv2, pbl3d_p_eps, &
-        dz, rdzw, z_at_w, fnm, fnp, cf1, cf2, cf3, dn, dnw, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, &
-        its, ite, jts, jte, kts, kte)
+        dz, rdzw, z_at_w, fnm, fnp, cf1, cf2, cf3, dn, dnw, dx, dy, msftx, msfty, &
+        ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !                                                                !
@@ -1297,8 +1299,8 @@
       real, dimension (ims:ime, jms:jme),          intent (in)    :: ust, hfx, qfx, rmol
       real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: dz, rdzw, z_at_w
       real, dimension (kms:kme),                   intent (in)    :: fnm, fnp, dn, dnw
-      real, dimension (ims:ime, jms:jme),          intent (in)    :: Psig_bl
-      real,                                        intent (in)    :: cf1, cf2, cf3
+      real, dimension (ims:ime, jms:jme),          intent (in)    :: Psig_bl, msftx, msfty
+      real,                                        intent (in)    :: cf1, cf2, cf3, dx, dy
 
         ! Local vars
       integer :: i, j, k, i_start, i_end, j_start, j_end, ktf
@@ -1405,7 +1407,8 @@
           ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
         ! Apply scale-aware tapering
-      call Make_scale_aware (Psig_bl, l_master, l_boulac, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+      call Make_scale_aware (config_flags%pbl3d_scale_aware, Psig_bl, dx, dy, msftx, msfty, dz, l_master, l_boulac, &
+          ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
       mat_cond_heat(its:ite,kts:kte,jts:jte) = -9999.
       mat_cond_moist(its:ite,kts:kte,jts:jte) = -9999.
@@ -4460,7 +4463,20 @@
         ! Compute Psig_bl
       Psig_bl(i_start:i_end,j_start:j_end) = 1.0
 
-      if (pbl3d_scale_aware .gt. 0) then  ! scale-aware
+      if (pbl3d_scale_aware >= 2) then
+          ! Options 2 and 3: subgrid share of the mixed-layer TKE of Honnert et al. (2011, Eq. 9),
+          ! P(x) = (x^2 + 0.07 x^(2/3)) / (x^2 + 3/21 x^(2/3) + 3/42), x = dx/h, without the 2.5 dx shift
+          ! of option 1 (P = 0.13/0.30/0.54 subgrid at x = 1/0.5/0.25 is 0.87/0.70/0.46 here).
+          ! h = PBLH as diagnosed (above sea level unless pbl3d_pblh_agl = 1, A37), at least 10 m.
+        do j = j_start, j_end
+          do i = i_start, i_end
+            dxdy = ( dx/msftx(i,j) * dy/msfty(i,j) )**0.5
+            dxdh = dxdy / Max (Min (pblh(i,j), 3000.), 10.)
+            Psig_bl(i,j) = (dxdh**2 + 0.07*dxdh**(2./3.)) / (dxdh**2 + (3./21.)*dxdh**(2./3.) + 3./42.)
+            Psig_bl(i,j) = Min (Max (Psig_bl(i,j), 0.0), 1.0)
+          end do
+        end do
+      else if (pbl3d_scale_aware .gt. 0) then  ! scale-aware
         do j = j_start, j_end
           do i = i_start, i_end
             dxdy = ( dx/msftx(i,j) * dy/msfty(i,j) )**0.5
@@ -4479,19 +4495,30 @@
     end subroutine Calc_scale_aware
 
 
-    subroutine Make_scale_aware (Psig_bl, l_master, l_boulac, ids, ide, jds, jde, kds, kde, &
-              ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
+    subroutine Make_scale_aware (pbl3d_scale_aware, Psig_bl, dx, dy, msftx, msfty, dz, l_master, l_boulac, &
+              ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
 
+        ! pbl3d_scale_aware = 1 and 3: l <- P l (1: the MYNN refit with a 2.5 dx shift; 3: Honnert Eq. 9).
+        ! pbl3d_scale_aware = 2: l <- P l + (1 - P) Min (l, l_delta), a blend toward a grid length,
+        !   l_delta = C_DELTA (dx dy dz)^(1/3). C_DELTA = 0.18 gives the eddy viscosity of a Deardorff
+        !   large-eddy closure, K = 0.1 delta e^(1/2), with this closure's neutral S_M ~ 0.4 and q = (2e)^(1/2).
+        !   For dx >> h, P -> 1 and l is unchanged; for dx << h, l -> Min (l, l_delta), the large-eddy limit;
+        !   the length is never raised. P comes from Calc_scale_aware.
       implicit none
 
-      real, dimension (ims:ime, jms:jme),          intent (in)    :: Psig_bl
+      integer,                                     intent (in)    :: pbl3d_scale_aware
+      real, dimension (ims:ime, jms:jme),          intent (in)    :: Psig_bl, msftx, msfty
+      real,                                        intent (in)    :: dx, dy
+      real, dimension (ims:ime, kms:kme, jms:jme), intent (in)    :: dz
       real, dimension (ims:ime, kms:kme, jms:jme), intent (inout) :: l_master, l_boulac
       integer,                                     intent (in)    :: ids, jds, ide, jde, kds, kde, &
                                                                      ims, ime, jms, jme, kms, kme, &
                                                                      its, ite, jts, jte, kts, kte
 
         ! local vars
+      real, parameter :: C_DELTA = 0.18
       integer :: i, j, k, ktf, i_start, i_end, j_start, j_end
+      real    :: l_delta, dz_face
 
         ! Define dimensions
       i_start = its
@@ -4501,15 +4528,27 @@
 
       ktf = Min (kte, kde - 1)
 
-        ! Compute Psig_bl
-      do j = j_start, j_end
-        do k = kts, ktf
-          do i = i_start, i_end
-            l_master(i,k,j) = l_master(i,k,j) * Psig_bl(i,j)
-            l_boulac(i,k,j) = l_boulac(i,k,j) * Psig_bl(i,j)
+      if (pbl3d_scale_aware == 2) then
+        do j = j_start, j_end
+          do k = kts, ktf
+            do i = i_start, i_end
+              dz_face = 0.5 * ( dz(i, k, j) + dz(i, Max (k - 1, kts), j) )
+              l_delta = C_DELTA * ( dx/msftx(i,j) * dy/msfty(i,j) * dz_face ) ** (1.0/3.0)
+              l_master(i,k,j) = Psig_bl(i,j) * l_master(i,k,j) + (1.0 - Psig_bl(i,j)) * Min (l_master(i,k,j), l_delta)
+              l_boulac(i,k,j) = Psig_bl(i,j) * l_boulac(i,k,j) + (1.0 - Psig_bl(i,j)) * Min (l_boulac(i,k,j), l_delta)
+            end do
           end do
         end do
-      end do
+      else
+        do j = j_start, j_end
+          do k = kts, ktf
+            do i = i_start, i_end
+              l_master(i,k,j) = l_master(i,k,j) * Psig_bl(i,j)
+              l_boulac(i,k,j) = l_boulac(i,k,j) * Psig_bl(i,j)
+            end do
+          end do
+        end do
+      end if
 
     end subroutine Make_scale_aware
 
