@@ -2199,6 +2199,8 @@ q²(k_ts) ≥ B₁^{2/3}u*² **and** a κz blend of `L_MASTER` in the lowest lev
 
 ## A17 — OPEN, weakest (2026-08-27): TKE in the daytime/evening shear layers ≈ 2.5× too weak against the (preliminary) lidar product
 
+**Update 2026-11-24 — hypothesis confirmed in the idealised roll case.** The fixed strain limit binds in every cell of the sheared entrainment zone of the full form (S k/ε 8–22 against 6) and lowers the Richardson number up to which the closure keeps turbulence from about 0.16 to 0.11; switched on in the approximate form (`pbl3d_approx_limits = 1`) it reproduces the full form's weak exchange at the inversion (twin jobs 8940352, 8940354). `pbl3d_limiter_opt = 2` is still unrun; proposed test: full form in rolls and cells at 2000 and 500 m, then an idealised stable case as night gate. `DECISIONS.md` 2026-11-24 11:40, 12:20, 13:10, 13:30.
+
 log₁₀(model/obs) of subgrid + resolved-w TKE −0.39 (day) / −0.41 (evening) in 100–1500 m; the evening
 near-surface maximum (17–19 UTC) has the right timing at a fraction of the amplitude. Hypothesis: the strain
 cap `pbl3d_sk_eps_max = 6` (load-bearing at night) clips shear production where Ri_g < 0.25. Soundness
