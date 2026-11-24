@@ -1659,13 +1659,13 @@ In every real-case run of the 3D closure, PBLH = sea-level height of the top of 
 `git worktree add` does not populate `phys/physics_mmm` and `phys/noahmp`; the first build then fails late (`bl_ysu.mod` missing) after most of the compile time. Run `git submodule update --init` in the new worktree before the first build (the slope-taper agent copied them from `branko_ideal` at the same commits instead).
 
 ## E96 — em_les `ideal.exe` is not reproducible with the random θ perturbation on (2026-11-24)
-With `les_pert_amp > 0` two runs of the same `ideal.exe` on the same namelist give different `wrfinput` files, so a bit-for-bit check of a new `ideal.exe` must set `les_pert_amp = 0` (`wrf3dpbl-diag/ideal_slope_gate.slurm` does).
+With `les_pert_amp > 0` two runs of the same `ideal.exe` on the same namelist give different `wrfinput` files, so a bit-for-bit check of a new `ideal.exe` must set `les_pert_amp = 0` (`wrf3dpbl-diag/ideal_slope_gate.slurm` does). For the same reason every sensitivity twin must start from its control's `wrfinput`, never from a fresh `ideal.exe` run, or the twins differ in their random start.
 
 ## E97 — `branko_taper/main/` holds a throwaway binary (2026-11-24)
 The steep-slope diagnosis built its throwaway branch `slope_dbg` in the `branko_taper` worktree and switched the worktree back to `3dpbl_taper`, but `main/wrf.exe` and `main/ideal.exe` are still the throwaway build. Rebuild before using that tree's `main/`; the clean taper binaries are in `exp/ideal/bin/taper`.
 
 ## E98 — The test queue charges a whole node for a small idealised job (2026-11-24)
-On `zen3_0512_devel` a 4-rank idealised run is charged a full node (256 logical CPUs). Pack several small runs into one job (`wrf3dpbl-diag/ideal_slope_batch.slurm`, each step with `--gres=none --mem-per-cpu`), or the core-hour count is 30–60 times the work done.
+On `zen3_0512_devel` a 4-rank idealised run is charged a full node (256 logical CPUs). Pack several small runs into one job (`wrf3dpbl-diag/ideal_slope_batch.slurm`, each step with `--gres=none --mem-per-cpu`), or the core-hour count is 30–60 times the work done. A 2-node roll or cell run is charged 512 logical CPUs, about 55 core hours, whatever its length; budget by node-hours, not by work (2026-11-24 night: 1140 core hours charged against 400 planned).
 
 ## E99 — Idealised valley comparisons: MYNN runs with Smagorinsky horizontal diffusion, the 3D runs without (2026-11-24)
 In the slope runs MYNN used WRF's horizontal diffusion (`diff_opt = 2`, `km_opt = 4`) and the 3D closure its own horizontal terms. Arthur et al. (2021, doi:10.1175/MWR-D-20-0234.1) show that horizontal diffusion along terrain-following levels erodes a valley cold pool by itself. A night valley comparison must state the horizontal-diffusion treatment of each scheme and test its share.
