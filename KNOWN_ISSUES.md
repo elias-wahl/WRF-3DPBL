@@ -1661,3 +1661,6 @@ In every real-case run of the 3D closure, PBLH = sea-level height of the top of 
 ## E96 — em_les `ideal.exe` is not reproducible with the random θ perturbation on (2026-11-24)
 With `les_pert_amp > 0` two runs of the same `ideal.exe` on the same namelist give different `wrfinput` files, so a bit-for-bit check of a new `ideal.exe` must set `les_pert_amp = 0` (`wrf3dpbl-diag/ideal_slope_gate.slurm` does).
 
+## E97 — `branko_taper/main/` holds a throwaway binary (2026-11-24)
+The steep-slope diagnosis built its throwaway branch `slope_dbg` in the `branko_taper` worktree and switched the worktree back to `3dpbl_taper`, but `main/wrf.exe` and `main/ideal.exe` are still the throwaway build. Rebuild before using that tree's `main/`; the clean taper binaries are in `exp/ideal/bin/taper`.
+
