@@ -4332,9 +4332,12 @@
         ! Find minimum thetav in the lowest 200 m AGL
       do j = j_start, j_end
         do i = i_start, i_end
-            ! PBLH_AGL_OPT = 1 (OPEN_ISSUES A37): z_at_w is height ASL; measure from the ground
-          zb = 0.0
-          if (PBLH_AGL_OPT == 1) zb = z_at_w(i, kts, j)
+            ! z_at_w is height above sea level; every height here is measured from the ground
+            ! (unconditionally since 2026-11-24; before, only with PBLH_AGL_OPT = 1, OPEN_ISSUES A37).
+            ! On elevated terrain the 200 m search never ran and PBLH fell back to terrain height +
+            ! first layer (99.7 % of the cells of the real-case run X27). On flat ground
+            ! z_at_w(kts) = 0 exactly, so flat results are unchanged bit for bit.
+          zb = z_at_w(i, kts, j)
           k = kts + 1
           kthv = 1
           minthv = 9.E9
