@@ -1670,3 +1670,6 @@ On `zen3_0512_devel` a 4-rank idealised run is charged a full node (256 logical 
 ## E99 — Idealised valley comparisons: MYNN runs with Smagorinsky horizontal diffusion, the 3D runs without (2026-11-24)
 In the slope runs MYNN used WRF's horizontal diffusion (`diff_opt = 2`, `km_opt = 4`) and the 3D closure its own horizontal terms. Arthur et al. (2021, doi:10.1175/MWR-D-20-0234.1) show that horizontal diffusion along terrain-following levels erodes a valley cold pool by itself. A night valley comparison must state the horizontal-diffusion treatment of each scheme and test its share.
 
+## E100 — Idealised run numbers are not unique across agents (2026-11-24)
+`IT211_FMGNQ6BE2_cell_500` (Eghdami test) and `IT211_FMGNQ6B_roll_1000` (surface-q² check) share the number IT211. Scripts that select runs by number prefix alone can mix them; select by full directory name.
+
