@@ -1658,3 +1658,6 @@ In every real-case run of the 3D closure, PBLH = sea-level height of the top of 
 ## E95 — A new git worktree of the WRF fork has no physics submodules (2026-11-24)
 `git worktree add` does not populate `phys/physics_mmm` and `phys/noahmp`; the first build then fails late (`bl_ysu.mod` missing) after most of the compile time. Run `git submodule update --init` in the new worktree before the first build (the slope-taper agent copied them from `branko_ideal` at the same commits instead).
 
+## E96 — em_les `ideal.exe` is not reproducible with the random θ perturbation on (2026-11-24)
+With `les_pert_amp > 0` two runs of the same `ideal.exe` on the same namelist give different `wrfinput` files, so a bit-for-bit check of a new `ideal.exe` must set `les_pert_amp = 0` (`wrf3dpbl-diag/ideal_slope_gate.slurm` does).
+
