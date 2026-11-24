@@ -1644,3 +1644,8 @@ WLS100S34 (Kramsach Oberberg) on 17 July 04:10–05:20 UT and 19 July report gat
 (or −inf): a fit through too few beams is exact, so a perfect R² marks the *worst* data, not the best. The provider's CNR
 filter keeps them. Drop gates with R² non-finite or ≥ 0.999 and speed > 25 m s⁻¹ (`wrf3dpbl-diag/convert_lidar_to_l2.py`);
 do **not** add an R² floor — low R² marks weak wind (median 2 m s⁻¹ of the gates an R² ≥ 0.2 cut removes) and biases the speed high.
+
+## E92 — `pbl3d_n_tau_max` has no effect with the MYNN length options (2026-11-24)
+
+With `pbl3d_l_opt = 5` (and the other MYNN-type branch) the buoyancy bound on the length is MYNN's own `l_f = q/N`, coefficient 1.0, hard-coded in `Calc_l_master_algebra`. The namelist value `pbl3d_n_tau_max = 0.53` is used only in the `pbl3d_l_opt = 1` branch. A run with `pbl3d_l_opt = 5` and `pbl3d_n_tau_max = 0.53` therefore runs at N l/q up to 1.0 (`PBL3D_N_TAU` = 1.00 in the history), and no warning is printed; `prepare_namelist.py` validates the key but not its relevance. Found in the idealised roll runs (`DECISIONS.md` 2026-11-24 11:45, 12:05). Any statement about "the buoyancy limit 0.53" holds for the real-case reference (`pbl3d_l_opt = 1`), not for the candidate.
+
