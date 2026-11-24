@@ -35,7 +35,7 @@ CONTAINS
      &          ,albbck,embck,lh,sh2o,shdmax,shdmin,shdavg,z0         &
      &          ,flqc,flhc,psfc,sst,sst_input,sstsk,dtw,sst_update,sst_skin     &
      &          ,scm_force_skintemp,scm_force_flux,t2,emiss           &
-     &          ,hfx_opt,znt_opt                                      &
+     &          ,hfx_opt,znt_opt,tsk_cool_rate                        &
      &          ,sf_sfclay_physics,sf_surface_physics,ra_lw_physics   & 
      &          ,bl_pbl_physics                                       &
      &          ,sf_mynn_sfcflux_land,sf_mynn_sfcflux_water           &
@@ -656,6 +656,7 @@ CONTAINS
    INTEGER, INTENT(IN),OPTIONAL :: sst_skin, tmn_update,              &
                                    scm_force_skintemp, scm_force_flux 
    REAL, INTENT(IN), OPTIONAL :: hfx_opt, znt_opt   ! prescribed surface flux / roughness (sfclayrev), off by default
+   REAL, INTENT(IN), OPTIONAL :: tsk_cool_rate      ! prescribed cooling of the skin temperature (sfclayrev), K h-1, off by default
    REAL :: th1_sf
 
    INTEGER, DIMENSION(num_tiles), INTENT(IN) ::                       &
@@ -2188,6 +2189,18 @@ CONTAINS
              DO j = j_start(ij),j_end(ij)
              DO i = i_start(ij),i_end(ij)
                znt(i,j) = znt_opt
+             END DO
+             END DO
+           ENDIF
+         ENDIF
+!  Prescribed linear cooling of the skin temperature (tsk_cool_rate, K h-1; off by default), for the stable
+!  GABLS1 case: TSK falls by tsk_cool_rate per hour and sfclayrev computes the fluxes from it (hfx_opt off).
+!  One decrement per call over the interval since the previous call (dt*stepbl; bldt = 0 gives every step).
+         IF ( PRESENT(tsk_cool_rate) ) THEN
+           IF ( tsk_cool_rate /= 0. ) THEN
+             DO j = j_start(ij),j_end(ij)
+             DO i = i_start(ij),i_end(ij)
+               tsk(i,j) = tsk(i,j) - tsk_cool_rate * dt * REAL(stepbl) / 3600.
              END DO
              END DO
            ENDIF

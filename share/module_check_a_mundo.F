@@ -422,6 +422,24 @@
       END IF
 
 !-----------------------------------------------------------------------
+! Prescribed cooling of the skin temperature (tsk_cool_rate) acts only in the idealised
+! revised-MM5 surface-layer path, without a land model and without a prescribed flux
+!-----------------------------------------------------------------------
+
+      DO i = 1, model_config_rec % max_dom
+         IF ( model_config_rec % tsk_cool_rate(i) .NE. 0.0 ) THEN
+            IF ( model_config_rec % sf_sfclay_physics(i) .NE. SFCLAYREVSCHEME .OR. &
+                 model_config_rec % sf_surface_physics(i) .NE. 0 .OR.              &
+                 model_config_rec % hfx_opt(i) .GT. -9000.0 ) THEN
+               wrf_err_message = '--- ERROR: tsk_cool_rate needs sf_sfclay_physics = 1, ' // &
+                                 'sf_surface_physics = 0 and hfx_opt off (< -9000)'
+               CALL wrf_debug ( 0, TRIM( wrf_err_message ) )
+               count_fatal_error = count_fatal_error + 1
+            END IF
+         END IF
+      ENDDO
+
+!-----------------------------------------------------------------------
 ! Check the 3D PBL initial-state, limiter and length-scale-floor switches
 !-----------------------------------------------------------------------
 

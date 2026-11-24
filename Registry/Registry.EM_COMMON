@@ -1289,6 +1289,7 @@ rconfig  integer   pbl3d_scale_aware    namelist,dynamics    max_domains      1 
 # (port of NCAR's hfx_opt/znt_opt, commit 068615101, made default-off) and the em_les perturbation factor
 rconfig  real      hfx_opt              namelist,physics     max_domains   -9999.  -     "hfx_opt"       "prescribed sensible heat flux W m-2 in sfclayrev; < -9000 = off" "W m-2"
 rconfig  real      znt_opt              namelist,physics     max_domains     -1.   -     "znt_opt"       "prescribed roughness length m in sfclayrev; <= 0 = off" "m"
+rconfig  real      tsk_cool_rate        namelist,physics     max_domains      0.   -     "tsk_cool_rate" "idealised sfclayrev: linear cooling of the skin temperature, K h-1; 0 = off; needs hfx_opt off and bldt = 0 (GABLS1: 0.25)" "K h-1"
 rconfig  real      les_pert_amp         namelist,dynamics    1                0.1  -     "les_pert_amp"  "em_les initial theta perturbation: factor on (U[0,1]-0.5), K" "K"
 rconfig  integer   pbl3d_lh_opt         namelist,dynamics    max_domains      0      -     "pbl3d_lh_opt"         "PBL3D horizontal mixing: 0 = off (single tapered length, previous behaviour), 1 = restore in the horizontal only the length the grey-zone taper removed" ""
 rconfig  integer   flux_limiter_w       namelist,dynamics    max_domains      0      -     "flux_limiter_w"       "Flux limiter on vertical advection of w" ""
