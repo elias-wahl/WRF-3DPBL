@@ -3983,11 +3983,14 @@
                   gh = - ( (l_master(i, k, j) ** 2.0) / Max (q_sq(i, k, j), Q_SQ_MIN) ) * G_OVER_TREF * dthetav_dz(i, k, j)
                   gm = ( (l_master(i, k, j) ** 2.0) / Max (q_sq(i, k, j), Q_SQ_MIN) ) * ( Max( du_dz(i, k, j) ** 2.0 + dv_dz(i, k, j) ** 2.0, 1.0E-10 ) )
 
-                    ! Eqs. 2.31, 2.33, 2.35 - 2.41 from HL88
-                  phi1 = 1.0 - 3.0 * a_2 * b_2 * gh
-                  phi2 = 1.0 - 9.0  * a_1 * a_2 * gh
-                  phi3 = phi1 + 9.0 * a_2 * a_2 * gh
-                  phi4 = phi1 - 12.0 * a_1 * a_2 * gh
+                    ! Eqs. 2.31, 2.33, 2.35 - 2.41 from HL88, with the factors (1 - C2), (1 - C3) and (1 - C5) of
+                    ! Nakanishi and Niino (2009) (their level-2.5 functions; MYNN's e1c ... e4c in module_bl_mynnedmf).
+                    ! For every other constant set C2 = C3 = C5 = 0 and the factors are exactly 1.0. At the level-2
+                    ! equilibrium these functions return the level-2 Sm and Sh of Set_my_l2_global_vars for both sets.
+                  phi1 = 1.0 - 3.0 * a_2 * b_2 * (1.0 - c_3) * gh
+                  phi2 = 1.0 - 9.0  * a_1 * a_2 * (1.0 - c_2) * gh
+                  phi3 = phi1 + 9.0 * a_2 * a_2 * (1.0 - c_2) * (1.0 - c_5) * gh
+                  phi4 = phi1 - 12.0 * a_1 * a_2 * (1.0 - c_2) * gh
                   N = phi2 + 18.0 * c_1 * a_1 * a_1 * gm
                   D = phi2 * phi4 + 6.0 * a_1 * a_1 * phi3 * gm
 
@@ -4894,11 +4897,8 @@
 
       call Set_model_constants (pbl3d_constants)
 
-        ! The C2, C3, C5 terms of NN09 exist only in the full-form solve; the approximate form's level-2.5 functions
-        ! are the MY82 forms without them (NN09 constants alone lower Ri_c from 0.195 to 0.084). Refused.
-      if (trim(pbl3d_constants) == 'NN09' .and. pbl3d_opt /= 2) then
-        call wrf_error_fatal ('PBL3D: pbl3d_constants = NN09 needs pbl3d_opt = 2 (the full form)')
-      end if
+        ! The C2, C3, C5 terms of NN09 are in the full-form solve and, since 2026-11-24, in the level-2.5 functions
+        ! of the approximate form (Calc_sm_sh_l2_or_l2p5), so the complete closure is available in both forms.
 
       call Set_my_l2_global_vars
 
