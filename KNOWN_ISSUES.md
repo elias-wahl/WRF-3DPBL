@@ -1655,3 +1655,6 @@ With `sf_surface_physics = 0`, `sf_sfclayrev.F90` (line 319) sets the surface sp
 ## E94 — The 3D runs' PBLH output is the terrain height, not a boundary-layer depth (2026-11-24)
 In every real-case run of the 3D closure, PBLH = sea-level height of the top of the first layer (terrain height + about 17 m), static in time (`OPEN_ISSUES.md` A54). Never use it as a boundary-layer depth, and do not trust anything derived from it (sfclayrev's convective gust, the grey-zone taper `pbl3d_scale_aware`). Flat idealised runs and MYNN runs are not affected.
 
+## E95 — A new git worktree of the WRF fork has no physics submodules (2026-11-24)
+`git worktree add` does not populate `phys/physics_mmm` and `phys/noahmp`; the first build then fails late (`bl_ysu.mod` missing) after most of the compile time. Run `git submodule update --init` in the new worktree before the first build (the slope-taper agent copied them from `branko_ideal` at the same commits instead).
+
