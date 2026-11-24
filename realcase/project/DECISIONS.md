@@ -7,6 +7,11 @@ lessons file) and not things `branko/realcase/README.md`,
 
 ---
 
+**2026-11-24 15:20 — `pbl3d_sq_diff` IN THE IDEALISED TREE: BUILT, GATED BIT FOR BIT, COMMITTED LOCALLY (footprint: nothing changes by default; opt-in namelist value).** Full rebuild of `branko_ideal` after the Registry change, serial on the login node, 14:14–15:11, "BUILD OK", both executables, the key in the generated Registry includes, no missing library; binary copied to `exp/ideal/bin/sqsw`. Gate job 8943455 (`ideal_gate_bfb.slurm`, rolls, 500 m, 2 × 72 ranks, 30 simulated minutes, one `wrfinput`, every variable of four frames, 207 variables): pair A, MY82 candidate at the default against the binary of 9eed1e6b5 — bit for bit; pair B, NN09 with limit 6 at the default — bit for bit; pair C, NN09 with `pbl3d_sq_diff = 1.0` against the throwaway binary with `SQ_DIFF = 1.0` compiled in — bit for bit. So the default path is unchanged and the runs made with the throwaway binary are valid for the switch. Commit on branch `3dpbl_ideal` (local, not pushed), 4 files, 30 insertions, 9 deletions. Not done: `prepare_namelist.py` and the namelist README do not know the key yet; the exact form K_q = 3 K_m is not implemented.
+
+---
+
+
 **2026-11-24 14:47 — APPROXIMATE FORM WITH MY82 AND S_q = 1.0: NO GAIN IN ROLLS, A LITTLE MORE ENTRAINMENT IN CELLS — AS IN THE FULL FORM, THE LARGER q² DIFFUSIVITY NEEDS THE NN09 CONSTANTS (jobs 8942716–8942722, `IT181`–`IT184_AMGQ_*`, binary `sq10`, about 6 min each; rated 8/10 for the two spacings run).** *Rolls, wind error (column / mixed layer / inversion layer, m s⁻¹), shear 200–700 m, resolved share:* 2000 m — S_q 0.2: 0.08 / 0.84 / 0.76, 2.26, 0.00; S_q 1.0: 0.14 / 0.96 / 0.79, 2.24, 0.00. 500 m — 0.10 / 0.72 / 0.55, 1.95, 0.45; 0.13 / 0.82 / 0.63, 2.41, 0.28 (Honnert 0.24). *Cells (θ 100–600 m / θ(800) − θ(200) / θ 900–1200 m / z_i):* 2000 m — 301.92 / −0.18 / 304.73 / 1051; 302.00 / −0.20 / 304.45 / 1002. 500 m — 302.04 / −0.04 / 304.15 / 1002; 302.09 / −0.04 / 304.03 / 1002. The approximate form therefore has no route to the new basis as the code stands: 'NN09' is refused outside the full form.
 
 ---
