@@ -149,7 +149,9 @@
       ! Coefficient S_q of the q^2 diffusivity K_q = S_q l q (MY82 Eq. 24), used by the vertical
       ! and the horizontal q^2 diffusion. MYNN's q^2 diffusivity is 3 K_m, 1.5-7 x this one in a
       ! convective layer. Pure transport: it moves q^2, it does not create it.
-    real,    parameter, public :: SQ_DIFF = 0.2
+      ! Set from the namelist (pbl3d_sq_diff, default 0.2 = previous behaviour). Nakanishi and Niino (2009)
+      ! use K_q = 3 K_m; with their neutral S_m = 0.347 that is S_q = 1.04.
+    real,    public    :: SQ_DIFF = 0.2
       ! Surface q^2 condition (pbl3d_sfc_qsq_bc): 0 = none (previous behaviour; the only
       ! lower condition is the Q_SQ_MIN floor on the ground face). 1 = the lowest
       ! prognostic level is held at or above the neutral surface-layer equilibrium
@@ -4821,7 +4823,7 @@
               pbl3d_nsteps, pbl3d_opt, pbl3d_prog, pbl3d_sfc_opt, pbl3d_l_opt,  &
               pbl3d_l0_opt, pbl3d_init_opt, pbl3d_limiter_opt,                  &
               pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_dn_max, pbl3d_moist_cond_max,                  &
-              pbl3d_sfc_qsq_bc, pbl3d_sq_implicit, pbl3d_t2_scalar, pbl3d_sfc_qsq_zmax,   &
+              pbl3d_sfc_qsq_bc, pbl3d_sq_implicit, pbl3d_sq_diff, pbl3d_t2_scalar, pbl3d_sfc_qsq_zmax,   &
               ids, ide, jds, jde, kds, kde,                                     &
               ims, ime, jms, jme, kms, kme,                                     &
               its, ite, jts, jte, kts, kte,                                     &
@@ -4855,6 +4857,7 @@
       real,    intent(in) :: pbl3d_sk_eps_max, pbl3d_n_tau_max, pbl3d_l0_min, pbl3d_dn_max, pbl3d_moist_cond_max
       real,    intent(in) :: pbl3d_sfc_qsq_zmax
       integer, intent(in) :: pbl3d_sfc_qsq_bc, pbl3d_sq_implicit, pbl3d_t2_scalar
+      real,    intent(in) :: pbl3d_sq_diff
       character (len = 160) :: msg
       character (len = *), intent(in) :: pbl3d_constants
       integer, intent(in) :: ids, ide, jds, jde, kds, kde, &
@@ -4948,6 +4951,18 @@
         call wrf_message ('PBL3D: vertical q^2 diffusion integrated implicitly (pbl3d_sq_implicit = 1)')
       else if (pbl3d_sq_implicit /= 0) then
         call wrf_message ('--- WARNING: pbl3d_sq_implicit must be 0 or 1; using 0 (explicit)')
+      end if
+
+        ! Coefficient S_q of the q^2 diffusivity (see SQ_DIFF at the top of the module).
+      if (pbl3d_sq_diff > 0.0) then
+        SQ_DIFF = pbl3d_sq_diff
+      else
+        SQ_DIFF = 0.2
+        call wrf_message ('--- WARNING: pbl3d_sq_diff must be > 0; using 0.2')
+      end if
+      if (SQ_DIFF /= 0.2) then
+        write (msg, '(a, f6.3)') 'PBL3D: q^2 diffusivity coefficient S_q (pbl3d_sq_diff) = ', SQ_DIFF
+        call wrf_message (trim (msg))
       end if
 
         ! Scalar-block realizability in the Tier-2 acceptance (see T2_SCALAR at the top).
