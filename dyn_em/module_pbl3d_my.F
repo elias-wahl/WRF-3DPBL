@@ -2141,7 +2141,10 @@
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       implicit none
       real (kind = SOLVER_PREC), intent (in) :: tf_u2, tf_v2, tf_w2, tf_utv, tf_vtv, tf_wtv, tf_t2v
-      Is_realizable_scalar = ( tf_t2v > 0.0_SOLVER_PREC )                                &
+        ! >= rather than >: a neutral face has theta_v'^2 = 0 and zero heat fluxes, which is a possible state; with a
+        ! strict inequality every such face exhausted the Tier-2 back-off (l/32) and neutral shear could not become
+        ! turbulent (OPEN_ISSUES A51). A zero variance with a non-zero flux still fails the Cauchy-Schwarz terms.
+      Is_realizable_scalar = ( tf_t2v >= 0.0_SOLVER_PREC )                               &
                        .and. ( tf_u2 * tf_t2v - tf_utv ** 2 >= 0.0_SOLVER_PREC )         &
                        .and. ( tf_v2 * tf_t2v - tf_vtv ** 2 >= 0.0_SOLVER_PREC )         &
                        .and. ( tf_w2 * tf_t2v - tf_wtv ** 2 >= 0.0_SOLVER_PREC )
