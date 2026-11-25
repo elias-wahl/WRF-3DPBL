@@ -1673,3 +1673,6 @@ In the slope runs MYNN used WRF's horizontal diffusion (`diff_opt = 2`, `km_opt 
 ## E100 — Idealised run numbers are not unique across agents (2026-11-24)
 `IT211_FMGNQ6BE2_cell_500` (Eghdami test) and `IT211_FMGNQ6B_roll_1000` (surface-q² check) share the number IT211. Scripts that select runs by number prefix alone can mix them; select by full directory name.
 
+## E101 — In the grey zone resolved convection starts late, so many idealised comparisons average over its growth, not an equilibrium (2026-11-25)
+`wrf3dpbl-diag/onset_scan.py` (σ_w at 500 m against time for every cell and roll run; onset = σ_w above half its 4–5 h mean; `exp/x16_judge/ideal_flat/onset_scan.csv`): the LES starts at 1.0 h (cells) and 1.3 h (rolls). Column runs: cells 250 and 500 m start at 1.0–2.3 h and are steady by 3 h (fine); cells 1000 m start at 2.3–4.2 h or not at all within 5 h (full NN09 basis, MYNN-EDMF); rolls 500 m start at 2.5–4.2 h in 34 of 38 runs and σ_w is still rising at 5 h (0.2–0.3 against the LES's 0.95 m s⁻¹); rolls 1000 and 2000 m mostly never. Any 3–5 h average of rolls at 500 m or cells at 1000 m mixes onset timing with the scheme's equilibrium behaviour. Check the onset before comparing, report onset time as its own metric, or run longer.
+
