@@ -1695,3 +1695,9 @@ Idealised runs that need 8–9 min alone ran into the 10-min limit when several 
 ## E107 — The stable bound of the MYNN length is 0.3 q/N at night, not q/N (2026-11-26)
 In `module_bl_mynnedmf` the buoyancy length is l_b = (α q + β q_c(…)) / N, where q_c is the surface convective velocity scale, not cloud water. At night the convective part vanishes and l_b = 0.3 q/N; the full q/N holds only by day above a heated surface. Inventory row 14 and E92 quote q/N. Any argument about stable-layer lengths with `pbl3d_l_opt = 5` must use 0.3 q/N.
 
+## E108 — `pbl3d_qsq_hdiff_opt = 2` or 3 on a binary older than 812b85322 silently runs the unstable fork form (2026-11-26)
+Before the range check of 812b85322, the q² transport tested `== 1` and treated every other value as the fork's form (flux × q², explicitly unstable for long lengths, A44). A namelist with 2 or 3 is accepted by older binaries (`hold4`, `weak1`, `weak2`, the real-case builds) and runs value 0 without a message. Use values 2/3 only with `exp/ideal/bin/a44` or later.
+
+## E109 — The diagnostic `Q_SQ_HDIFF` has the opposite sign of the q² tendency in values 0 and 1 (2026-11-26)
+In values 0 and 1 it stores −ρ × the applied tendency: a negative value means the horizontal transport adds q². OPEN_ISSUES A9 read it the other way. From value 2 on it stores the applied tendency.
+
