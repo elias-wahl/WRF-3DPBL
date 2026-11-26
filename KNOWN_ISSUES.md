@@ -1703,3 +1703,7 @@ In values 0 and 1 it stores −ρ × the applied tendency: a negative value mean
 
 ## E110 — In a new worktree `git submodule update --init` fails with "transport 'file' not allowed" (2026-11-26)
 The submodules are cloned from the local module store through the file protocol, which git disables by default. Use `git -c protocol.file.allow=always submodule update --init` for that one command (it does not change the config). Small-file creation on GPFS was slow that evening (about 0.35 s per file): a worktree checkout took about 20 min and a full build 72 min. Addendum to E95.
+
+## E111 — Three small traps found 2026-11-27 (gate/depth work)
+(1) `wrf3dpbl-diag/set_nml.py` adds a second line when the key shares a line with other keys; WRF then rejects the namelist (duplicate entry) — check with `grep -c key namelist.input`. (2) Frame 0 of `L_MASTER` has an undefined top face (seeded from `dz(kte)`), so frame-0 bit-for-bit comparisons can fail although the runs are identical — compare from frame 1. (3) Real-case history `T` is dry θ; θ_m is written as `THM`.
+
