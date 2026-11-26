@@ -1692,3 +1692,6 @@ In level-2 equilibrium S k/ε = √B₁ / (2 √(S_M (1 − Rf))). Dropping (1 �
 ## E106 — On the 10-min test queue, packs of more than about 100 ranks and the history merge of a split run can time out (2026-11-26)
 Idealised runs that need 8–9 min alone ran into the 10-min limit when several were packed into one job of more than about 100 ranks (two packs, 85 core hours lost). The history merge in `wrf3dpbl-diag/ideal_seg2.slurm` can itself run past the limit after a second half of 7.7 min (merged by hand once). Split such runs into two halves (`wrf3dpbl-diag/weak_pack_split.slurm`) and check that the merged wrfout has all frames (55 for 9 h at 10 min) before analysing.
 
+## E107 — The stable bound of the MYNN length is 0.3 q/N at night, not q/N (2026-11-26)
+In `module_bl_mynnedmf` the buoyancy length is l_b = (α q + β q_c(…)) / N, where q_c is the surface convective velocity scale, not cloud water. At night the convective part vanishes and l_b = 0.3 q/N; the full q/N holds only by day above a heated surface. Inventory row 14 and E92 quote q/N. Any argument about stable-layer lengths with `pbl3d_l_opt = 5` must use 0.3 q/N.
+
