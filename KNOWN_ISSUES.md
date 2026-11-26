@@ -1701,3 +1701,5 @@ Before the range check of 812b85322, the q² transport tested `== 1` and treated
 ## E109 — The diagnostic `Q_SQ_HDIFF` has the opposite sign of the q² tendency in values 0 and 1 (2026-11-26)
 In values 0 and 1 it stores −ρ × the applied tendency: a negative value means the horizontal transport adds q². OPEN_ISSUES A9 read it the other way. From value 2 on it stores the applied tendency.
 
+## E110 — In a new worktree `git submodule update --init` fails with "transport 'file' not allowed" (2026-11-26)
+The submodules are cloned from the local module store through the file protocol, which git disables by default. Use `git -c protocol.file.allow=always submodule update --init` for that one command (it does not change the config). Small-file creation on GPFS was slow that evening (about 0.35 s per file): a worktree checkout took about 20 min and a full build 72 min. Addendum to E95.
