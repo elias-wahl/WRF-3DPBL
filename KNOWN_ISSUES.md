@@ -1685,3 +1685,10 @@ In the slope runs MYNN used WRF's horizontal diffusion (`diff_opt = 2`, `km_opt 
 
 ## E104 — MYNN's asymptotic length breaks at a low model lid: compare GABLS1 at a 600 m lid (2026-11-26)
 MYNN integrates its asymptotic length up to max(PBLH, 200 m) + 200 m. With the 400 m lid of the idealised GABLS1 case, this loop runs past the top level and the length falls to its 8 m floor. The MYNN control then has too little mixing: u* is 0.187 / 0.238 m s⁻¹ at 1 / 0.25 K h⁻¹, against 0.194 / 0.262 m s⁻¹ with a 600 m lid. The 3D forms are unaffected (0.201 / 0.269). Rule: run GABLS1 MYNN controls with a lid of at least 600 m. Quote the GABLS1 LES u* as ranges, 0.177–0.208 and 0.247–0.309 m s⁻¹, not as single runs.
+
+## E105 — The strain cap's equilibrium bound needs the factor (1 − Rf): with NN09 the cap 6 lies above equilibrium only for Ri < 0.158 (2026-11-26)
+In level-2 equilibrium S k/ε = √B₁ / (2 √(S_M (1 − Rf))). Dropping (1 − Rf) moves the Ri at which the closure's own equilibrium reaches the cap from 0.158 (Rf 0.177) to about 0.21; the record said 0.22. Correct values with the code's NN09 constants (C₂ 0.729, C₃ 0.340): S k/ε 4.16 neutral, 5 / 6 / 7 / 8 at Ri 0.084 / 0.158 / 0.221 / 0.282. The same omission is in the comment of the strain limit in `Diagnose_fluxes` and in the scaling of `pbl3d_limiter_opt = 2`. Check any equilibrium-based argument about the cap against this.
+
+## E106 — On the 10-min test queue, packs of more than about 100 ranks and the history merge of a split run can time out (2026-11-26)
+Idealised runs that need 8–9 min alone ran into the 10-min limit when several were packed into one job of more than about 100 ranks (two packs, 85 core hours lost). The history merge in `wrf3dpbl-diag/ideal_seg2.slurm` can itself run past the limit after a second half of 7.7 min (merged by hand once). Split such runs into two halves (`wrf3dpbl-diag/weak_pack_split.slurm`) and check that the merged wrfout has all frames (55 for 9 h at 10 min) before analysing.
+
