@@ -1707,3 +1707,6 @@ The submodules are cloned from the local module store through the file protocol,
 ## E111 — Three small traps found 2026-11-27 (gate/depth work)
 (1) `wrf3dpbl-diag/set_nml.py` adds a second line when the key shares a line with other keys; WRF then rejects the namelist (duplicate entry) — check with `grep -c key namelist.input`. (2) Frame 0 of `L_MASTER` has an undefined top face (seeded from `dz(kte)`), so frame-0 bit-for-bit comparisons can fail although the runs are identical — compare from frame 1. (3) Real-case history `T` is dry θ; θ_m is written as `THM`.
 
+## E112 — WRFlux subgrid momentum fluxes of the 3D closure used a garbage density on patch west/south faces (found 2026-11-27, fixed on `3dpbl_ideal_a46` 80d2c49c6)
+`Populate_wrflux_sgs_from_pbl3d` read `rho_w` at i = its−1 / j = jts−1 unset, so FUZ/FVZ/FWX/FWY_SGS (the u, v, w subgrid flux means of WRFlux) were wrong on every patch's west and south face, in MPI-only runs too (valley: old values about half the correct ones, median factor 1.8). θ and moisture budgets are unaffected. Momentum-budget results from earlier WRFlux runs with the closure carry stripes at the patch spacing — do not interpret them without the fix. Also: splitting tiles in x changes results at round-off level through glibc's vectorised maths library (libmvec), not our code; build without it for bit-level layout tests.
+
